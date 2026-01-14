@@ -44,6 +44,11 @@ if (Get-Module -Name PSReadLine -ErrorAction SilentlyContinue) {
         }
         [Microsoft.PowerShell.PSConsoleReadLine]::AcceptLine()
     }
+
+    # F1 for tooltip
+    Set-PSReadLineKeyHandler -Key F1 -BriefDescription 'Show tooltip' -ScriptBlock {
+        [Microsoft.PowerShell.PSConsoleReadLine]::InvokePrompt()
+    }
 }
 
 # === Gemini Function (direct, no wrapper) ===
@@ -59,7 +64,7 @@ function Start-Gemini {
     }
     if ($key) { $env:GOOGLE_API_KEY = $key }
     
-    $model = if ($key) { "gemini-2.5-pro" } else { "gemini-2.5-flash" }
+    $model = if ($key) { "gemini-1.5-pro" } else { "gemini-1.5-flash" }
     
     $geminiPath = (Get-Command gemini -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1).Source
     if ($geminiPath) {
@@ -73,12 +78,10 @@ Set-Alias -Name g -Value Start-Gemini
 
 # === Prompt ===
 if (Get-Command oh-my-posh -ErrorAction SilentlyContinue) {
-    oh-my-posh init pwsh --config "$PSScriptRoot\gemini-hydra.omp.json" | Invoke-Expression
+    oh-my-posh init pwsh --config "$PSScriptRoot\gemini-hydra.omp.json" --transient | Invoke-Expression
 } else {
     function prompt {
         Write-Host "Gemini > " -NoNewline -ForegroundColor Cyan
         return " "
     }
 }
-
-Write-Host "[GeminiCLI Profile Loaded]" -ForegroundColor DarkGray

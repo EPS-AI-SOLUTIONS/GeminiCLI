@@ -311,11 +311,61 @@ $script:DefaultConfig = @{
         streamResponses = $true
         outputTokenRatio = 0.5
         promptRiskBlock = $false # YOLO mode: disable risk blocking
+        # YOLO Mode defaults
+        yoloMode = $true
+        yoloSettings = @{
+            maxConcurrent = 10
+            retryAttempts = 1
+            timeout = 15000
+            riskBlocking = $false
+        }
+        # Deep Thinking defaults - uses aliases resolved at runtime
+        deepThinking = @{
+            enabled = $true
+            provider = "google"
+            model = "gemini-flash-thinking"  # Alias -> resolved dynamically
+            thinkingBudget = 24576
+            useForPlanning = $true
+            useForSynthesis = $true
+        }
+        # Deep Research defaults - uses aliases resolved at runtime
+        deepResearch = @{
+            enabled = $true
+            provider = "google"
+            model = "gemini-pro-research"  # Alias -> resolved dynamically
+            useGoogleSearch = $true
+            maxSearchResults = 10
+            synthesizeResults = $true
+            researchDepth = "thorough"  # quick, moderate, thorough
+        }
         modelDiscovery = @{
             enabled = $true
             updateConfigOnStart = $true
             parallel = $true
             skipValidation = $false
+        }
+        # Model Alias System - maps logical names to actual model versions
+        # Resolved dynamically at runtime via Resolve-ModelAlias
+        modelAliases = @{
+            # Google Gemini aliases (auto-resolved to latest available)
+            "gemini-pro-latest"      = $null  # Resolved from API
+            "gemini-flash-latest"    = $null  # Resolved from API
+            "gemini-pro-research"    = $null  # Best for research tasks
+            "gemini-flash-thinking"  = $null  # Best for thinking/reasoning
+            "gemini-pro-planning"    = $null  # Best for planning
+            "gemini-flash-fast"      = $null  # Fastest available
+            # Anthropic aliases
+            "claude-best"            = "claude-opus-4-5-20251101"
+            "claude-balanced"        = "claude-sonnet-4-5-20250929"
+            "claude-fast"            = "claude-haiku-4-20250604"
+            # OpenAI aliases
+            "gpt-best"               = "gpt-4o"
+            "gpt-fast"               = "gpt-4o-mini"
+            # Ollama aliases (local)
+            "local-best"             = "llama3.2:3b"
+            "local-coder"            = "qwen2.5-coder:1.5b"
+            "local-fast"             = "llama3.2:1b"
+            "local-analytical"       = "phi3:mini"
         }
     }
 }
@@ -387,6 +437,421 @@ function Save-AIState {
     } else {
         $State | ConvertTo-Json -Depth 10 | Set-Content $script:StatePath -Encoding UTF8
     }
+}
+
+# Cache for resolved model aliases (refreshed on module load or manual call)
+$script:ResolvedAliases = @{}
+$script:AliasResolutionTime = $null
+
+function Resolve-ModelAlias {
+    <#
+    .SYNOPSIS
+        Resolves a model alias to the actual model ID available from the API
+    .DESCRIPTION
+        Takes a logical alias (e.g., "gemini-pro-latest") and returns the actual
+        model ID from the provider's API. Caches results for performance.
+    .PARAMETER Alias
+        The model alias to resolve (e.g., "gemini-flash-thinking", "claude-best")
+    .PARAMETER Provider
+        Optional provider hint for faster resolution
+    .PARAMETER ForceRefresh
+        Force refresh of cached aliases from API
+    .EXAMPLE
+        Resolve-ModelAlias -Alias "gemini-pro-research"
+        # Returns: "gemini-2.5-pro-preview-05-06" (or latest available)
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$Alias,
+
+        [ValidateSet("google", "anthropic", "openai", "ollama", "mistral", "groq")]
+        [string]$Provider,
+
+        [switch]$ForceRefresh
+    )
+
+    $config = Get-AIConfig
+    $knownAliases = @()
+    if ($config.settings.modelAliases) {
+        $knownAliases = @($config.settings.modelAliases.Keys)
+    }
+
+    # If not a known alias, return as-is (direct model name)
+    if ($knownAliases.Count -eq 0 -or $Alias -notin $knownAliases) {
+        return $Alias
+    }
+
+    # Check cache (valid for 1 hour)
+    $cacheValid = $script:AliasResolutionTime -and `
+                  ((Get-Date) - $script:AliasResolutionTime).TotalHours -lt 1
+
+    if (-not $ForceRefresh -and $cacheValid -and $script:ResolvedAliases[$Alias]) {
+        return $script:ResolvedAliases[$Alias]
+    }
+
+    # Check static aliases first (non-null values = static mapping)
+    $staticValue = $config.settings.modelAliases[$Alias]
+    if ($staticValue -and $staticValue -ne $null) {
+        $script:ResolvedAliases[$Alias] = $staticValue
+        return $staticValue
+    }
+
+    # Dynamic resolution for Google/Gemini models (aliases with $null value)
+    if ($Alias -like "gemini-*") {
+        $resolved = Resolve-GeminiAlias -Alias $Alias
+        if ($resolved) {
+            $script:ResolvedAliases[$Alias] = $resolved
+            $script:AliasResolutionTime = Get-Date
+            return $resolved
+        }
+    }
+
+    # Fallback: return alias as-is (caller will handle missing model)
+    Write-Verbose "Could not resolve alias '$Alias' - using as-is"
+    return $Alias
+}
+
+function Resolve-GeminiAlias {
+    <#
+    .SYNOPSIS
+        Resolves Gemini-specific aliases to latest available models
+    .DESCRIPTION
+        Queries Google's API to find the best matching model for the alias.
+        Prefers stable > preview > experimental versions.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$Alias
+    )
+
+    # Get available Gemini models from discovery cache or API
+    $geminiModels = @()
+
+    if ($script:DiscoveredModels -and $script:DiscoveredModels.google) {
+        $geminiModels = $script:DiscoveredModels.google
+    } else {
+        # Try to fetch from API
+        $apiKey = $env:GOOGLE_API_KEY
+        if (-not $apiKey) { $apiKey = $env:GEMINI_API_KEY }
+
+        if ($apiKey) {
+            try {
+                $uri = "https://generativelanguage.googleapis.com/v1beta/models?key=$apiKey"
+                $response = Invoke-RestMethod -Uri $uri -Method Get -TimeoutSec 10 -ErrorAction Stop
+                $geminiModels = $response.models | ForEach-Object { $_.name -replace '^models/', '' }
+            } catch {
+                Write-Verbose "Failed to fetch Gemini models: $_"
+            }
+        }
+    }
+
+    if ($geminiModels.Count -eq 0) {
+        # Fallback to known stable models
+        $geminiModels = @(
+            "gemini-2.5-pro", "gemini-2.5-flash",
+            "gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash"
+        )
+    }
+
+    # Define alias resolution patterns (priority order)
+    $patterns = switch -Wildcard ($Alias) {
+        "gemini-pro-latest" {
+            @("gemini-*-pro", "gemini-*-pro-*")
+        }
+        "gemini-flash-latest" {
+            @("gemini-*-flash", "gemini-*-flash-*")
+        }
+        "gemini-pro-research" {
+            # Research needs grounding/search support - prefer pro models
+            @("gemini-2.5-pro*", "gemini-2.0-pro*", "gemini-*-pro*")
+        }
+        "gemini-flash-thinking" {
+            # Thinking needs reasoning - flash with thinking support
+            @("gemini-2.5-flash*", "gemini-2.0-flash-thinking*", "gemini-*-flash*")
+        }
+        "gemini-pro-planning" {
+            # Planning needs deep reasoning - pro models
+            @("gemini-2.5-pro*", "gemini-*-pro*")
+        }
+        "gemini-flash-fast" {
+            # Speed priority - any flash, prefer lite
+            @("gemini-*-flash-lite*", "gemini-*-flash*", "gemini-flash*")
+        }
+        default {
+            @("gemini-*")
+        }
+    }
+
+    # Find best match (prefer stable > preview > exp, newer version > older)
+    $versionPriority = @{
+        "stable"  = 100
+        "preview" = 50
+        "exp"     = 25
+        "latest"  = 75
+    }
+
+    $bestMatch = $null
+    $bestScore = -1
+
+    foreach ($model in $geminiModels) {
+        foreach ($pattern in $patterns) {
+            if ($model -like $pattern) {
+                # Calculate score
+                $score = 0
+
+                # Version score (2.5 > 2.0 > 1.5)
+                if ($model -match "gemini-(\d+\.?\d*)") {
+                    $version = [double]$Matches[1]
+                    $score += $version * 100
+                }
+
+                # Stability score
+                foreach ($key in $versionPriority.Keys) {
+                    if ($model -like "*$key*" -or $model -like "*-$key*") {
+                        $score += $versionPriority[$key]
+                        break
+                    }
+                }
+
+                # No suffix = stable (highest priority)
+                if ($model -notmatch "(preview|exp|experimental|latest)") {
+                    $score += 150
+                }
+
+                if ($score -gt $bestScore) {
+                    $bestScore = $score
+                    $bestMatch = $model
+                }
+                break  # Found match for this pattern, check next model
+            }
+        }
+    }
+
+    return $bestMatch
+}
+
+function Update-ModelAliases {
+    <#
+    .SYNOPSIS
+        Force refresh all model aliases from APIs
+    .DESCRIPTION
+        Queries all configured providers and updates the alias cache
+    #>
+    [CmdletBinding()]
+    param()
+
+    Write-Host "[AI] Refreshing model aliases..." -ForegroundColor Cyan
+
+    $config = Get-AIConfig
+    $aliases = $config.settings.modelAliases.Keys
+
+    $script:ResolvedAliases = @{}
+
+    foreach ($alias in $aliases) {
+        $resolved = Resolve-ModelAlias -Alias $alias -ForceRefresh
+        if ($resolved -and $resolved -ne $alias) {
+            Write-Host "  $alias -> " -NoNewline -ForegroundColor DarkGray
+            Write-Host $resolved -ForegroundColor Green
+        }
+    }
+
+    $script:AliasResolutionTime = Get-Date
+    Write-Host "[AI] Aliases updated at $($script:AliasResolutionTime.ToString('HH:mm:ss'))" -ForegroundColor Green
+}
+
+function Get-ResolvedModel {
+    <#
+    .SYNOPSIS
+        Gets the actual model ID, resolving aliases if needed
+    .DESCRIPTION
+        Wrapper that handles both direct model IDs and aliases transparently
+    .PARAMETER ModelOrAlias
+        Model ID or alias to resolve
+    .EXAMPLE
+        Get-ResolvedModel "gemini-flash-thinking"  # Returns actual model ID
+        Get-ResolvedModel "gpt-4o"                 # Returns "gpt-4o" (not an alias)
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$ModelOrAlias
+    )
+
+    return Resolve-ModelAlias -Alias $ModelOrAlias
+}
+
+function Get-FallbackAlias {
+    <#
+    .SYNOPSIS
+        Gets the next available model from a fallback chain for a task type
+    .DESCRIPTION
+        When the primary model fails, this function returns the next available
+        model from the fallback chain. It checks API key availability and
+        provider health before suggesting a fallback.
+    .PARAMETER TaskType
+        Type of task: planning, research, thinking, fast, coding, general
+    .PARAMETER SkipAliases
+        Array of aliases to skip (already tried and failed)
+    .PARAMETER CheckAvailability
+        If true, only returns aliases with available providers
+    .EXAMPLE
+        Get-FallbackAlias -TaskType "planning"
+        # Returns first available alias from planning chain
+
+        Get-FallbackAlias -TaskType "fast" -SkipAliases @("gemini-flash-fast")
+        # Returns "gpt-fast" (next in chain after skipping gemini)
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateSet("planning", "research", "thinking", "fast", "coding", "general")]
+        [string]$TaskType,
+
+        [string[]]$SkipAliases = @(),
+
+        [switch]$CheckAvailability
+    )
+
+    $config = Get-AIConfig
+
+    # Get fallback chain for task type
+    $chain = $config.settings.aliasFallbackChains[$TaskType]
+    if (-not $chain -or $chain.Count -eq 0) {
+        $chain = $config.settings.aliasFallbackChains["general"]
+    }
+
+    foreach ($alias in $chain) {
+        # Skip already tried aliases
+        if ($alias -in $SkipAliases) {
+            continue
+        }
+
+        if ($CheckAvailability) {
+            # Check if provider for this alias is available
+            $available = Test-AliasAvailability -Alias $alias
+            if (-not $available) {
+                continue
+            }
+        }
+
+        # Resolve and return the alias
+        $resolved = Resolve-ModelAlias -Alias $alias
+        return @{
+            Alias = $alias
+            Model = $resolved
+            TaskType = $TaskType
+        }
+    }
+
+    # No fallback available
+    Write-Warning "No available fallback for task type '$TaskType'"
+    return $null
+}
+
+function Test-AliasAvailability {
+    <#
+    .SYNOPSIS
+        Tests if a model alias's provider is available
+    .DESCRIPTION
+        Checks API keys and provider connectivity for an alias
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$Alias
+    )
+
+    # Determine provider from alias prefix
+    $provider = switch -Wildcard ($Alias) {
+        "gemini-*"  { "google" }
+        "claude-*"  { "anthropic" }
+        "gpt-*"     { "openai" }
+        "local-*"   { "ollama" }
+        default     { "unknown" }
+    }
+
+    # Check availability
+    switch ($provider) {
+        "google" {
+            return [bool]($env:GOOGLE_API_KEY -or $env:GEMINI_API_KEY)
+        }
+        "anthropic" {
+            return [bool]$env:ANTHROPIC_API_KEY
+        }
+        "openai" {
+            return [bool]$env:OPENAI_API_KEY
+        }
+        "ollama" {
+            return Test-OllamaAvailable
+        }
+        default {
+            return $false
+        }
+    }
+}
+
+function Get-ModelForTask {
+    <#
+    .SYNOPSIS
+        Gets the best available model for a specific task type
+    .DESCRIPTION
+        Combines alias resolution with fallback chains to get the best
+        available model for a task. Automatically falls back if primary
+        provider is unavailable.
+    .PARAMETER TaskType
+        Type of task: planning, research, thinking, fast, coding, general
+    .PARAMETER PreferLocal
+        If true, prefer local Ollama models over cloud
+    .EXAMPLE
+        Get-ModelForTask -TaskType "planning"
+        # Returns best available model for planning tasks
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateSet("planning", "research", "thinking", "fast", "coding", "general")]
+        [string]$TaskType,
+
+        [switch]$PreferLocal
+    )
+
+    $config = Get-AIConfig
+
+    # Get fallback chain
+    $chain = $config.settings.aliasFallbackChains[$TaskType]
+    if (-not $chain) { $chain = $config.settings.aliasFallbackChains["general"] }
+
+    # If prefer local, reorder chain
+    if ($PreferLocal) {
+        $localAliases = $chain | Where-Object { $_ -like "local-*" }
+        $cloudAliases = $chain | Where-Object { $_ -notlike "local-*" }
+        $chain = @($localAliases) + @($cloudAliases)
+    }
+
+    # Find first available
+    foreach ($alias in $chain) {
+        if (Test-AliasAvailability -Alias $alias) {
+            $resolved = Resolve-ModelAlias -Alias $alias
+            $provider = switch -Wildcard ($alias) {
+                "gemini-*"  { "google" }
+                "claude-*"  { "anthropic" }
+                "gpt-*"     { "openai" }
+                "local-*"   { "ollama" }
+                default     { "unknown" }
+            }
+            return @{
+                Alias    = $alias
+                Model    = $resolved
+                Provider = $provider
+                TaskType = $TaskType
+            }
+        }
+    }
+
+    Write-Warning "No available model for task type '$TaskType'"
+    return $null
 }
 
 function Initialize-AIState {
@@ -746,7 +1211,7 @@ function Get-FallbackModel {
 function Invoke-AIRequest {
     <#
     .SYNOPSIS
-        Invokes an AI request with automatic retry and fallback
+        Invokes an AI request with automatic retry and fallback or using the Agent Swarm protocol.
     .PARAMETER Messages
         Array of message objects
     .PARAMETER Provider
@@ -765,6 +1230,8 @@ function Invoke-AIRequest {
         Display prompt optimization details
     .PARAMETER NoOptimize
         Disable auto-optimization (send raw prompt)
+    .PARAMETER Swarm
+        Use the Agent Swarm protocol for this request.
     #>
     [CmdletBinding()]
     param(
@@ -779,8 +1246,24 @@ function Invoke-AIRequest {
         [switch]$OptimizePrompt,
         [switch]$ShowOptimization,
         [switch]$NoOptimize,
+        [switch]$Swarm,
         [array]$Tools
     )
+
+    # If -Swarm is specified, delegate to the AgentSwarm module
+    if ($Swarm.IsPresent) {
+        if (Get-Command Invoke-AgentSwarm -ErrorAction SilentlyContinue) {
+            # Extract the user prompt for the swarm
+            $userPrompt = ($Messages | Where-Object { $_.role -eq 'user' } | Select-Object -Last 1).content
+            if ($userPrompt) {
+                return Invoke-AgentSwarm -Prompt $userPrompt
+            } else {
+                throw "Agent Swarm requires a user prompt."
+            }
+        } else {
+            throw "AgentSwarm module is not available. Cannot use -Swarm flag."
+        }
+    }
 
     $config = Get-AIConfig
     $maxRetries = $config.settings.maxRetries
@@ -2097,6 +2580,369 @@ function Get-ModelInfo {
 
 #endregion
 
+#region Provider/Model Selection
+
+function Set-AIProvider {
+    <#
+    .SYNOPSIS
+        Sets the active AI provider
+    .DESCRIPTION
+        Allows switching between Anthropic, OpenAI, Google, Mistral, Groq, and Ollama providers
+    .PARAMETER Provider
+        Provider name: anthropic, openai, google, mistral, groq, ollama
+    .PARAMETER Interactive
+        Show interactive menu to select provider
+    .EXAMPLE
+        Set-AIProvider -Provider anthropic
+        Set-AIProvider -Interactive
+    #>
+    [CmdletBinding()]
+    param(
+        [ValidateSet("anthropic", "openai", "google", "mistral", "groq", "ollama")]
+        [string]$Provider,
+
+        [switch]$Interactive
+    )
+
+    $config = Get-AIConfig
+    $state = Get-AIState
+
+    if ($Interactive) {
+        Write-Host "`n=== Select AI Provider ===" -ForegroundColor Cyan
+        Write-Host ""
+
+        $providers = @(
+            @{ Name = "anthropic"; Display = "Anthropic (Claude)"; KeyEnv = "ANTHROPIC_API_KEY" }
+            @{ Name = "openai";    Display = "OpenAI (GPT)";       KeyEnv = "OPENAI_API_KEY" }
+            @{ Name = "google";    Display = "Google (Gemini)";    KeyEnv = "GOOGLE_API_KEY" }
+            @{ Name = "mistral";   Display = "Mistral AI";         KeyEnv = "MISTRAL_API_KEY" }
+            @{ Name = "groq";      Display = "Groq (Fast)";        KeyEnv = "GROQ_API_KEY" }
+            @{ Name = "ollama";    Display = "Ollama (Local)";     KeyEnv = $null }
+        )
+
+        $i = 1
+        foreach ($p in $providers) {
+            $hasKey = if ($p.KeyEnv) { [bool][Environment]::GetEnvironmentVariable($p.KeyEnv) } else { Test-OllamaAvailable }
+            $status = if ($hasKey) { "[OK]" } else { "[--]" }
+            $color = if ($hasKey) { "Green" } else { "DarkGray" }
+            $current = if ($state.currentProvider -eq $p.Name) { " <-- current" } else { "" }
+
+            Write-Host "  [$i] " -NoNewline -ForegroundColor White
+            Write-Host "$status " -NoNewline -ForegroundColor $color
+            Write-Host "$($p.Display)$current" -ForegroundColor $(if ($hasKey) { "White" } else { "DarkGray" })
+            $i++
+        }
+
+        Write-Host ""
+        $choice = Read-Host "Select provider (1-6)"
+
+        if ($choice -match "^[1-6]$") {
+            $Provider = $providers[[int]$choice - 1].Name
+        } else {
+            Write-Host "Cancelled" -ForegroundColor Yellow
+            return
+        }
+    }
+
+    if (-not $Provider) {
+        Write-Warning "No provider specified. Use -Provider or -Interactive"
+        return
+    }
+
+    # Validate provider has API key (except ollama)
+    $providerConfig = $config.providers[$Provider]
+    if ($providerConfig.apiKeyEnv) {
+        $key = [Environment]::GetEnvironmentVariable($providerConfig.apiKeyEnv)
+        if (-not $key) {
+            Write-Warning "Provider '$Provider' requires $($providerConfig.apiKeyEnv) environment variable"
+            return
+        }
+    } elseif ($Provider -eq "ollama") {
+        if (-not (Test-OllamaAvailable)) {
+            Write-Warning "Ollama is not running. Start Ollama first."
+            return
+        }
+    }
+
+    # Set the provider
+    $state.currentProvider = $Provider
+
+    # Auto-select first model from fallback chain
+    $chain = $config.fallbackChain[$Provider]
+    if ($chain -and $chain.Count -gt 0) {
+        $state.currentModel = $chain[0]
+    }
+
+    $script:RuntimeState = $state
+    Save-AIState $state
+
+    Write-Host "[AI] Provider set to: " -NoNewline -ForegroundColor Green
+    Write-Host "$Provider " -NoNewline -ForegroundColor Cyan
+    Write-Host "(model: $($state.currentModel))" -ForegroundColor Gray
+}
+
+function Set-AIModel {
+    <#
+    .SYNOPSIS
+        Sets the active AI model for the current provider
+    .DESCRIPTION
+        Allows selecting a specific model within the current or specified provider
+    .PARAMETER Model
+        Model identifier (e.g., claude-sonnet-4-5-20250929, gpt-4o, llama3.2:3b)
+    .PARAMETER Provider
+        Optional provider to set along with model
+    .PARAMETER Interactive
+        Show interactive menu to select model
+    .EXAMPLE
+        Set-AIModel -Model "claude-sonnet-4-5-20250929"
+        Set-AIModel -Model "gpt-4o" -Provider openai
+        Set-AIModel -Interactive
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$Model,
+
+        [ValidateSet("anthropic", "openai", "google", "mistral", "groq", "ollama")]
+        [string]$Provider,
+
+        [switch]$Interactive
+    )
+
+    $config = Get-AIConfig
+    $state = Get-AIState
+
+    if ($Interactive) {
+        # First select provider if not specified
+        if (-not $Provider) {
+            $Provider = $state.currentProvider
+        }
+
+        Write-Host "`n=== Select Model for $Provider ===" -ForegroundColor Cyan
+        Write-Host ""
+
+        $models = @()
+
+        # Get models from config
+        $providerModels = $config.providers[$Provider].models
+        if ($providerModels) {
+            foreach ($modelName in $providerModels.Keys) {
+                $modelInfo = $providerModels[$modelName]
+                $models += @{
+                    Name = $modelName
+                    Tier = $modelInfo.tier
+                    Context = $modelInfo.contextWindow
+                    Cost = $modelInfo.inputCost
+                }
+            }
+        }
+
+        # For Ollama, also get local models
+        if ($Provider -eq "ollama" -and (Test-OllamaAvailable)) {
+            $localModels = Get-LocalModels
+            foreach ($lm in $localModels) {
+                if ($models.Name -notcontains $lm.Name) {
+                    $models += @{
+                        Name = $lm.Name
+                        Tier = "local"
+                        Context = 32000
+                        Cost = 0
+                    }
+                }
+            }
+        }
+
+        if ($models.Count -eq 0) {
+            Write-Warning "No models available for $Provider"
+            return
+        }
+
+        $i = 1
+        foreach ($m in $models) {
+            $tierLabel = "[$($m.Tier.ToUpper().PadRight(8))]"
+            $costLabel = if ($m.Cost -eq 0) { "FREE" } else { "`$$($m.Cost)/1M" }
+            $current = if ($state.currentModel -eq $m.Name) { " <-- current" } else { "" }
+
+            Write-Host "  [$i] " -NoNewline -ForegroundColor White
+            Write-Host "$tierLabel " -NoNewline -ForegroundColor $(
+                switch ($m.Tier) {
+                    "pro" { "Magenta" }
+                    "standard" { "Cyan" }
+                    "lite" { "Green" }
+                    default { "Gray" }
+                }
+            )
+            Write-Host "$($m.Name) " -NoNewline -ForegroundColor White
+            Write-Host "($costLabel)$current" -ForegroundColor DarkGray
+            $i++
+        }
+
+        Write-Host ""
+        $choice = Read-Host "Select model (1-$($models.Count))"
+
+        if ($choice -match "^\d+$" -and [int]$choice -ge 1 -and [int]$choice -le $models.Count) {
+            $Model = $models[[int]$choice - 1].Name
+        } else {
+            Write-Host "Cancelled" -ForegroundColor Yellow
+            return
+        }
+    }
+
+    if (-not $Model) {
+        Write-Warning "No model specified. Use -Model or -Interactive"
+        return
+    }
+
+    # If provider specified, set it too
+    if ($Provider) {
+        $state.currentProvider = $Provider
+    }
+
+    $state.currentModel = $Model
+    $script:RuntimeState = $state
+    Save-AIState $state
+
+    Write-Host "[AI] Model set to: " -NoNewline -ForegroundColor Green
+    Write-Host "$($state.currentProvider)/" -NoNewline -ForegroundColor Gray
+    Write-Host "$Model" -ForegroundColor Cyan
+}
+
+function Show-AIConfig {
+    <#
+    .SYNOPSIS
+        Shows current AI configuration with provider and model selection menu
+    .DESCRIPTION
+        Interactive display of current settings with options to change provider/model
+    #>
+    [CmdletBinding()]
+    param()
+
+    $config = Get-AIConfig
+    $state = Get-AIState
+
+    Write-Host ""
+    Write-Host "  +------------------------------------------+" -ForegroundColor Cyan
+    Write-Host "  |         HYDRA AI CONFIGURATION          |" -ForegroundColor Cyan
+    Write-Host "  +------------------------------------------+" -ForegroundColor Cyan
+    Write-Host ""
+
+    # Current settings
+    Write-Host "  Current Provider: " -NoNewline -ForegroundColor Gray
+    Write-Host $state.currentProvider -ForegroundColor Cyan
+
+    Write-Host "  Current Model:    " -NoNewline -ForegroundColor Gray
+    Write-Host $state.currentModel -ForegroundColor Yellow
+
+    Write-Host ""
+    Write-Host "  +------------------------------------------+" -ForegroundColor DarkGray
+
+    # Provider status
+    Write-Host ""
+    Write-Host "  Available Providers:" -ForegroundColor White
+    foreach ($providerName in $config.providerFallbackOrder) {
+        $provider = $config.providers[$providerName]
+        $hasKey = if ($provider.apiKeyEnv) {
+            [bool][Environment]::GetEnvironmentVariable($provider.apiKeyEnv)
+        } else {
+            $providerName -eq "ollama" -and (Test-OllamaAvailable)
+        }
+
+        $icon = if ($hasKey) { "[+]" } else { "[-]" }
+        $color = if ($hasKey) { "Green" } else { "DarkGray" }
+        $current = if ($state.currentProvider -eq $providerName) { " <--" } else { "" }
+
+        Write-Host "    $icon $($providerName.PadRight(12)) " -NoNewline -ForegroundColor $color
+        Write-Host "$current" -ForegroundColor Yellow
+    }
+
+    Write-Host ""
+    Write-Host "  +------------------------------------------+" -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host "  Commands:" -ForegroundColor White
+    Write-Host "    Set-AIProvider -Interactive  " -NoNewline -ForegroundColor Cyan
+    Write-Host "# Change provider" -ForegroundColor DarkGray
+    Write-Host "    Set-AIModel -Interactive     " -NoNewline -ForegroundColor Cyan
+    Write-Host "# Change model" -ForegroundColor DarkGray
+    Write-Host "    Get-AIStatus                 " -NoNewline -ForegroundColor Cyan
+    Write-Host "# Full status" -ForegroundColor DarkGray
+    Write-Host ""
+}
+
+function Switch-ToOllama {
+    <#
+    .SYNOPSIS
+        Quick switch to local Ollama provider
+    .PARAMETER Model
+        Ollama model to use (default: llama3.2:3b)
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$Model = "llama3.2:3b"
+    )
+
+    if (-not (Test-OllamaAvailable)) {
+        Write-Warning "Ollama is not running. Attempting to start..."
+        $ollamaExe = "$env:LOCALAPPDATA\Programs\Ollama\ollama.exe"
+        if (Test-Path $ollamaExe) {
+            Start-Process -FilePath $ollamaExe -ArgumentList "serve" -WindowStyle Hidden
+            Start-Sleep -Seconds 3
+            if (-not (Test-OllamaAvailable)) {
+                Write-Error "Failed to start Ollama"
+                return
+            }
+        } else {
+            Write-Error "Ollama not installed. Run Install-OllamaAuto"
+            return
+        }
+    }
+
+    Set-AIProvider -Provider "ollama"
+    Set-AIModel -Model $Model -Provider "ollama"
+}
+
+function Switch-ToAnthropic {
+    <#
+    .SYNOPSIS
+        Quick switch to Anthropic Claude
+    .PARAMETER Model
+        Claude model (default: claude-sonnet-4-5-20250929)
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$Model = "claude-sonnet-4-5-20250929"
+    )
+
+    if (-not $env:ANTHROPIC_API_KEY) {
+        Write-Error "ANTHROPIC_API_KEY environment variable not set"
+        return
+    }
+
+    Set-AIProvider -Provider "anthropic"
+    Set-AIModel -Model $Model -Provider "anthropic"
+}
+
+function Switch-ToOpenAI {
+    <#
+    .SYNOPSIS
+        Quick switch to OpenAI GPT
+    .PARAMETER Model
+        GPT model (default: gpt-4o)
+    #>
+    [CmdletBinding()]
+    param(
+        [string]$Model = "gpt-4o"
+    )
+
+    if (-not $env:OPENAI_API_KEY) {
+        Write-Error "OPENAI_API_KEY environment variable not set"
+        return
+    }
+
+    Set-AIProvider -Provider "openai"
+    Set-AIModel -Model $Model -Provider "openai"
+}
+
+#endregion
+
 #region Exports
 
 Export-ModuleMember -Function @(
@@ -2120,7 +2966,23 @@ Export-ModuleMember -Function @(
     # Model Discovery
     'Sync-AIModels',
     'Get-DiscoveredModels',
-    'Get-ModelInfo'
+    'Get-ModelInfo',
+    # Provider/Model Selection
+    'Set-AIProvider',
+    'Set-AIModel',
+    'Show-AIConfig',
+    'Switch-ToOllama',
+    'Switch-ToAnthropic',
+    'Switch-ToOpenAI',
+    # Dynamic Model Aliases
+    'Resolve-ModelAlias',
+    'Resolve-GeminiAlias',
+    'Update-ModelAliases',
+    'Get-ResolvedModel',
+    # Fallback System (NEW)
+    'Get-FallbackAlias',
+    'Test-AliasAvailability',
+    'Get-ModelForTask'
 )
 
 #endregion
@@ -2129,9 +2991,23 @@ Export-ModuleMember -Function @(
 Initialize-AIState | Out-Null
 
 # Auto-discover models if API keys are present (background, silent)
-if ($env:ANTHROPIC_API_KEY -or $env:OPENAI_API_KEY -or (Test-OllamaAvailable -ErrorAction SilentlyContinue)) {
+if ($env:ANTHROPIC_API_KEY -or $env:OPENAI_API_KEY -or $env:GOOGLE_API_KEY -or $env:GEMINI_API_KEY -or (Test-OllamaAvailable -ErrorAction SilentlyContinue)) {
     try {
         $script:DiscoveredModels = Sync-AIModels -Silent
+
+        # Auto-resolve model aliases on module load
+        $config = Get-AIConfig
+        if ($config.settings.modelAliases) {
+            foreach ($alias in $config.settings.modelAliases.Keys) {
+                if ($alias -like "gemini-*") {
+                    $resolved = Resolve-GeminiAlias -Alias $alias -ErrorAction SilentlyContinue
+                    if ($resolved) {
+                        $script:ResolvedAliases[$alias] = $resolved
+                    }
+                }
+            }
+            $script:AliasResolutionTime = Get-Date
+        }
     } catch {
         # Silently fail - models can be synced manually
     }

@@ -1,478 +1,436 @@
 {
-  "name": "AI Handler Pipeline",
-  "version": "2.0.0",
-  "description": "Complete AI model management system with local-first execution, parallel processing, and multi-provider fallback",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "HYDRA AI Handler Pipeline",
+  "version": "3.0.0",
+  "description": "Comprehensive pipeline configuration for the 6-Step Swarm Protocol with 12 Witcher Agents and parallel execution via RunspacePool",
   "author": "HYDRA System",
-  "created": "2025-01-12",
+  "updated": "2026-01-14",
 
   "architecture": {
-    "core_module": {
-      "path": "ai-handler/AIModelHandler.psm1",
-      "description": "Main PowerShell module with all AI handling functions",
-      "exported_functions": [
-        "Get-AIConfig",
-        "Save-AIConfig",
-        "Initialize-AIState",
-        "Get-OptimalModel",
-        "Get-FallbackModel",
-        "Get-RateLimitStatus",
-        "Update-UsageTracking",
-        "Invoke-AIRequest",
-        "Invoke-AIRequestParallel",
-        "Invoke-AIBatch",
-        "Get-LocalModels",
-        "Get-AIStatus",
-        "Reset-AIState",
-        "Test-AIProviders",
-        "Test-OllamaAvailable",
-        "Install-OllamaAuto"
-      ]
-    },
-    "config_file": {
-      "path": "ai-handler/ai-config.json",
-      "description": "JSON configuration for providers, models, and settings"
-    },
-    "launcher_integration": {
-      "path": "_launcher.ps1",
-      "description": "Main launcher with AI Handler auto-initialization"
+    "type": "hybrid",
+    "cloud_provider": "Google Gemini (dynamic)",
+    "local_provider": "Ollama",
+    "orchestration": "PowerShell RunspacePool",
+    "module": "AgentSwarm.psm1 v3.0 (Unified)",
+    "model_resolution": "dynamic_aliases"
+  },
+
+  "model_aliases": {
+    "_comment": "Aliases resolved at runtime via Resolve-ModelAlias function",
+    "gemini-pro-planning": "Best Gemini Pro for planning tasks",
+    "gemini-pro-research": "Best Gemini Pro with grounding/search",
+    "gemini-flash-thinking": "Best Gemini Flash for reasoning",
+    "gemini-flash-fast": "Fastest Gemini Flash available"
+  },
+
+  "swarm_protocol": {
+    "total_steps": 6,
+    "execution_mode": "parallel",
+    "fallback_mode": "sequential",
+    "steps": [
+      {
+        "step": 1,
+        "name": "Speculate",
+        "description": "Gather research context from the web before planning",
+        "provider": "google",
+        "model": "gemini-flash-fast",
+        "model_note": "Alias - resolved to latest fast flash model at runtime",
+        "tools": ["google_search"],
+        "timeout_ms": 30000,
+        "retry_attempts": 2,
+        "skip_if_offline": true,
+        "output": "draftContext"
+      },
+      {
+        "step": 2,
+        "name": "Plan",
+        "description": "Generate structured JSON task plan using deep thinking",
+        "provider": "google",
+        "model": "gemini-pro-planning",
+        "model_note": "Alias - resolved to latest pro model at runtime",
+        "tools": [],
+        "timeout_ms": 60000,
+        "retry_attempts": 3,
+        "input": ["userPrompt", "draftContext"],
+        "output": "planObject",
+        "output_format": "json",
+        "json_schema": {
+          "type": "object",
+          "required": ["thought_process", "tasks"],
+          "properties": {
+            "thought_process": { "type": "string" },
+            "tasks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["id", "agent", "instruction"],
+                "properties": {
+                  "id": { "type": "integer" },
+                  "agent": { "type": "string", "enum": ["Geralt", "Yennefer", "Triss", "Jaskier", "Vesemir", "Ciri", "Eskel", "Lambert", "Zoltan", "Regis", "Dijkstra", "Philippa"] },
+                  "instruction": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "step": 3,
+        "name": "Execute",
+        "description": "Parallel execution of agent tasks via RunspacePool",
+        "execution_engine": "Invoke-ParallelSwarmExecution",
+        "dispatcher": {
+          "provider": "google",
+          "model": "gemini-flash-fast",
+          "model_note": "Alias - resolved at runtime",
+          "purpose": "Generate system prompts for each agent"
+        },
+        "executor": {
+          "provider": "ollama",
+          "model_selection": "dynamic",
+          "purpose": "Run agent tasks locally"
+        },
+        "concurrency": {
+          "max_parallel": 5,
+          "max_local": 2,
+          "max_cloud": 4
+        },
+        "timeout_ms": 120000,
+        "input": ["planObject.tasks"],
+        "output": "agentResults"
+      },
+      {
+        "step": 4,
+        "name": "Synthesize",
+        "description": "Merge all agent results into coherent final answer",
+        "provider": "google",
+        "model": "gemini-pro-planning",
+        "model_note": "Alias - resolved at runtime",
+        "tools": [],
+        "timeout_ms": 60000,
+        "retry_attempts": 2,
+        "input": ["userPrompt", "agentResults"],
+        "output": "finalAnswer"
+      },
+      {
+        "step": 5,
+        "name": "Log",
+        "description": "Create concise session summary for daily log",
+        "provider": "google",
+        "model": "gemini-flash-fast",
+        "model_note": "Alias - resolved at runtime",
+        "tools": [],
+        "timeout_ms": 15000,
+        "retry_attempts": 1,
+        "input": ["userPrompt", "planObject.thought_process", "agentResults", "finalAnswer"],
+        "output": "sessionSummary",
+        "persist_to": ".serena/memories/task_log_{date}.md"
+      },
+      {
+        "step": 6,
+        "name": "Archive",
+        "description": "Save full session transcript to Markdown",
+        "provider": "none",
+        "tools": [],
+        "input": ["userPrompt", "planObject", "agentResults", "finalAnswer"],
+        "output": "sessionArchive",
+        "persist_to": ".serena/memories/sessions/Session-{timestamp}.md",
+        "format": "markdown"
+      }
+    ]
+  },
+
+  "agents": {
+    "total": 12,
+    "school": "School of the Wolf",
+    "roster": [
+      {
+        "name": "Geralt",
+        "persona": "White Wolf",
+        "specialization": "Security/Ops",
+        "model": "llama3.2:3b",
+        "focus": ["system_commands", "security_checks", "execution", "defense"],
+        "priority_tasks": ["chmod", "permissions", "firewall", "authentication"],
+        "memory_file": ".serena/memories/Geralt.md"
+      },
+      {
+        "name": "Yennefer",
+        "persona": "Sorceress",
+        "specialization": "Architecture/Code",
+        "model": "qwen2.5-coder:1.5b",
+        "focus": ["code_implementation", "architecture", "complex_logic", "structure"],
+        "priority_tasks": ["class_design", "api_design", "refactoring", "patterns"],
+        "memory_file": ".serena/memories/Yennefer.md"
+      },
+      {
+        "name": "Triss",
+        "persona": "Healer",
+        "specialization": "QA/Testing",
+        "model": "qwen2.5-coder:1.5b",
+        "focus": ["testing", "validation", "bug_fixes", "quality"],
+        "priority_tasks": ["unit_tests", "integration_tests", "debugging", "fixes"],
+        "memory_file": ".serena/memories/Triss.md"
+      },
+      {
+        "name": "Jaskier",
+        "persona": "Bard",
+        "specialization": "Docs/Communication",
+        "model": "llama3.2:3b",
+        "focus": ["documentation", "logs", "reports", "user_communication"],
+        "priority_tasks": ["readme", "comments", "changelog", "user_guides"],
+        "memory_file": ".serena/memories/Jaskier.md"
+      },
+      {
+        "name": "Vesemir",
+        "persona": "Mentor",
+        "specialization": "Mentoring/Review",
+        "model": "llama3.2:3b",
+        "focus": ["code_review", "best_practices", "teaching", "wisdom"],
+        "priority_tasks": ["review", "standards", "legacy_code", "mentoring"],
+        "memory_file": ".serena/memories/Vesemir.md"
+      },
+      {
+        "name": "Ciri",
+        "persona": "Prodigy",
+        "specialization": "Speed/Quick",
+        "model": "llama3.2:1b",
+        "focus": ["fast_tasks", "one_liners", "simple_operations", "speed"],
+        "priority_tasks": ["quick_fix", "rename", "format", "simple_query"],
+        "memory_file": ".serena/memories/Ciri.md"
+      },
+      {
+        "name": "Eskel",
+        "persona": "Pragmatist",
+        "specialization": "DevOps/Infrastructure",
+        "model": "llama3.2:3b",
+        "focus": ["ci_cd", "deployment", "infrastructure", "automation"],
+        "priority_tasks": ["docker", "kubernetes", "github_actions", "terraform"],
+        "memory_file": ".serena/memories/Eskel.md"
+      },
+      {
+        "name": "Lambert",
+        "persona": "Skeptic",
+        "specialization": "Debugging/Profiling",
+        "model": "qwen2.5-coder:1.5b",
+        "focus": ["debugging", "profiling", "performance", "optimization"],
+        "priority_tasks": ["memory_leak", "bottleneck", "profiler", "trace"],
+        "memory_file": ".serena/memories/Lambert.md"
+      },
+      {
+        "name": "Zoltan",
+        "persona": "Craftsman",
+        "specialization": "Data/Database",
+        "model": "llama3.2:3b",
+        "focus": ["data_operations", "database", "migrations", "queries"],
+        "priority_tasks": ["sql", "schema", "migration", "backup", "restore"],
+        "memory_file": ".serena/memories/Zoltan.md"
+      },
+      {
+        "name": "Regis",
+        "persona": "Sage",
+        "specialization": "Research/Analysis",
+        "model": "phi3:mini",
+        "focus": ["deep_analysis", "research", "algorithms", "theory"],
+        "priority_tasks": ["algorithm", "complexity", "research", "analysis"],
+        "memory_file": ".serena/memories/Regis.md"
+      },
+      {
+        "name": "Dijkstra",
+        "persona": "Spymaster",
+        "specialization": "Planning/Strategy",
+        "model": "llama3.2:3b",
+        "focus": ["strategic_planning", "coordination", "big_picture", "orchestration"],
+        "priority_tasks": ["roadmap", "planning", "coordination", "strategy"],
+        "memory_file": ".serena/memories/Dijkstra.md"
+      },
+      {
+        "name": "Philippa",
+        "persona": "Strategist",
+        "specialization": "Integration/API",
+        "model": "qwen2.5-coder:1.5b",
+        "focus": ["external_apis", "integrations", "connections", "protocols"],
+        "priority_tasks": ["rest_api", "graphql", "webhooks", "oauth"],
+        "memory_file": ".serena/memories/Philippa.md"
+      }
+    ],
+    "model_mapping": {
+      "fastest": ["Ciri"],
+      "analytical": ["Regis"],
+      "code_specialists": ["Yennefer", "Triss", "Lambert", "Philippa"],
+      "general_purpose": ["Geralt", "Jaskier", "Vesemir", "Eskel", "Zoltan", "Dijkstra"]
     }
   },
 
   "providers": {
-    "ollama": {
-      "priority": 1,
-      "type": "local",
-      "cost": 0.00,
-      "base_url": "http://localhost:11434/api",
-      "requires_api_key": false,
-      "auto_install": true,
+    "google": {
+      "enabled": true,
       "models": {
-        "llama3.2:3b": {
-          "tier": "standard",
-          "size_gb": 2.0,
-          "context_window": 128000,
-          "use_case": "default_general_purpose",
-          "capabilities": ["code", "analysis", "creative"]
-        },
-        "qwen2.5-coder:1.5b": {
-          "tier": "lite",
-          "size_gb": 0.9,
-          "context_window": 32768,
-          "use_case": "code_generation",
-          "capabilities": ["code"]
-        },
-        "phi3:mini": {
-          "tier": "lite",
-          "size_gb": 2.2,
-          "context_window": 128000,
-          "use_case": "reasoning",
-          "capabilities": ["code", "analysis"]
-        },
-        "llama3.2:1b": {
-          "tier": "lite",
-          "size_gb": 1.3,
-          "context_window": 128000,
-          "use_case": "fast_responses",
-          "capabilities": ["code", "analysis"]
-        }
+        "_note": "These are aliases - resolved dynamically at runtime",
+        "planner": "gemini-pro-planning",
+        "speculator": "gemini-flash-fast",
+        "dispatcher": "gemini-flash-fast",
+        "synthesizer": "gemini-pro-planning",
+        "researcher": "gemini-pro-research",
+        "thinker": "gemini-flash-thinking"
+      },
+      "features": ["deep_thinking", "google_search", "code_execution"],
+      "rate_limits": {
+        "requests_per_minute": 60,
+        "tokens_per_minute": 1000000
       }
     },
-    "openai": {
-      "priority": 2,
-      "type": "cloud",
-      "base_url": "https://api.openai.com/v1",
-      "requires_api_key": true,
-      "api_key_env": "OPENAI_API_KEY",
+    "ollama": {
+      "enabled": true,
+      "host": "http://localhost:11434",
       "models": {
-        "gpt-4o": {
-          "tier": "pro",
-          "cost_per_1k": {"input": 2.50, "output": 10.00},
-          "context_window": 128000,
-          "use_case": "high_quality_cloud"
-        },
-        "gpt-4o-mini": {
-          "tier": "lite",
-          "cost_per_1k": {"input": 0.15, "output": 0.60},
-          "context_window": 128000,
-          "use_case": "cheap_cloud_fallback"
-        }
-      }
+        "fast": "llama3.2:1b",
+        "general": "llama3.2:3b",
+        "coder": "qwen2.5-coder:1.5b",
+        "analytical": "phi3:mini"
+      },
+      "features": ["local_execution", "offline_mode", "privacy"],
+      "concurrency_limit": 2
     },
     "anthropic": {
-      "priority": 3,
-      "type": "cloud",
-      "base_url": "https://api.anthropic.com/v1",
-      "requires_api_key": true,
-      "api_key_env": "ANTHROPIC_API_KEY",
-      "models": {
-        "claude-sonnet-4-20250514": {
-          "tier": "pro",
-          "cost_per_1k": {"input": 3.00, "output": 15.00},
-          "context_window": 200000,
-          "use_case": "highest_quality"
-        },
-        "claude-3-5-haiku-20241022": {
-          "tier": "lite",
-          "cost_per_1k": {"input": 0.80, "output": 4.00},
-          "context_window": 200000,
-          "use_case": "balanced_cloud"
-        }
-      }
-    }
-  },
-
-  "decision_matrix": {
-    "description": "Rules for selecting provider and model",
-    "rules": [
-      {
-        "id": 1,
-        "name": "check_ollama_first",
-        "condition": "ANY request",
-        "action": "Test-OllamaAvailable before cloud API",
-        "priority": "critical"
-      },
-      {
-        "id": 2,
-        "name": "prefer_local",
-        "condition": "settings.preferLocal == true AND Ollama available",
-        "action": "Use ollama provider",
-        "priority": "high"
-      },
-      {
-        "id": 3,
-        "name": "parallel_for_batch",
-        "condition": "Multiple independent prompts",
-        "action": "Use Invoke-AIBatch with runspace pool",
-        "priority": "high"
-      },
-      {
-        "id": 4,
-        "name": "code_specialist",
-        "condition": "Query matches code patterns",
-        "action": "Use qwen2.5-coder:1.5b",
-        "priority": "medium"
-      },
-      {
-        "id": 5,
-        "name": "fast_mode",
-        "condition": "User requests -Fast OR simple query",
-        "action": "Use llama3.2:1b",
-        "priority": "medium"
-      },
-      {
-        "id": 6,
-        "name": "cloud_fallback",
-        "condition": "Ollama unavailable OR quality insufficient",
-        "action": "Fallback to openai/anthropic",
-        "priority": "low"
-      }
-    ],
-    "code_detection_patterns": [
-      "write.*(function|code|script|class|method)",
-      "create.*(function|code|script|class|method)",
-      "implement\\s+",
-      "fix.*(bug|error|code)",
-      "\\b(regex|regexp)\\b",
-      "\\b(sql|query)\\s+(to|for|that)",
-      "\\bapi\\s+(endpoint|call|request)",
-      "in\\s+(python|javascript|powershell|bash|rust|go|java|c#|typescript)"
-    ],
-    "model_selection_flow": {
-      "start": "receive_request",
-      "steps": [
-        {
-          "step": 1,
-          "action": "check_ollama_available",
-          "true": "step_2",
-          "false": "use_cloud_provider"
-        },
-        {
-          "step": 2,
-          "action": "check_if_batch_request",
-          "true": "use_parallel_execution",
-          "false": "step_3"
-        },
-        {
-          "step": 3,
-          "action": "check_code_patterns",
-          "true": "use_qwen_coder",
-          "false": "step_4"
-        },
-        {
-          "step": 4,
-          "action": "check_fast_flag",
-          "true": "use_llama_1b",
-          "false": "use_llama_3b"
-        }
-      ]
-    }
-  },
-
-  "fallback_chains": {
-    "ollama": ["llama3.2:3b", "qwen2.5-coder:1.5b", "phi3:mini", "llama3.2:1b"],
-    "openai": ["gpt-4o", "gpt-4o-mini"],
-    "anthropic": ["claude-sonnet-4-20250514", "claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022"],
-    "cross_provider": ["ollama", "openai", "anthropic"]
-  },
-
-  "parallel_execution": {
-    "engine": "PowerShell Runspace Pool",
-    "implementation": {
-      "method": "InitialSessionState with pre-loaded module",
-      "max_concurrent": 4,
-      "timeout_ms": 30000,
-      "batch_size": 10
+      "enabled": true,
+      "fallback_model": "claude-3-5-sonnet-latest",
+      "priority": 2
     },
-    "workflow": [
-      "Create InitialSessionState",
-      "Import AIModelHandler module into ISS",
-      "Create RunspacePool with ISS",
-      "Create PowerShell instance per request",
-      "BeginInvoke all requests",
-      "Collect results with timeout",
-      "Dispose runspaces"
-    ],
+    "openai": {
+      "enabled": true,
+      "fallback_model": "gpt-4o",
+      "priority": 3
+    }
+  },
+
+  "failover": {
+    "enabled": true,
+    "chain": ["google", "anthropic", "openai", "ollama"],
+    "strategy": "sequential",
+    "offline_fallback": "ollama",
+    "max_retries_per_provider": 2,
+    "task_fallback_chains": {
+      "_comment": "Use Get-ModelForTask to resolve these at runtime",
+      "planning": ["gemini-pro-planning", "claude-balanced", "gpt-best", "local-best"],
+      "research": ["gemini-pro-research", "claude-best", "gpt-best", "local-analytical"],
+      "thinking": ["gemini-flash-thinking", "claude-balanced", "gpt-best", "local-best"],
+      "fast": ["gemini-flash-fast", "gpt-fast", "claude-fast", "local-fast"],
+      "coding": ["local-coder", "claude-balanced", "gpt-best", "local-best"],
+      "general": ["gemini-flash-fast", "claude-balanced", "gpt-best", "local-best"]
+    }
+  },
+
+  "concurrency": {
+    "execution_engine": "RunspacePool",
+    "configuration": {
+      "max_concurrent_total": 5,
+      "max_concurrent_local": 2,
+      "max_concurrent_cloud": 4,
+      "queue_type": "ConcurrentQueue",
+      "job_tracking": "ConcurrentDictionary"
+    },
     "performance": {
-      "4_requests": "~2s parallel vs ~12s sequential",
-      "speedup_factor": "4-6x",
-      "cpu_utilization_target": ">80%"
+      "sequential_baseline": "4 agents x 10s = 40s",
+      "parallel_optimized": "4 agents x 10s = ~12s",
+      "improvement": "70%"
     }
   },
 
-  "commands": {
-    "/ai": {
-      "script": "Invoke-QuickAI.ps1",
-      "description": "Single local AI query",
-      "flags": ["-Code", "-Fast", "-MaxTokens"],
-      "auto_detection": true,
-      "default_model": "llama3.2:3b",
-      "examples": [
-        "/ai What is 2+2?",
-        "/ai -Code Write a Python function",
-        "/ai -Fast Quick answer please"
-      ]
+  "memory": {
+    "enabled": true,
+    "base_path": ".serena/memories",
+    "agent_memory": {
+      "format": "markdown",
+      "per_agent": true,
+      "rebase_probability": 0.1,
+      "rebase_model": "llama3.2:3b"
     },
-    "/ai-batch": {
-      "script": "Invoke-QuickAIBatch.ps1",
-      "description": "Multiple parallel queries",
-      "flags": ["-File", "-Model", "-MaxConcurrent", "-MaxTokens"],
-      "input_format": "semicolon_separated OR file",
-      "examples": [
-        "/ai-batch \"Q1; Q2; Q3; Q4\"",
-        "/ai-batch -File queries.txt"
-      ]
+    "session_logging": {
+      "daily_log": "task_log_{YYYY-MM-DD}.md",
+      "full_archive": "sessions/Session-{YYYYMMdd-HHmmss}.md"
     },
-    "/ai-status": {
-      "script": "Invoke-AIStatus.ps1",
-      "description": "Provider and model status",
-      "flags": ["-Test"],
-      "shows": [
-        "provider_status",
-        "local_models",
-        "configuration",
-        "fallback_chain",
-        "connectivity_test",
-        "cost_summary"
-      ]
+    "persistence": {
+      "enabled": true,
+      "cleanup_interval_days": 30
+    }
+  },
+
+  "security": {
+    "god_mode": {
+      "enabled": true,
+      "description": "Agents have full system access for task execution",
+      "restrictions": ["no_hardcoded_secrets", "no_git_commits_of_env"]
     },
-    "/ai-config": {
-      "script": "Invoke-AIConfig.ps1",
-      "description": "Configuration management",
-      "flags": [
-        "-Show",
-        "-PreferLocal",
-        "-AutoFallback",
-        "-CostOptimization",
-        "-DefaultModel",
-        "-MaxConcurrent",
-        "-Timeout",
-        "-Priority",
-        "-Reset"
+    "api_keys": {
+      "storage": "environment_variables",
+      "display": "masked_first_15_chars"
+    }
+  },
+
+  "modes": {
+    "standard": {
+      "concurrency": 5,
+      "safety_blocking": true,
+      "retries": 3,
+      "timeout_s": 60
+    },
+    "yolo": {
+      "concurrency": 10,
+      "safety_blocking": false,
+      "retries": 1,
+      "timeout_s": 15,
+      "activation": "./_launcher.ps1 -Yolo"
+    }
+  },
+
+  "mcp_integration": {
+    "enabled": true,
+    "tools": {
+      "serena": {
+        "commands": ["find_symbol", "read_file", "write_memory"],
+        "purpose": "Code navigation and memory management"
+      },
+      "desktop_commander": {
+        "commands": ["start_process", "read_file", "write_file", "list_directory"],
+        "purpose": "File system and shell operations"
+      },
+      "playwright": {
+        "commands": ["browser_navigate", "browser_snapshot"],
+        "purpose": "Web interaction and verification"
+      }
+    }
+  },
+
+  "exported_functions": {
+    "total": 16,
+    "categories": {
+      "agent_swarm": ["Invoke-AgentSwarm"],
+      "utility": ["Get-AgentMemory", "Save-AgentMemory", "Get-AgentModel"],
+      "prompt_optimization": ["Optimize-PromptAuto", "Get-PromptComplexity"],
+      "queue_management": [
+        "Add-ToSmartQueue",
+        "Add-BatchToSmartQueue",
+        "Get-QueueStatus",
+        "Get-SmartQueueStatus",
+        "Clear-SmartQueue",
+        "Clear-QueueResults",
+        "Get-QueueResults"
       ],
-      "examples": [
-        "/ai-config -Show",
-        "/ai-config -PreferLocal true",
-        "/ai-config -MaxConcurrent 8",
-        "/ai-config -Priority \"anthropic,openai,ollama\""
+      "parallel_execution": [
+        "Start-QueueProcessor",
+        "Invoke-ParallelClassification",
+        "Invoke-ParallelSwarmExecution"
       ]
-    },
-    "/ai-pull": {
-      "script": "Invoke-AIPull.ps1",
-      "description": "Ollama model management",
-      "flags": ["-List", "-Popular", "-Remove"],
-      "examples": [
-        "/ai-pull -List",
-        "/ai-pull -Popular",
-        "/ai-pull mistral:7b",
-        "/ai-pull -Remove phi3:mini"
-      ]
-    },
-    "/ai-help": {
-      "script": "Invoke-AIHelp.ps1",
-      "description": "Command reference"
     }
   },
 
-  "launcher_integration": {
-    "steps": [
-      {
-        "step": 1,
-        "name": "load_ai_handler",
-        "action": "Import-Module AIModelHandler.psm1 -Force -Global"
-      },
-      {
-        "step": 2,
-        "name": "check_ollama",
-        "action": "Test-OllamaAvailable",
-        "on_fail": "auto_start_ollama"
-      },
-      {
-        "step": 3,
-        "name": "display_status",
-        "action": "Show providers, models, mode"
-      },
-      {
-        "step": 4,
-        "name": "launch_claude",
-        "action": "Start Claude CLI with AI Handler available"
-      }
-    ],
-    "auto_start_ollama": {
-      "exe_path": "$env:LOCALAPPDATA\\Programs\\Ollama\\ollama.exe",
-      "arguments": "serve",
-      "window_style": "Hidden",
-      "wait_time_seconds": 3
-    }
-  },
-
-  "error_handling": {
-    "error_types": {
-      "RateLimit": {
-        "pattern": "rate.?limit|429|too many requests",
-        "action": "fallback_to_next_model",
-        "retry": true
-      },
-      "Overloaded": {
-        "pattern": "overloaded|503|capacity",
-        "action": "fallback_to_next_provider",
-        "retry": true
-      },
-      "AuthError": {
-        "pattern": "401|403|unauthorized|forbidden|invalid.*key",
-        "action": "skip_provider",
-        "retry": false
-      },
-      "ServerError": {
-        "pattern": "500|502|504|server error",
-        "action": "retry_with_backoff",
-        "retry": true
-      }
-    },
-    "retry_config": {
-      "max_retries": 3,
-      "retry_delay_ms": 1000,
-      "backoff_multiplier": 2
-    }
-  },
-
-  "cost_optimization": {
-    "strategy": "local_first_then_cheapest",
-    "cost_tiers": {
-      "free": ["ollama/*"],
-      "cheap": ["gpt-4o-mini", "claude-3-5-haiku"],
-      "standard": ["gpt-4o", "claude-3-5-sonnet"],
-      "premium": ["claude-sonnet-4"]
-    },
-    "selection_priority": [
-      "local_available",
-      "lowest_cost",
-      "best_capability_match"
-    ]
-  },
-
-  "files_created": {
-    "core": [
-      "ai-handler/AIModelHandler.psm1",
-      "ai-handler/ai-config.json"
-    ],
-    "commands": [
-      "ai-handler/Invoke-QuickAI.ps1",
-      "ai-handler/Invoke-QuickAIBatch.ps1",
-      "ai-handler/Invoke-AIStatus.ps1",
-      "ai-handler/Invoke-AIHealth.ps1",
-      "ai-handler/Invoke-AIConfig.ps1",
-      "ai-handler/Invoke-AIPull.ps1",
-      "ai-handler/Invoke-AIHelp.ps1"
-    ],
-    "command_definitions": [
-      ".claude/commands/ai.md",
-      ".claude/commands/ai-batch.md",
-      ".claude/commands/ai-status.md",
-      ".claude/commands/ai-config.md",
-      ".claude/commands/ai-pull.md",
-      ".claude/commands/ai-help.md"
-    ],
-    "tests": [
-      "ai-handler/test-ollama.ps1",
-      "ai-handler/test-fallback.ps1",
-      "ai-handler/test-api-failure.ps1",
-      "ai-handler/test-parallel.ps1",
-      "ai-handler/test-matrix-real.ps1",
-      "ai-handler/test-all-ollama.ps1"
-    ],
-    "utilities": [
-      "ai-handler/Install-Ollama.ps1",
-      "ai-handler/Initialize-AIHandler.ps1"
-    ]
-  },
-
-  "integration_points": {
-    "claude_md": {
-      "section": "10. AI Handler - Matryca Decyzyjna",
-      "content": "Decision matrix, commands, rules for Claude"
-    },
-    "launcher": {
-      "file": "_launcher.ps1",
-      "features": ["auto_load_module", "auto_start_ollama", "status_display"]
-    }
-  },
-
-  "performance_benchmarks": {
-    "single_query": {
-      "ollama_llama3.2_3b": "2-5s",
-      "ollama_llama3.2_1b": "1-2s",
-      "ollama_qwen_coder": "2-4s",
-      "openai_gpt4o_mini": "1-2s",
-      "anthropic_haiku": "0.5-1s"
-    },
-    "batch_4_queries": {
-      "parallel": "2-5s",
-      "sequential": "12-20s",
-      "speedup": "4-6x"
-    }
-  },
-
-  "usage_examples": {
-    "simple_query": {
-      "command": "/ai What is the capital of Poland?",
-      "model_used": "llama3.2:3b",
-      "cost": "$0.00"
-    },
-    "code_generation": {
-      "command": "/ai Write a Python function to sort a list",
-      "model_used": "qwen2.5-coder:1.5b (auto-detected)",
-      "cost": "$0.00"
-    },
-    "batch_analysis": {
-      "command": "/ai-batch \"Analyze security; Check performance; Suggest improvements\"",
-      "model_used": "llama3.2:3b x3 parallel",
-      "cost": "$0.00",
-      "time": "~3s"
-    },
-    "cloud_fallback": {
-      "scenario": "Ollama not available",
-      "fallback_chain": "openai/gpt-4o-mini -> anthropic/claude-3-5-haiku",
-      "cost": "$0.001-0.01"
+  "diagnostics": {
+    "health_check": "hydra_health",
+    "config_check": "hydra_config",
+    "queue_status": "Get-QueueStatus",
+    "logging": {
+      "level": "INFO",
+      "format": "json_in_production"
     }
   }
 }

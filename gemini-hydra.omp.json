@@ -42,15 +42,6 @@
       "type": "rprompt",
       "segments": [
         {
-          "type": "command",
-          "style": "plain",
-          "foreground": "p:silver",
-          "properties": {
-            "command": "node .gemini/statusline.cjs",
-            "shell": "pwsh"
-          }
-        },
-        {
           "type": "node",
           "style": "plain",
           "foreground": "p:green",
@@ -94,5 +85,27 @@
       ]
     }
   ],
-  "final_space": true
+  "final_space": true,
+  "secondary_prompt": {
+    "foreground": "p:purple",
+    "background": "transparent",
+    "template": " │ "
+  },
+  "transient_prompt": {
+    "foreground": "p:silver",
+    "background": "transparent",
+    "template": "❯ "
+  },
+  "tooltips": [
+    {
+      "type": "command",
+      "tips": [ "g" ],
+      "style": "plain",
+      "foreground": "p:silver",
+      "properties": {
+        "command": "node .gemini/statusline.cjs --tooltip",
+        "shell": "pwsh"
+      }
+    }
+  ]
 }

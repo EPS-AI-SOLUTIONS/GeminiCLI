@@ -5,7 +5,15 @@
 
 param([switch]$Yolo)
 
+# --- YOLO MODE DEFAULT ON ---
+$env:HYDRA_YOLO_MODE = 'true'
+# --- DEEP THINKING & RESEARCH DEFAULT ON ---
+$env:HYDRA_DEEP_THINKING = 'true'
+$env:HYDRA_DEEP_RESEARCH = 'true'
+# --------------------------
+
 if ($Yolo) {
+    # This switch can still be used, but the default is now on.
     $env:HYDRA_YOLO_MODE = 'true'
 }
 
@@ -13,6 +21,29 @@ if ($Yolo) {
 $script:ProjectRoot = if ($PSScriptRoot) { $PSScriptRoot } else { $PWD.Path }
 Set-Location $script:ProjectRoot
 $scriptDir = $script:ProjectRoot
+
+# === GIT AUTO-UPDATE ===
+if (Test-Path (Join-Path $scriptDir ".git")) {
+    Write-Host "  Checking for updates..." -NoNewline -ForegroundColor DarkGray
+    try {
+        $gitFetch = git fetch origin 2>&1
+        $gitStatus = git status -uno 2>&1
+        if ($gitStatus -match "behind") {
+            Write-Host " [UPDATE AVAILABLE]" -ForegroundColor Yellow
+            Write-Host "  Pulling latest changes..." -ForegroundColor Cyan
+            $gitPull = git pull --ff-only 2>&1
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "  [OK] Updated successfully" -ForegroundColor Green
+            } else {
+                Write-Host "  [!] Pull failed - manual merge may be required" -ForegroundColor Red
+            }
+        } else {
+            Write-Host " [UP TO DATE]" -ForegroundColor Green
+        }
+    } catch {
+        Write-Host " [SKIP]" -ForegroundColor DarkGray
+    }
+}
 
 # === WINDOW CONFIGURATION ===
 $Host.UI.RawUI.WindowTitle = 'Gemini CLI (HYDRA - Witcher Edition)'
@@ -24,7 +55,8 @@ try {
         Add-Type -AssemblyName System.Drawing, System.Windows.Forms
         $hwnd = (Get-Process -Id $PID).MainWindowHandle
         $icon = [System.Drawing.Icon]::new($iconPath)
-        [void][System.Windows.Forms.Form]::FromHandle($hwnd).Icon = $icon
+        $form = [System.Windows.Forms.Form]::FromHandle($hwnd)
+        if ($form) { $form.Icon = $icon }
     }
 } catch {
     # Ignore icon errors to prevent crash
@@ -137,6 +169,44 @@ while ($true) {
         } catch {}
     }
 
+    # === AI MODEL DISCOVERY (Auto-update from API keys) ===
+    $aiHandlerModule = Join-Path $script:ProjectRoot 'ai-handler\AIModelHandler.psm1'
+    if (Test-Path $aiHandlerModule) {
+        try {
+            Import-Module $aiHandlerModule -Force -ErrorAction SilentlyContinue
+
+            # Check if any API keys are available
+            $hasKeys = $env:ANTHROPIC_API_KEY -or $env:OPENAI_API_KEY -or $env:GOOGLE_API_KEY -or $env:GEMINI_API_KEY
+
+            if ($hasKeys -or $ollamaRunning) {
+                Write-Host "  Syncing AI models..." -NoNewline -ForegroundColor DarkGray
+                if (Get-Command Sync-AIModels -ErrorAction SilentlyContinue) {
+                    $discovery = Sync-AIModels -Silent -UpdateConfig
+                    if ($discovery -and $discovery.TotalModels -gt 0) {
+                        Write-Host " [$($discovery.TotalModels) models]" -ForegroundColor Green
+                    } else {
+                        Write-Host " [cached]" -ForegroundColor DarkGray
+                    }
+                } else {
+                    Write-Host " [skip]" -ForegroundColor DarkGray
+                }
+            }
+
+            # Show current AI config
+            if (Get-Command Show-AIConfig -ErrorAction SilentlyContinue) {
+                # Quick status line instead of full config
+                $state = Get-AIState -ErrorAction SilentlyContinue
+                if ($state) {
+                    Write-Host "  AI:       " -NoNewline -ForegroundColor Gray
+                    Write-Host "$($state.currentProvider)/" -NoNewline -ForegroundColor DarkCyan
+                    Write-Host "$($state.currentModel)" -ForegroundColor Cyan
+                }
+            }
+        } catch {
+            # Silently continue
+        }
+    }
+
     # === STATUS MONITOR ===
     $monitorScript = Join-Path $scriptDir 'Start-StatusMonitor.ps1'
     if (Test-Path $monitorScript) {
@@ -150,9 +220,12 @@ while ($true) {
     Write-Host ""
     Write-Host "  Protocol: AgentSwarm (Default)" -ForegroundColor Cyan
     if ($env:HYDRA_YOLO_MODE -eq 'true') {
-        Write-Host "  Status:   YOLO MODE ACTIVE (Fast & Dangerous)" -ForegroundColor Magenta
-    } else {
-        Write-Host "  Status:   Autonomous Mode" -ForegroundColor Green
+        Write-Host "  YOLO:     " -NoNewline -ForegroundColor Gray
+        Write-Host "ACTIVE (Fast & Dangerous)" -ForegroundColor Magenta
+    }
+    if ($env:HYDRA_DEEP_THINKING -eq 'true') {
+        Write-Host "  Deep:     " -NoNewline -ForegroundColor Gray
+        Write-Host "Thinking + Research ENABLED" -ForegroundColor Yellow
     }
     Write-Host ""
     

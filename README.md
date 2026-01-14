@@ -1,47 +1,58 @@
-# HYDRA Ollama MCP Server
+# HYDRA - Multi-Headed AI Orchestration System
 
-Lekki serwer MCP do integracji z Ollama i Gemini CLI, z kolejką zadań, cache i optymalizacją promptów.
+> *"Twelve wolves hunt as one. HYDRA executes in parallel."*
 
-## Szybki start
+## Overview
+
+HYDRA is an AI orchestration system that combines cloud AI (Google Gemini) for strategic planning with local AI (Ollama) for parallel task execution through 12 specialized Witcher agents.
+
+## Quick Start
 
 ```bash
+# Install dependencies
 pnpm install
-pnpm start
+
+# Start the system
+.\_launcher.ps1
 ```
 
-## Konfiguracja
+## Architecture
 
-Skopiuj `.env.example` do `.env` i ustaw wartości według potrzeb. Konfiguracja ładowana jest przez `dotenv`, więc lokalnie wystarczy jeden plik.
+```
+User Prompt → Gemini Pro (Plan) → Ollama Agents (Parallel) → Gemini Pro (Synthesize) → Answer
+```
 
-Najważniejsze zmienne:
-- `OLLAMA_HOST`
-- `DEFAULT_MODEL`, `FAST_MODEL`, `CODER_MODEL`
-- `CACHE_ENCRYPTION_KEY` (AES-256-GCM, 32 bajty)
-- `CACHE_MAX_ENTRY_BYTES`, `CACHE_CLEANUP_INTERVAL_MS`, `CACHE_MAX_TOTAL_MB`
-- `PROMPT_MAX_LENGTH`, `MODEL_ALLOWLIST`, `MODEL_DENYLIST`
-- `PROMPT_RISK_BLOCK`
-- `GEMINI_FETCH_TIMEOUT_MS`, `GEMINI_FETCH_RETRIES`
-- `QUEUE_PERSISTENCE_ENABLED`, `QUEUE_PERSISTENCE_PATH`
+### The 12 Witcher Agents
 
-## Narzędzia MCP
+| Agent | Specialization | Model |
+|-------|---------------|-------|
+| Geralt | Security/Ops | llama3.2:3b |
+| Yennefer | Architecture/Code | qwen2.5-coder |
+| Triss | QA/Testing | qwen2.5-coder |
+| Jaskier | Documentation | llama3.2:3b |
+| Ciri | Quick Tasks | llama3.2:1b |
+| Regis | Research | phi3:mini |
+| +6 more | Various | Various |
 
-Serwer udostępnia m.in.:
-- `ollama_generate`, `ollama_smart`, `ollama_speculative`
-- `ollama_status`, `ollama_cache_clear`
-- `hydra_health`, `hydra_config`
+## Core Modules
 
-Domyślna kolejka promptów korzysta z AI handlera (smart generowanie) już przy starcie.
+- **AgentSwarm.psm1** - 6-step protocol with 12 agents and parallel execution
+- **AIModelHandler.psm1** - Multi-provider AI interface
+- **TaskClassifier.psm1** - Task routing and classification
 
-## Kolejka i cache
+## Configuration
 
-- Kolejka może zapisywać stan na dysku (opcja `QUEUE_PERSISTENCE_ENABLED`).
-- Cache ma limit rozmiaru wpisu i cykliczne sprzątanie.
+Copy `.env.example` to `.env` and configure:
+- `OLLAMA_HOST` - Ollama server address
+- `DEFAULT_MODEL`, `FAST_MODEL`, `CODER_MODEL` - Model selection
+- See `GEMINI.md` for full configuration options
 
-## Logowanie
+## Documentation
 
-Logi w produkcji są w JSON, sterowane przez `LOG_LEVEL`.
+- [GEMINI.md](./GEMINI.md) - System instructions and rules
+- [ARCHITECTURE.md](./ARCHITECTURE.md) - Technical architecture
+- [CHANGELOG.md](./CHANGELOG.md) - Version history
 
-## Bezpieczeństwo konfiguracji
+## Version
 
-- Klucze API tylko przez zmienne środowiskowe (`.env` + `dotenv`).
-- `.env` pozostaje w `.gitignore`.
+**v3.0.0** - Unified AgentSwarm with parallel execution and 12 agents

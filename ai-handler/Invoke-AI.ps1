@@ -21,10 +21,6 @@ param(
     [string]$Prompt,
 
     [Parameter(ParameterSetName = 'Query')]
-    [ValidateSet("simple", "complex", "creative", "code", "vision", "analysis", "auto")]
-    [string]$Task = "auto",
-
-    [Parameter(ParameterSetName = 'Query')]
     [string]$SystemPrompt,
 
     [Parameter(ParameterSetName = 'Query')]
@@ -40,20 +36,13 @@ param(
     [float]$Temperature = 0.7,
 
     [Parameter(ParameterSetName = 'Query')]
-    [switch]$PreferCheapest,
-
-    [Parameter(ParameterSetName = 'Query')]
-    [Alias("Smart")]
-    [switch]$SmartClassify,
-
-    [Parameter(ParameterSetName = 'Query')]
     [switch]$NoFallback,
 
     [Parameter(ParameterSetName = 'Query')]
     [switch]$Stream,
 
     [Parameter(ParameterSetName = 'Query')]
-    [switch]$ShowClassification,
+    [switch]$Swarm,
 
     [Parameter(ParameterSetName = 'Status')]
     [switch]$Status,
@@ -62,21 +51,14 @@ param(
     [switch]$Test,
 
     [Parameter(ParameterSetName = 'Reset')]
-    [switch]$Reset,
-
-    [Parameter(ParameterSetName = 'ClassifierStats')]
-    [switch]$ClassifierStats
+    [switch]$Reset
 )
 
 $ErrorActionPreference = "Stop"
 $ModulePath = Join-Path $PSScriptRoot "AIModelHandler.psm1"
-$ClassifierPath = Join-Path $PSScriptRoot "modules\TaskClassifier.psm1"
 
-# Import modules
+# Import module
 Import-Module $ModulePath -Force
-if (Test-Path $ClassifierPath) {
-    Import-Module $ClassifierPath -Force
-}
 
 # Handle different modes
 switch ($PSCmdlet.ParameterSetName) {
@@ -86,170 +68,55 @@ switch ($PSCmdlet.ParameterSetName) {
     }
 
     'Test' {
-        $results = Test-AIProviders
-        Write-Host "`n=== Summary ===" -ForegroundColor Cyan
-        $ok = ($results | Where-Object { $_.status -eq "ok" }).Count
-        $total = $results.Count
-        Write-Host "Providers available: $ok / $total" -ForegroundColor $(if ($ok -gt 0) { "Green" } else { "Red" })
+        Test-AIProviders
         return
     }
 
     'Reset' {
         Reset-AIState -Force
-        if (Get-Command Clear-ClassificationCache -ErrorAction SilentlyContinue) {
-            Clear-ClassificationCache
-        }
-        return
-    }
-
-    'ClassifierStats' {
-        if (Get-Command Get-ClassificationStats -ErrorAction SilentlyContinue) {
-            $stats = Get-ClassificationStats
-            Write-Host "`n=== Task Classifier Stats ===" -ForegroundColor Cyan
-            Write-Host "Classifier Model: $($stats.ClassifierModel)" -ForegroundColor Green
-            Write-Host "Cached entries:   $($stats.TotalCached) ($($stats.ValidEntries) valid, $($stats.ExpiredEntries) expired)"
-            Write-Host "Cache TTL:        $($stats.CacheTTLSeconds)s"
-        } else {
-            Write-Host "TaskClassifier module not loaded" -ForegroundColor Yellow
-        }
         return
     }
 
     'Query' {
-        # Check for session-specific model override from Switch-AI.ps1
-        if ($env:GEMINI_SESSION_PROVIDER -and $env:GEMINI_SESSION_MODEL) {
-            $Provider = $env:GEMINI_SESSION_PROVIDER
-            $Model = $env:GEMINI_SESSION_MODEL
-            if ($PSBoundParameters.ContainsKey('Prompt')) {
-                Write-Host "â†’ Używanie modelu sesji: $Provider/$Model" -ForegroundColor Yellow
-            }
-        }
-
         if (-not $Prompt) {
             Write-Host "Usage: .\Invoke-AI.ps1 -Prompt 'Your question here'" -ForegroundColor Yellow
             Write-Host "`nOptions:" -ForegroundColor Cyan
-            Write-Host "  -Task             : auto, simple, complex, creative, code, vision, analysis"
-            Write-Host "  -Smart (-SmartClassify) : Use premium AI to classify and route task" -ForegroundColor Green
-            Write-Host "  -ShowClassification : Show classification details"
+            Write-Host "  -Swarm            : Use the Agent Swarm protocol for complex queries" -ForegroundColor Green
             Write-Host "  -SystemPrompt     : Custom system prompt"
             Write-Host "  -Provider         : Force specific provider"
             Write-Host "  -Model            : Force specific model"
-            Write-Host "  -PreferCheapest   : Use cheapest suitable model"
             Write-Host "  -NoFallback       : Disable automatic fallback"
             Write-Host "  -Status           : Show current status"
             Write-Host "  -Test             : Test all providers"
-            Write-Host "  -ClassifierStats  : Show classifier statistics"
             Write-Host "  -Reset            : Reset usage data"
             return
         }
 
         # Build messages
         $messages = @()
-
         if ($SystemPrompt) {
             $messages += @{ role = "system"; content = $SystemPrompt }
         }
-
         $messages += @{ role = "user"; content = $Prompt }
 
-        # Smart classification mode OR auto task type
-        $classification = $null
-        if (($SmartClassify -or $Task -eq "auto") -and -not $Model) {
-            # Default to complex for broad application of Swarm/Optimization if smart classify fails
-            $Task = "complex" 
-            
-            if (Get-Command Invoke-TaskClassification -ErrorAction SilentlyContinue) {
-                Write-Host "`n[Step 1] Classifying task with premium AI..." -ForegroundColor Cyan
-                $classification = Invoke-TaskClassification -Prompt $Prompt
-                
-                if ($ShowClassification -or $VerbosePreference -eq 'Continue') {
-                    Write-Host "`n=== Classification Result ===" -ForegroundColor Magenta
-                    Write-Host "  Category:    $($classification.Category)" -ForegroundColor White
-                    Write-Host "  Complexity:  $($classification.Complexity)/10" -ForegroundColor White
-                    Write-Host "  Tier:        $($classification.RecommendedTier)" -ForegroundColor White
-                    Write-Host "  Capabilities: $($classification.Capabilities -join ', ')" -ForegroundColor Gray
-                    Write-Host "  Reasoning:   $($classification.Reasoning)" -ForegroundColor Gray
-                    Write-Host "  Classifier:  $($classification.ClassifierModel)" -ForegroundColor DarkGray
-                    Write-Host ""
-                }
-                
-                # Use classification to set task type
-                $Task = $classification.Category
-                if ($Task -notin @("simple", "complex", "creative", "code", "vision", "analysis")) {
-                    $Task = "simple"
-                }
-            } else {
-                Write-Verbose "TaskClassifier not available, using default classification"
-                if ($Task -eq "auto") { $Task = "simple" }
-            }
-        }
-
-        # Select model if not specified
-        if (-not $Model) {
-            Write-Host "[Step 2] Selecting optimal execution model..." -ForegroundColor Cyan
-            
-            $modelParams = @{
-                Task = $Task
-                EstimatedTokens = if ($classification) { $classification.EstimatedTokens } else { $Prompt.Length }
-                PreferCheapest = $PreferCheapest -or ($classification -and $classification.Complexity -le 3)
-            }
-            
-            if ($classification -and $classification.Capabilities) {
-                $modelParams.RequiredCapabilities = $classification.Capabilities
-            }
-            
-            $optimal = Get-OptimalModel @modelParams
-            if ($optimal) {
-                $Provider = $optimal.provider
-                $Model = $optimal.model
-                Write-Host "  Selected: $Provider/$Model (tier: $($optimal.tier), cost: `$$([math]::Round($optimal.cost, 4)))" -ForegroundColor Green
-            }
-        }
-
-        # === HYDRA MATRIX ENFORCEMENT ===
-        # ALL queries must pass through the Swarm Logic (Speculative -> Planner -> Agents)
-        # We bypass standard selection and force Swarm for everything.
-        
-        $swarmAvailable = Get-Command Invoke-AgentSwarm -ErrorAction SilentlyContinue
-
-        if ($swarmAvailable) {
-            Write-Host "`n[HYDRA MATRIX] Enforcing Agent Swarm Strategy..." -ForegroundColor Magenta
-            
-            try {
-                $response = Invoke-AgentSwarm -Prompt $Prompt `
-                    -PlannerModel "gemini-3-pro-preview" `
-                    -ExecutorProvider "ollama"
-
-                # Output response
-                Write-Host "`n" + ("=" * 60) -ForegroundColor Green
-                Write-Host " SWARM RESPONSE" -ForegroundColor Green
-                Write-Host ("=" * 60) -ForegroundColor Green
-                Write-Host $response.content
-
-                # Show metadata
-                Write-Host "`n" + ("-" * 40) -ForegroundColor Gray
-                Write-Host "Strategy: Speculative -> Planner -> Agents -> Synthesis" -ForegroundColor Gray
-                Write-Host "Planner: gemini-3-pro-preview" -ForegroundColor Gray
-                Write-Host "Executor: ollama (local priority)" -ForegroundColor Gray
-                
-                return
-            } catch {
-                Write-Warning "[Swarm] Execution failed: $_. Falling back to standard execution."
-            }
-        }
-        
-        # Fallback to standard flow ONLY if Swarm fails or is unavailable
-        $config = Get-AIConfig
-        $streamEnabled = $Stream -or ($config.settings.streamResponses -eq $true)
-
-        # Make request
         try {
-            Write-Host "`n[Step 3] Executing request..." -ForegroundColor Cyan
+            Write-Host "`nExecuting request..." -ForegroundColor Cyan
             
-            $response = Invoke-AIRequest -Messages $messages `
-                -Provider $Provider -Model $Model `
-                -MaxTokens $MaxTokens -Temperature $Temperature `
-                -AutoFallback:(-not $NoFallback) -Stream:$streamEnabled
+            $config = Get-AIConfig
+            $streamEnabled = $Stream -or ($config.settings.streamResponses -eq $true)
+
+            $invokeParams = @{
+                Messages    = $messages
+                MaxTokens   = $MaxTokens
+                Temperature = $Temperature
+                AutoFallback = -not $NoFallback
+                Stream      = $streamEnabled
+                Swarm       = $Swarm.IsPresent
+            }
+            if ($Provider) { $invokeParams.Provider = $Provider }
+            if ($Model) { $invokeParams.Model = $Model }
+
+            $response = Invoke-AIRequest @invokeParams
 
             # Output response
             Write-Host "`n" + ("=" * 60) -ForegroundColor Green
@@ -260,13 +127,13 @@ switch ($PSCmdlet.ParameterSetName) {
             }
 
             # Show metadata
-            Write-Host "`n" + ("-" * 40) -ForegroundColor Gray
-            Write-Host "Provider: $($response._meta.provider) | Model: $($response._meta.model)" -ForegroundColor Gray
-            Write-Host "Tokens: $($response.usage.input_tokens) in / $($response.usage.output_tokens) out" -ForegroundColor Gray
-            if ($classification) {
-                Write-Host "Classification: $($classification.Category) (complexity: $($classification.Complexity)/10)" -ForegroundColor DarkGray
+            if ($response._meta) {
+                Write-Host "`n" + ("-" * 40) -ForegroundColor Gray
+                Write-Host "Provider: $($response._meta.provider) | Model: $($response._meta.model)" -ForegroundColor Gray
+                if ($response.usage) {
+                    Write-Host "Tokens: $($response.usage.input_tokens) in / $($response.usage.output_tokens) out" -ForegroundColor Gray
+                }
             }
-
         } catch {
             Write-Host "`nError: $($_.Exception.Message)" -ForegroundColor Red
             exit 1

@@ -77,6 +77,33 @@
         "autoInstallOllama": true,
         "maxRetries": 5,
         "autoFallback": true,
-        "logLevel": "info"
+        "logLevel": "info",
+        "modelAliases": {
+            "_comment": "Aliases resolved dynamically at runtime. null = dynamic (API query), string = static mapping",
+            "gemini-pro-latest": null,
+            "gemini-flash-latest": null,
+            "gemini-pro-research": null,
+            "gemini-flash-thinking": null,
+            "gemini-pro-planning": null,
+            "gemini-flash-fast": null,
+            "claude-best": "claude-opus-4-5-20251101",
+            "claude-balanced": "claude-sonnet-4-5-20250929",
+            "claude-fast": "claude-haiku-4-20250604",
+            "gpt-best": "gpt-4o",
+            "gpt-fast": "gpt-4o-mini",
+            "local-best": "llama3.2:3b",
+            "local-coder": "qwen2.5-coder:1.5b",
+            "local-fast": "llama3.2:1b",
+            "local-analytical": "phi3:mini"
+        },
+        "aliasFallbackChains": {
+            "_comment": "Fallback chains for each task type when primary alias fails",
+            "planning": ["gemini-pro-planning", "claude-balanced", "gpt-best", "local-best"],
+            "research": ["gemini-pro-research", "claude-best", "gpt-best", "local-analytical"],
+            "thinking": ["gemini-flash-thinking", "claude-balanced", "gpt-best", "local-best"],
+            "fast": ["gemini-flash-fast", "gpt-fast", "claude-fast", "local-fast"],
+            "coding": ["local-coder", "claude-balanced", "gpt-best", "local-best"],
+            "general": ["gemini-flash-fast", "claude-balanced", "gpt-best", "local-best"]
+        }
     }
 }

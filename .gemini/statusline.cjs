@@ -133,11 +133,13 @@ process.stdin.on('end', () => {
 // Timeout fallback (if no input)
 setTimeout(() => {
   if (!inputData) {
-    printStatusLine({});
+    // Check for --tooltip argument
+    const isTooltip = process.argv.includes('--tooltip');
+    printStatusLine({}, isTooltip);
   }
 }, 50);
 
-function printStatusLine(_data) {
+function printStatusLine(_data, isTooltip = false) {
   const parts = [];
   const ollama = checkOllamaStatus();
   const res = getSystemResources();
@@ -148,37 +150,44 @@ function printStatusLine(_data) {
   const handlerColor = getStatusColor(aiHandler.status === 'active' ? 'active' : 'off');
   const handlerText = aiHandler.status === 'active' ? 'Active' : 'Inactive';
   
-  if (COMPACT_MODE) {
+  if (isTooltip) {
+    parts.push(`AI Handler: ${handlerColor}${handlerText}${c.reset} (Provider: ${c.bold}${aiHandler.provider}${c.reset})`);
+  } else if (COMPACT_MODE) {
     parts.push(`${c.bold}H:${handlerColor}${handlerText[0]}${c.reset}`);
   } else {
     parts.push(`${c.bold}Handler:${handlerColor}${handlerText}${c.reset}${c.gray}(${aiHandler.provider})${c.reset}`);
   }
 
   // 2. Deep Thinking Status
-  if (isThinking) {
-    parts.push(`${c.neonMagenta}${c.blink}DeepThinking${c.reset}${c.gray}(Alt+t)${c.reset}`);
-  } else {
-    parts.push(`${c.dim}Thinking:Off${c.reset}${c.gray}(Alt+t)${c.reset}`);
+  if (isTooltip) {
+    parts.push(`Deep Thinking: ${isThinking ? c.neonMagenta + 'ON' : c.dim + 'OFF'}${c.reset} (Toggle: ${c.bold}Alt+t${c.reset})`);
+  } else if (isThinking) {
+    parts.push(`${c.neonMagenta}${c.blink}Deep${c.reset}`);
   }
 
   // 3. MCP Servers (Ollama check implied here)
   const ollamaColor = ollama.running ? c.neonGreen : c.neonRed;
-  const ollamaIcon = ollama.running ? '●' : '○';
+  const ollamaStatusText = ollama.running ? 'Running' : 'Not Found';
   
-  if (COMPACT_MODE) {
-    parts.push(`O:${ollamaColor}${ollamaIcon}${c.reset}`);
+  if (isTooltip) {
+    parts.push(`Ollama: ${ollamaColor}${ollamaStatusText}${c.reset}`);
+  } else if (COMPACT_MODE) {
+    parts.push(`O:${ollamaColor}${ollama.running ? '●' : '○'}${c.reset}`);
   } else {
     parts.push(`${c.gray}Ollama:${ollamaColor}${ollama.running ? 'ON' : 'OFF'}${c.reset}`);
   }
 
   // 4. System Resources
-  if (COMPACT_MODE) {
-    parts.push(`${getResourceColor(res.cpu.percent)}C${res.cpu.percent}%${c.reset} ${getResourceColor(res.ram.percent)}R${res.ram.percent}%${c.reset}`);
+  if (isTooltip) {
+    parts.push(`CPU: ${getResourceColor(res.cpu.percent)}${res.cpu.percent}%${c.reset} | RAM: ${getResourceColor(res.ram.percent)}${res.ram.percent}%${c.reset} (${res.ram.usedGB}G / ${res.ram.totalGB}G)`);
+  } else if (COMPACT_MODE) {
+    parts.push(`${getResourceColor(res.cpu.percent)}C${res.cpu.percent}%${c.reset}${getResourceColor(res.ram.percent)}R${res.ram.percent}%${c.reset}`);
   } else {
     parts.push(`${c.gray}Sys:${c.reset}${getResourceColor(res.cpu.percent)}CPU ${res.cpu.percent}%${c.reset} ${getResourceColor(res.ram.percent)}RAM ${res.ram.usedGB}G${c.reset}`);
   }
-
-  console.log(parts.join(COMPACT_MODE ? ` ${c.gray}|${c.reset} ` : ` ${c.gray}|${c.reset} `));
+  
+  const separator = isTooltip ? ` ${c.gray}|${c.reset} ` : (COMPACT_MODE ? ` ${c.gray}|${c.reset} ` : ` ${c.gray}|${c.reset} `);
+  console.log(parts.join(separator));
   process.exit(0);
 }
 

@@ -1,21 +1,64 @@
-# HYDRA GUI UTILS - GUI components for GeminiCLI
+# HYDRA GUI UTILS v3.0 - GUI components for GeminiCLI
+# 12 Witcher Agents visualization + Parallel execution display
+
+# === Agent Configuration (ASCII-safe) ===
+$script:AgentVisuals = @{
+    "Geralt"   = @{ Symbol = "[W]"; Color = "White";      Role = "Security" }
+    "Yennefer" = @{ Symbol = "[Y]"; Color = "Magenta";    Role = "Architecture" }
+    "Triss"    = @{ Symbol = "[T]"; Color = "Red";        Role = "Testing" }
+    "Jaskier"  = @{ Symbol = "[J]"; Color = "Yellow";     Role = "Documentation" }
+    "Vesemir"  = @{ Symbol = "[V]"; Color = "DarkYellow"; Role = "Mentoring" }
+    "Ciri"     = @{ Symbol = "[C]"; Color = "Cyan";       Role = "Speed" }
+    "Eskel"    = @{ Symbol = "[E]"; Color = "DarkCyan";   Role = "DevOps" }
+    "Lambert"  = @{ Symbol = "[L]"; Color = "DarkRed";    Role = "Debug" }
+    "Zoltan"   = @{ Symbol = "[Z]"; Color = "DarkGray";   Role = "Data" }
+    "Regis"    = @{ Symbol = "[R]"; Color = "DarkMagenta"; Role = "Research" }
+    "Dijkstra" = @{ Symbol = "[D]"; Color = "DarkGreen";  Role = "Strategy" }
+    "Philippa" = @{ Symbol = "[P]"; Color = "Blue";       Role = "Integration" }
+}
 
 # === ASCII Art Logos ===
 function Show-HydraLogo {
-    param([string]$Variant = 'claude')
-    
+    param(
+        [string]$Variant = 'claude',
+        [switch]$Animated
+    )
+
     $logo = @"
 
-    ##  ## ##  ## ###   ###   ###  
-    ##  ##  ####  ## ## ## ## ## ## 
-    ######   ##   ## ## ###   ##### 
-    ##  ##   ##   ## ## ## ## ##  ##
-    ##  ##   ##   ###  ##  ## ##  ##
+    ██╗  ██╗██╗   ██╗██████╗ ██████╗  █████╗
+    ██║  ██║╚██╗ ██╔╝██╔══██╗██╔══██╗██╔══██╗
+    ███████║ ╚████╔╝ ██║  ██║██████╔╝███████║
+    ██╔══██║  ╚██╔╝  ██║  ██║██╔══██╗██╔══██║
+    ██║  ██║   ██║   ██████╔╝██║  ██║██║  ██║
+    ╚═╝  ╚═╝   ╚═╝   ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝
+           v3.0 - 12 Witcher Agents
 
 "@
-    
+
+    $simpleLogo = @"
+
+    ##  ## ##  ## ###   ###   ###
+    ##  ##  ####  ## ## ## ## ## ##
+    ######   ##   ## ## ###   #####
+    ##  ##   ##   ## ## ## ## ##  ##
+    ##  ##   ##   ###  ##  ## ##  ##
+          v3.0 - Parallel Swarm
+
+"@
+
     $color = if ($Variant -eq 'claude') { 'Yellow' } else { 'Cyan' }
-    Write-Host $logo -ForegroundColor $color
+
+    if ($Animated) {
+        $lines = $logo -split "`n"
+        foreach ($line in $lines) {
+            Write-Host $line -ForegroundColor $color
+            Start-Sleep -Milliseconds 50
+        }
+    } else {
+        # Use simple logo for better compatibility
+        Write-Host $simpleLogo -ForegroundColor $color
+    }
 }
 
 # === Box Drawing (ASCII) ===
@@ -146,9 +189,193 @@ function Get-TipOfDay {
         "/hydra:status shows system health",
         "API keys are read from environment variables",
         "Use -y or --yolo for auto-approve mode",
-        "Check GEMINI.md or CLAUDE.md for full docs"
+        "Check GEMINI.md or CLAUDE.md for full docs",
+        "12 Witcher agents work in parallel for speed",
+        "Ciri is fastest (llama3.2:1b) - use for simple tasks",
+        "Regis (phi3:mini) excels at deep research",
+        "Use /hydra for full swarm orchestration"
     )
     return $tips[(Get-Date).DayOfYear % $tips.Count]
+}
+
+# === Agent Status Display ===
+function Show-AgentStatus {
+    param(
+        [hashtable]$ActiveAgents = @{},
+        [switch]$Compact
+    )
+
+    $allAgents = @("Geralt", "Yennefer", "Triss", "Jaskier", "Vesemir", "Ciri",
+                   "Eskel", "Lambert", "Zoltan", "Regis", "Dijkstra", "Philippa")
+
+    if ($Compact) {
+        # Single line compact view
+        Write-Host "  Agents: " -NoNewline -ForegroundColor DarkGray
+        foreach ($agent in $allAgents) {
+            $visual = $script:AgentVisuals[$agent]
+            $status = $ActiveAgents[$agent]
+            $displayColor = switch ($status) {
+                'running'   { $visual.Color }
+                'completed' { 'Green' }
+                'error'     { 'Red' }
+                'pending'   { 'DarkGray' }
+                default     { 'DarkGray' }
+            }
+            $char = $agent.Substring(0,1)
+            Write-Host "$char" -NoNewline -ForegroundColor $displayColor
+        }
+        Write-Host ""
+    } else {
+        # Grid view (4x3)
+        Write-Host ""
+        Write-Host "  +--- WITCHER AGENTS (School of the Wolf) ---+" -ForegroundColor Cyan
+
+        for ($row = 0; $row -lt 3; $row++) {
+            Write-Host "  |" -NoNewline -ForegroundColor Cyan
+            for ($col = 0; $col -lt 4; $col++) {
+                $idx = $row * 4 + $col
+                if ($idx -lt $allAgents.Count) {
+                    $agent = $allAgents[$idx]
+                    $visual = $script:AgentVisuals[$agent]
+                    $status = $ActiveAgents[$agent]
+
+                    $icon = switch ($status) {
+                        'running'   { '[>]' }
+                        'completed' { '[+]' }
+                        'error'     { '[X]' }
+                        'pending'   { '[.]' }
+                        default     { '[ ]' }
+                    }
+                    $displayColor = switch ($status) {
+                        'running'   { $visual.Color }
+                        'completed' { 'Green' }
+                        'error'     { 'Red' }
+                        default     { 'DarkGray' }
+                    }
+
+                    $name = $agent.PadRight(9).Substring(0,9)
+                    Write-Host " $icon" -NoNewline -ForegroundColor $displayColor
+                    Write-Host "$name" -NoNewline -ForegroundColor $displayColor
+                }
+            }
+            Write-Host " |" -ForegroundColor Cyan
+        }
+        Write-Host "  +--------------------------------------------+" -ForegroundColor Cyan
+    }
+}
+
+# === Swarm Progress Bar ===
+function Show-SwarmProgress {
+    param(
+        [int]$Completed = 0,
+        [int]$Total = 12,
+        [string]$CurrentStep = "Executing",
+        [int]$Width = 40
+    )
+
+    $percent = if ($Total -gt 0) { [math]::Round(($Completed / $Total) * 100) } else { 0 }
+    $filled = [math]::Round(($Completed / $Total) * $Width)
+    $empty = $Width - $filled
+
+    $bar = "[" + ("=" * $filled) + (">" * [math]::Min(1, $empty)) + (" " * [math]::Max(0, $empty - 1)) + "]"
+
+    $color = if ($percent -lt 33) { 'Red' } elseif ($percent -lt 66) { 'Yellow' } else { 'Green' }
+
+    Write-Host "`r  $CurrentStep " -NoNewline -ForegroundColor White
+    Write-Host $bar -NoNewline -ForegroundColor $color
+    Write-Host " $percent% ($Completed/$Total)" -NoNewline -ForegroundColor DarkGray
+}
+
+# === 6-Step Protocol Display ===
+function Show-ProtocolStep {
+    param(
+        [ValidateRange(1, 6)]
+        [int]$Step,
+        [ValidateSet('pending', 'running', 'completed', 'error')]
+        [string]$Status = 'pending'
+    )
+
+    $steps = @{
+        1 = @{ Name = "SPECULATE";  Icon = "?"; Desc = "Research context" }
+        2 = @{ Name = "PLAN";       Icon = "#"; Desc = "Create task plan" }
+        3 = @{ Name = "EXECUTE";    Icon = ">"; Desc = "Parallel agents" }
+        4 = @{ Name = "SYNTHESIZE"; Icon = "+"; Desc = "Merge results" }
+        5 = @{ Name = "LOG";        Icon = "~"; Desc = "Session summary" }
+        6 = @{ Name = "ARCHIVE";    Icon = "*"; Desc = "Save transcript" }
+    }
+
+    $stepInfo = $steps[$Step]
+    $statusIcon = switch ($Status) {
+        'running'   { '[>]' }
+        'completed' { '[+]' }
+        'error'     { '[X]' }
+        default     { '[ ]' }
+    }
+    $color = switch ($Status) {
+        'running'   { 'Yellow' }
+        'completed' { 'Green' }
+        'error'     { 'Red' }
+        default     { 'DarkGray' }
+    }
+
+    Write-Host "  $statusIcon " -NoNewline -ForegroundColor $color
+    Write-Host "Step $Step " -NoNewline -ForegroundColor White
+    Write-Host "$($stepInfo.Name)" -NoNewline -ForegroundColor $color
+    Write-Host " - $($stepInfo.Desc)" -ForegroundColor DarkGray
+}
+
+# === Full Protocol Status ===
+function Show-ProtocolStatus {
+    param(
+        [int]$CurrentStep = 1,
+        [hashtable]$StepStatus = @{}
+    )
+
+    Write-Host ""
+    Write-Host "  +--- 6-STEP SWARM PROTOCOL ---+" -ForegroundColor Magenta
+
+    for ($i = 1; $i -le 6; $i++) {
+        $status = if ($StepStatus[$i]) { $StepStatus[$i] }
+                  elseif ($i -lt $CurrentStep) { 'completed' }
+                  elseif ($i -eq $CurrentStep) { 'running' }
+                  else { 'pending' }
+        Show-ProtocolStep -Step $i -Status $status
+    }
+
+    Write-Host "  +------------------------------+" -ForegroundColor Magenta
+}
+
+# === Parallel Execution Monitor ===
+function Show-ParallelMonitor {
+    param(
+        [array]$Jobs,
+        [int]$MaxConcurrent = 5
+    )
+
+    $running = ($Jobs | Where-Object { $_.Status -eq 'running' }).Count
+    $completed = ($Jobs | Where-Object { $_.Status -eq 'completed' }).Count
+    $pending = ($Jobs | Where-Object { $_.Status -eq 'pending' }).Count
+    $total = $Jobs.Count
+
+    Write-Host ""
+    Write-Host "  +--- RUNSPACE POOL STATUS ---+" -ForegroundColor Blue
+    Write-Host "  | Concurrent: " -NoNewline -ForegroundColor Blue
+    Write-Host "$running/$MaxConcurrent " -NoNewline -ForegroundColor $(if($running -eq $MaxConcurrent){'Yellow'}else{'Green'})
+
+    # Visual slot display
+    Write-Host "[" -NoNewline -ForegroundColor DarkGray
+    for ($i = 0; $i -lt $MaxConcurrent; $i++) {
+        if ($i -lt $running) {
+            Write-Host "#" -NoNewline -ForegroundColor Green
+        } else {
+            Write-Host "." -NoNewline -ForegroundColor DarkGray
+        }
+    }
+    Write-Host "]" -NoNewline -ForegroundColor DarkGray
+    Write-Host "    |" -ForegroundColor Blue
+
+    Write-Host "  | Completed: $completed | Pending: $pending | Total: $total |" -ForegroundColor DarkGray
+    Write-Host "  +------------------------------+" -ForegroundColor Blue
 }
 
 # === Welcome Message ===
@@ -207,22 +434,52 @@ function Get-SessionDuration {
     return $fmt
 }
 
-# === THE END ASCII Art ===
-function Show-TheEnd {
-    param(
-        [string]$Variant = 'claude',
-        [string]$SessionDuration = ''
-    )
+function Show-TheEndBanner {
+    param([switch]$NoAnimation)
 
     $art = @"
 
-  ######## ##  ## #######     ####### ###   ## ######
-     ##    ##  ## ##          ##      ####  ## ##   ##
-     ##    ###### ####        ####    ## ## ## ##   ##
-     ##    ##  ## ##          ##      ##  #### ##   ##
-     ##    ##  ## #######     ####### ##   ### ######
+  ████████╗██╗  ██╗███████╗    ███████╗███╗   ██╗██████╗
+  ╚══██╔══╝██║  ██║██╔════╝    ██╔════╝████╗  ██║██╔══██╗
+     ██║   ███████║█████╗      █████╗  ██╔██╗ ██║██║  ██║
+     ██║   ██╔══██║██╔══╝      ██╔══╝  ██║╚██╗██║██║  ██║
+     ██║   ██║  ██║███████╗    ███████╗██║ ╚████║██████╔╝
+     ╚═╝   ╚═╝  ╚═╝╚══════╝    ╚══════╝╚═╝  ╚═══╝╚═════╝
 
 "@
+
+    $simpleArt = @"
+
+  ######## ##  ## #######   ####### ###  ## ######
+     ##    ##  ## ##        ##      #### ## ##   ##
+     ##    ###### ####      ####    ## #### ##   ##
+     ##    ##  ## ##        ##      ##  ### ##   ##
+     ##    ##  ## #######   ####### ##   ## ######
+
+         HYDRA v3.0 - Mission Complete
+
+"@
+
+    if ($NoAnimation) {
+        Write-Host $simpleArt -ForegroundColor Yellow
+    } else {
+        $colors = @('DarkYellow', 'Yellow', 'White', 'Yellow', 'DarkYellow')
+        foreach ($color in $colors) {
+            Clear-Host
+            Write-Host $simpleArt -ForegroundColor $color
+            Start-Sleep -Milliseconds 200
+        }
+    }
+}
+
+# === THE END ASCII Art ===
+function Show-TheEnd {
+    param(
+        [string]$Variant = 'gemini',
+        [string]$SessionDuration = ''
+    )
+
+    Show-TheEndBanner
 
     $color = switch ($Variant) {
         'claude' { 'Yellow' }
@@ -234,10 +491,7 @@ function Show-TheEnd {
         'gemini' { 'DarkCyan' }
         default  { 'DarkGray' }
     }
-
-    Write-Host ""
-    Write-Host $art -ForegroundColor $color
-
+    
     $date = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     Write-Host "  +-----------------------------------------------------+" -ForegroundColor $accentColor
     Write-Host "  |" -NoNewline -ForegroundColor $accentColor
@@ -265,6 +519,7 @@ function Show-ProgressAnimation {
         [string]$Message = "Working"
     )
 
+
     $job = Start-Job -ScriptBlock $ScriptBlock
     $animation = @('|', '/', '-', '\')
     $i = 0
@@ -282,9 +537,18 @@ function Show-ProgressAnimation {
 
 # === Export ===
 Export-ModuleMember -Function @(
-    'Show-HydraLogo', 'Write-Box', 'Write-StatusLine',
+    # Core Display
+    'Show-HydraLogo', 'Write-Box', 'Write-StatusLine', 'Write-Separator',
+    # System Info
     'Get-SystemInfo', 'Get-APIKeyStatus', 'Test-MCPServer',
+    # Welcome & Tips
     'Get-TipOfDay', 'Show-WelcomeMessage', 'Show-QuickCommands',
-    'Write-Separator', 'Get-SessionDuration', 'Show-TheEnd',
-    'Show-ProgressAnimation'
-)
+    # Session Management
+    'Get-SessionDuration', 'Show-TheEnd', 'Show-TheEndBanner',
+    # NEW v3.0: Agent Visualization
+    'Show-AgentStatus', 'Show-SwarmProgress',
+    # NEW v3.0: Protocol Display
+    'Show-ProtocolStep', 'Show-ProtocolStatus',
+    # NEW v3.0: Parallel Execution Monitor
+    'Show-ParallelMonitor', 'Show-ProgressAnimation'
+) -Variable @('AgentVisuals')
