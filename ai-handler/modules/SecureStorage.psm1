@@ -6,7 +6,7 @@
     Provides AES-256 encryption, atomic writes, and JSON logging utilities.
 .NOTES
     Author: HYDRA System
-    Version: 1.1.0
+    Version: 2.0.0
 #>
 
 $script:LogDirectory = Join-Path (Split-Path $PSScriptRoot) "..\logs"

@@ -1,6 +1,16 @@
 ﻿# ═══════════════════════════════════════════════════════════════════════════════
 # AI CODE REVIEW PIPELINE - Multi-model code review with consensus
 # ═══════════════════════════════════════════════════════════════════════════════
+<#
+.SYNOPSIS
+    AI Code Review Module
+.DESCRIPTION
+    Multi-model code review pipeline using local LLMs.
+.VERSION
+    2.0.0
+.AUTHOR
+    HYDRA System
+#>
 
 $script:ReviewConfig = @{
     FastModel = 'llama3.2:1b'

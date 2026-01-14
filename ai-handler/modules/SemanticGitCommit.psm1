@@ -1,6 +1,16 @@
 ﻿# ═══════════════════════════════════════════════════════════════════════════════
 # SEMANTIC GIT COMMIT - AI-powered commit message generation
 # ═══════════════════════════════════════════════════════════════════════════════
+<#
+.SYNOPSIS
+    Semantic Git Commit Module
+.DESCRIPTION
+    Generates semantic git commit messages using AI.
+.VERSION
+    2.0.0
+.AUTHOR
+    HYDRA System
+#>
 
 $script:CommitConfig = @{
     Model = 'llama3.2:3b'

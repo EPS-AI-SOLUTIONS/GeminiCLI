@@ -1,6 +1,16 @@
 ﻿# ═══════════════════════════════════════════════════════════════════════════════
 # ERROR LOGGER MODULE - Centralized error logging for HYDRA
 # ═══════════════════════════════════════════════════════════════════════════════
+<#
+.SYNOPSIS
+    Centralized error logging for HYDRA AI Handler
+.DESCRIPTION
+    Provides structured logging, log rotation, and statistics for AI operations.
+.VERSION
+    2.0.0
+.AUTHOR
+    HYDRA System
+#>
 
 $script:LogPath = Join-Path $PSScriptRoot '..\..\logs'
 $script:ErrorLogFile = Join-Path $script:LogPath 'errors.log'

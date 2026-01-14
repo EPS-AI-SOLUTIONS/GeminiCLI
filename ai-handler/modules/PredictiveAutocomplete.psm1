@@ -1,6 +1,16 @@
 ﻿# ═══════════════════════════════════════════════════════════════════════════════
 # PREDICTIVE AUTOCOMPLETE - AI-powered code completion
 # ═══════════════════════════════════════════════════════════════════════════════
+<#
+.SYNOPSIS
+    Predictive Autocomplete Module
+.DESCRIPTION
+    AI-powered code completion using local LLMs.
+.VERSION
+    2.0.0
+.AUTHOR
+    HYDRA System
+#>
 
 $script:AutocompleteConfig = @{
     FastModel = 'llama3.2:1b'
