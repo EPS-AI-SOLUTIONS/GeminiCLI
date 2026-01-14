@@ -69,31 +69,13 @@ function Start-Gemini {
 Set-Alias -Name g -Value Start-Gemini
 
 # === Prompt ===
-function prompt {
-    $path = (Get-Location).Path
-    if ($path.Length -gt 40) { $path = "..." + $path.Substring($path.Length - 37) }
-    
-    # --- Status Line Integration ---
-    try {
-        # Set Env Vars for StatusLine
-        $env:AI_HANDLER_STATUS = if (Test-Path "$PSScriptRoot\ai-handler\AIModelHandler.psm1") { 'active' } else { 'unknown' }
-        if (-not $env:GEMINI_DEEP_THINKING) { $env:GEMINI_DEEP_THINKING = '0' }
-        
-        # Call StatusLine Script
-        $statusLine = Join-Path $env:GEMINI_HOME 'statusline.cjs'
-        if (Test-Path $statusLine) {
-            node $statusLine
-        }
-    } catch {
-        # Silent fail for status line
+if (Get-Command oh-my-posh -ErrorAction SilentlyContinue) {
+    oh-my-posh init pwsh --config "$PSScriptRoot\gemini-hydra.omp.json" | Invoke-Expression
+} else {
+    function prompt {
+        Write-Host "Gemini > " -NoNewline -ForegroundColor Cyan
+        return " "
     }
-    # -------------------------------
-
-    Write-Host "[" -NoNewline -ForegroundColor DarkGray
-    Write-Host "Gemini" -NoNewline -ForegroundColor Cyan
-    Write-Host "] " -NoNewline -ForegroundColor DarkGray
-    Write-Host $path -NoNewline -ForegroundColor Blue
-    return " > "
 }
 
 Write-Host "[GeminiCLI Profile Loaded]" -ForegroundColor DarkGray

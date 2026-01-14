@@ -42,6 +42,15 @@
       "type": "rprompt",
       "segments": [
         {
+          "type": "command",
+          "style": "plain",
+          "foreground": "p:silver",
+          "properties": {
+            "command": "node .gemini/statusline.cjs",
+            "shell": "pwsh"
+          }
+        },
+        {
           "type": "node",
           "style": "plain",
           "foreground": "p:green",
