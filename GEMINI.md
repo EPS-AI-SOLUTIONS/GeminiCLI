@@ -76,4 +76,21 @@
 
 ---
 
+## 6. YOLO Mode (Experimental)
+
+**Activation**: `.\_launcher.ps1 -Yolo`
+**Status**: "Fast & Dangerous"
+
+| Feature | Standard Mode | YOLO Mode |
+|---------|--------------|-----------|
+| **Concurrency** | 4 threads | **8 threads** |
+| **Safety** | Risk Blocking ON | **Risk Blocking OFF** |
+| **Retries** | 3 attempts | **1 attempt** |
+| **Timeout** | 60s | **15s** |
+| **Philosophy** | "Measure twice, cut once" | **"Move fast and break things"** |
+
+> **WARNING**: YOLO Mode disables most safety guardrails to maximize speed. Use only in trusted environments.
+
+---
+
 > *"Three heads, one goal. HYDRA executes in parallel."*

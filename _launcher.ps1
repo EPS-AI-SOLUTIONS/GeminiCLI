@@ -3,12 +3,33 @@
 # Features: Auto-Resume, Auto-Restart, Robust Ollama, Agent Swarm
 # ═══════════════════════════════════════════════════════════════════════════════
 
-$script:ProjectRoot = 'C:\Users\BIURODOM\Desktop\GeminiCLI'
+param([switch]$Yolo)
+
+if ($Yolo) {
+    $env:HYDRA_YOLO_MODE = 'true'
+}
+
+# === PATH RESOLUTION ===
+$script:ProjectRoot = if ($PSScriptRoot) { $PSScriptRoot } else { $PWD.Path }
 Set-Location $script:ProjectRoot
+$scriptDir = $script:ProjectRoot
+
+# === WINDOW CONFIGURATION ===
 $Host.UI.RawUI.WindowTitle = 'Gemini CLI (HYDRA - Witcher Edition)'
 
-# Use explicit path since $PSScriptRoot can be empty when dot-sourced
-$scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { $script:ProjectRoot }
+# Icon Setup (Safe Mode)
+try {
+    $iconPath = Join-Path $scriptDir 'icon.ico'
+    if (Test-Path $iconPath) {
+        Add-Type -AssemblyName System.Drawing, System.Windows.Forms
+        $hwnd = (Get-Process -Id $PID).MainWindowHandle
+        $icon = [System.Drawing.Icon]::new($iconPath)
+        [void][System.Windows.Forms.Form]::FromHandle($hwnd).Icon = $icon
+    }
+} catch {
+    # Ignore icon errors to prevent crash
+}
+
 $env:GEMINI_HOME = Join-Path $scriptDir '.gemini'
 $env:XDG_CONFIG_HOME = $scriptDir
 
@@ -39,7 +60,11 @@ if (Test-Path $envFile) {
 # === MAIN LOOP (AUTO-RESTART) ===
 while ($true) {
     Clear-Host
-    Show-HydraLogo -Variant 'gemini'
+    if (Get-Command Show-HydraLogo -ErrorAction SilentlyContinue) {
+        Show-HydraLogo -Variant 'gemini'
+    } else {
+        Write-Host "GEMINI CLI (HYDRA)" -ForegroundColor Cyan
+    }
     
     Write-Host "       GEMINI CLI" -NoNewline -ForegroundColor Cyan
     Write-Host " + " -NoNewline -ForegroundColor DarkGray
@@ -66,8 +91,15 @@ while ($true) {
         } else {
             Write-Host " [OFFLINE]" -ForegroundColor Red
             Write-Host "  Igniting Neural Core..." -ForegroundColor Yellow
+            
+            # Find Ollama executable
             $ollamaPath = "$env:LOCALAPPDATA\Programs\Ollama\ollama.exe"
-            if (Test-Path $ollamaPath) {
+            if (-not (Test-Path $ollamaPath)) {
+                $ollamaCmd = Get-Command "ollama" -ErrorAction SilentlyContinue
+                if ($ollamaCmd) { $ollamaPath = $ollamaCmd.Source }
+            }
+
+            if ($ollamaPath -and (Test-Path $ollamaPath)) {
                 Start-Process -FilePath $ollamaPath -ArgumentList "serve" -WindowStyle Hidden
                 
                 # Wait loop
@@ -86,12 +118,16 @@ while ($true) {
                 if ($ollamaRunning) { Write-Host " [READY]" -ForegroundColor Green }
                 else { Write-Host " [FAILED - Proceeding anyway]" -ForegroundColor Red }
             } else {
-                Write-Host "  [WARNING] Ollama executable not found at default location." -ForegroundColor Red
+                Write-Host "  [WARNING] Ollama executable not found." -ForegroundColor Red
             }
         }
     }
 
-    Write-Separator -Width 55
+    if (Get-Command Write-Separator -ErrorAction SilentlyContinue) {
+        Write-Separator -Width 55
+    } else {
+        Write-Host ("-" * 55) -ForegroundColor DarkGray
+    }
 
     # === AI HANDLER INIT ===
     $aiHandlerInit = Join-Path $script:ProjectRoot 'ai-handler\Initialize-AIHandler.ps1'
@@ -102,7 +138,8 @@ while ($true) {
     # === STATUS MONITOR ===
     $monitorScript = Join-Path $scriptDir 'Start-StatusMonitor.ps1'
     if (Test-Path $monitorScript) {
-        if (-not (Get-Process -Name "powershell" | Where-Object { $_.MainWindowTitle -like "*HYDRA Monitor*" })) {
+        # Generalized check for any process with the specific window title
+        if (-not (Get-Process | Where-Object { $_.MainWindowTitle -like "*HYDRA Monitor*" })) {
             Start-Process powershell -ArgumentList "-NoExit", "-File", "`"$monitorScript`"" -WindowStyle Hidden
         }
     }
@@ -110,21 +147,27 @@ while ($true) {
     # === LAUNCH GEMINI ===
     Write-Host ""
     Write-Host "  Protocol: AgentSwarm (Default)" -ForegroundColor Cyan
-    Write-Host "  Status:   Autonomous Mode" -ForegroundColor Green
+    if ($env:HYDRA_YOLO_MODE -eq 'true') {
+        Write-Host "  Status:   YOLO MODE ACTIVE (Fast & Dangerous)" -ForegroundColor Magenta
+    } else {
+        Write-Host "  Status:   Autonomous Mode" -ForegroundColor Green
+    }
     Write-Host ""
     
     try {
         # Check if node modules installed
         if (-not (Test-Path "node_modules")) {
-            Show-ProgressAnimation -Message "Installing dependencies" -ScriptBlock {
+            if (Get-Command Show-ProgressAnimation -ErrorAction SilentlyContinue) {
+                Show-ProgressAnimation -Message "Installing dependencies" -ScriptBlock {
+                    npm install --silent
+                }
+            } else {
+                Write-Host "Installing dependencies..." -ForegroundColor Yellow
                 npm install --silent
             }
         }
         
         # Launch Node process
-        # We use 'node src/server.js' or 'npm start' depending on package.json, but 'gemini' alias works too.
-        # However, to be safe, let's use the direct entry point if possible or the alias.
-        
         if (Get-Command "gemini" -ErrorAction SilentlyContinue) {
             gemini
         } else {
