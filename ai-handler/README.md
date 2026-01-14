@@ -167,4 +167,4 @@ When adding new functionality:
 
 ---
 
-*Part of HYDRA 10.1 - "Three heads, one goal. Hydra executes in parallel."*
+*Part of HYDRA 10.3 - "Three heads, one goal. Hydra executes in parallel."*
