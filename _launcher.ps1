@@ -3,13 +3,18 @@
 # Features: Auto-Resume, Auto-Restart, Robust Ollama, Agent Swarm
 # ═══════════════════════════════════════════════════════════════════════════════
 
-param([switch]$Yolo)
+param(
+    [switch]$Yolo,
+    [switch]$Turbo  # 4x parallel pipeline mode
+)
 
 # --- YOLO MODE DEFAULT ON ---
 $env:HYDRA_YOLO_MODE = 'true'
 # --- DEEP THINKING & RESEARCH DEFAULT ON ---
 $env:HYDRA_DEEP_THINKING = 'true'
 $env:HYDRA_DEEP_RESEARCH = 'true'
+# --- TURBO MODE (opt-in) ---
+$env:HYDRA_TURBO_MODE = if ($Turbo) { 'true' } else { 'false' }
 # --------------------------
 
 if ($Yolo) {
@@ -169,7 +174,7 @@ while ($true) {
         } catch {}
     }
 
-    # === AI MODEL DISCOVERY (Auto-update from API keys) ===
+    # === AI MODEL DISCOVERY (Async - non-blocking) ===
     $aiHandlerModule = Join-Path $script:ProjectRoot 'ai-handler\AIModelHandler.psm1'
     if (Test-Path $aiHandlerModule) {
         try {
@@ -179,17 +184,10 @@ while ($true) {
             $hasKeys = $env:ANTHROPIC_API_KEY -or $env:OPENAI_API_KEY -or $env:GOOGLE_API_KEY -or $env:GEMINI_API_KEY
 
             if ($hasKeys -or $ollamaRunning) {
-                Write-Host "  Syncing AI models..." -NoNewline -ForegroundColor DarkGray
-                if (Get-Command Sync-AIModels -ErrorAction SilentlyContinue) {
-                    $discovery = Sync-AIModels -Silent -UpdateConfig
-                    if ($discovery -and $discovery.TotalModels -gt 0) {
-                        Write-Host " [$($discovery.TotalModels) models]" -ForegroundColor Green
-                    } else {
-                        Write-Host " [cached]" -ForegroundColor DarkGray
-                    }
-                } else {
-                    Write-Host " [skip]" -ForegroundColor DarkGray
-                }
+                Write-Host "  AI models: " -NoNewline -ForegroundColor DarkGray
+                Write-Host "[lazy-load]" -ForegroundColor DarkCyan
+                # NOTE: Model sync is now lazy-loaded on first use for faster startup
+                # Call Sync-AIModels manually if immediate sync is needed
             }
 
             # Show current AI config
@@ -216,6 +214,22 @@ while ($true) {
         }
     }
 
+    # === TURBO MODE INIT ===
+    if ($env:HYDRA_TURBO_MODE -eq 'true') {
+        $agentSwarmModule = Join-Path $script:ProjectRoot 'ai-handler\modules\AgentSwarm.psm1'
+        if (Test-Path $agentSwarmModule) {
+            try {
+                Import-Module $agentSwarmModule -Force -ErrorAction SilentlyContinue
+                Write-Host "  Turbo:    " -NoNewline -ForegroundColor Gray
+                Write-Host "Initializing 4 parallel agents..." -ForegroundColor Magenta
+                Initialize-TurboAgents -ErrorAction SilentlyContinue | Out-Null
+            } catch {
+                Write-Host "  Turbo:    " -NoNewline -ForegroundColor Gray
+                Write-Host "[INIT FAILED]" -ForegroundColor Red
+            }
+        }
+    }
+
     # === LAUNCH GEMINI ===
     Write-Host ""
     Write-Host "  Protocol: AgentSwarm (Default)" -ForegroundColor Cyan
@@ -223,12 +237,29 @@ while ($true) {
         Write-Host "  YOLO:     " -NoNewline -ForegroundColor Gray
         Write-Host "ACTIVE (Fast & Dangerous)" -ForegroundColor Magenta
     }
+    if ($env:HYDRA_TURBO_MODE -eq 'true') {
+        Write-Host "  TURBO:    " -NoNewline -ForegroundColor Gray
+        Write-Host "4x PARALLEL PIPELINE" -ForegroundColor Red
+    }
     if ($env:HYDRA_DEEP_THINKING -eq 'true') {
         Write-Host "  Deep:     " -NoNewline -ForegroundColor Gray
         Write-Host "Thinking + Research ENABLED" -ForegroundColor Yellow
     }
+
+    # Show fallback status
+    $fallbackProviders = @()
+    if (Test-Path "$env:LOCALAPPDATA\Programs\Ollama\ollama.exe" -or (Get-Command "ollama" -ErrorAction SilentlyContinue)) {
+        $fallbackProviders += "Ollama"
+    }
+    if ($env:ANTHROPIC_API_KEY) { $fallbackProviders += "Claude" }
+    if ($env:OPENAI_API_KEY) { $fallbackProviders += "OpenAI" }
+
+    if ($fallbackProviders.Count -gt 0) {
+        Write-Host "  Fallback: " -NoNewline -ForegroundColor Gray
+        Write-Host ($fallbackProviders -join " -> ") -ForegroundColor DarkCyan
+    }
     Write-Host ""
-    
+
     try {
         # Check if node modules installed
         if (-not (Test-Path "node_modules")) {
@@ -241,9 +272,12 @@ while ($true) {
                 npm install --silent
             }
         }
-        
-        # Launch Node process
-        if (Get-Command "gemini" -ErrorAction SilentlyContinue) {
+
+        # Launch Gemini with fallback wrapper
+        $fallbackWrapper = Join-Path $script:ProjectRoot 'Invoke-GeminiWithFallback.ps1'
+        if (Test-Path $fallbackWrapper) {
+            & $fallbackWrapper -Interactive -MaxRetries 3 -RetryDelayMs 2000
+        } elseif (Get-Command "gemini" -ErrorAction SilentlyContinue) {
             gemini
         } else {
             node src/server.js

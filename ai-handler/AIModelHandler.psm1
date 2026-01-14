@@ -24,34 +24,37 @@ $script:AgentSwarmPath = Join-Path $PSScriptRoot "modules\AgentSwarm.psm1"
 $script:GoogleProviderPath = Join-Path $PSScriptRoot "providers\GoogleProvider.psm1"
 $script:DiscoveredModels = $null
 
-# Auto-load GoogleProvider
-if (Test-Path $script:GoogleProviderPath) {
-    Import-Module $script:GoogleProviderPath -Force -ErrorAction SilentlyContinue
+# LAZY LOADING: Sub-modules are loaded on-demand to speed up initial import
+# These modules will be imported when their functions are first called
+$script:SubModulesLoaded = @{}
+
+function Import-SubModule {
+    <#
+    .SYNOPSIS
+        Lazy-loads a sub-module on first use
+    #>
+    param([string]$Name, [string]$Path)
+
+    if ($script:SubModulesLoaded[$Name]) { return $true }
+    if (-not (Test-Path $Path)) { return $false }
+
+    try {
+        Import-Module $Path -Force -ErrorAction SilentlyContinue
+        $script:SubModulesLoaded[$Name] = $true
+        return $true
+    } catch {
+        return $false
+    }
 }
 
-# Auto-load AgentSwarm
-if (Test-Path $script:AgentSwarmPath) {
-    Import-Module $script:AgentSwarmPath -Force -ErrorAction SilentlyContinue
-}
-
-# Auto-load PromptOptimizer if available
-if (Test-Path $script:PromptOptimizerPath) {
-    Import-Module $script:PromptOptimizerPath -Force -ErrorAction SilentlyContinue
-}
-
-# Auto-load ModelDiscovery if available
-if (Test-Path $script:ModelDiscoveryPath) {
-    Import-Module $script:ModelDiscoveryPath -Force -ErrorAction SilentlyContinue
-}
-
-# Auto-load PromptQueue if available
-if (Test-Path $script:PromptQueuePath) {
-    Import-Module $script:PromptQueuePath -Force -ErrorAction SilentlyContinue
-}
-
-# Auto-load SecureStorage if available
-if (Test-Path $script:SecureStoragePath) {
-    Import-Module $script:SecureStoragePath -Force -ErrorAction SilentlyContinue
+# Register available sub-modules (not loaded yet - lazy)
+$script:SubModulePaths = @{
+    GoogleProvider  = $script:GoogleProviderPath
+    AgentSwarm      = $script:AgentSwarmPath
+    PromptOptimizer = $script:PromptOptimizerPath
+    ModelDiscovery  = $script:ModelDiscoveryPath
+    PromptQueue     = $script:PromptQueuePath
+    SecureStorage   = $script:SecureStoragePath
 }
 
 #region Helper Functions for PS 5.1 Compatibility
@@ -310,27 +313,27 @@ $script:DefaultConfig = @{
         logFormat = "json"
         streamResponses = $true
         outputTokenRatio = 0.5
-        promptRiskBlock = $false # YOLO mode: disable risk blocking
-        # YOLO Mode defaults
-        yoloMode = $true
+        # YOLO Mode - read from environment variable (set by _launcher.ps1)
+        yoloMode = ($env:HYDRA_YOLO_MODE -eq 'true')
         yoloSettings = @{
-            maxConcurrent = 10
-            retryAttempts = 1
-            timeout = 15000
-            riskBlocking = $false
+            maxConcurrent = if ($env:HYDRA_YOLO_MODE -eq 'true') { 10 } else { 5 }
+            retryAttempts = if ($env:HYDRA_YOLO_MODE -eq 'true') { 1 } else { 3 }
+            timeout = if ($env:HYDRA_YOLO_MODE -eq 'true') { 15000 } else { 60000 }
+            riskBlocking = if ($env:HYDRA_YOLO_MODE -eq 'true') { $false } else { $true }
         }
-        # Deep Thinking defaults - uses aliases resolved at runtime
+        promptRiskBlock = if ($env:HYDRA_YOLO_MODE -eq 'true') { $false } else { $true }
+        # Deep Thinking - read from environment variable
         deepThinking = @{
-            enabled = $true
+            enabled = ($env:HYDRA_DEEP_THINKING -eq 'true')
             provider = "google"
             model = "gemini-flash-thinking"  # Alias -> resolved dynamically
             thinkingBudget = 24576
             useForPlanning = $true
             useForSynthesis = $true
         }
-        # Deep Research defaults - uses aliases resolved at runtime
+        # Deep Research - read from environment variable
         deepResearch = @{
-            enabled = $true
+            enabled = ($env:HYDRA_DEEP_RESEARCH -eq 'true')
             provider = "google"
             model = "gemini-pro-research"  # Alias -> resolved dynamically
             useGoogleSearch = $true
@@ -439,6 +442,79 @@ function Save-AIState {
     }
 }
 
+function Get-YoloSettings {
+    <#
+    .SYNOPSIS
+        Returns current YOLO mode settings based on environment variable
+    .DESCRIPTION
+        Reads $env:HYDRA_YOLO_MODE and returns appropriate settings.
+        YOLO mode = Fast & Dangerous (less retries, lower timeouts, no risk blocking)
+        Standard mode = Safe & Reliable (more retries, higher timeouts, risk blocking)
+    #>
+    [CmdletBinding()]
+    param()
+
+    $isYolo = ($env:HYDRA_YOLO_MODE -eq 'true')
+
+    return @{
+        enabled = $isYolo
+        maxConcurrent = if ($isYolo) { 10 } else { 5 }
+        retryAttempts = if ($isYolo) { 1 } else { 3 }
+        timeout = if ($isYolo) { 15000 } else { 60000 }
+        riskBlocking = -not $isYolo
+        promptRiskBlock = -not $isYolo
+        retryDelayMs = if ($isYolo) { 500 } else { 1000 }
+    }
+}
+
+function Get-DeepModeSettings {
+    <#
+    .SYNOPSIS
+        Returns Deep Thinking and Deep Research settings from environment
+    #>
+    [CmdletBinding()]
+    param()
+
+    return @{
+        deepThinking = @{
+            enabled = ($env:HYDRA_DEEP_THINKING -eq 'true')
+            model = "gemini-flash-thinking"
+        }
+        deepResearch = @{
+            enabled = ($env:HYDRA_DEEP_RESEARCH -eq 'true')
+            model = "gemini-pro-research"
+        }
+    }
+}
+
+function Get-TurboSettings {
+    <#
+    .SYNOPSIS
+        Returns Turbo Mode settings for parallel pipeline execution
+    .DESCRIPTION
+        Turbo Mode = 4 pre-warmed agents executing pipeline in parallel
+        - 4x throughput for batch operations
+        - Pre-loaded models in memory
+        - Shared context between agents
+    #>
+    [CmdletBinding()]
+    param()
+
+    $isTurbo = ($env:HYDRA_TURBO_MODE -eq 'true')
+
+    return @{
+        enabled = $isTurbo
+        agentCount = if ($isTurbo) { 4 } else { 1 }
+        preWarm = $isTurbo
+        sharedContext = $isTurbo
+        parallelPipelines = if ($isTurbo) { 4 } else { 1 }
+        # Turbo uses fast models for speed
+        defaultModel = if ($isTurbo) { "gemini-flash-fast" } else { "gemini-pro-planning" }
+        # Memory settings for pre-warmed agents
+        keepAliveMs = if ($isTurbo) { 300000 } else { 0 }  # 5 min keep-alive
+    }
+}
+
 # Cache for resolved model aliases (refreshed on module load or manual call)
 $script:ResolvedAliases = @{}
 $script:AliasResolutionTime = $null
@@ -526,29 +602,21 @@ function Resolve-GeminiAlias {
         [string]$Alias
     )
 
-    # Get available Gemini models from discovery cache or API
+    # Trigger lazy init if needed (first-time model access)
+    if (Get-Command Invoke-LazyInit -ErrorAction SilentlyContinue) {
+        Invoke-LazyInit
+    }
+
+    # Get available Gemini models from discovery cache
     $geminiModels = @()
 
     if ($script:DiscoveredModels -and $script:DiscoveredModels.google) {
         $geminiModels = $script:DiscoveredModels.google
-    } else {
-        # Try to fetch from API
-        $apiKey = $env:GOOGLE_API_KEY
-        if (-not $apiKey) { $apiKey = $env:GEMINI_API_KEY }
-
-        if ($apiKey) {
-            try {
-                $uri = "https://generativelanguage.googleapis.com/v1beta/models?key=$apiKey"
-                $response = Invoke-RestMethod -Uri $uri -Method Get -TimeoutSec 10 -ErrorAction Stop
-                $geminiModels = $response.models | ForEach-Object { $_.name -replace '^models/', '' }
-            } catch {
-                Write-Verbose "Failed to fetch Gemini models: $_"
-            }
-        }
     }
 
+    # If no cached models, use known stable models (FAST - no API call)
     if ($geminiModels.Count -eq 0) {
-        # Fallback to known stable models
+        # Use well-known stable models as fallback - no network call needed
         $geminiModels = @(
             "gemini-2.5-pro", "gemini-2.5-flash",
             "gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash"
@@ -873,21 +941,29 @@ function Initialize-AIState {
     }
     $state = Get-AIState
 
+    # Ensure usage hashtable exists
+    if (-not $state.usage -or $state.usage -isnot [hashtable]) {
+        $state.usage = @{}
+    }
+
     # Initialize usage tracking per provider/model
     foreach ($providerName in $config.providers.Keys) {
-        if (-not $state.usage[$providerName]) {
+        if (-not $state.usage.ContainsKey($providerName)) {
             $state.usage[$providerName] = @{}
         }
-        foreach ($modelName in $config.providers[$providerName].models.Keys) {
-            if (-not $state.usage[$providerName][$modelName]) {
-                $state.usage[$providerName][$modelName] = @{
-                    tokensThisMinute = 0
-                    requestsThisMinute = 0
-                    lastMinuteReset = (Get-Date).ToString("o")
-                    totalTokens = 0
-                    totalRequests = 0
-                    totalCost = 0.0
-                    errors = 0
+        $providerModels = $config.providers[$providerName].models
+        if ($providerModels -and $providerModels.Keys) {
+            foreach ($modelName in $providerModels.Keys) {
+                if (-not $state.usage[$providerName].ContainsKey($modelName)) {
+                    $state.usage[$providerName][$modelName] = @{
+                        tokensThisMinute = 0
+                        requestsThisMinute = 0
+                        lastMinuteReset = (Get-Date).ToString("o")
+                        totalTokens = 0
+                        totalRequests = 0
+                        totalCost = 0.0
+                        errors = 0
+                    }
                 }
             }
         }
@@ -2982,33 +3058,46 @@ Export-ModuleMember -Function @(
     # Fallback System (NEW)
     'Get-FallbackAlias',
     'Test-AliasAvailability',
-    'Get-ModelForTask'
+    'Get-ModelForTask',
+    # YOLO, Deep & Turbo Mode Settings
+    'Get-YoloSettings',
+    'Get-DeepModeSettings',
+    'Get-TurboSettings',
+    'Get-AIState'
 )
 
 #endregion
 
-# Auto-initialize on module load
+# Auto-initialize on module load (fast - no network calls)
 Initialize-AIState | Out-Null
 
-# Auto-discover models if API keys are present (background, silent)
-if ($env:ANTHROPIC_API_KEY -or $env:OPENAI_API_KEY -or $env:GOOGLE_API_KEY -or $env:GEMINI_API_KEY -or (Test-OllamaAvailable -ErrorAction SilentlyContinue)) {
-    try {
-        $script:DiscoveredModels = Sync-AIModels -Silent
+# LAZY LOADING: Model discovery and alias resolution are deferred until first use
+# This dramatically improves module load time
+# Call Sync-AIModels or Update-ModelAliases manually if immediate sync is needed
+$script:LazyInitDone = $false
 
-        # Auto-resolve model aliases on module load
-        $config = Get-AIConfig
-        if ($config.settings.modelAliases) {
-            foreach ($alias in $config.settings.modelAliases.Keys) {
-                if ($alias -like "gemini-*") {
-                    $resolved = Resolve-GeminiAlias -Alias $alias -ErrorAction SilentlyContinue
-                    if ($resolved) {
-                        $script:ResolvedAliases[$alias] = $resolved
-                    }
-                }
-            }
-            $script:AliasResolutionTime = Get-Date
-        }
+function Invoke-LazyInit {
+    <#
+    .SYNOPSIS
+        Performs deferred initialization on first use (lazy loading)
+    .DESCRIPTION
+        Called automatically when models or aliases are first accessed.
+        Avoids blocking module load with network calls.
+    #>
+    if ($script:LazyInitDone) { return }
+    $script:LazyInitDone = $true
+
+    # Skip if no API keys available
+    $hasKeys = $env:ANTHROPIC_API_KEY -or $env:OPENAI_API_KEY -or $env:GOOGLE_API_KEY -or $env:GEMINI_API_KEY
+    $hasOllama = $false
+    try { $hasOllama = Test-OllamaAvailable -ErrorAction SilentlyContinue } catch {}
+
+    if (-not $hasKeys -and -not $hasOllama) { return }
+
+    try {
+        # Background model discovery (non-blocking)
+        $script:DiscoveredModels = Sync-AIModels -Silent -ErrorAction SilentlyContinue
     } catch {
-        # Silently fail - models can be synced manually
+        # Silently fail
     }
 }

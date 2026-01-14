@@ -1027,6 +1027,267 @@ function Invoke-ParallelSwarmExecution {
 
 #endregion
 
+#region TURBO MODE - 4x Parallel Pipeline
+
+# Pre-warmed agent state for Turbo Mode
+$script:TurboAgents = @{
+    Pool = $null
+    Initialized = $false
+    AgentCount = 4
+    LastActivity = $null
+}
+
+function Initialize-TurboAgents {
+    <#
+    .SYNOPSIS
+        Pre-warms 4 agents for Turbo Mode execution
+    .DESCRIPTION
+        Creates RunspacePool with 4 slots and pre-loads Ollama models
+    #>
+    [CmdletBinding()]
+    param(
+        [int]$AgentCount = 4
+    )
+
+    if ($script:TurboAgents.Initialized) {
+        Write-Host "[TURBO] Agents already initialized." -ForegroundColor DarkGray
+        return $script:TurboAgents
+    }
+
+    Write-Host "[TURBO] Initializing $AgentCount parallel agents..." -ForegroundColor Cyan
+
+    # Create dedicated RunspacePool for Turbo
+    $script:TurboAgents.Pool = [runspacefactory]::CreateRunspacePool(1, $AgentCount)
+    $script:TurboAgents.Pool.Open()
+    $script:TurboAgents.AgentCount = $AgentCount
+    $script:TurboAgents.Initialized = $true
+    $script:TurboAgents.LastActivity = Get-Date
+
+    # Pre-warm Ollama models (keep them in memory)
+    $modelsToWarm = @("llama3.2:3b", "llama3.2:1b", "qwen2.5-coder:1.5b")
+    foreach ($model in $modelsToWarm) {
+        try {
+            # Send dummy request to load model into memory
+            $warmupBody = @{
+                model = $model
+                prompt = "Hello"
+                stream = $false
+                options = @{ num_predict = 1 }
+            } | ConvertTo-Json
+
+            $null = Invoke-RestMethod -Uri "http://localhost:11434/api/generate" `
+                -Method Post -Body $warmupBody -ContentType "application/json" `
+                -TimeoutSec 30 -ErrorAction SilentlyContinue
+
+            Write-Host " [+] $model pre-loaded" -ForegroundColor Green
+        } catch {
+            Write-Host " [-] $model not available" -ForegroundColor DarkGray
+        }
+    }
+
+    Write-Host "[TURBO] $AgentCount agents ready!" -ForegroundColor Green
+    return $script:TurboAgents
+}
+
+function Stop-TurboAgents {
+    <#
+    .SYNOPSIS
+        Releases Turbo Mode resources
+    #>
+    [CmdletBinding()]
+    param()
+
+    if ($script:TurboAgents.Pool) {
+        $script:TurboAgents.Pool.Close()
+        $script:TurboAgents.Pool.Dispose()
+        $script:TurboAgents.Pool = $null
+    }
+    $script:TurboAgents.Initialized = $false
+    Write-Host "[TURBO] Agents released." -ForegroundColor DarkGray
+}
+
+function Invoke-TurboPipeline {
+    <#
+    .SYNOPSIS
+        Executes multiple prompts in parallel using 4 pre-warmed agents
+    .DESCRIPTION
+        Turbo Mode - 4x parallel pipeline execution:
+        - Takes array of prompts
+        - Distributes across 4 agents
+        - Each agent runs full Swarm protocol
+        - Returns aggregated results
+
+        Use cases:
+        - Batch processing
+        - Multi-file analysis
+        - Parallel code generation
+    .EXAMPLE
+        $prompts = @(
+            "Analyze file1.ps1",
+            "Analyze file2.ps1",
+            "Analyze file3.ps1",
+            "Analyze file4.ps1"
+        )
+        $results = Invoke-TurboPipeline -Prompts $prompts
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string[]]$Prompts,
+
+        [string]$Model = "gemini-flash-fast",
+        [switch]$FullSwarm,  # Run full 6-step protocol per prompt
+        [switch]$QuickMode   # Fast mode - skip speculation/logging
+    )
+
+    # Initialize if not already done
+    if (-not $script:TurboAgents.Initialized) {
+        Initialize-TurboAgents | Out-Null
+    }
+
+    $agentCount = $script:TurboAgents.AgentCount
+    $promptCount = $Prompts.Count
+
+    Write-Host "`n[TURBO] Processing $promptCount prompts with $agentCount parallel agents..." -ForegroundColor Magenta
+
+    # Results storage
+    $results = [System.Collections.Concurrent.ConcurrentDictionary[int,hashtable]]::new()
+
+    # Use existing pool or create new one
+    $pool = if ($script:TurboAgents.Pool) { $script:TurboAgents.Pool }
+            else {
+                $p = [runspacefactory]::CreateRunspacePool(1, $agentCount)
+                $p.Open()
+                $p
+            }
+
+    $jobs = @{}
+
+    try {
+        # Launch all prompts in parallel
+        for ($i = 0; $i -lt $promptCount; $i++) {
+            $prompt = $Prompts[$i]
+            $agentIdx = $i % $agentCount
+
+            Write-Host " [Agent $agentIdx] Processing: $($prompt.Substring(0, [Math]::Min(50, $prompt.Length)))..." -ForegroundColor DarkCyan
+
+            $ps = [powershell]::Create()
+            $ps.RunspacePool = $pool
+
+            if ($FullSwarm) {
+                # Full 6-step Swarm protocol
+                $scriptBlock = {
+                    param($ModulePath, $Prompt, $PromptIndex)
+
+                    Import-Module $ModulePath -Force
+
+                    try {
+                        $result = Invoke-AgentSwarm -Prompt $Prompt -ErrorAction Stop
+                        return @{
+                            Success = $true
+                            Index = $PromptIndex
+                            Prompt = $Prompt
+                            Result = $result
+                        }
+                    } catch {
+                        return @{
+                            Success = $false
+                            Index = $PromptIndex
+                            Prompt = $Prompt
+                            Error = $_.Exception.Message
+                        }
+                    }
+                }
+
+                $null = $ps.AddScript($scriptBlock).AddArgument((Join-Path $PSScriptRoot "AgentSwarm.psm1")).AddArgument($prompt).AddArgument($i)
+            } else {
+                # Quick mode - direct AI call
+                $scriptBlock = {
+                    param($ModulePath, $Prompt, $PromptIndex, $Model)
+
+                    Import-Module (Join-Path (Split-Path $ModulePath) "..\AIModelHandler.psm1") -Force
+
+                    try {
+                        $messages = @(
+                            @{ role = "system"; content = "You are a Witcher Agent. Respond concisely and accurately." }
+                            @{ role = "user"; content = $Prompt }
+                        )
+
+                        $response = Invoke-AIRequest -Provider "google" -Model $Model `
+                            -Messages $messages -NoOptimize -ErrorAction Stop
+
+                        return @{
+                            Success = $true
+                            Index = $PromptIndex
+                            Prompt = $Prompt
+                            Result = $response.content
+                        }
+                    } catch {
+                        return @{
+                            Success = $false
+                            Index = $PromptIndex
+                            Prompt = $Prompt
+                            Error = $_.Exception.Message
+                        }
+                    }
+                }
+
+                $null = $ps.AddScript($scriptBlock).AddArgument((Join-Path $PSScriptRoot "AgentSwarm.psm1")).AddArgument($prompt).AddArgument($i).AddArgument($Model)
+            }
+
+            $jobs[$i] = @{
+                PowerShell = $ps
+                Handle = $ps.BeginInvoke()
+                Index = $i
+            }
+        }
+
+        # Wait for all jobs to complete
+        Write-Host " [TURBO] Waiting for $promptCount jobs..." -ForegroundColor DarkGray
+
+        foreach ($idx in $jobs.Keys) {
+            $job = $jobs[$idx]
+            $job.Handle.AsyncWaitHandle.WaitOne() | Out-Null
+
+            $output = $job.PowerShell.EndInvoke($job.Handle)
+            if ($output) {
+                $results[$idx] = $output[0]
+
+                if ($output[0].Success) {
+                    Write-Host " [+] Prompt $idx completed" -ForegroundColor Green
+                } else {
+                    Write-Host " [-] Prompt $idx failed: $($output[0].Error)" -ForegroundColor Red
+                }
+            }
+
+            $job.PowerShell.Dispose()
+        }
+
+    } finally {
+        # Don't dispose pool if it's the shared Turbo pool
+        if (-not $script:TurboAgents.Pool -and $pool) {
+            $pool.Close()
+            $pool.Dispose()
+        }
+    }
+
+    $script:TurboAgents.LastActivity = Get-Date
+
+    # Convert to array sorted by index
+    $sortedResults = @()
+    for ($i = 0; $i -lt $promptCount; $i++) {
+        if ($results.ContainsKey($i)) {
+            $sortedResults += $results[$i]
+        }
+    }
+
+    Write-Host "[TURBO] Completed $($sortedResults.Count)/$promptCount prompts" -ForegroundColor Magenta
+
+    return $sortedResults
+}
+
+#endregion
+
 #region AGENT SWARM PROTOCOL
 
 function Invoke-AgentSwarm {
@@ -1299,7 +1560,12 @@ Export-ModuleMember -Function @(
     # Parallel Execution
     'Start-QueueProcessor',
     'Invoke-ParallelClassification',
-    'Invoke-ParallelSwarmExecution'
+    'Invoke-ParallelSwarmExecution',
+
+    # TURBO MODE - 4x Parallel Pipeline
+    'Initialize-TurboAgents',
+    'Stop-TurboAgents',
+    'Invoke-TurboPipeline'
 )
 
 #endregion

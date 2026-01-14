@@ -129,6 +129,24 @@ function getResourceColor(percent) {
   return c.neonGreen;
 }
 
+function getHydraStatus() {
+  const yolo = process.env.HYDRA_YOLO_MODE === 'true';
+  const turbo = process.env.HYDRA_TURBO_MODE === 'true';
+  const deep = process.env.HYDRA_DEEP_THINKING === 'true';
+
+  if (!yolo && !turbo && !deep) return null;
+
+  const flags = [];
+  if (yolo) flags.push(`${c.neonMagenta}${c.bold}Y${c.reset}`);
+  if (turbo) flags.push(`${c.neonRed}${c.bold}T${c.reset}`);
+  if (deep) flags.push(`${c.neonYellow}${c.bold}D${c.reset}`);
+
+  return {
+    compact: `${c.neonCyan}H${c.reset}[${flags.join('')}]`,
+    full: `${c.neonCyan}${c.bold}HYDRA${c.reset}[${flags.join('')}]`
+  };
+}
+
 function loadUsage() {
   try {
     if (fs.existsSync(USAGE_FILE)) {
@@ -157,8 +175,10 @@ process.stdin.on('end', () => {
     data = JSON.parse(inputData);
   } catch {
     const aiStatus = checkAIHandlerStatus();
+    const hydraStatus = getHydraStatus();
     const aiLabel = aiStatus.running ? `${c.neonGreen}${c.bold}AI:ON${c.reset}${c.gray}(${aiStatus.models})${c.reset}` : `${c.neonRed}${c.bold}AI:OFF${c.reset}`;
-    console.log(`${aiLabel} ${c.gray}║${c.reset} ${c.neonCyan}${c.bold}Claude Code${c.reset} ${c.gray}║${c.reset} ${c.dim}Waiting...${c.reset}`);
+    const hydraLabel = hydraStatus ? `${hydraStatus.full} ${c.gray}║${c.reset} ` : '';
+    console.log(`${hydraLabel}${aiLabel} ${c.gray}║${c.reset} ${c.neonCyan}${c.bold}Claude Code${c.reset} ${c.gray}║${c.reset} ${c.dim}Waiting...${c.reset}`);
     return;
   }
 
@@ -183,6 +203,13 @@ process.stdin.on('end', () => {
   const timeToReset = Math.max(0, Math.ceil((60000 - (now - usage.lastMinuteStart)) / 1000));
 
   const aiStatus = checkAIHandlerStatus();
+  const hydraStatus = getHydraStatus();
+
+  // HYDRA status first (if active)
+  if (hydraStatus) {
+    parts.push(COMPACT_MODE ? hydraStatus.compact : hydraStatus.full);
+  }
+
   if (COMPACT_MODE) {
     parts.push(aiStatus.running ? `${c.neonGreen}${c.bold}AI${c.reset}` : `${c.neonRed}${c.bold}AI${c.reset}`);
   } else {
@@ -237,8 +264,10 @@ setTimeout(() => {
     const mode = COMPACT_MODE ? 'COMPACT' : 'FULL';
     const res = getSystemResources();
     const aiStatus = checkAIHandlerStatus();
+    const hydraStatus = getHydraStatus();
     const aiLabel = aiStatus.running ? `${c.neonGreen}${c.bold}AI:ON${c.reset}${c.gray}(${aiStatus.models})${c.reset}` : `${c.neonRed}${c.bold}AI:OFF${c.reset}`;
-    console.log(`${aiLabel} ${c.gray}║${c.reset} ${c.neonBlue}${c.bold}[STD]${c.reset} ${c.neonCyan}Claude${c.reset} ${c.gray}║${c.reset} ${getResourceColor(res.cpu.percent)}CPU ${res.cpu.percent}%${c.reset} ${getResourceColor(res.ram.percent)}RAM ${res.ram.usedGB}/${res.ram.totalGB}GB${c.reset} ${c.gray}║${c.reset} ${c.dim}${mode} (${TERMINAL_WIDTH}cols)${c.reset}`);
+    const hydraLabel = hydraStatus ? `${hydraStatus.full} ${c.gray}║${c.reset} ` : '';
+    console.log(`${hydraLabel}${aiLabel} ${c.gray}║${c.reset} ${c.neonBlue}${c.bold}[STD]${c.reset} ${c.neonCyan}Claude${c.reset} ${c.gray}║${c.reset} ${getResourceColor(res.cpu.percent)}CPU ${res.cpu.percent}%${c.reset} ${getResourceColor(res.ram.percent)}RAM ${res.ram.usedGB}/${res.ram.totalGB}GB${c.reset} ${c.gray}║${c.reset} ${c.dim}${mode} (${TERMINAL_WIDTH}cols)${c.reset}`);
     process.exit(0);
   }
 }, 100);
