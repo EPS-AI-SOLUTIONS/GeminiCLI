@@ -50,11 +50,14 @@ if (Get-Module -Name PSReadLine -ErrorAction SilentlyContinue) {
 function Start-Gemini {
     param([Parameter(ValueFromRemainingArguments)]$Arguments)
     
-    $key = [System.Environment]::GetEnvironmentVariable('GOOGLE_API_KEY', 'User')
+    $key = $env:GOOGLE_API_KEY
+    if (-not $key) {
+        $key = [System.Environment]::GetEnvironmentVariable('GOOGLE_API_KEY', 'User')
+    }
     if (-not $key) {
         $key = [System.Environment]::GetEnvironmentVariable('GEMINI_API_KEY', 'User')
     }
-    $env:GOOGLE_API_KEY = $key
+    if ($key) { $env:GOOGLE_API_KEY = $key }
     
     $model = if ($key) { "gemini-2.5-pro" } else { "gemini-2.5-flash" }
     

@@ -132,7 +132,9 @@ while ($true) {
     # === AI HANDLER INIT ===
     $aiHandlerInit = Join-Path $script:ProjectRoot 'ai-handler\Initialize-AIHandler.ps1'
     if (Test-Path $aiHandlerInit) {
-        . $aiHandlerInit -ErrorAction SilentlyContinue
+        try {
+            . $aiHandlerInit
+        } catch {}
     }
 
     # === STATUS MONITOR ===

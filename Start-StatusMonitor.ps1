@@ -20,7 +20,7 @@ Write-Host " [LIVE]" -ForegroundColor Green
 
 while ($true) {
     try {
-        $output = node $statusLineScript 2>&1
+        $output = node "$statusLineScript" 2>&1
         
         # Move cursor to line 2 (leave title)
         [Console]::SetCursorPosition(0, 1)
