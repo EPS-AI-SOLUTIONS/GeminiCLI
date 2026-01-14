@@ -11,6 +11,7 @@
 .NOTES
     File Name      : OpenAIProvider.psm1
     Author         : HYDRA System
+    Version        : 2.0.0
     Prerequisite   : PowerShell 5.1+
     Required ENV   : OPENAI_API_KEY
 

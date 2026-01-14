@@ -10,6 +10,7 @@
 .NOTES
     File Name      : GoogleProvider.psm1
     Author         : HYDRA System
+    Version        : 2.0.0
 #>
 
 #region Configuration
