@@ -100,15 +100,27 @@ while ($true) {
     Write-Host "------------------------" -ForegroundColor DarkGray
 
     # === OLLAMA CHECK ===
-    $ollamaUrl = "http://localhost:11434"
+    $ollamaUrl = if ($env:OLLAMA_HOST) { $env:OLLAMA_HOST } else { "http://localhost:11434" }
     
     Write-Host "  1. Sprawdzanie Ollama..." -NoNewline -ForegroundColor DarkGray
     
-    try {
-        $null = Invoke-WebRequest -Uri $ollamaUrl -Method Head -TimeoutSec 2 -ErrorAction Stop
+    $ollamaOnline = $false
+    for ($attempt = 1; $attempt -le 3; $attempt++) {
+        try {
+            $null = Invoke-WebRequest -Uri $ollamaUrl -Method Head -TimeoutSec 2 -ErrorAction Stop
+            $ollamaOnline = $true
+            break
+        }
+        catch {
+            Write-Host " [PRÓBA $attempt/3]" -ForegroundColor Yellow
+            Start-Sleep -Milliseconds 500
+        }
+    }
+
+    if ($ollamaOnline) {
         Write-Host " [ONLINE]" -ForegroundColor Green
     }
-    catch {
+    else {
         Write-Host " [OFFLINE - Próba startu]" -ForegroundColor Yellow
         
         $ollamaPath = "$env:LOCALAPPDATA\Programs\Ollama\ollama.exe"

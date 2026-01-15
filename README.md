@@ -18,6 +18,9 @@ HYDRA is an AI orchestration system that combines cloud AI (Google Gemini) for s
 # Install dependencies
 pnpm install
 
+# Optional: run launcher with PowerShell fallback
+npm run launcher
+
 # Start the system
 .\_launcher.ps1
 ```
@@ -92,6 +95,14 @@ If neither command exists:
 
 ```bash
 npm start
+```
+
+### Diagnostics
+
+Run the built-in doctor to validate PowerShell, Ollama, and Node versions:
+
+```bash
+npm run doctor
 ```
 
 ### Error: `pwsh: command not found` / `powershell: command not found`

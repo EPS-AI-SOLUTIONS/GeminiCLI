@@ -1,5 +1,6 @@
 $scriptDir = $PSScriptRoot
-$statusLineScript = Join-Path $scriptDir ".gemini\statusline.cjs"
+$repoStatusLine = Join-Path $scriptDir "scripts\statusline.mjs"
+$statusLineScript = if (Test-Path $repoStatusLine) { $repoStatusLine } else { Join-Path $scriptDir ".gemini\statusline.cjs" }
 $Host.UI.RawUI.WindowTitle = "HYDRA Monitor"
 
 if (-not (Test-Path $statusLineScript)) {

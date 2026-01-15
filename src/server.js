@@ -90,6 +90,12 @@ const server = new Server(
 const toolByName = new Map(TOOLS.map(tool => [tool.name, tool]));
 const toolValidators = buildToolValidators(TOOLS);
 const modelCache = { models: null, updatedAt: 0 };
+const ollamaMetrics = {
+  latencies: [],
+  lastHealth: null,
+  lastCheckedAt: null
+};
+const MAX_LATENCY_SAMPLES = 20;
 
 const createErrorResponse = (code, message, tool, requestId, details = null) => {
   return {
@@ -133,6 +139,53 @@ const getCachedModels = async () => {
   modelCache.models = await listModels();
   modelCache.updatedAt = now;
   return modelCache.models;
+};
+
+const recordOllamaHealth = (health) => {
+  if (!health) return;
+  ollamaMetrics.lastHealth = health;
+  ollamaMetrics.lastCheckedAt = new Date().toISOString();
+  if (typeof health.latencyMs === 'number') {
+    ollamaMetrics.latencies.push(health.latencyMs);
+    if (ollamaMetrics.latencies.length > MAX_LATENCY_SAMPLES) {
+      ollamaMetrics.latencies.shift();
+    }
+  }
+};
+
+const getOllamaLatencyStats = () => {
+  if (ollamaMetrics.latencies.length === 0) {
+    return { last: null, avg: null, min: null, max: null, samples: 0 };
+  }
+  const last = ollamaMetrics.latencies[ollamaMetrics.latencies.length - 1];
+  const total = ollamaMetrics.latencies.reduce((sum, value) => sum + value, 0);
+  return {
+    last,
+    avg: total / ollamaMetrics.latencies.length,
+    min: Math.min(...ollamaMetrics.latencies),
+    max: Math.max(...ollamaMetrics.latencies),
+    samples: ollamaMetrics.latencies.length
+  };
+};
+
+const getOllamaDashboard = async () => {
+  const health = await checkHealth({
+    timeoutMs: CONFIG.HEALTH_CHECK_TIMEOUT_MS,
+    retries: CONFIG.HEALTH_CHECK_RETRIES,
+    retryDelayMs: CONFIG.HEALTH_CHECK_RETRY_DELAY_MS
+  });
+  recordOllamaHealth(health);
+  const models = health.available ? await listModels() : [];
+  const recommendedPull = models.length === 0 ? (CONFIG.OLLAMA_AUTO_PULL_MODEL || CONFIG.DEFAULT_MODEL) : null;
+  return {
+    health,
+    models,
+    metrics: {
+      latency: getOllamaLatencyStats(),
+      lastCheckedAt: ollamaMetrics.lastCheckedAt
+    },
+    recommendation: recommendedPull ? { pullModel: recommendedPull } : null
+  };
 };
 
 const resolveModelOrFallback = async (requestedModel) => {
@@ -479,13 +532,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'ollama_status': {
-        const health = await checkHealth();
-        const models = health.available ? await listModels() : [];
+        const dashboard = await getOllamaDashboard();
         const cacheStats = getCacheStats();
 
         result = {
-          ollama: health,
-          models: models,
+          ollama: dashboard.health,
+          models: dashboard.models,
+          metrics: dashboard.metrics,
+          recommendation: dashboard.recommendation,
           cache: cacheStats,
           config: {
             defaultModel: CONFIG.DEFAULT_MODEL,
@@ -800,14 +854,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'hydra_health': {
-        const health = await checkHealth();
+        const dashboard = await getOllamaDashboard();
         const cacheStats = getCacheStats();
         const queueStatus = getQueueStatus();
         const smartQueueStatus = getSmartQueueStatus();
         const nodeEngines = resolveNodeEngines();
         result = {
-          status: health.available ? 'ok' : 'degraded',
-          ollama: health,
+          status: dashboard.health.available ? 'ok' : 'degraded',
+          ollama: dashboard.health,
+          ollamaMetrics: dashboard.metrics,
+          ollamaModels: dashboard.models,
+          ollamaRecommendation: dashboard.recommendation,
           queue: queueStatus,
           smartQueue: smartQueueStatus,
           cache: cacheStats,
@@ -912,9 +969,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main() {
   const transport = new StdioServerTransport();
   const healthIntervalMs = 10000;
-  const healthTimeoutMs = 3000;
-  const healthRetries = 1;
-  const healthRetryDelayMs = 500;
+  const healthTimeoutMs = CONFIG.HEALTH_CHECK_TIMEOUT_MS;
+  const healthRetries = CONFIG.HEALTH_CHECK_RETRIES;
+  const healthRetryDelayMs = CONFIG.HEALTH_CHECK_RETRY_DELAY_MS;
   const restartCooldownMs = 60000;
   let restartInProgress = false;
   let lastRestartAttempt = 0;
@@ -941,6 +998,39 @@ async function main() {
   if (modelsInit.success) {
     logger.info('Gemini models ready', { count: modelsInit.count });
   }
+
+  const bootstrapOllamaModels = async () => {
+    const health = await checkHealth({
+      timeoutMs: healthTimeoutMs,
+      retries: healthRetries,
+      retryDelayMs: healthRetryDelayMs
+    });
+    recordOllamaHealth(health);
+    if (!health.available) {
+      logger.warn('Ollama unavailable during bootstrap', { error: health.error, host: health.host });
+      return;
+    }
+    const models = await listModels();
+    if (models.length > 0) {
+      logger.info('Ollama models detected', { count: models.length });
+      return;
+    }
+    const modelToPull = CONFIG.OLLAMA_AUTO_PULL_MODEL || CONFIG.DEFAULT_MODEL;
+    logger.warn('No local models detected', { recommended: modelToPull });
+    if (!CONFIG.OLLAMA_AUTO_PULL) {
+      logger.info('Auto-pull disabled, skipping model download');
+      return;
+    }
+    logger.info('Auto-pull enabled, downloading model', { model: modelToPull });
+    const pulled = await pullModel(modelToPull);
+    if (pulled) {
+      logger.info('Model pulled successfully', { model: modelToPull });
+    } else {
+      logger.error('Model pull failed', { model: modelToPull });
+    }
+  };
+
+  await bootstrapOllamaModels();
 
   // Initialize prompt queue with AI handler
   const queue = getQueue({
@@ -1028,6 +1118,7 @@ async function main() {
         retries: healthRetries,
         retryDelayMs: healthRetryDelayMs
       });
+      recordOllamaHealth(health);
       if (!health.available) {
         logger.error('Ollama heartbeat lost', { error: health.error, host: health.host });
         const restart = await attemptRestart();

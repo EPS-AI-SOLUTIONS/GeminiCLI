@@ -25,10 +25,14 @@ export const ENV = cleanEnv(process.env, {
   GEMINI_FETCH_TIMEOUT_MS: num({ default: 8000 }),
   GEMINI_FETCH_RETRIES: num({ default: 3 }),
   HEALTH_CHECK_TIMEOUT_MS: num({ default: 5000 }),
+  HEALTH_CHECK_RETRIES: num({ default: 1 }),
+  HEALTH_CHECK_RETRY_DELAY_MS: num({ default: 500 }),
   PROMPT_MAX_LENGTH: num({ default: 20000 }),
   PROMPT_RISK_BLOCK: str({ default: 'false' }),
   MODEL_ALLOWLIST: str({ default: '' }),
   MODEL_DENYLIST: str({ default: '' }),
   AI_PROVIDER_FALLBACK: str({ default: 'anthropic,openai,google,mistral,groq,ollama' }),
+  OLLAMA_AUTO_PULL: str({ default: 'false' }),
+  OLLAMA_AUTO_PULL_MODEL: str({ default: '' }),
   LOG_LEVEL: str({ default: 'info' })
 });

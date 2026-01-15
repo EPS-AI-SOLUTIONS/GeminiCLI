@@ -67,8 +67,10 @@ export async function checkHealth(options = {}) {
   const retries = options.retries ?? 0;
   const retryDelayMs = options.retryDelayMs ?? 250;
   let lastError = null;
+  let lastLatencyMs = null;
 
   for (let attempt = 0; attempt <= retries; attempt += 1) {
+    const startTime = Date.now();
     const { signal, cleanup } = createTimeoutSignal(timeoutMs);
     try {
       const response = await fetch(`${OLLAMA_HOST}/api/tags`, {
@@ -80,15 +82,19 @@ export async function checkHealth(options = {}) {
         lastError = new Error(response.statusText);
       } else {
         const data = await response.json();
+        const latencyMs = Date.now() - startTime;
+        lastLatencyMs = latencyMs;
         return {
           available: true,
           models: data.models?.map(m => m.name) || [],
-          host: OLLAMA_HOST
+          host: OLLAMA_HOST,
+          latencyMs
         };
       }
     } catch (error) {
       lastError = error;
     } finally {
+      lastLatencyMs = Date.now() - startTime;
       cleanup?.();
     }
 
@@ -97,7 +103,7 @@ export async function checkHealth(options = {}) {
     }
   }
 
-  return { available: false, error: lastError?.message, host: OLLAMA_HOST };
+  return { available: false, error: lastError?.message, host: OLLAMA_HOST, latencyMs: lastLatencyMs };
 }
 
 /**
