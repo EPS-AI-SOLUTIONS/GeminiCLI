@@ -38,15 +38,17 @@
       ]
     },
     "desktop-commander": {
-      "command": "npx",
+      "command": "C:/Program Files/nodejs/npx.cmd",
       "args": ["-y", "@wonderwhy-er/desktop-commander"],
       "env": {
         "DC_SHELL": "powershell"
-      }
+      },
+      "timeout": 60000
     },
     "playwright": {
-      "command": "npx",
-      "args": ["-y", "@playwright/mcp@latest"]
+      "command": "C:/Program Files/nodejs/npx.cmd",
+      "args": ["-y", "@playwright/mcp@latest"],
+      "timeout": 60000
     }
   },
   "mcp": {
