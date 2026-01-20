@@ -8,9 +8,11 @@ export function Header() {
 
   const viewTitles: Record<string, string> = {
     terminal: 'Terminal',
-    settings: 'Settings',
-    history: 'Approval History',
-    rules: 'Auto-Approve Rules',
+    ollama: 'Ollama AI',
+    chats: 'Historia czatów',
+    settings: 'Ustawienia',
+    history: 'Historia zatwierdzeń',
+    rules: 'Reguły automatyczne',
   };
 
   const handleChangeDir = async () => {
@@ -54,13 +56,13 @@ export function Header() {
             }`}
           />
           <span className="text-xs">
-            {status.is_active ? 'Online' : 'Offline'}
+            {status.is_active ? 'Połączony' : 'Rozłączony'}
           </span>
         </div>
 
         <button
           className="p-2 rounded-lg hover:bg-matrix-accent/10 transition-colors"
-          title="Refresh"
+          title="Odśwież"
         >
           <RefreshCw size={14} className="text-matrix-text-dim" />
         </button>

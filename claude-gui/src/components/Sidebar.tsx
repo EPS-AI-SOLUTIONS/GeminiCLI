@@ -30,11 +30,11 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { id: 'terminal', label: 'Terminal', icon: <Terminal size={18} /> },
-  { id: 'ollama', label: 'Ollama Chat', icon: <Bot size={18} /> },
-  { id: 'chats', label: 'Chat History', icon: <MessageSquare size={18} /> },
-  { id: 'rules', label: 'Auto-Approve Rules', icon: <Shield size={18} /> },
-  { id: 'history', label: 'Approval History', icon: <History size={18} /> },
-  { id: 'settings', label: 'Settings', icon: <Settings size={18} /> },
+  { id: 'ollama', label: 'Ollama AI', icon: <Bot size={18} /> },
+  { id: 'chats', label: 'Historia czatów', icon: <MessageSquare size={18} /> },
+  { id: 'rules', label: 'Reguły auto-appr.', icon: <Shield size={18} /> },
+  { id: 'history', label: 'Historia zatwierdzeń', icon: <History size={18} /> },
+  { id: 'settings', label: 'Ustawienia', icon: <Settings size={18} /> },
 ];
 
 interface SessionItemProps {
@@ -128,7 +128,7 @@ function SessionItem({
       <div className="flex-1 min-w-0">
         <p className="text-xs truncate">{session.title}</p>
         <p className="text-[10px] text-matrix-text-dim truncate">
-          {session.message_count} messages
+          {session.message_count} wiadomości
         </p>
       </div>
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -138,7 +138,7 @@ function SessionItem({
             setIsEditing(true);
           }}
           className="p-1 hover:bg-matrix-accent/20 rounded"
-          title="Rename"
+          title="Zmień nazwę"
         >
           <Edit2 size={12} />
         </button>
@@ -148,7 +148,7 @@ function SessionItem({
             onDelete();
           }}
           className="p-1 hover:bg-red-500/20 rounded text-red-400"
-          title="Delete"
+          title="Usuń"
         >
           <Trash2 size={12} />
         </button>
@@ -216,9 +216,11 @@ export function Sidebar() {
         sidebarCollapsed ? 'w-16' : 'w-60'
       }`}
     >
-      {/* Logo */}
-      <div className="flex items-center gap-3 p-4 border-b border-matrix-border">
-        <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-matrix-accent/10">
+      {/* Logo - znacznie powiększone */}
+      <div className="flex flex-col items-center gap-3 p-4 border-b border-matrix-border">
+        <div className={`rounded-xl overflow-hidden flex-shrink-0 bg-matrix-accent/10 shadow-lg shadow-matrix-accent/20 ${
+          sidebarCollapsed ? 'w-12 h-12' : 'w-32 h-32'
+        } transition-all duration-300`}>
           <img
             src="/logodark.webp"
             alt="Claude GUI"
@@ -226,11 +228,11 @@ export function Sidebar() {
           />
         </div>
         {!sidebarCollapsed && (
-          <div className="flex flex-col">
-            <span className="text-sm font-semibold text-matrix-accent text-glow">
+          <div className="flex flex-col items-center text-center">
+            <span className="text-lg font-bold text-matrix-accent text-glow">
               Claude GUI
             </span>
-            <span className="text-xs text-matrix-text-dim">Auto-Approve Bridge</span>
+            <span className="text-xs text-matrix-text-dim">Most auto-zatwierdzania</span>
           </div>
         )}
       </div>
@@ -246,7 +248,7 @@ export function Sidebar() {
             />
             {!sidebarCollapsed && (
               <span className="text-xs">
-                {status.is_active ? 'Active' : 'Inactive'}
+                {status.is_active ? 'Aktywny' : 'Nieaktywny'}
               </span>
             )}
           </div>
@@ -254,15 +256,15 @@ export function Sidebar() {
           {!sidebarCollapsed && status.is_active && (
             <div className="text-xs text-matrix-text-dim space-y-1">
               <div className="flex justify-between">
-                <span>Approved:</span>
+                <span>Zatwierdzone:</span>
                 <span className="text-matrix-accent">{status.approved_count}</span>
               </div>
               <div className="flex justify-between">
-                <span>Auto:</span>
+                <span>Automatyczne:</span>
                 <span className="text-blue-400">{status.auto_approved_count}</span>
               </div>
               <div className="flex justify-between">
-                <span>Denied:</span>
+                <span>Odrzucone:</span>
                 <span className="text-red-400">{status.denied_count}</span>
               </div>
             </div>
@@ -277,7 +279,7 @@ export function Sidebar() {
                 className="glass-button glass-button-primary flex-1 flex items-center justify-center gap-2 text-xs"
               >
                 <Power size={14} />
-                {!sidebarCollapsed && (isConnecting ? 'Connecting...' : 'Start')}
+                {!sidebarCollapsed && (isConnecting ? 'Łączenie...' : 'Start')}
               </button>
             ) : (
               <button
@@ -285,7 +287,7 @@ export function Sidebar() {
                 className="glass-button glass-button-danger flex-1 flex items-center justify-center gap-2 text-xs"
               >
                 <PowerOff size={14} />
-                {!sidebarCollapsed && 'Stop'}
+                {!sidebarCollapsed && 'Zatrzymaj'}
               </button>
             )}
           </div>
@@ -305,7 +307,7 @@ export function Sidebar() {
           <Zap size={14} />
           {!sidebarCollapsed && (
             <span>
-              {status.auto_approve_all ? 'Auto-Approve: ON' : 'Auto-Approve: OFF'}
+              {status.auto_approve_all ? 'Auto-zatw.: WŁ' : 'Auto-zatw.: WYŁ'}
             </span>
           )}
         </button>
@@ -319,7 +321,7 @@ export function Sidebar() {
             className="flex items-center gap-2 text-xs text-matrix-text hover:text-matrix-accent transition-colors"
           >
             <MessagesSquare size={14} />
-            {!sidebarCollapsed && <span>Sessions</span>}
+            {!sidebarCollapsed && <span>Sesje</span>}
             {!sidebarCollapsed && (
               showSessions ? (
                 <ChevronLeft size={12} className="rotate-90" />
@@ -331,7 +333,7 @@ export function Sidebar() {
           <button
             onClick={handleCreateSession}
             className="p-1.5 hover:bg-matrix-accent/20 rounded text-matrix-accent transition-colors"
-            title="New Chat"
+            title="Nowy czat"
           >
             <Plus size={14} />
           </button>
@@ -341,7 +343,7 @@ export function Sidebar() {
           <div className="space-y-1 max-h-40 overflow-y-auto">
             {sessions.length === 0 ? (
               <p className="text-[10px] text-matrix-text-dim text-center py-2">
-                {sidebarCollapsed ? '' : 'No sessions yet'}
+                {sidebarCollapsed ? '' : 'Brak sesji'}
               </p>
             ) : (
               sessions.slice(0, 10).map((session) => (
@@ -361,7 +363,7 @@ export function Sidebar() {
                 onClick={() => setCurrentView('chats')}
                 className="w-full text-[10px] text-matrix-accent hover:underline py-1"
               >
-                View all ({sessions.length} sessions)
+                Zobacz wszystkie ({sessions.length} sesji)
               </button>
             )}
           </div>
@@ -395,7 +397,7 @@ export function Sidebar() {
           ) : (
             <>
               <ChevronLeft size={18} />
-              <span className="text-sm">Collapse</span>
+              <span className="text-sm">Zwiń</span>
             </>
           )}
         </button>

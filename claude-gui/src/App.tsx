@@ -7,6 +7,7 @@ import { RulesView } from './components/RulesView';
 import { ChatHistoryView } from './components/ChatHistoryView';
 import { OllamaChatView } from './components/OllamaChatView';
 import { StatusLine } from './components/StatusLine';
+import { MatrixRain } from './components/MatrixRain';
 import { useClaudeStore } from './stores/claudeStore';
 import './index.css';
 
@@ -36,23 +37,29 @@ function App() {
     <div className="h-screen w-screen flex bg-matrix-bg-primary overflow-hidden">
       {/* Background layers */}
       <div className="fixed inset-0 pointer-events-none">
+        {/* Matrix Rain - animowany deszcz */}
+        <MatrixRain opacity={0.12} />
+
         {/* Background image - Cyberpunk Witcher */}
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{
             backgroundImage: 'url(/background.webp)',
-            opacity: 0.15,
+            opacity: 0.2,
           }}
         />
 
-        {/* Dark overlay gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-matrix-bg-primary/90 via-matrix-bg-secondary/80 to-matrix-bg-primary/90" />
+        {/* Dark overlay gradient - zwiększony blur */}
+        <div
+          className="absolute inset-0 bg-gradient-to-br from-matrix-bg-primary/85 via-matrix-bg-secondary/75 to-matrix-bg-primary/85"
+          style={{ backdropFilter: 'blur(4px)' }}
+        />
 
-        {/* Radial glow from center */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,255,65,0.08)_0%,transparent_60%)]" />
+        {/* Radial glow from center - intensywniejszy */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,255,65,0.12)_0%,transparent_60%)]" />
 
         {/* Vignette effect */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.4)_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.5)_100%)]" />
       </div>
 
       {/* Main content */}
