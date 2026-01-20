@@ -1,0 +1,30 @@
+# Environment and secrets
+.env
+.env.*
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+GeminiGUI/dist/
+GeminiGUI/src-tauri/target/
+
+# Local data
+data/
+.serena/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Ollama binary (too large for git)
+bin/ollama.exe

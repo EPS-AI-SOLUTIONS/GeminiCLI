@@ -1,0 +1,9 @@
+{
+  "name": "gemini-mcp-portable",
+  "version": "1.0.0",
+  "description": "Portable MCP servers for GeminiCLI",
+  "dependencies": {
+    "@modelcontextprotocol/server-filesystem": "latest",
+    "@modelcontextprotocol/server-memory": "latest"
+  }
+}
