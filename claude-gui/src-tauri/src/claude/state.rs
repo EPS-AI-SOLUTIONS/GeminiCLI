@@ -44,8 +44,11 @@ impl AppState {
         let started_at = self.started_at.read().await;
         let stats = self.stats.read().await;
 
+        let is_active = bridge.is_active();
+        tracing::debug!("[STATE] get_status() -> is_active={}", is_active);
+
         SessionStatus {
-            is_active: bridge.is_active(),
+            is_active,
             session_id: bridge.session_id().map(String::from),
             working_dir: if bridge.is_active() {
                 Some(bridge.working_dir().to_string())
@@ -142,13 +145,19 @@ impl AppState {
         initial_prompt: Option<String>,
         event_tx: mpsc::Sender<ClaudeEvent>,
     ) -> Result<String, String> {
+        tracing::info!("[STATE] start_session called");
         *self.event_tx.write().await = Some(event_tx.clone());
         *self.started_at.write().await = Some(Utc::now());
 
         let mut bridge = self.bridge.write().await;
+        tracing::info!("[STATE] Calling bridge.spawn()...");
         bridge.spawn(working_dir, cli_path, initial_prompt, event_tx).await?;
 
-        Ok(bridge.session_id().unwrap_or_default().to_string())
+        let session_id = bridge.session_id().unwrap_or_default().to_string();
+        tracing::info!("[STATE] Session started with ID: {}", session_id);
+        tracing::info!("[STATE] is_active after start: {}", bridge.is_active());
+
+        Ok(session_id)
     }
 
     pub async fn stop_session(&self) -> Result<(), String> {

@@ -31,7 +31,13 @@ impl ClaudeBridge {
         initial_prompt: Option<String>,
         event_tx: mpsc::Sender<ClaudeEvent>,
     ) -> Result<(), String> {
+        tracing::info!("[BRIDGE] spawn() called");
+        tracing::info!("[BRIDGE] working_dir: {}", working_dir);
+        tracing::info!("[BRIDGE] cli_path: {}", cli_path);
+        tracing::info!("[BRIDGE] initial_prompt: {:?}", initial_prompt);
+
         if self.child.is_some() {
+            tracing::warn!("[BRIDGE] Session already active!");
             return Err("Session already active".to_string());
         }
 
@@ -41,6 +47,7 @@ impl ClaudeBridge {
         let mut cmd = Command::new("node");
         cmd.arg(cli_path)
             .arg("--output-format=stream-json")
+            .arg("--verbose")  // Required for stream-json with -p
             .current_dir(working_dir)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -60,7 +67,12 @@ impl ClaudeBridge {
             cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
         }
 
-        let mut child = cmd.spawn().map_err(|e| format!("Failed to spawn Claude CLI: {}", e))?;
+        tracing::info!("[BRIDGE] Spawning command...");
+        let mut child = cmd.spawn().map_err(|e| {
+            tracing::error!("[BRIDGE] Failed to spawn: {}", e);
+            format!("Failed to spawn Claude CLI: {}", e)
+        })?;
+        tracing::info!("[BRIDGE] Child process spawned successfully");
 
         // Take stdin
         let stdin = child.stdin.take().ok_or("Failed to capture stdin")?;
@@ -141,7 +153,8 @@ impl ClaudeBridge {
         self.child = Some(child);
         self.session_id = Some(uuid::Uuid::new_v4().to_string());
 
-        tracing::info!("Claude CLI spawned in {}", working_dir);
+        tracing::info!("[BRIDGE] Claude CLI spawned in {}", working_dir);
+        tracing::info!("[BRIDGE] is_active after spawn: {}", self.is_active());
         Ok(())
     }
 
@@ -317,7 +330,9 @@ impl ClaudeBridge {
 
     /// Check if session is active
     pub fn is_active(&self) -> bool {
-        self.child.is_some()
+        let active = self.child.is_some();
+        tracing::debug!("[BRIDGE] is_active() = {}", active);
+        active
     }
 
     /// Get session ID
