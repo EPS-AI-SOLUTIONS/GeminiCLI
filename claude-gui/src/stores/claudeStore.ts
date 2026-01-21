@@ -131,7 +131,7 @@ interface ClaudeState {
 
 export const useClaudeStore = create<ClaudeState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       // Initial state
       status: {
         is_active: false,
@@ -368,7 +368,11 @@ export const useClaudeStore = create<ClaudeState>()(
 
       setDefaultProvider: (provider) => set({ defaultProvider: provider }),
 
-      getCurrentMessages: (): ChatMessage[] => [],  // Use selector instead: useClaudeStore(s => s.chatHistory[s.currentChatSessionId] || [])
+      getCurrentMessages: (): ChatMessage[] => {
+        const state = get();
+        if (!state.currentChatSessionId) return [];
+        return state.chatHistory[state.currentChatSessionId] || [];
+      },
 
       // Auto-start Actions
       setAutoStartEnabled: (enabled) => set({ autoStartEnabled: enabled }),

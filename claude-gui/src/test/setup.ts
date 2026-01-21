@@ -63,4 +63,12 @@ Object.defineProperty(window, '__TAURI__', {
     invoke: mockInvoke,
   },
   writable: true,
+  configurable: true,
+});
+
+// Mock __TAURI_INTERNALS__ as well for isTauri() checks
+Object.defineProperty(window, '__TAURI_INTERNALS__', {
+  value: {},
+  writable: true,
+  configurable: true,
 });

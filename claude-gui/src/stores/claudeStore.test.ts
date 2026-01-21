@@ -3,7 +3,7 @@ import { useClaudeStore } from './claudeStore';
 
 describe('claudeStore', () => {
   beforeEach(() => {
-    // Reset store before each test
+    // Reset store before each test - FULL RESET including chatSessions
     useClaudeStore.setState({
       status: {
         is_active: false,
@@ -19,6 +19,11 @@ describe('claudeStore', () => {
       history: [],
       rules: [],
       currentView: 'terminal',
+      // Multi-session chat - RESET
+      chatSessions: [],
+      currentChatSessionId: null,
+      chatHistory: {},
+      defaultProvider: 'claude',
     });
   });
 
@@ -195,6 +200,363 @@ describe('claudeStore', () => {
 
       const { history } = useClaudeStore.getState();
       expect(history.length).toBeLessThanOrEqual(100);
+    });
+  });
+
+  describe('Auto-start configuration', () => {
+    it('should have auto-start enabled by default', () => {
+      const state = useClaudeStore.getState();
+      expect(state.autoStartEnabled).toBe(true);
+    });
+
+    it('should toggle auto-start enabled', () => {
+      const { setAutoStartEnabled } = useClaudeStore.getState();
+
+      setAutoStartEnabled(false);
+      expect(useClaudeStore.getState().autoStartEnabled).toBe(false);
+
+      setAutoStartEnabled(true);
+      expect(useClaudeStore.getState().autoStartEnabled).toBe(true);
+    });
+
+    it('should have auto-approve on start enabled by default', () => {
+      const state = useClaudeStore.getState();
+      expect(state.autoApproveOnStart).toBe(true);
+    });
+
+    it('should toggle auto-approve on start', () => {
+      const { setAutoApproveOnStart } = useClaudeStore.getState();
+
+      setAutoApproveOnStart(false);
+      expect(useClaudeStore.getState().autoApproveOnStart).toBe(false);
+    });
+
+    it('should update init prompt', () => {
+      const { setInitPrompt } = useClaudeStore.getState();
+      const newPrompt = 'Custom initialization prompt';
+
+      setInitPrompt(newPrompt);
+      expect(useClaudeStore.getState().initPrompt).toBe(newPrompt);
+    });
+
+    it('should handle empty init prompt', () => {
+      const { setInitPrompt } = useClaudeStore.getState();
+
+      setInitPrompt('');
+      expect(useClaudeStore.getState().initPrompt).toBe('');
+    });
+  });
+
+  describe('Multi-session chat management', () => {
+    it('should create new chat session', () => {
+      const { createChatSession } = useClaudeStore.getState();
+
+      const sessionId = createChatSession('claude');
+
+      const state = useClaudeStore.getState();
+      expect(state.chatSessions).toHaveLength(1);
+      expect(state.chatSessions[0].id).toBe(sessionId);
+      expect(state.chatSessions[0].provider).toBe('claude');
+      expect(state.currentChatSessionId).toBe(sessionId);
+    });
+
+    it('should create session with default provider', () => {
+      useClaudeStore.setState({ defaultProvider: 'ollama' });
+      const { createChatSession } = useClaudeStore.getState();
+
+      createChatSession();
+
+      const state = useClaudeStore.getState();
+      expect(state.chatSessions[0].provider).toBe('ollama');
+    });
+
+    it('should delete chat session', () => {
+      const { createChatSession, deleteChatSession } = useClaudeStore.getState();
+
+      const sessionId = createChatSession('claude');
+      expect(useClaudeStore.getState().chatSessions).toHaveLength(1);
+
+      deleteChatSession(sessionId);
+      expect(useClaudeStore.getState().chatSessions).toHaveLength(0);
+    });
+
+    it('should select next session after deleting current', () => {
+      const { createChatSession, deleteChatSession } = useClaudeStore.getState();
+
+      const session1 = createChatSession('claude');
+      const session2 = createChatSession('claude');
+
+      // session2 is now current (most recent)
+      expect(useClaudeStore.getState().currentChatSessionId).toBe(session2);
+
+      deleteChatSession(session2);
+
+      // session1 should become current
+      expect(useClaudeStore.getState().currentChatSessionId).toBe(session1);
+    });
+
+    it('should select chat session', () => {
+      const { createChatSession, selectChatSession } = useClaudeStore.getState();
+
+      const session1 = createChatSession('claude');
+      const session2 = createChatSession('claude');
+
+      selectChatSession(session1);
+      expect(useClaudeStore.getState().currentChatSessionId).toBe(session1);
+    });
+
+    it('should update chat session title', () => {
+      const { createChatSession, updateChatSessionTitle } = useClaudeStore.getState();
+
+      const sessionId = createChatSession('claude');
+      updateChatSessionTitle(sessionId, 'New Title');
+
+      const session = useClaudeStore.getState().chatSessions.find(s => s.id === sessionId);
+      expect(session?.title).toBe('New Title');
+    });
+  });
+
+  describe('Chat messages', () => {
+    beforeEach(() => {
+      const { createChatSession } = useClaudeStore.getState();
+      createChatSession('claude');
+    });
+
+    it('should add chat message', () => {
+      const { addChatMessage, getCurrentMessages } = useClaudeStore.getState();
+
+      addChatMessage({
+        role: 'user',
+        content: 'Hello, Claude!',
+      });
+
+      const messages = getCurrentMessages();
+      expect(messages).toHaveLength(1);
+      expect(messages[0].role).toBe('user');
+      expect(messages[0].content).toBe('Hello, Claude!');
+    });
+
+    it('should auto-update session title from first user message', () => {
+      const { addChatMessage, chatSessions } = useClaudeStore.getState();
+
+      addChatMessage({
+        role: 'user',
+        content: 'This is a very long message that should be truncated for the title',
+      });
+
+      const state = useClaudeStore.getState();
+      const session = state.chatSessions[0];
+      expect(session.title.length).toBeLessThanOrEqual(43); // 40 chars + '...'
+    });
+
+    it('should update last chat message (streaming append)', () => {
+      const { addChatMessage, updateLastChatMessage, getCurrentMessages } = useClaudeStore.getState();
+
+      addChatMessage({
+        role: 'assistant',
+        content: 'Initial ',
+      });
+
+      updateLastChatMessage('response chunk');
+
+      const messages = getCurrentMessages();
+      // updateLastChatMessage appends for streaming support
+      expect(messages[0].content).toBe('Initial response chunk');
+    });
+
+    it('should clear chat history for current session', () => {
+      const { addChatMessage, clearChatHistory, getCurrentMessages } = useClaudeStore.getState();
+
+      addChatMessage({ role: 'user', content: 'Message 1' });
+      addChatMessage({ role: 'assistant', content: 'Response 1' });
+
+      expect(getCurrentMessages()).toHaveLength(2);
+
+      clearChatHistory();
+
+      expect(getCurrentMessages()).toHaveLength(0);
+    });
+
+    it('should clear chat history for specific session', () => {
+      const { createChatSession, addChatMessage, clearChatHistory, selectChatSession } = useClaudeStore.getState();
+
+      // Create and add message to first session
+      const session1 = useClaudeStore.getState().currentChatSessionId!;
+      addChatMessage({ role: 'user', content: 'Session 1 message' });
+
+      // Create second session and add message
+      const session2 = createChatSession('claude');
+      addChatMessage({ role: 'user', content: 'Session 2 message' });
+
+      // Clear specific session
+      clearChatHistory(session1);
+
+      // Session 1 should be empty
+      selectChatSession(session1);
+      expect(useClaudeStore.getState().chatHistory[session1]).toHaveLength(0);
+
+      // Session 2 should still have messages
+      selectChatSession(session2);
+      expect(useClaudeStore.getState().chatHistory[session2]).toHaveLength(1);
+    });
+  });
+
+  describe('Theme', () => {
+    it('should start with dark theme', () => {
+      const state = useClaudeStore.getState();
+      expect(state.theme).toBe('dark');
+    });
+
+    it('should toggle theme', () => {
+      const { toggleTheme } = useClaudeStore.getState();
+
+      toggleTheme();
+      expect(useClaudeStore.getState().theme).toBe('light');
+
+      toggleTheme();
+      expect(useClaudeStore.getState().theme).toBe('dark');
+    });
+  });
+
+  describe('Endpoints configuration', () => {
+    it('should have default Ollama endpoint', () => {
+      const { endpoints } = useClaudeStore.getState();
+      expect(endpoints.ollama).toBe('http://127.0.0.1:11434');
+    });
+
+    it('should update endpoint', () => {
+      const { setEndpoint } = useClaudeStore.getState();
+
+      setEndpoint('ollama', 'http://localhost:11435');
+
+      const { endpoints } = useClaudeStore.getState();
+      expect(endpoints.ollama).toBe('http://localhost:11435');
+    });
+  });
+
+  describe('Pending approval', () => {
+    it('should set pending approval', () => {
+      const { setPendingApproval } = useClaudeStore.getState();
+
+      const approvalEvent = {
+        event_type: 'tool_use' as const,
+        requires_approval: true,
+        approval_type: { tool: 'Bash', input: 'rm -rf' },
+        data: { command: 'rm -rf' },
+      };
+
+      setPendingApproval(approvalEvent);
+
+      const state = useClaudeStore.getState();
+      expect(state.pendingApproval).toEqual(approvalEvent);
+    });
+
+    it('should clear pending approval', () => {
+      const { setPendingApproval } = useClaudeStore.getState();
+
+      setPendingApproval({
+        event_type: 'tool_use',
+        requires_approval: true,
+        approval_type: { tool: 'Bash' },
+        data: {},
+      });
+
+      setPendingApproval(null);
+
+      const state = useClaudeStore.getState();
+      expect(state.pendingApproval).toBeNull();
+    });
+  });
+
+  describe('Rules management', () => {
+    it('should set approval rules', () => {
+      const { setRules } = useClaudeStore.getState();
+
+      const rules = [
+        { id: '1', pattern: 'Bash', enabled: true },
+        { id: '2', pattern: 'Read', enabled: false },
+      ];
+
+      setRules(rules as any);
+
+      const state = useClaudeStore.getState();
+      expect(state.rules).toHaveLength(2);
+      expect(state.rules[0].pattern).toBe('Bash');
+    });
+
+    it('should replace all rules', () => {
+      const { setRules } = useClaudeStore.getState();
+
+      setRules([{ id: '1', pattern: 'Old', enabled: true }] as any);
+      setRules([{ id: '2', pattern: 'New', enabled: false }] as any);
+
+      const state = useClaudeStore.getState();
+      expect(state.rules).toHaveLength(1);
+      expect(state.rules[0].pattern).toBe('New');
+    });
+  });
+
+  describe('Working directory and CLI path', () => {
+    it('should update working directory', () => {
+      const { setWorkingDir } = useClaudeStore.getState();
+
+      setWorkingDir('C:\\NewProject');
+
+      expect(useClaudeStore.getState().workingDir).toBe('C:\\NewProject');
+    });
+
+    it('should update CLI path', () => {
+      const { setCliPath } = useClaudeStore.getState();
+
+      setCliPath('C:\\new\\path\\cli.js');
+
+      expect(useClaudeStore.getState().cliPath).toBe('C:\\new\\path\\cli.js');
+    });
+  });
+
+  describe('Sidebar', () => {
+    it('should toggle sidebar collapsed state', () => {
+      const { setSidebarCollapsed } = useClaudeStore.getState();
+
+      expect(useClaudeStore.getState().sidebarCollapsed).toBe(false);
+
+      setSidebarCollapsed(true);
+      expect(useClaudeStore.getState().sidebarCollapsed).toBe(true);
+
+      setSidebarCollapsed(false);
+      expect(useClaudeStore.getState().sidebarCollapsed).toBe(false);
+    });
+  });
+
+  describe('Output line types', () => {
+    it('should handle all output line types', () => {
+      const { addOutputLine } = useClaudeStore.getState();
+
+      const types = ['output', 'assistant', 'tool', 'error', 'system', 'approval'] as const;
+
+      types.forEach(type => {
+        addOutputLine({ type, content: `${type} message` });
+      });
+
+      const { outputLines } = useClaudeStore.getState();
+      expect(outputLines).toHaveLength(6);
+
+      types.forEach((type, index) => {
+        expect(outputLines[index].type).toBe(type);
+      });
+    });
+
+    it('should include data in output lines', () => {
+      const { addOutputLine } = useClaudeStore.getState();
+
+      addOutputLine({
+        type: 'tool',
+        content: 'Tool output',
+        data: { name: 'Bash', result: 'success' },
+      });
+
+      const { outputLines } = useClaudeStore.getState();
+      expect(outputLines[0].data).toEqual({ name: 'Bash', result: 'success' });
     });
   });
 });

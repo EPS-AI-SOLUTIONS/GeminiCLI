@@ -33,17 +33,27 @@ export const claudeIpc = {
 
   stopSession: (): Promise<void> => safeInvoke('stop_claude_session'),
 
-  getStatus: (): Promise<SessionStatus> =>
-    isTauri()
-      ? safeInvoke('get_session_status')
-      : Promise.resolve({
-          is_active: false,
-          pending_approval: false,
-          auto_approve_all: false,
-          approved_count: 0,
-          denied_count: 0,
-          auto_approved_count: 0,
-        }),
+  getStatus: async (): Promise<SessionStatus> => {
+    console.log('[IPC] getStatus called, isTauri:', isTauri());
+    if (isTauri()) {
+      try {
+        const status = await safeInvoke<SessionStatus>('get_session_status');
+        console.log('[IPC] getStatus result:', status);
+        return status;
+      } catch (e) {
+        console.error('[IPC] getStatus error:', e);
+        throw e;
+      }
+    }
+    return {
+      is_active: false,
+      pending_approval: false,
+      auto_approve_all: false,
+      approved_count: 0,
+      denied_count: 0,
+      auto_approved_count: 0,
+    };
+  },
 
   // Input/Output
   sendInput: (input: string): Promise<void> =>

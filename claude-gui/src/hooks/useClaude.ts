@@ -133,12 +133,14 @@ export function useClaude() {
     const refreshStatus = async () => {
       try {
         const newStatus = await claudeIpc.getStatus();
+        console.log('[useClaude] Got status:', newStatus, 'is_active:', newStatus.is_active);
         setStatus(newStatus);
-      } catch {
-        // Ignore errors
+      } catch (e) {
+        console.error('[useClaude] Failed to get status:', e);
       }
     };
 
+    console.log('[useClaude] Starting status refresh, isTauri:', isTauri());
     refreshStatus();
     const interval = setInterval(refreshStatus, 2000);
 

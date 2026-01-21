@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Send, Trash2 } from 'lucide-react';
+import { Send, Trash2, Zap } from 'lucide-react';
 import { useClaudeStore } from '../stores/claudeStore';
 import { useClaude } from '../hooks/useClaude';
 import { ApprovalDialog } from './ApprovalDialog';
+import { claudeIpc } from '../lib/ipc';
 
 export function TerminalView() {
   const { outputLines, clearOutput } = useClaudeStore();
@@ -26,6 +27,31 @@ export function TerminalView() {
       setInput('');
     } else {
       console.log('[INPUT] Blocked - input empty or session not active');
+    }
+  };
+
+  // Direct test - bypass all checks
+  const handleDirectTest = async () => {
+    console.log('[DIRECT TEST] Starting...');
+    try {
+      const status = await claudeIpc.getStatus();
+      console.log('[DIRECT TEST] Status:', status);
+
+      if (status.is_active) {
+        console.log('[DIRECT TEST] Sending "test" directly...');
+        await claudeIpc.sendInput('test\n');
+        console.log('[DIRECT TEST] Sent successfully!');
+      } else {
+        console.log('[DIRECT TEST] Session not active, starting...');
+        await claudeIpc.startSession(
+          'C:\\Users\\BIURODOM\\Desktop\\ClaudeCli',
+          'C:\\Users\\BIURODOM\\Desktop\\ClaudeCli\\bin\\claude-code\\cli.js',
+          'test'
+        );
+        console.log('[DIRECT TEST] Session started!');
+      }
+    } catch (error) {
+      console.error('[DIRECT TEST] Error:', error);
     }
   };
 
@@ -123,6 +149,14 @@ export function TerminalView() {
             className="glass-button glass-button-primary px-4"
           >
             <Send size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={handleDirectTest}
+            className="glass-button px-4 bg-yellow-600 hover:bg-yellow-500"
+            title="Direct IPC Test"
+          >
+            <Zap size={16} />
           </button>
         </div>
       </form>
