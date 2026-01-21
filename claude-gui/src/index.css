@@ -1,4 +1,4 @@
-/* Claude Code GUI - Matrix Glass Theme */
+/* Claude HYDRA - Matrix Glass Theme */
 /* Based on Tissaia-AI Regis Architecture */
 
 @import "tailwindcss";
@@ -28,21 +28,52 @@
 }
 
 /* ============================================
-   ROOT VARIABLES
+   ROOT VARIABLES - DARK THEME (Matrix)
    ============================================ */
-:root {
+:root,
+[data-theme="dark"] {
   --matrix-bg-primary: #0a1f0a;
   --matrix-bg-secondary: #001a00;
+  --matrix-bg-tertiary: #0d2a0d;
   --matrix-accent: #00ff41;
   --matrix-accent-hover: #33ff66;
+  --matrix-accent-dim: #00cc33;
   --matrix-glass-bg: rgba(0, 31, 0, 0.7);
   --matrix-text-primary: #c0ffc0;
   --matrix-text-secondary: #80c080;
   --matrix-border: #1a3a1a;
+  --matrix-glass-light: rgba(255, 255, 255, 0.05);
 
   /* Glass physics */
   --glass-blur: blur(16px) saturate(180%);
   --glass-radius: 12px;
+
+  /* Theme indicator */
+  --theme-mode: dark;
+}
+
+/* ============================================
+   LIGHT THEME (Cyber Light)
+   ============================================ */
+[data-theme="light"] {
+  --matrix-bg-primary: #f0f8f0;
+  --matrix-bg-secondary: #e8f5e8;
+  --matrix-bg-tertiary: #d8efd8;
+  --matrix-accent: #00aa30;
+  --matrix-accent-hover: #00cc40;
+  --matrix-accent-dim: #008825;
+  --matrix-glass-bg: rgba(240, 248, 240, 0.85);
+  --matrix-text-primary: #1a3a1a;
+  --matrix-text-secondary: #3a5a3a;
+  --matrix-border: #c0dcc0;
+  --matrix-glass-light: rgba(0, 0, 0, 0.05);
+
+  /* Glass physics */
+  --glass-blur: blur(16px) saturate(150%);
+  --glass-radius: 12px;
+
+  /* Theme indicator */
+  --theme-mode: light;
 }
 
 /* ============================================

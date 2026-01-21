@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   FolderOpen,
   FileCode,
@@ -8,7 +9,6 @@ import {
   Eye,
   EyeOff,
   Shield,
-  ChevronDown,
   ChevronRight,
   Bot,
   Sparkles,
@@ -17,6 +17,9 @@ import {
   Search,
   Github,
   Code2,
+  Sun,
+  Moon,
+  Palette,
 } from 'lucide-react';
 import { useClaudeStore } from '../stores/claudeStore';
 
@@ -88,7 +91,12 @@ function CollapsibleSection({
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div className="glass-panel overflow-hidden">
+    <motion.div
+      className="glass-panel overflow-hidden"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2 }}
+    >
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center gap-3 p-4 hover:bg-matrix-accent/5 transition-colors"
@@ -97,18 +105,29 @@ function CollapsibleSection({
         <span className="text-sm font-semibold text-matrix-accent flex-1 text-left">
           {title}
         </span>
-        {isOpen ? (
-          <ChevronDown size={16} className="text-matrix-text-dim" />
-        ) : (
+        <motion.div
+          animate={{ rotate: isOpen ? 90 : 0 }}
+          transition={{ duration: 0.2 }}
+        >
           <ChevronRight size={16} className="text-matrix-text-dim" />
-        )}
+        </motion.div>
       </button>
-      {isOpen && (
-        <div className="p-4 pt-0 border-t border-matrix-border space-y-4">
-          {children}
-        </div>
-      )}
-    </div>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
+            className="overflow-hidden"
+          >
+            <div className="p-4 pt-0 border-t border-matrix-border space-y-4">
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }
 
@@ -118,11 +137,18 @@ export function SettingsView() {
     cliPath,
     apiKeys,
     endpoints,
+    theme,
     setWorkingDir,
     setCliPath,
     setApiKey,
     setEndpoint,
+    toggleTheme,
   } = useClaudeStore();
+
+  // Apply theme to document
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
   return (
     <div className="h-full flex flex-col overflow-auto">
@@ -168,6 +194,52 @@ export function SettingsView() {
             />
             <p className="text-xs text-matrix-text-dim mt-1">
               Path to the Claude Code CLI entry point (cli.js).
+            </p>
+          </div>
+        </CollapsibleSection>
+
+        {/* Appearance */}
+        <CollapsibleSection
+          title="Appearance"
+          icon={<Palette size={18} className="text-pink-400" />}
+          defaultOpen={true}
+        >
+          <div className="space-y-4">
+            {/* Theme Toggle */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {theme === 'dark' ? (
+                  <Moon size={18} className="text-blue-400" />
+                ) : (
+                  <Sun size={18} className="text-yellow-400" />
+                )}
+                <div>
+                  <p className="text-sm text-matrix-text">Theme</p>
+                  <p className="text-xs text-matrix-text-dim">
+                    {theme === 'dark' ? 'Matrix Dark' : 'Cyber Light'}
+                  </p>
+                </div>
+              </div>
+              <motion.button
+                onClick={toggleTheme}
+                className="relative w-14 h-7 rounded-full bg-matrix-bg-secondary border border-matrix-border"
+                whileTap={{ scale: 0.95 }}
+              >
+                <motion.div
+                  className="absolute top-0.5 w-6 h-6 rounded-full bg-matrix-accent flex items-center justify-center"
+                  animate={{ left: theme === 'dark' ? '2px' : '30px' }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                >
+                  {theme === 'dark' ? (
+                    <Moon size={12} className="text-matrix-bg-primary" />
+                  ) : (
+                    <Sun size={12} className="text-matrix-bg-primary" />
+                  )}
+                </motion.div>
+              </motion.button>
+            </div>
+            <p className="text-xs text-matrix-text-dim">
+              Switch between Matrix Dark and Cyber Light theme.
             </p>
           </div>
         </CollapsibleSection>
@@ -338,8 +410,8 @@ export function SettingsView() {
         <div className="glass-card p-4">
           <h3 className="text-sm font-semibold text-matrix-accent mb-2">About</h3>
           <div className="text-xs text-matrix-text-dim space-y-1">
-            <p>Claude Code GUI v0.1.0</p>
-            <p>Auto-approve bridge for Claude Code CLI</p>
+            <p>Claude HYDRA v0.1.0</p>
+            <p>AI Swarm Control Center</p>
             <p className="pt-2">
               This GUI allows you to automatically approve or deny actions requested
               by Claude Code based on configurable rules.

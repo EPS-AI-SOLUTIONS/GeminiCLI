@@ -27,7 +27,7 @@ export function Header() {
     <header className="header glass-panel">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm">
-        <span className="text-matrix-text-dim">Claude GUI</span>
+        <span className="text-matrix-text-dim">HYDRA</span>
         <span className="text-matrix-border">/</span>
         <span className="text-matrix-accent">{viewTitles[currentView]}</span>
       </div>

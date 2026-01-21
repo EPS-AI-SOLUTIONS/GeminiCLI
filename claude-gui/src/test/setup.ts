@@ -33,10 +33,20 @@ const mockInvoke = vi.fn().mockImplementation((cmd: string) => {
       return Promise.resolve([]);
     case 'get_approval_history':
       return Promise.resolve([]);
+    case 'ollama_health_check':
+      return Promise.resolve(true);
+    case 'ollama_list_models':
+      return Promise.resolve([
+        { name: 'llama3.2:3b', size: 2147483648, modified_at: '2024-01-01' },
+        { name: 'qwen2.5-coder:1.5b', size: 1073741824, modified_at: '2024-01-01' },
+      ]);
     default:
       return Promise.resolve();
   }
 });
+
+// Export for test manipulation
+export { mockInvoke };
 
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: mockInvoke,

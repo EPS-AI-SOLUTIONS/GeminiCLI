@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useClaudeStore } from '../stores/claudeStore';
+import { formatSizeGB } from '../utils/format';
+
+// Check if running in Tauri (v2 uses __TAURI_INTERNALS__)
+const isTauri = () => typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_INTERNALS__' in window);
 
 interface OllamaModel {
   name: string;
@@ -16,6 +20,8 @@ export function StatusLine() {
 
   // Check Ollama health periodically
   useEffect(() => {
+    if (!isTauri()) return; // Skip in browser mode
+
     const checkOllama = async () => {
       try {
         const isHealthy = await invoke<boolean>('ollama_health_check');
@@ -42,12 +48,6 @@ export function StatusLine() {
     return () => clearInterval(interval);
   }, []);
 
-  // Format file size
-  const formatSize = (bytes?: number) => {
-    if (!bytes) return '';
-    const gb = bytes / (1024 * 1024 * 1024);
-    return `${gb.toFixed(1)}GB`;
-  };
 
   return (
     <footer className="glass-panel px-3 py-1.5 flex items-center justify-between text-[11px] font-mono border-t border-matrix-accent/20">
@@ -137,7 +137,7 @@ export function StatusLine() {
                   {i > 0 && ', '}
                   {m.name.split(':')[0]}
                   <span className="text-matrix-text-dim/50 text-[9px] ml-0.5">
-                    {formatSize(m.size)}
+                    {formatSizeGB(m.size)}
                   </span>
                 </span>
               ))}

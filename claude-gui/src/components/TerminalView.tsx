@@ -19,9 +19,13 @@ export function TerminalView() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('[INPUT] Submit:', { input: input.trim(), is_active: status.is_active, status });
     if (input.trim() && status.is_active) {
+      console.log('[INPUT] Sending:', input.trim());
       sendInput(input.trim());
       setInput('');
+    } else {
+      console.log('[INPUT] Blocked - input empty or session not active');
     }
   };
 

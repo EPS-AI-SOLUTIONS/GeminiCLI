@@ -17,13 +17,14 @@ import {
   Check,
   X,
   MessagesSquare,
+  Brain,
 } from 'lucide-react';
 import { useClaudeStore } from '../stores/claudeStore';
 import { useClaude } from '../hooks/useClaude';
 import { useChatHistory, type ChatSessionSummary } from '../hooks/useChatHistory';
 
 interface NavItem {
-  id: 'terminal' | 'settings' | 'history' | 'rules' | 'chats' | 'ollama';
+  id: 'terminal' | 'settings' | 'history' | 'rules' | 'chats' | 'ollama' | 'learning';
   label: string;
   icon: React.ReactNode;
 }
@@ -31,6 +32,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { id: 'terminal', label: 'Terminal', icon: <Terminal size={18} /> },
   { id: 'ollama', label: 'Ollama AI', icon: <Bot size={18} /> },
+  { id: 'learning', label: 'AI Learning', icon: <Brain size={18} /> },
   { id: 'chats', label: 'Historia czatów', icon: <MessageSquare size={18} /> },
   { id: 'rules', label: 'Reguły auto-appr.', icon: <Shield size={18} /> },
   { id: 'history', label: 'Historia zatwierdzeń', icon: <History size={18} /> },
@@ -223,16 +225,16 @@ export function Sidebar() {
         } transition-all duration-300`}>
           <img
             src="/logodark.webp"
-            alt="Claude GUI"
+            alt="Claude HYDRA"
             className="w-full h-full object-cover"
           />
         </div>
         {!sidebarCollapsed && (
           <div className="flex flex-col items-center text-center">
             <span className="text-lg font-bold text-matrix-accent text-glow">
-              Claude GUI
+              Claude HYDRA
             </span>
-            <span className="text-xs text-matrix-text-dim">Most auto-zatwierdzania</span>
+            <span className="text-xs text-matrix-text-dim">AI Swarm Control Center</span>
           </div>
         )}
       </div>

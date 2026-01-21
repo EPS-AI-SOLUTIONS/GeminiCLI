@@ -1,9 +1,13 @@
 mod agentic;
+mod bridge;
 mod chat_history;
 mod claude;
 mod commands;
+mod learning;
+mod memory;
 mod ollama;
 mod ollama_commands;
+mod parallel;
 
 use tauri::Manager;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -19,6 +23,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             // Initialize Claude state
             let claude_state = claude::state::AppState::new();
@@ -28,7 +33,7 @@ pub fn run() {
             let ollama_state = ollama_commands::OllamaState::new();
             app.manage(ollama_state);
 
-            tracing::info!("Claude Code GUI initialized");
+            tracing::info!("Claude HYDRA initialized");
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -50,6 +55,8 @@ pub fn run() {
             ollama_commands::ollama_generate,
             ollama_commands::ollama_generate_sync,
             ollama_commands::ollama_chat,
+            ollama_commands::ollama_batch_generate,
+            ollama_commands::get_cpu_info,
             // Chat history commands
             chat_history::list_chat_sessions,
             chat_history::get_chat_session,
@@ -60,6 +67,34 @@ pub fn run() {
             chat_history::clear_all_chats,
             // Agentic commands
             agentic::execute_command,
+            // Bridge IPC commands
+            bridge::get_bridge_state,
+            bridge::set_bridge_auto_approve,
+            bridge::approve_bridge_request,
+            bridge::reject_bridge_request,
+            bridge::clear_bridge_requests,
+            // Memory commands
+            memory::get_agent_memories,
+            memory::add_agent_memory,
+            memory::clear_agent_memories,
+            memory::get_knowledge_graph,
+            memory::update_knowledge_graph,
+            // Learning commands
+            learning::learning_get_stats,
+            learning::learning_get_preferences,
+            learning::learning_save_preferences,
+            learning::learning_rag_search,
+            learning::learning_rag_add,
+            learning::learning_rag_clear,
+            learning::learning_collect_training,
+            learning::learning_get_training_examples,
+            learning::learning_export_for_finetune,
+            learning::learning_pull_embedding_model,
+            // Alzur (AI Trainer) commands
+            learning::write_training_dataset,
+            learning::start_model_training,
+            learning::cancel_model_training,
+            learning::get_alzur_models,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

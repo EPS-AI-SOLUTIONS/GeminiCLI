@@ -7,18 +7,19 @@ use crate::claude::types::{ApprovalAction, ApprovalHistoryEntry, ClaudeEvent, Se
 
 /// Start a new Claude CLI session
 #[command]
+#[allow(non_snake_case)]
 pub async fn start_claude_session(
     state: State<'_, AppState>,
     window: Window,
-    working_dir: String,
-    cli_path: String,
-    initial_prompt: Option<String>,
+    workingDir: String,
+    cliPath: String,
+    initialPrompt: Option<String>,
 ) -> Result<String, String> {
     // Create event channel
     let (event_tx, mut event_rx) = mpsc::channel::<ClaudeEvent>(100);
 
     // Start session
-    let session_id = state.start_session(&working_dir, &cli_path, initial_prompt, event_tx).await?;
+    let session_id = state.start_session(&workingDir, &cliPath, initialPrompt, event_tx).await?;
 
     // Clone state for the spawned task
     let state_bridge = state.bridge.clone();

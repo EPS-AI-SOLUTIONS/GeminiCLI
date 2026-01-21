@@ -4,6 +4,9 @@ import { claudeIpc } from '../lib/ipc';
 import { useClaudeStore } from '../stores/claudeStore';
 import type { ClaudeEvent, AutoApprovedEvent } from '../types/claude';
 
+// Check if running in Tauri (v2 uses __TAURI_INTERNALS__)
+const isTauri = () => typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_INTERNALS__' in window);
+
 export function useClaude() {
   const {
     status,
@@ -21,6 +24,9 @@ export function useClaude() {
 
   // Listen for Claude events
   useEffect(() => {
+    // Skip if not running in Tauri
+    if (!isTauri()) return;
+
     const unlisteners: Array<() => void> = [];
 
     // Regular events
@@ -183,13 +189,17 @@ export function useClaude() {
   // Send input
   const sendInput = useCallback(
     async (input: string) => {
+      console.log('[useClaude] sendInput called:', input);
       try {
+        console.log('[useClaude] Calling IPC sendInput...');
         await claudeIpc.sendInput(input + '\n');
+        console.log('[useClaude] IPC sendInput SUCCESS');
         addOutputLine({
           type: 'output',
           content: `> ${input}`,
         });
       } catch (error) {
+        console.error('[useClaude] IPC sendInput FAILED:', error);
         addOutputLine({
           type: 'error',
           content: `Failed to send input: ${error}`,

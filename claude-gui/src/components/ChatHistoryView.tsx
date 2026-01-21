@@ -26,6 +26,7 @@ import {
 import { useChatHistory, type ChatSessionSummary, type ChatSession } from '../hooks/useChatHistory';
 import { useSessionAI, type SessionAIMetadata, type EnhancedSession } from '../hooks/useSessionAI';
 import { CodeBlock, InlineCode } from './CodeBlock';
+import { formatSimilarity } from '../utils/format';
 
 // Local storage key for AI metadata
 const AI_METADATA_KEY = 'claude-gui-session-ai-metadata';
@@ -766,7 +767,7 @@ export function ChatHistoryView() {
 
                 {showRelated && (
                   <div className="mt-2 flex flex-wrap gap-2">
-                    {relatedSessions.map((session) => (
+                    {relatedSessions.filter(Boolean).map((session) => (
                       <button
                         key={session.id}
                         onClick={() => loadSession(session.id)}
@@ -775,7 +776,7 @@ export function ChatHistoryView() {
                         <MessageSquare size={12} />
                         <span className="truncate max-w-[150px]">{session.title}</span>
                         <span className="text-matrix-text-dim">
-                          ({session.similarity?.toFixed(0)} match)
+                          ({formatSimilarity(session.similarity)}% match)
                         </span>
                       </button>
                     ))}

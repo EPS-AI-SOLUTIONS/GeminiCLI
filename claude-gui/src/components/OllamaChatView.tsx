@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect, useCallback, DragEvent } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+
+// Check if running in Tauri (v2 uses __TAURI_INTERNALS__)
+const isTauri = () => typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_INTERNALS__' in window);
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
@@ -16,6 +19,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useChatHistory } from '../hooks/useChatHistory';
+import { usePromptPipeline, getAlzurStatus } from '../hooks/usePromptPipeline';
 import { CodeBlock, InlineCode } from './CodeBlock';
 
 interface OllamaModel {
@@ -59,15 +63,19 @@ export function OllamaChatView() {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [ollamaConnected, setOllamaConnected] = useState(false);
+  const [alzurStatus, setAlzurStatus] = useState({ samples: 0, buffer: 0, isTraining: false, modelVersion: 0 });
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   const { currentSession, createSession, addMessage: saveChatMessage } = useChatHistory();
+  const { processPrompt } = usePromptPipeline();
 
-  // Load models on mount
+  // Load models on mount - prefer Alzur-trained models
   useEffect(() => {
+    if (!isTauri()) return; // Skip in browser mode
+
     const loadModels = async () => {
       try {
         const isHealthy = await invoke<boolean>('ollama_health_check');
@@ -75,8 +83,26 @@ export function OllamaChatView() {
         if (isHealthy) {
           const result = await invoke<OllamaModel[]>('ollama_list_models');
           setModels(result);
+
           if (result.length > 0 && !selectedModel) {
-            setSelectedModel(result[0].name);
+            // AUTO-SELECT: Prefer latest Alzur-trained model if available
+            const alzurModels = result
+              .filter(m => m.name.startsWith('alzur-v'))
+              .sort((a, b) => {
+                // Sort by version number descending
+                const vA = parseInt(a.name.replace('alzur-v', '')) || 0;
+                const vB = parseInt(b.name.replace('alzur-v', '')) || 0;
+                return vB - vA;
+              });
+
+            if (alzurModels.length > 0) {
+              // Use latest Alzur model (continuous learning result)
+              setSelectedModel(alzurModels[0].name);
+              console.log(`[Alzur] Auto-selected trained model: ${alzurModels[0].name}`);
+            } else {
+              // Fallback to first available model
+              setSelectedModel(result[0].name);
+            }
           }
         }
       } catch (e) {
@@ -87,10 +113,19 @@ export function OllamaChatView() {
     loadModels();
   }, [selectedModel]);
 
-  // Listen for streaming chunks
+  // Reference to capture final response for Vilgefortz
+  const responseBufferRef = useRef<string>('');
+  const lastUserPromptRef = useRef<string>('');
+
+  // Listen for streaming chunks with Vilgefortz post-processing
   useEffect(() => {
-    const unlisten = listen<StreamChunk>('ollama-stream-chunk', (event) => {
+    if (!isTauri()) return; // Skip in browser mode
+
+    const unlisten = listen<StreamChunk>('ollama-stream-chunk', async (event) => {
       const chunk = event.payload;
+
+      // Accumulate response
+      responseBufferRef.current += chunk.token;
 
       setMessages((prev) => {
         const lastMsg = prev[prev.length - 1];
@@ -109,18 +144,51 @@ export function OllamaChatView() {
 
       if (chunk.done) {
         setIsLoading(false);
+
+        // ═══════════════════════════════════════════════════════════════
+        // VILGEFORTZ POST-PROCESSING: Analyze & Learn from response
+        // ═══════════════════════════════════════════════════════════════
+        const finalResponse = responseBufferRef.current;
+        const userPrompt = lastUserPromptRef.current;
+
+        if (finalResponse && userPrompt) {
+          // Trigger Vilgefortz analysis (async, non-blocking)
+          try {
+            await invoke('add_agent_memory', {
+              agent: 'Vilgefortz',
+              entryType: 'context',
+              content: `[Session Analysis]\nPrompt: ${userPrompt.slice(0, 100)}...\nResponse length: ${finalResponse.length} chars\nModel: ${selectedModel}\nTimestamp: ${new Date().toISOString()}`,
+              tags: 'session,analysis,auto-learn',
+            });
+          } catch {
+            // Silent fail - learning is non-critical
+          }
+        }
+
+        // Reset buffer
+        responseBufferRef.current = '';
       }
     });
 
     return () => {
       unlisten.then((fn) => fn());
     };
-  }, []);
+  }, [selectedModel]);
 
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Update Alzur status periodically
+  useEffect(() => {
+    const updateAlzurStatus = () => {
+      setAlzurStatus(getAlzurStatus());
+    };
+    updateAlzurStatus();
+    const interval = setInterval(updateAlzurStatus, 2000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Handle file drop
   const handleDrop = useCallback(async (e: DragEvent<HTMLDivElement>) => {
@@ -187,7 +255,7 @@ export function OllamaChatView() {
     setAttachments((prev) => prev.filter((a) => a.id !== id));
   };
 
-  // Send message
+  // Send message with AI Pipeline (Avallac'h → AI → Vilgefortz)
   const sendMessage = async () => {
     if ((!input.trim() && attachments.length === 0) || !selectedModel || isLoading) return;
 
@@ -227,6 +295,9 @@ export function OllamaChatView() {
     setAttachments([]);
     setIsLoading(true);
 
+    // Store prompt for Vilgefortz post-processing
+    lastUserPromptRef.current = content;
+
     // Add placeholder for assistant response
     const assistantMessage: Message = {
       id: crypto.randomUUID(),
@@ -244,23 +315,37 @@ export function OllamaChatView() {
         role: m.role,
         content: m.content,
       }));
-      chatMessages.push({ role: 'user', content });
 
       // Check if any image attachments (for vision models)
       const hasImages = attachments.some((a) => a.type === 'image');
+      let finalContent = content;
 
-      // Regular chat (vision models not yet supported - images are included as text descriptions)
       if (hasImages) {
         const imageNames = attachments
           .filter((a) => a.type === 'image')
           .map((a) => a.name)
           .join(', ');
-        chatMessages[chatMessages.length - 1].content = `[Attached images: ${imageNames}]\n\n${content}`;
+        finalContent = `[Attached images: ${imageNames}]\n\n${content}`;
       }
 
-      await invoke('ollama_chat', {
-        model: selectedModel,
-        messages: chatMessages,
+      // ═══════════════════════════════════════════════════════════════
+      // PIPELINE: Avallac'h (Pre) → Ollama → Vilgefortz (Post)
+      // ZAWSZE aktywny - dane zbierane do treningu AI
+      // ═══════════════════════════════════════════════════════════════
+
+      // ALWAYS run full pipeline with Avallac'h research + Vilgefortz learning
+      await processPrompt(finalContent, async (enrichedPrompt) => {
+        // Add enriched prompt to chat messages (with research context)
+        chatMessages.push({ role: 'user', content: enrichedPrompt });
+
+        // Call Ollama with enriched context
+        await invoke('ollama_chat', {
+          model: selectedModel,
+          messages: chatMessages,
+        });
+
+        // Return response for Vilgefortz (will be captured from stream)
+        return ''; // Stream handles response capture
       });
 
     } catch (e) {
@@ -311,6 +396,24 @@ export function OllamaChatView() {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Alzur Status Indicator */}
+          <div
+            className={`flex items-center gap-2 px-2 py-1 rounded text-xs ${
+              alzurStatus.isTraining
+                ? 'bg-amber-500/20 border border-amber-500/50 text-amber-400'
+                : alzurStatus.modelVersion > 0
+                ? 'bg-green-500/20 border border-green-500/50 text-green-400'
+                : 'bg-matrix-bg-secondary border border-matrix-accent/30 text-matrix-text-dim'
+            }`}
+            title={`Alzur: ${alzurStatus.samples} samples | Buffer: ${alzurStatus.buffer}/10 | Model: v${alzurStatus.modelVersion}`}
+          >
+            <span className={`w-2 h-2 rounded-full ${
+              alzurStatus.isTraining ? 'bg-amber-400 animate-pulse' : 'bg-green-400'
+            }`} />
+            <span>⚗️ {alzurStatus.isTraining ? 'Training...' : `v${alzurStatus.modelVersion}`}</span>
+            <span className="text-[10px] opacity-70">{alzurStatus.buffer}/10</span>
+          </div>
+
           {/* Model selector */}
           <select
             value={selectedModel}
