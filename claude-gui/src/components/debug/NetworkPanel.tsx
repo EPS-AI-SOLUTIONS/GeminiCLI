@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Globe, ArrowUp, ArrowDown, Clock, AlertCircle } from 'lucide-react';
+import { Globe } from 'lucide-react';
 
 interface NetworkRequest {
   id: string;
@@ -20,7 +20,7 @@ export function NetworkPanel() {
     const originalFetch = window.fetch;
     window.fetch = async (...args) => {
       const start = Date.now();
-      const url = typeof args[0] === 'string' ? args[0] : args[0].url;
+      const url = typeof args[0] === 'string' ? args[0] : (args[0] instanceof Request ? args[0].url : args[0].toString());
       const method = (args[1]?.method || 'GET') as NetworkRequest['method'];
       const id = crypto.randomUUID();
 
