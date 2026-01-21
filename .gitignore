@@ -60,3 +60,13 @@ Thumbs.db
 
 # Tauri
 claude-gui/src-tauri/target/
+
+# Test coverage
+claude-gui/coverage/
+
+# Playwright MCP cache
+.playwright-mcp/
+
+# Local config files
+bridge.json
+.claude/settings.local.json
