@@ -70,3 +70,7 @@ claude-gui/coverage/
 # Local config files
 bridge.json
 .claude/settings.local.json
+
+# Cache and test results
+*.sccache.zip
+test-results/
