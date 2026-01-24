@@ -58,18 +58,35 @@ vi.mock('../CodeBlock', () => ({
 
 // Mock react-markdown (simplified)
 vi.mock('react-markdown', () => ({
-  default: ({ children, components }: any) => (
-    <div data-testid="markdown-body">
-      {typeof children === 'string' ? (
-        <div data-testid="markdown-content">{children}</div>
-      ) : (
-        children
-      )}
-      {components?.code && (
-        <span data-testid="markdown-code-component-available" />
-      )}
-    </div>
-  ),
+  default: ({ children, components }: any) => {
+    // Simple check for code block in markdown string
+    const codeBlockMatch = typeof children === 'string' && children.match(/```(\w+)\n([\s\S]*?)\n```/);
+    
+    if (codeBlockMatch && components?.code) {
+      const [_, language, code] = codeBlockMatch;
+      return (
+        <div data-testid="markdown-body">
+          {components.code({
+            className: `language-${language}`,
+            children: code,
+          })}
+        </div>
+      );
+    }
+
+    return (
+      <div data-testid="markdown-body">
+        {typeof children === 'string' ? (
+          <div data-testid="markdown-content">{children}</div>
+        ) : (
+          children
+        )}
+        {components?.code && (
+          <span data-testid="markdown-code-component-available" />
+        )}
+      </div>
+    );
+  },
 }));
 
 // Mock remark-gfm
@@ -254,8 +271,9 @@ describe('MessageList Component', () => {
         <MessageList {...defaultProps} messages={[assistantMessage]} />
       );
 
-      const markdownCodeComponent = screen.getByTestId('markdown-code-component-available');
-      expect(markdownCodeComponent).toBeInTheDocument();
+      const codeBlock = screen.getByTestId('code-block');
+      expect(codeBlock).toBeInTheDocument();
+      expect(codeBlock).toHaveAttribute('data-language', 'python');
     });
   });
 
@@ -314,7 +332,10 @@ describe('MessageList Component', () => {
 
       const systemHeader = screen.getByText('SYSTEM OUTPUT');
       expect(systemHeader).toBeInTheDocument();
-      expect(systemHeader).toHaveClass('font-bold', 'text-blue-400');
+      expect(systemHeader).toHaveClass('font-bold');
+      
+      const headerContainer = systemHeader.parentElement;
+      expect(headerContainer).toHaveClass('text-blue-400');
     });
 
     it('should left-align system messages', () => {

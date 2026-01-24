@@ -1,5 +1,5 @@
 
-$ScriptDir = "C:\Users\BIURODOM\Desktop\GeminiCLI"
+$ScriptDir = $PSScriptRoot
 Set-Location $ScriptDir
 
 Write-Host "--- Initiating Witcher Protocol: Portable Integration ---" -ForegroundColor Cyan

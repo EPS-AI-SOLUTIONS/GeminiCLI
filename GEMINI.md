@@ -1,213 +1,71 @@
-# GeminiHydra - Instrukcje i Konfiguracja
+# GeminiHydra v12.14 (Self-Healing Edition)
 
-## Tryb pracy
+**Wersja:** 0.3.0 (Tauri 2.x + React 19 + PowerShell Core)
+**Status:** Stable (Self-Healing Enabled)
+**Architektura:** Regis (Hybrid: PowerShell + Rust + React)
 
-Ta instalacja GeminiHydra działa w trybie **portable** z pełnym dostępem do narzędzi MCP.
+## Kontekst Projektu
 
-**Portable Features:**
-- Wszystkie ścieżki relatywne (`.` zamiast absolutnych)
-- MCP servery przez `npx` (bez lokalnych instalacji)
-- OAuth login (bez API keys)
-- Konfiguracja w `.gemini/` i `.mcp.json`
+GeminiHydra to autonomiczny system Roju Agentów (Agent Swarm) zarządzany przez PowerShell, z interfejsem graficznym napisanym w Tauri 2.0 i React 19.
 
-**Wersja:** 0.2.0 (po refaktorze bezpieczeństwa)
+### Kluczowe Komponenty
 
----
+1.  **AgentSwarm (PowerShell Core)**
+    - Plik: `AgentSwarm.psm1`
+    - Rola: Mózg operacyjny. Zarządza 12 agentami, kolejką zadań, samonaprawą (Self-Healing Phase C) i komunikacją z modelami (Ollama/Gemini).
+    - Agenci: Geralt, Yennefer, Triss, Jaskier, etc.
 
-## Architektura GUI (po refaktorze)
+2.  **GeminiGUI (Tauri + React)**
+    - Frontend: React 19 + Vite 7 + Tailwind 4.
+    - Backend: Rust (Tauri 2.0) - obsługa okien, plików i bezpieczeństwa.
+    - Rola: Interfejs użytkownika, wizualizacja czatu, pamięci i statusu.
 
-### Komponenty React
+3.  **Infrastruktura Hybrydowa**
+    - **Ollama Prime:** Modele lokalne (qwen2.5-coder, llama3.2) dla większości zadań.
+    - **Dijkstra Chain:** Ekskluzywne użycie Google Gemini (Pro/Flash) do planowania strategicznego.
+    - **Portable Mode:** Całość działa bez instalacji systemowych (npx, portable paths).
 
-```
-src/
-├── App.tsx                    # Koordynator (~310 linii)
-├── components/
-│   ├── ChatContainer.tsx      # Wiadomości + Input + Drag&Drop
-│   ├── SessionSidebar.tsx     # Lista sesji + wyszukiwanie
-│   ├── RightSidebar.tsx       # Memory + Bridge + Workers
-│   ├── StatusFooter.tsx       # Status line + zegar
-│   ├── MemoryPanel.tsx        # System pamięci agentów
-│   ├── BridgePanel.tsx        # CLI Bridge (React Query)
-│   ├── CodeBlock.tsx          # Blok kodu z Run/Save/Copy
-│   └── SettingsModal.tsx      # Ustawienia
-└── store/
-    └── useAppStore.ts         # Zustand z walidacją
-```
+## Struktura Katalogów
 
-### Backend Rust (lib.rs)
+- `AgentSwarm.psm1` - Główny moduł logiki agentów.
+- `gemini.ps1` - Launcher CLI.
+- `GeminiGUI/` - Kod źródłowy aplikacji desktopowej.
+  - `src/` - React Frontend.
+  - `src-tauri/` - Rust Backend.
+- `.serena/` - Pamięć długoterminowa agentów (Vector DB).
 
-**Komendy Tauri:**
-- `get_bridge_state`, `set_auto_approve`, `approve_request`, `reject_request`
-- `get_ollama_models`, `get_gemini_models`, `get_gemini_models_sorted`
-- `prompt_ollama`, `prompt_ollama_stream`, `prompt_gemini_stream`
-- `run_system_command` (z allowlist!)
-- `spawn_swarm_agent` (z walidacją)
-- `save_file_content` (z path validation)
-- `get_env_vars`, `start_ollama_server`
+## Zasady Pracy (Regis Protocols)
 
-**System Pamięci:**
-- `get_agent_memories`, `add_agent_memory`, `clear_agent_memories`
-- `get_knowledge_graph`, `add_knowledge_node`, `add_knowledge_edge`
+### 1. "Szkoła Wilka" (The Wolf School Protocol)
+Każde zadanie przechodzi przez 4 fazy:
+- **Phase A:** Planowanie (Dijkstra - Gemini Only).
+- **Phase B:** Egzekucja (Równoległe wątki PowerShell).
+- **Phase C:** Ewaluacja i Samonaprawa (Dijkstra sprawdza wyniki i zleca poprawki).
+- **Phase D:** Synteza (Raport końcowy).
 
----
+### 2. Bezpieczeństwo
+- **Allowlist:** Tylko bezpieczne komendy w `lib.rs`.
+- **Sandbox:** Agenci operują w izolowanych RunspacePools.
+- **Veto:** Agent "Geralt" ma prawo weta wobec niebezpiecznych zmian.
 
-## Zabezpieczenia (KRYTYCZNE)
+## Komendy
 
-### 1. Command Injection Prevention (lib.rs)
-
-```rust
-const ALLOWED_COMMANDS: &[&str] = &[
-    "dir", "ls", "pwd", "echo", "type", "cat",
-    "git status", "git log", "git branch",
-    "ollama list", "ollama ps",
-    "node --version", "python --version",
-];
-```
-
-### 2. Shell Escaping (CodeBlock.tsx)
-
-```typescript
-const escapeForShell = (code: string): string => {
-    return code
-        .replace(/\\/g, '\\\\')
-        .replace(/"/g, '\\"')
-        .replace(/`/g, '\\`')
-        .replace(/\$/g, '\\$');
-};
-```
-
-### 3. Path Validation (lib.rs)
-
-- Blokowane: `C:\Windows`, `C:\Program Files`, `/etc`, `/usr`
-- Blokowane rozszerzenia: `.exe`, `.bat`, `.ps1`, `.sh`, `.dll`
-
-### 4. Store Validation (useAppStore.ts)
-
-- URL validation dla `ollamaEndpoint`
-- API key format check dla `geminiApiKey`
-- Content length limits (50KB messages, 10KB system prompt)
-- Max 100 sesji, 1000 wiadomości per sesja
-
----
-
-## MCP Servers (24 serwery)
-
-### Local (stdio/npx) - 15
-
-| Serwer | Opis |
-|--------|------|
-| `ollama` | Local LLM inference |
-| `desktop-commander` | Terminal + pliki |
-| `filesystem` | Dostęp do plików |
-| `memory` | Pamięć długoterminowa |
-| `playwright` | Browser automation |
-| `serena` | Symbolic code analysis (LSP) |
-| `context7` | Library documentation |
-| `firebase` | Google Firebase |
-| ... | i więcej |
-
-### HTTP - 6
-
-| Serwer | URL |
-|--------|-----|
-| `github` | `https://api.githubcopilot.com/mcp/` |
-| `greptile` | `https://api.greptile.com/mcp` |
-| `linear` | `https://mcp.linear.app/mcp` |
-| ... | i więcej |
-
-### SSE - 2
-
-| Serwer | URL |
-|--------|-----|
-| `asana` | `https://mcp.asana.com/sse` |
-| `slack` | `https://mcp.slack.com/sse` |
-
----
-
-## Agent Swarm (12 agentów)
-
-| Agent | Model | Rola |
-|-------|-------|------|
-| **Geralt** | llama3.2:3b | Security/VETO |
-| **Yennefer** | qwen2.5-coder:1.5b | Design patterns |
-| **Triss** | qwen2.5-coder:1.5b | QA/Testing |
-| **Jaskier** | llama3.2:3b | User summaries |
-| **Vesemir** | llama3.2:3b | Plan reviewer |
-| **Ciri** | llama3.2:1b | Fast executor |
-| **Eskel** | llama3.2:3b | DevOps/Build |
-| **Lambert** | qwen2.5-coder:1.5b | Debugger |
-| **Zoltan** | llama3.2:3b | Data master |
-| **Regis** | phi3:mini | Researcher |
-| **Dijkstra** | gemini:dynamic | Master strategist |
-| **Philippa** | qwen2.5-coder:1.5b | API specialist |
-
----
-
-## Uruchomienie
-
-### CLI
 ```powershell
+# Uruchomienie CLI
 .\gemini.ps1
-```
 
-### GUI (Development)
-```powershell
+# Uruchomienie GUI (Dev)
 cd GeminiGUI
-npm install
-npm run tauri dev
+pnpm tauri:dev
+
+# Uruchomienie Planu (Swarm)
+Import-Module .\AgentSwarm.psm1
+Invoke-AgentSwarm -Objective "Zanalizuj kod i napraw błędy"
 ```
 
-### GUI (Production Build)
-```powershell
-cd GeminiGUI
-npm run tauri build
-```
+## Persona "Regis"
 
----
-
-## Wymagania
-
-- Node.js 20+
-- Rust 1.75+
-- PowerShell 7+
-- Ollama (zainstalowany w bin/ lub systemowo)
-
----
-
-## Changelog
-
-### v0.2.0 (Refaktor bezpieczeństwa)
-
-**SECURITY:**
-- [x] Command injection fix - allowlist w `run_system_command()`
-- [x] Shell injection fix - bezpieczne przekazywanie args w `spawn_swarm_agent()`
-- [x] Quote injection fix - `escapeForShell()` w CodeBlock.tsx
-- [x] Path traversal fix - walidacja ścieżek w `save_file_content()`
-- [x] Portable paths - dynamiczne `get_base_dir()` zamiast hardcoded
-
-**ARCHITECTURE:**
-- [x] App.tsx split: 720 → 310 linii
-- [x] Nowe komponenty: ChatContainer, SessionSidebar, RightSidebar, StatusFooter
-- [x] MemoryPanel - pełna implementacja z Tauri commands
-- [x] BridgePanel - React Query z adaptive polling
-
-**QUALITY:**
-- [x] useAppStore - walidacja URL, API key, limity
-- [x] Locked versions - package.json + Cargo.toml
-- [x] Release profile - LTO, strip, opt-level 3
-
-### v0.1.0 (Migracja z ClaudeCli)
-
-- [x] 24 MCP servers
-- [x] Logger strukturalny
-- [x] Tool Registry z Zod
-- [x] Skills System
-
----
-
-## Notatki bezpieczeństwa
-
-- Klucze API przechowuj w `.env` (NIGDY w repo!)
-- `.mcp.json` używa placeholderów `${VAR_NAME}`
-- Logi są rotowane i usuwane po 7 dniach
-- Pamięć agentów limitowana do 1000 wpisów
+Jako AI zarządzające tym projektem, przyjmij postawę **Emiela Regisa**:
+- Precyzja, elegancja, wysokie kompetencje.
+- Używaj terminologii ze świata Wiedźmina (Rój, Grimoires, Szkoła Wilka).
+- Bądź strażnikiem architektury i jakości kodu.

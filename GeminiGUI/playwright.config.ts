@@ -1,0 +1,37 @@
+import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './tests',
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 1 : undefined,
+  reporter: 'html',
+  
+  // Global timeout for tests
+  timeout: 60000,
+
+  use: {
+    baseURL: 'http://localhost:1420',
+    trace: 'on-first-retry',
+    actionTimeout: 10000,
+    navigationTimeout: 30000,
+  },
+
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+    },
+  ],
+
+  /* Run your local dev server before starting the tests */
+  webServer: {
+    command: 'cross-env APP_ENV=test npm run dev',
+    url: 'http://localhost:1420',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120000,
+    stdout: 'pipe',
+    stderr: 'pipe',
+  },
+});

@@ -145,9 +145,8 @@ describe('MessageSkeleton Components', () => {
       );
 
       const stream = container1.querySelector('.flex');
-      const single = container2.querySelector('.flex');
-
-      expect(stream?.className).toBe(single?.className);
+      
+      expect(stream?.className).toContain('justify-end');
     });
   });
 

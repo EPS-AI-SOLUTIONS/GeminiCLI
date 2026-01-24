@@ -5,6 +5,7 @@
  * Unit tests for skeleton loading components.
  */
 
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import {
   Skeleton,
@@ -101,8 +102,8 @@ describe('Skeleton Components', () => {
       const element = container.querySelector('.skeleton-pulse');
       expect(element).toHaveClass('rounded-full');
       expect(element).toHaveStyle({
-        width: 40,
-        height: 40,
+        width: '40px',
+        height: '40px',
       });
     });
 
@@ -110,8 +111,8 @@ describe('Skeleton Components', () => {
       const { container } = render(<SkeletonAvatar size={64} />);
       const element = container.querySelector('.skeleton-pulse');
       expect(element).toHaveStyle({
-        width: 64,
-        height: 64,
+        width: '64px',
+        height: '64px',
       });
     });
 

@@ -27,7 +27,7 @@ describe('Button Component', () => {
 
       expect(button).toBeInTheDocument();
       expect(button?.textContent).toBe('Click me');
-      expect(button?.className).toContain('primary');
+      expect(button?.className).toContain('bg-[var(--matrix-accent)]');
     });
 
     it('should have correct base classes', () => {
@@ -59,7 +59,6 @@ describe('Button Component', () => {
       const { container } = render(<Button variant="primary">Primary</Button>);
       const button = container.querySelector('button');
 
-      expect(button?.className).toContain('primary');
       expect(button?.className).toContain('bg-[var(--matrix-accent)]');
     });
 
@@ -69,7 +68,6 @@ describe('Button Component', () => {
       );
       const button = container.querySelector('button');
 
-      expect(button?.className).toContain('secondary');
       expect(button?.className).toContain('bg-black/30');
       expect(button?.className).toContain('border');
     });
@@ -78,7 +76,6 @@ describe('Button Component', () => {
       const { container } = render(<Button variant="ghost">Ghost</Button>);
       const button = container.querySelector('button');
 
-      expect(button?.className).toContain('ghost');
       expect(button?.className).toContain('hover:text-[var(--matrix-accent)]');
     });
 
@@ -86,7 +83,6 @@ describe('Button Component', () => {
       const { container } = render(<Button variant="danger">Delete</Button>);
       const button = container.querySelector('button');
 
-      expect(button?.className).toContain('danger');
       expect(button?.className).toContain('bg-red-500/80');
       expect(button?.className).toContain('text-white');
     });
@@ -99,8 +95,8 @@ describe('Button Component', () => {
       );
       const button = container.querySelector('button');
 
-      expect(button?.className).toContain('icon');
       expect(button?.className).toContain('rounded-full');
+      expect(button?.className).toContain('text-[var(--matrix-accent)]');
     });
   });
 
@@ -155,7 +151,7 @@ describe('Button Component', () => {
       );
       const button = container.querySelector('button');
 
-      expect(button?.className).toContain('danger');
+      expect(button?.className).toContain('bg-red-500/80');
       expect(button?.className).toContain('text-base');
       expect(button?.className).toContain('px-6');
     });
@@ -460,7 +456,7 @@ describe('Button Component', () => {
       const button = container.querySelector('button');
 
       expect(button?.className).toContain('w-full');
-      expect(button?.className).toContain('danger');
+      expect(button?.className).toContain('bg-red-500/80');
       expect(button?.className).toContain('text-base');
     });
   });
@@ -509,7 +505,7 @@ describe('Button Component', () => {
       const button = container.querySelector('button');
 
       expect(button?.className).toContain('custom-class');
-      expect(button?.className).toContain('primary');
+      expect(button?.className).toContain('bg-[var(--matrix-accent)]');
     });
   });
 
@@ -599,7 +595,7 @@ describe('Button Component', () => {
 
       const button = container.querySelector('button') as HTMLButtonElement;
 
-      expect(button?.className).toContain('danger');
+      expect(button?.className).toContain('bg-red-500/80');
       expect(button?.className).toContain('text-base');
       expect(button?.className).toContain('w-full');
       expect(button?.getAttribute('aria-label')).toBe('Delete all items');

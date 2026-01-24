@@ -1,17 +1,14 @@
 ﻿{
     "mcpServers":  {
-                       "git":  {
-                                   "command":  "cmd",
-                                   "args":  [
-                                                "/c",
-                                                "npx",
-                                                "-y",
-                                                "@anthropic-ai/mcp-server-git"
-                                            ],
-                                   "env":  {
-                                               "GIT_DEFAULT_PATH":  "C:\\Users\\BIURODOM\\Desktop\\GeminiHydra"
-                                           }
-                               },
+                       "time":  {
+                                    "command":  "cmd",
+                                    "args":  [
+                                                 "/c",
+                                                 "npx",
+                                                 "-y",
+                                                 "@modelcontextprotocol/server-time"
+                                             ]
+                                },
                        "gitlab":  {
                                       "type":  "http",
                                       "url":  "https://gitlab.com/api/v4/mcp"
@@ -28,19 +25,14 @@
                                                              "EVERYTHING_PATH":  "C:/Program Files/Everything/Everything.exe"
                                                          }
                                              },
-                       "time":  {
-                                    "command":  "cmd",
-                                    "args":  [
-                                                 "/c",
-                                                 "npx",
-                                                 "-y",
-                                                 "@modelcontextprotocol/server-time"
-                                             ]
-                                },
+                       "supabase":  {
+                                        "type":  "http",
+                                        "url":  "https://mcp.supabase.com/mcp"
+                                    },
                        "memory":  {
                                       "command":  "C:\\Program Files\\nodejs\\node.exe",
                                       "args":  [
-                                                   "C:\\Users\\BIURODOM\\Desktop\\GeminiHydra\\mcp\\node_modules\\@modelcontextprotocol\\server-memory\\dist\\index.js"
+                                                   "file:///C:/Users/BIURODOM/Desktop/GeminiHydra/mcp/node_modules/@modelcontextprotocol/server-memory/dist/index.js"
                                                ]
                                   },
                        "asana":  {
@@ -50,8 +42,9 @@
                        "filesystem":  {
                                           "command":  "C:\\Program Files\\nodejs\\node.exe",
                                           "args":  [
-                                                       "C:\\Users\\BIURODOM\\Desktop\\GeminiHydra\\mcp\\node_modules\\@modelcontextprotocol\\server-filesystem\\dist\\index.js",
-                                                       "C:\\"
+                                                       "file:///C:/Users/BIURODOM/Desktop/GeminiHydra/mcp/node_modules/@modelcontextprotocol/server-filesystem/dist/index.js",
+                                                       ".",
+                                                       ".."
                                                    ]
                                       },
                        "puppeteer":  {
@@ -107,7 +100,7 @@
                        "ollama":  {
                                       "command":  "C:\\Program Files\\nodejs\\node.exe",
                                       "args":  [
-                                                   "C:\\Users\\BIURODOM\\Desktop\\GeminiHydra\\mcp\\node_modules\\ollama-mcp\\dist\\index.js"
+                                                   "file:///C:/Users/BIURODOM/Desktop/GeminiHydra/mcp/node_modules/ollama-mcp/dist/index.js"
                                                ],
                                       "env":  {
                                                   "OLLAMA_HOST":  "http://127.0.0.1:11434"
@@ -179,10 +172,6 @@
                                                        "-y",
                                                        "@playwright/mcp@latest"
                                                    ]
-                                      },
-                       "supabase":  {
-                                        "type":  "http",
-                                        "url":  "https://mcp.supabase.com/mcp"
-                                    }
+                                      }
                    }
 }

@@ -7,9 +7,9 @@
   "mcpServers": {
     "ollama": {
       "command": "cmd",
-      "args": ["/c", "npx", "-y", "ollama-mcp"],
+      "args": ["/c", "cd mcp && npx ollama-mcp"],
       "env": {
-        "OLLAMA_HOST": "http://localhost:11434"
+        "OLLAMA_HOST": "http://127.0.0.1:11434"
       },
       "timeout": 120000
     },
@@ -33,12 +33,12 @@
     },
     "filesystem": {
       "command": "cmd",
-      "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-filesystem", ".", "../"],
+      "args": ["/c", "cd mcp && node node_modules/@modelcontextprotocol/server-filesystem/dist/index.js . ../"],
       "timeout": 60000
     },
     "memory": {
       "command": "cmd",
-      "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-memory"],
+      "args": ["/c", "cd mcp && node node_modules/@modelcontextprotocol/server-memory/dist/index.js"],
       "timeout": 60000
     },
     "sequential-thinking": {
@@ -50,18 +50,10 @@
       "command": "cmd",
       "args": ["/c", "npx", "-y", "@upstash/context7-mcp"],
       "timeout": 60000
-    },
-    "git": {
-      "command": "cmd",
-      "args": ["/c", "npx", "-y", "@anthropic-ai/mcp-server-git"],
-      "env": {
-        "GIT_DEFAULT_PATH": "."
-      },
-      "timeout": 60000
     }
   },
   "mcp": {
-    "allowed": ["ollama", "serena", "desktop-commander", "playwright", "filesystem", "memory", "sequential-thinking", "context7", "git"],
+    "allowed": ["ollama", "serena", "desktop-commander", "playwright", "filesystem", "memory", "sequential-thinking", "context7"],
     "parallelToolCalls": true
   },
   "model": {
@@ -83,6 +75,11 @@
     "retryDelay": 1000,
     "fallbacks": {
       "google": ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash-lite"]
+    },
+    "userPreferences": {
+      "language": "pl",
+      "useExternalSearch": true,
+      "searchSources": ["google", "stackoverflow"]
     }
   },
   "context": {

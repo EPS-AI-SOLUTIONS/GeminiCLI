@@ -31,11 +31,13 @@ export const useAppStore = create<AppState>()(
       // Initial State
       count: 0,
       theme: 'dark',
-      provider: 'ollama',
       sessions: [],
       currentSessionId: null,
       chatHistory: {},
       settings: DEFAULT_SETTINGS,
+      provider: 'ollama',
+
+      setProvider: (provider) => set({ provider }),
 
       // ========================================
       // Counter Actions
@@ -59,11 +61,6 @@ export const useAppStore = create<AppState>()(
         set((state) => ({
           theme: state.theme === 'dark' ? 'light' : 'dark',
         })),
-
-      // ========================================
-      // Provider Actions
-      // ========================================
-      setProvider: (provider) => set({ provider }),
 
       // ========================================
       // Session Actions
@@ -254,13 +251,6 @@ export const useAppStore = create<AppState>()(
             );
           }
 
-          // Validate defaultProvider
-          if (newSettings.defaultProvider !== undefined) {
-            if (['ollama', 'gemini'].includes(newSettings.defaultProvider)) {
-              validated.defaultProvider = newSettings.defaultProvider;
-            }
-          }
-
           // Validate useSwarm
           if (newSettings.useSwarm !== undefined) {
             validated.useSwarm = Boolean(newSettings.useSwarm);
@@ -276,7 +266,6 @@ export const useAppStore = create<AppState>()(
       partialize: (state) => ({
         count: state.count,
         theme: state.theme,
-        provider: state.provider,
         sessions: state.sessions,
         currentSessionId: state.currentSessionId,
         chatHistory: state.chatHistory,
@@ -290,8 +279,9 @@ export const useAppStore = create<AppState>()(
 // SELECTORS (for optimized subscriptions)
 // ============================================================================
 
+const EMPTY_ARRAY: Message[] = [];
+
 export const selectTheme = (state: AppState) => state.theme;
-export const selectProvider = (state: AppState) => state.provider;
 export const selectSettings = (state: AppState) => state.settings;
 export const selectSessions = (state: AppState) => state.sessions;
 export const selectCurrentSessionId = (state: AppState) => state.currentSessionId;
@@ -301,8 +291,8 @@ export const selectChatHistory = (state: AppState) => state.chatHistory;
  * Get messages for current session
  */
 export const selectCurrentMessages = (state: AppState): Message[] => {
-  if (!state.currentSessionId) return [];
-  return state.chatHistory[state.currentSessionId] || [];
+  if (!state.currentSessionId) return EMPTY_ARRAY;
+  return state.chatHistory[state.currentSessionId] || EMPTY_ARRAY;
 };
 
 /**

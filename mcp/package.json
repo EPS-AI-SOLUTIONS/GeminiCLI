@@ -4,6 +4,7 @@
   "description": "Portable MCP servers for GeminiCLI",
   "dependencies": {
     "@modelcontextprotocol/server-filesystem": "latest",
-    "@modelcontextprotocol/server-memory": "latest"
+    "@modelcontextprotocol/server-memory": "latest",
+    "ollama-mcp": "^2.1.0"
   }
 }

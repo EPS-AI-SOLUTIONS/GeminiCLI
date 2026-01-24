@@ -6,7 +6,7 @@
  * Falls back to default models if API key not set.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '../store/useAppStore';
@@ -67,19 +67,15 @@ export const useGeminiModels = (): UseGeminiModelsReturn => {
     },
     enabled: true,
     retry: 1,
-    staleTime: 0,
-    refetchOnMount: 'always',
+    staleTime: Infinity, // Keep data fresh forever unless manually invalidated
+    refetchOnMount: false, // Don't refetch on every mount
     refetchOnWindowFocus: false,
   });
 
-  // Refetch when API key changes
-  useEffect(() => {
-    console.log('[useGeminiModels] API key changed - refetching...');
-    refetch();
-  }, [geminiApiKey, refetch]);
+  const finalModels = useMemo(() => models ?? [...FALLBACK_MODELS.gemini], [models]);
 
   return {
-    models: models ?? [...FALLBACK_MODELS.gemini],
+    models: finalModels,
     isLoading,
     error: error as Error | null,
     refetch,

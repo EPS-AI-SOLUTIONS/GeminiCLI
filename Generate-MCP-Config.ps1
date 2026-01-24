@@ -65,14 +65,22 @@ foreach ($serverName in $McpConfig.mcpServers.PSObject.Properties.Name) {
     }
 
     # B. Portable Overrides (Core Tools)
+    # Helper to convert path to file URL for ESM on Windows
+    function Get-FileUrl {
+        param([string]$Path)
+        return 'file:///' + ($Path -replace '\\', '/')
+    }
+
     # If the tool exists in local mcp/node_modules, use absolute local path instead of npx
     if ($serverName -eq "filesystem") {
         $localPath = Join-Path $McpDir "node_modules\@modelcontextprotocol\server-filesystem\dist\index.js"
         if (Test-Path $localPath) {
             Write-Host "[$serverName] Using local portable version." -ForegroundColor Green
             $newDef.command = $NodePath
-            # Reconstruct args: script path + original args (excluding first 2 which are usually /c npx...)
             
+            $urlPath = Get-FileUrl $localPath
+            
+            # Reconstruct args
             $allowedPaths = @()
             if ($newDef.args.Count -gt 3) {
                 # Assuming args structure: /c, npx, -y, package, [paths...]
@@ -80,19 +88,33 @@ foreach ($serverName in $McpConfig.mcpServers.PSObject.Properties.Name) {
                     $allowedPaths += $newDef.args[$i]
                 }
             } else {
-                # Fallback defaults if parsing fails
                 $allowedPaths = @($ScriptDir)
             }
-            $newDef.args = @($localPath) + $allowedPaths
+            $newDef.args = @($urlPath) + $allowedPaths
         }
     }
     elseif ($serverName -eq "memory") {
         $localPath = Join-Path $McpDir "node_modules\@modelcontextprotocol\server-memory\dist\index.js"
         if (Test-Path $localPath) {
             Write-Host "[$serverName] Using local portable version." -ForegroundColor Green
+            $urlPath = Get-FileUrl $localPath
             $newDef.command = $NodePath
-            $newDef.args = @($localPath)
+            $newDef.args = @($urlPath)
         }
+    }
+    elseif ($serverName -eq "ollama") {
+        $localPath = Join-Path $McpDir "node_modules\ollama-mcp\dist\index.js"
+        if (Test-Path $localPath) {
+            Write-Host "[$serverName] Using local portable version." -ForegroundColor Green
+            $urlPath = Get-FileUrl $localPath
+            $newDef.command = $NodePath
+            $newDef.args = @($urlPath)
+        }
+    }
+    
+    # C. Git Path Resolution
+    if ($serverName -eq "git" -and $newDef.env -and $newDef.env.GIT_DEFAULT_PATH -eq ".") {
+        $newDef.env.GIT_DEFAULT_PATH = $ScriptDir.Replace('\', '/')
     }
 
     $FinalServers[$serverName] = $newDef

@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, memo } from 'react';
 import { Lock, Download } from 'lucide-react';
 import { MemoryPanel } from './MemoryPanel';
-import { BridgePanel } from './BridgePanel';
 
 interface RightSidebarProps {
   count: number;
@@ -51,7 +50,6 @@ const RightSidebarComponent: React.FC<RightSidebarProps> = ({
     <aside className="hidden lg:flex lg:col-span-1 flex-col gap-4 overflow-y-auto pr-1">
 
       <MemoryPanel />
-      <BridgePanel />
 
       {/* ACTIONS SECTION */}
       <div className="glass-panel p-4 rounded-lg flex flex-col justify-center gap-4 border-[var(--matrix-border)]">

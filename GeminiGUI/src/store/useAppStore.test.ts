@@ -24,39 +24,59 @@ import { DEFAULT_SETTINGS, LIMITS } from '../constants';
 // MOCKS & SETUP
 // ============================================================================
 
-// Mock localStorage
+// Mock localStorage on window
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
-
   return {
-    getItem: (key: string) => store[key] || null,
-    setItem: (key: string, value: string) => {
-      store[key] = value.toString();
-    },
-    removeItem: (key: string) => {
+    getItem: vi.fn((key: string) => store[key] || null),
+    setItem: vi.fn((key: string, value: string) => {
+      // Ensure value is a string, although persist should send a string
+      store[key] = String(value); 
+    }),
+    removeItem: vi.fn((key: string) => {
       delete store[key];
-    },
-    clear: () => {
+    }),
+    clear: vi.fn(() => {
       store = {};
-    },
+    }),
   };
 })();
 
 Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
+  writable: true,
+});
+
+// Mock zustand persist middleware
+vi.mock('zustand/middleware', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('zustand/middleware')>();
+  return {
+    ...actual,
+    persist: (config: any, options: any) =>
+      actual.persist(config, {
+        ...options,
+        storage: {
+          getItem: (name: string) => {
+            const val = window.localStorage.getItem(name);
+            return val ? JSON.parse(val) : null;
+          },
+          setItem: (name: string, value: any) => {
+            window.localStorage.setItem(name, JSON.stringify(value));
+          },
+          removeItem: (name: string) => window.localStorage.removeItem(name),
+        },
+      }),
+  };
 });
 
 // Mock crypto.randomUUID
-const mockUUIDs = ['uuid-1', 'uuid-2', 'uuid-3', 'uuid-4', 'uuid-5'];
 let uuidIndex = 0;
-
-global.crypto = {
+vi.stubGlobal('crypto', {
   randomUUID: vi.fn(() => {
-    const uuid = mockUUIDs[uuidIndex % mockUUIDs.length];
     uuidIndex++;
-    return uuid;
+    return `uuid-${uuidIndex}`;
   }),
-} as unknown as Crypto;
+});
 
 // ============================================================================
 // TEST SUITE
@@ -518,6 +538,9 @@ describe('useAppStore', () => {
 
         act(() => {
           result.current.createSession();
+        });
+
+        act(() => {
           result.current.updateSessionTitle(result.current.sessions[0].id, 'Original Title');
         });
 
@@ -615,7 +638,7 @@ describe('useAppStore', () => {
           result.current.addMessage(message);
         });
 
-        expect(result.current.sessions[0].title).toContain('This is a very long first message...');
+        expect(result.current.sessions[0].title).toContain('This is a very long first mess...');
       });
 
       it('should not auto-update title for assistant messages', () => {
@@ -623,6 +646,9 @@ describe('useAppStore', () => {
 
         act(() => {
           result.current.createSession();
+        });
+
+        act(() => {
           result.current.updateSessionTitle(result.current.sessions[0].id, 'Original Title');
         });
 

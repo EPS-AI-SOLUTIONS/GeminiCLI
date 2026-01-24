@@ -187,13 +187,12 @@ function Invoke-Llm {
                 $targetModel = $modelName.Trim()
                 if ($targetModel -match "^models/(.+)") { $targetModel = $matches[1] }
 
-                Write-SwarmLog -Message "Dijkstra attempting: $targetModel [$modelRole]"
-
-                $tmpFile = [System.IO.Path]::GetTempFileName()
-                Set-Content -Path $tmpFile -Value $FullPrompt -Encoding UTF8
-
-                $geminiResult = Get-Content $tmpFile -Raw | & $nodePath $geminiJsPath -m $targetModel 2>&1 | Out-String
-
+                                            Write-SwarmLog -Message "Dijkstra attempting: $targetModel [$modelRole]"
+                
+                                            $tmpFile = [System.IO.Path]::GetTempFileName()
+                                            Set-Content -Path $tmpFile -Value $FullPrompt -Encoding UTF8
+                
+                                            $geminiResult = Get-Content $tmpFile -Raw | & $nodePath $geminiJsPath -m $targetModel 2>$null | Out-String
                 Remove-Item $tmpFile -ErrorAction SilentlyContinue
 
                 if ($geminiResult -is [array]) { $geminiResult = $geminiResult -join "`n" }
@@ -355,8 +354,8 @@ function Start-GraphProcessor {
             $job.RunspacePool = $RunspacePool
             $jobs += [PSCustomObject]@{ Pipe = $job; Handle = $job.BeginInvoke(); Task = $task }
         }
-        # v12.8 FIX: Add 120s timeout per task to prevent infinite hangs
-        $taskTimeout = 120000  # 120 seconds in milliseconds
+        # v12.8 FIX: Add 300s timeout per task to prevent infinite hangs (local models can be slow)
+        $taskTimeout = 300000  # 300 seconds
         foreach ($j in $jobs) {
             $completed = $j.Handle.AsyncWaitHandle.WaitOne($taskTimeout)
             if ($completed) {
@@ -400,14 +399,34 @@ function Start-GraphProcessor {
 
 function Clean-Json {
     param([string]$RawInput)
-    $clean = if ($RawInput -is [array]) { $RawInput -join '' } else { [string]$RawInput }
-    $clean = $clean -replace '[^\x20-\x7E\r\n\t]',''
-    $clean = $clean -replace '```json\s*',''
-    $clean = $clean -replace '```\s*',''
-    $clean = $clean.Trim()
-    if ($clean -match '(?s)(\[[\s\S]*\]|{[\s\S]*})') { $clean = $matches[1] }
-    $clean = $clean -replace '(?m)^\s*//.*',''
-    return $clean
+    
+    # 1. Try extracting from markdown code blocks first (most reliable)
+    if ($RawInput -match '```json\s*([\s\S]*?)\s*```') {
+        return $matches[1].Trim()
+    }
+    
+    # 2. Try simple extraction of array or object
+    if ($RawInput -match '(?s)^\s*(\[.*\])\s*$') { return $matches[1] }
+    if ($RawInput -match '(?s)^\s*(\{.*\})\s*$') { return $matches[1] }
+
+    # 3. Fallback: Aggressive cleanup of known noise
+    $clean = $RawInput -replace 'node\.exe : Loaded cached credentials\.', ''
+    $clean = $clean -replace 'Attempt \d+ failed.*', ''
+    
+    # Locate first [ or { and last ] or }
+    $firstBracket = $clean.IndexOf('[')
+    $lastBracket = $clean.LastIndexOf(']')
+    $firstBrace = $clean.IndexOf('{')
+    $lastBrace = $clean.LastIndexOf('}')
+
+    if ($firstBracket -ge 0 -and $lastBracket -gt $firstBracket) {
+        return $clean.Substring($firstBracket, $lastBracket - $firstBracket + 1)
+    }
+    if ($firstBrace -ge 0 -and $lastBrace -gt $firstBrace) {
+        return $clean.Substring($firstBrace, $lastBrace - $firstBrace + 1)
+    }
+
+    return $clean.Trim()
 }
 
 # --- Main Protocol ---
@@ -420,16 +439,62 @@ function Invoke-AgentSwarm {
     Set-SessionCache -Key "objective" -Value $Objective
     Set-SessionCache -Key "chronicle" -Value "Chronicle Start: Recon phase skipped. Proceeding directly to planning."
 
+    # --- PHASE PRE-A: TRANSLATION & REFINEMENT ---
+    Write-Host "`n--- PHASE PRE-A: TRANSLATION & REFINEMENT (Gemini Flash) ---" -ForegroundColor Cyan
+    $refinePrompt = @"
+You are an expert prompt engineer and translator.
+Your task is to:
+1. Translate the following user objective into English (if it is not already).
+2. Refine the objective to be more precise, technical, and optimized for an autonomous AI agent swarm.
+3. Ensure the intent is preserved but clarified.
+
+Original Objective: $Objective
+
+OUTPUT ONLY THE REFINED ENGLISH OBJECTIVE. NO MARKDOWN, NO EXPLANATIONS.
+"@
+    
+    try {
+        $nodePath = (Get-Command node).Source
+        $geminiJsPath = Join-Path $PSScriptRoot "node_modules\@google\gemini-cli\dist\index.js"
+        $preModel = "gemini-2.5-flash" # Stable Flash model
+        
+        Write-SwarmLog -Message "Pre-A: Refining objective with $preModel..."
+        $tmpFile = [System.IO.Path]::GetTempFileName()
+        Set-Content -Path $tmpFile -Value $refinePrompt -Encoding UTF8
+        
+        $refinedObjective = Get-Content $tmpFile -Raw | & $nodePath $geminiJsPath -m $preModel 2>$null | Out-String
+        Remove-Item $tmpFile -ErrorAction SilentlyContinue
+        
+        $refinedObjective = $refinedObjective.Trim()
+        
+        if ($refinedObjective -match "^Error:|^CLI Error:") {
+            Write-Host "[PRE-A] Refinement failed. Using original objective." -ForegroundColor Yellow
+        } elseif ([string]::IsNullOrWhiteSpace($refinedObjective)) {
+            Write-Host "[PRE-A] Empty response. Using original objective." -ForegroundColor Yellow
+        } else {
+            Write-Host "[PRE-A] Original: $Objective" -ForegroundColor Gray
+            Write-Host "[PRE-A] Refined:  $refinedObjective" -ForegroundColor Green
+            $Objective = $refinedObjective
+            Set-SessionCache -Key "objective" -Value $Objective
+        }
+    } catch {
+        Write-Host "[PRE-A] Error during refinement: $($_.Exception.Message). Using original." -ForegroundColor Red
+    }
+
     # --- PHASE A: DIJKSTRA PLANNING ---
     $chronicle1 = Get-SessionCache -Key "chronicle"
     $dijkstraPrompt2 = "Based on the objective, create a JSON plan. Objective: $Objective. OUTPUT VALID JSON ONLY. Example: [{`"id`":1,`"agent`":`"Ciri`",`"task`":`"List files`",`"grimoires`":[],`"dependencies`":[]}]"
     
     $planJson = Invoke-Llm -AgentName "Dijkstra" -FullPrompt "$($script:PromptPrefix)`n$($script:AgentPersonas['Dijkstra'])`n$dijkstraPrompt2"
+    Write-Host "DEBUG RAW PLAN: $planJson" -ForegroundColor Magenta
     $cleanedPlanJson = Clean-Json -RawInput $planJson
+    
+    Write-Host "DEBUG CLEANED PLAN: $cleanedPlanJson" -ForegroundColor Magenta
     
     $plan = $null
     try { $plan = $cleanedPlanJson | ConvertFrom-Json } catch { 
-        Write-SwarmLog -Level "ERROR" -Message "Invalid initial JSON plan." 
+        Write-Host "JSON PARSE ERROR: $($_.Exception.Message)" -ForegroundColor Red
+        Write-SwarmLog -Level "ERROR" -Message "Invalid initial JSON plan. Error: $($_.Exception.Message)" 
         return "Critical Failure: Invalid Plan."
     }
 

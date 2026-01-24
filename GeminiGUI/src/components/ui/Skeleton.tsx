@@ -77,6 +77,15 @@ const skeletonStyles = `
     );
     border-color: rgba(5, 150, 105, 0.15);
   }
+
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton-pulse,
+    .skeleton-shimmer,
+    [data-theme='light'] .skeleton-pulse,
+    [data-theme='light'] .skeleton-shimmer {
+      animation: none;
+    }
+  }
 `;
 
 // Inject styles if not already present

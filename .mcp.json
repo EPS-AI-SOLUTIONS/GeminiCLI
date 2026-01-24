@@ -52,13 +52,6 @@
       "command": "cmd",
       "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-time"]
     },
-    "git": {
-      "command": "cmd",
-      "args": ["/c", "npx", "-y", "@anthropic-ai/mcp-server-git"],
-      "env": {
-        "GIT_DEFAULT_PATH": "."
-      }
-    },
     "context7": {
       "command": "cmd",
       "args": ["/c", "npx", "-y", "@upstash/context7-mcp"]

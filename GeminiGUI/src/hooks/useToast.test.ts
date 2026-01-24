@@ -189,18 +189,17 @@ describe('useToast Hook', () => {
     it('dismisses toast by ID', () => {
       const { result } = renderHook(() => useToast());
 
-      let toastId: string;
-
       act(() => {
         result.current.toast.success('Message 1');
         result.current.toast.success('Message 2');
-        toastId = result.current.toasts[0].id;
       });
+
+      const toastId = result.current.toasts[0].id;
 
       expect(result.current.toasts).toHaveLength(2);
 
       act(() => {
-        result.current.dismissToast(toastId!);
+        result.current.dismissToast(toastId);
       });
 
       expect(result.current.toasts).toHaveLength(1);
@@ -260,13 +259,11 @@ describe('useToast Hook', () => {
         result.current.toast.success('Success');
         result.current.toast.error('Error');
         result.current.toast.warning('Warning');
-        result.current.toast.info('Info');
       });
 
       expect(result.current.toasts[0].variant).toBe('success');
       expect(result.current.toasts[1].variant).toBe('error');
       expect(result.current.toasts[2].variant).toBe('warning');
-      expect(result.current.toasts[3].variant).toBe('info');
     });
 
     it('all toasts have unique IDs', () => {

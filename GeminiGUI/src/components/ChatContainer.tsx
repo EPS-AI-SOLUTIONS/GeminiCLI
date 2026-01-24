@@ -18,11 +18,6 @@ import { MessageList, ChatInput, DragDropZone, ChatMessageContextMenu } from './
 export interface ChatContainerProps {
   messages: Message[];
   isStreaming: boolean;
-  modelsLoading: boolean;
-  modelsError: unknown;
-  models: string[];
-  selectedModel: string;
-  onSelectModel: (model: string) => void;
   onSubmit: (prompt: string, image: string | null) => void;
   onExecuteCommand: (cmd: string) => void;
 }
@@ -35,11 +30,6 @@ export const ChatContainer = memo<ChatContainerProps>(
   ({
     messages,
     isStreaming,
-    modelsLoading,
-    modelsError,
-    models,
-    selectedModel,
-    onSelectModel,
     onSubmit,
     onExecuteCommand,
   }) => {
@@ -129,11 +119,6 @@ export const ChatContainer = memo<ChatContainerProps>(
           {/* Input Area */}
           <ChatInput
             isStreaming={isStreaming}
-            modelsLoading={modelsLoading}
-            modelsError={modelsError}
-            models={models}
-            selectedModel={selectedModel}
-            onSelectModel={onSelectModel}
             onSubmit={handleSubmit}
             pendingImage={pendingImage}
             onClearImage={handleClearImage}

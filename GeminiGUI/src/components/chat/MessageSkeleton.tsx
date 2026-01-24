@@ -38,17 +38,13 @@ export const MessageSkeleton = memo<MessageSkeletonProps>(
     return (
       <>
         {Array.from({ length: count }).map((_, index) => (
-          <div
+          <SkeletonMessage
             key={index}
-            className={`flex ${isUser ? 'justify-end' : 'justify-start'} py-2 px-4`}
-          >
-            <SkeletonMessage
-              isUser={isUser}
-              width={getRandomWidth()}
-              height={`${Math.random() > 0.5 ? 60 : 100}px`}
-              variant={variant}
-            />
-          </div>
+            isUser={isUser}
+            width={getRandomWidth()}
+            height={`${Math.random() > 0.5 ? 60 : 100}px`}
+            variant={variant}
+          />
         ))}
       </>
     );
