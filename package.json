@@ -1,13 +1,30 @@
 {
-  "name": "gemini-cli",
-  "version": "2.0.0",
-  "description": "Gemini CLI - MCP Server",
+  "name": "claudehydra",
+  "version": "2.1.0",
+  "description": "ClaudeHydra - Unified CLI with Witcher Swarm (12 Agents)",
   "type": "module",
   "main": "src/server.js",
+  "exports": {
+    ".": "./src/server.js",
+    "./cli": "./src/cli-unified/index.js",
+    "./cli-unified": "./src/cli-unified/index.js",
+    "./cli-unified/*": "./src/cli-unified/*.js"
+  },
   "scripts": {
     "start": "node src/server.js",
-    "cli": "node src/cli/index.js",
-    "hydra": "node src/cli/index.js",
+    "cli": "node src/cli-unified/index.js",
+    "cli:basic": "node src/cli-unified/index.js --mode basic",
+    "cli:enhanced": "node src/cli-unified/index.js --mode enhanced",
+    "cli:swarm": "node src/cli-unified/index.js --mode swarm",
+    "hydra": "node src/cli-unified/index.js --mode swarm",
+    "launcher": "node scripts/launcher.js",
+    "bridge": "node scripts/bridge.js",
+    "ai": "node scripts/ai-handler.js",
+    "ai:query": "node scripts/ai-handler.js query",
+    "ai:status": "node scripts/ai-handler.js status",
+    "ai:list": "node scripts/ai-handler.js list",
+    "swarm": "node src/cli-unified/index.js --mode swarm",
+    "enhanced": "node src/cli-unified/index.js --mode enhanced",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:e2e": "playwright test",
     "verify": "node scripts/verify-integrity.js && npm run test && npm run test:e2e",
@@ -18,7 +35,8 @@
     "prepare": "husky install"
   },
   "bin": {
-    "hydra-cli": "src/cli/index.js"
+    "claudehydra": "src/cli-unified/index.js",
+    "hydra-cli": "src/cli-unified/index.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.23.0",

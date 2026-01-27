@@ -1,38 +1,21 @@
 /**
- * CLI Autocomplete System
- * Context-aware autocompletion with multiple providers
- * @module cli/Autocomplete
+ * Unified Autocomplete Engine
+ * Based on src/cli/Autocomplete.js with pluggable providers
+ * @module cli-unified/input/AutocompleteEngine
  */
 
 import { promises as fs } from 'fs';
 import { resolve, dirname, basename, join } from 'path';
-
-/**
- * @typedef {Object} CompletionResult
- * @property {string[]} suggestions - Completion suggestions
- * @property {number} startIndex - Start index in input
- * @property {number} endIndex - End index in input
- * @property {string} prefix - Common prefix
- */
-
-/**
- * @typedef {Object} CompletionProvider
- * @property {string} name - Provider name
- * @property {number} [priority=0] - Priority (higher = first)
- * @property {function(string, number): Promise<CompletionResult|null>} complete - Complete function
- */
+import { AGENT_NAMES } from '../core/constants.js';
 
 /**
  * Autocomplete manager with pluggable providers
  */
-export class Autocomplete {
-  /** @type {CompletionProvider[]} */
+export class AutocompleteEngine {
   #providers = [];
 
   /**
    * Add a completion provider
-   * @param {CompletionProvider} provider - Provider to add
-   * @returns {Autocomplete} This autocomplete for chaining
    */
   addProvider(provider) {
     if (!provider.name || !provider.complete) {
@@ -44,16 +27,12 @@ export class Autocomplete {
       priority: provider.priority || 0
     });
 
-    // Sort by priority (descending)
     this.#providers.sort((a, b) => b.priority - a.priority);
-
     return this;
   }
 
   /**
    * Remove a provider by name
-   * @param {string} name - Provider name
-   * @returns {boolean} True if removed
    */
   removeProvider(name) {
     const index = this.#providers.findIndex(p => p.name === name);
@@ -66,14 +45,10 @@ export class Autocomplete {
 
   /**
    * Get completions for input
-   * @param {string} input - Current input string
-   * @param {number} [cursorPos] - Cursor position (defaults to end)
-   * @returns {Promise<CompletionResult>} Completion result
    */
   async complete(input, cursorPos) {
     const pos = cursorPos ?? input.length;
 
-    // Try each provider in priority order
     for (const provider of this.#providers) {
       try {
         const result = await provider.complete(input, pos);
@@ -82,11 +57,9 @@ export class Autocomplete {
         }
       } catch (error) {
         // Provider failed, try next
-        console.error(`Autocomplete provider ${provider.name} failed:`, error.message);
       }
     }
 
-    // No completions found
     return {
       suggestions: [],
       startIndex: pos,
@@ -96,9 +69,7 @@ export class Autocomplete {
   }
 
   /**
-   * Get the common prefix of suggestions
-   * @param {string[]} suggestions - List of suggestions
-   * @returns {string} Common prefix
+   * Get common prefix of suggestions
    */
   static getCommonPrefix(suggestions) {
     if (suggestions.length === 0) return '';
@@ -115,10 +86,6 @@ export class Autocomplete {
 
   /**
    * Apply completion to input
-   * @param {string} input - Current input
-   * @param {CompletionResult} completion - Completion result
-   * @param {number} selectedIndex - Selected suggestion index
-   * @returns {{text: string, cursorPos: number}} New input and cursor position
    */
   static apply(input, completion, selectedIndex = 0) {
     if (completion.suggestions.length === 0) {
@@ -139,16 +106,13 @@ export class Autocomplete {
   // ============ Built-in Providers ============
 
   /**
-   * Create a command completion provider
-   * @param {import('./CommandParser.js').CommandParser} parser - Command parser
-   * @returns {CompletionProvider} Command provider
+   * Command completion provider
    */
   static CommandProvider(parser) {
     return {
       name: 'commands',
       priority: 100,
       complete: async (input, cursorPos) => {
-        // Only complete commands at start of input
         if (!input.startsWith('/')) return null;
 
         const partial = input.slice(0, cursorPos);
@@ -160,16 +124,14 @@ export class Autocomplete {
           suggestions,
           startIndex: 0,
           endIndex: cursorPos,
-          prefix: Autocomplete.getCommonPrefix(suggestions)
+          prefix: AutocompleteEngine.getCommonPrefix(suggestions)
         };
       }
     };
   }
 
   /**
-   * Create a history completion provider
-   * @param {import('./HistoryManager.js').HistoryManager} history - History manager
-   * @returns {CompletionProvider} History provider
+   * History completion provider
    */
   static HistoryProvider(history) {
     return {
@@ -179,30 +141,28 @@ export class Autocomplete {
         if (!input || input.startsWith('/')) return null;
 
         const partial = input.slice(0, cursorPos);
-        const matches = history.searchPrefix(partial);
+        const matches = history.searchPrefix ? history.searchPrefix(partial) : [];
 
         if (matches.length === 0) return null;
 
         return {
-          suggestions: matches.slice(0, 10), // Limit to 10
+          suggestions: matches.slice(0, 10),
           startIndex: 0,
           endIndex: cursorPos,
-          prefix: Autocomplete.getCommonPrefix(matches)
+          prefix: AutocompleteEngine.getCommonPrefix(matches)
         };
       }
     };
   }
 
   /**
-   * Create a file path completion provider
-   * @returns {CompletionProvider} File path provider
+   * File path completion provider
    */
   static FilePathProvider() {
     return {
       name: 'filepath',
       priority: 30,
       complete: async (input, cursorPos) => {
-        // Find path-like token at cursor
         const beforeCursor = input.slice(0, cursorPos);
         const match = beforeCursor.match(/(?:^|\s)((?:\.{1,2}\/|\/|~\/|[a-zA-Z]:\\)[^\s]*)$/);
 
@@ -212,26 +172,21 @@ export class Autocomplete {
         const startIndex = cursorPos - pathPart.length;
 
         try {
-          // Expand ~ to home directory
           let expandedPath = pathPart.replace(/^~/, process.env.HOME || process.env.USERPROFILE || '');
 
-          // Get directory and partial filename
           const dir = dirname(expandedPath);
           const partial = basename(expandedPath);
           const resolvedDir = resolve(dir);
 
-          // Read directory
           const entries = await fs.readdir(resolvedDir, { withFileTypes: true });
 
-          // Filter matching entries
           const suggestions = entries
             .filter(entry => entry.name.startsWith(partial) || !partial)
             .map(entry => {
-              const name = entry.name;
               const suffix = entry.isDirectory() ? '/' : '';
-              return join(dir, name) + suffix;
+              return join(dir, entry.name) + suffix;
             })
-            .slice(0, 20); // Limit results
+            .slice(0, 20);
 
           if (suggestions.length === 0) return null;
 
@@ -239,7 +194,7 @@ export class Autocomplete {
             suggestions,
             startIndex,
             endIndex: cursorPos,
-            prefix: Autocomplete.getCommonPrefix(suggestions)
+            prefix: AutocompleteEngine.getCommonPrefix(suggestions)
           };
         } catch {
           return null;
@@ -249,23 +204,83 @@ export class Autocomplete {
   }
 
   /**
-   * Create a model completion provider
-   * @param {string[]} models - Available model names
-   * @returns {CompletionProvider} Model provider
+   * Agent completion provider
    */
-  static ModelProvider(models) {
+  static AgentProvider() {
     return {
-      name: 'models',
-      priority: 40,
+      name: 'agents',
+      priority: 60,
       complete: async (input, cursorPos) => {
-        // Look for --model= or -m flag
         const beforeCursor = input.slice(0, cursorPos);
-        const match = beforeCursor.match(/(?:--model=?|-m\s+)([^\s]*)$/);
+        const match = beforeCursor.match(/(?:@|\/agent\s+)([a-zA-Z]*)$/i);
 
         if (!match) return null;
 
         const partial = match[1].toLowerCase();
         const startIndex = cursorPos - partial.length;
+
+        const suggestions = AGENT_NAMES
+          .filter(name => name.toLowerCase().startsWith(partial))
+          .slice(0, 10);
+
+        if (suggestions.length === 0) return null;
+
+        return {
+          suggestions,
+          startIndex,
+          endIndex: cursorPos,
+          prefix: AutocompleteEngine.getCommonPrefix(suggestions)
+        };
+      }
+    };
+  }
+
+  /**
+   * Dynamic model provider (fetches from Ollama)
+   */
+  static DynamicModelProvider(options = {}) {
+    const baseUrl = options.baseUrl || 'http://localhost:11434';
+    const cacheTimeout = options.cacheTimeout || 60000;
+
+    let cachedModels = [];
+    let lastFetch = 0;
+
+    async function fetchModels() {
+      const now = Date.now();
+      if (cachedModels.length > 0 && (now - lastFetch) < cacheTimeout) {
+        return cachedModels;
+      }
+
+      try {
+        const response = await fetch(`${baseUrl}/api/tags`);
+        if (!response.ok) return cachedModels;
+        const data = await response.json();
+
+        if (data.models && Array.isArray(data.models)) {
+          cachedModels = data.models.map(m => m.name);
+          lastFetch = now;
+        }
+
+        return cachedModels;
+      } catch {
+        return cachedModels;
+      }
+    }
+
+    return {
+      name: 'dynamic-models',
+      priority: 45,
+      complete: async (input, cursorPos) => {
+        const beforeCursor = input.slice(0, cursorPos);
+        const match = beforeCursor.match(/(?:--model=?|-m\s+|\/models?\s+)([^\s]*)$/i);
+
+        if (!match) return null;
+
+        const partial = match[1].toLowerCase();
+        const startIndex = cursorPos - partial.length;
+
+        const models = await fetchModels();
+        if (models.length === 0) return null;
 
         const suggestions = models
           .filter(model => model.toLowerCase().startsWith(partial))
@@ -277,18 +292,52 @@ export class Autocomplete {
           suggestions,
           startIndex,
           endIndex: cursorPos,
-          prefix: Autocomplete.getCommonPrefix(suggestions)
+          prefix: AutocompleteEngine.getCommonPrefix(suggestions)
+        };
+      },
+      refreshCache: async () => {
+        lastFetch = 0;
+        return await fetchModels();
+      },
+      getCachedModels: () => [...cachedModels]
+    };
+  }
+
+  /**
+   * Template completion provider
+   */
+  static TemplateProvider(templates) {
+    return {
+      name: 'templates',
+      priority: 55,
+      complete: async (input, cursorPos) => {
+        const beforeCursor = input.slice(0, cursorPos);
+        const match = beforeCursor.match(/(?:\/t(?:emplate)?\s+)([^\s]*)$/i);
+
+        if (!match) return null;
+
+        const partial = match[1].toLowerCase();
+        const startIndex = cursorPos - partial.length;
+
+        const templateNames = Object.keys(templates);
+        const suggestions = templateNames
+          .filter(name => name.toLowerCase().startsWith(partial))
+          .slice(0, 10);
+
+        if (suggestions.length === 0) return null;
+
+        return {
+          suggestions,
+          startIndex,
+          endIndex: cursorPos,
+          prefix: AutocompleteEngine.getCommonPrefix(suggestions)
         };
       }
     };
   }
 
   /**
-   * Create a static list completion provider
-   * @param {string} name - Provider name
-   * @param {string[]} items - Items to complete
-   * @param {RegExp} [pattern] - Pattern to match for triggering
-   * @returns {CompletionProvider} Static provider
+   * Static list provider
    */
   static StaticProvider(name, items, pattern) {
     return {
@@ -314,11 +363,10 @@ export class Autocomplete {
             suggestions,
             startIndex,
             endIndex: cursorPos,
-            prefix: Autocomplete.getCommonPrefix(suggestions)
+            prefix: AutocompleteEngine.getCommonPrefix(suggestions)
           };
         }
 
-        // Match from word boundary
         const wordMatch = beforeCursor.match(/(\S*)$/);
         const partial = wordMatch ? wordMatch[1].toLowerCase() : '';
         const startIndex = cursorPos - partial.length;
@@ -333,105 +381,15 @@ export class Autocomplete {
           suggestions,
           startIndex,
           endIndex: cursorPos,
-          prefix: Autocomplete.getCommonPrefix(suggestions)
+          prefix: AutocompleteEngine.getCommonPrefix(suggestions)
         };
       }
-    };
-  }
-
-  /**
-   * Create a dynamic model completion provider that fetches models from Ollama API
-   * @param {Object} [options] - Provider options
-   * @param {string} [options.baseUrl='http://localhost:11434'] - Ollama API base URL
-   * @param {number} [options.cacheTimeout=60000] - Cache timeout in ms (default: 1 minute)
-   * @returns {CompletionProvider} Dynamic model provider
-   */
-  static DynamicModelProvider(options = {}) {
-    const baseUrl = options.baseUrl || 'http://localhost:11434';
-    const cacheTimeout = options.cacheTimeout || 60000;
-
-    let cachedModels = [];
-    let lastFetch = 0;
-
-    /**
-     * Fetch models from Ollama API
-     * @returns {Promise<string[]>} List of model names
-     */
-    async function fetchModels() {
-      const now = Date.now();
-
-      // Return cached models if still valid
-      if (cachedModels.length > 0 && (now - lastFetch) < cacheTimeout) {
-        return cachedModels;
-      }
-
-      try {
-        const response = await fetch(`${baseUrl}/api/tags`);
-        if (!response.ok) {
-          return cachedModels; // Return old cache on error
-        }
-        const data = await response.json();
-
-        if (data.models && Array.isArray(data.models)) {
-          cachedModels = data.models.map(m => m.name);
-          lastFetch = now;
-        }
-
-        return cachedModels;
-      } catch {
-        // Return old cache on network error
-        return cachedModels;
-      }
-    }
-
-    return {
-      name: 'dynamic-models',
-      priority: 45, // Higher than static ModelProvider
-      complete: async (input, cursorPos) => {
-        // Look for --model= or -m flag or after /model command
-        const beforeCursor = input.slice(0, cursorPos);
-        const match = beforeCursor.match(/(?:--model=?|-m\s+|\/models?\s+)([^\s]*)$/i);
-
-        if (!match) return null;
-
-        const partial = match[1].toLowerCase();
-        const startIndex = cursorPos - partial.length;
-
-        // Fetch models dynamically
-        const models = await fetchModels();
-
-        if (models.length === 0) return null;
-
-        const suggestions = models
-          .filter(model => model.toLowerCase().startsWith(partial))
-          .slice(0, 10);
-
-        if (suggestions.length === 0) return null;
-
-        return {
-          suggestions,
-          startIndex,
-          endIndex: cursorPos,
-          prefix: Autocomplete.getCommonPrefix(suggestions)
-        };
-      },
-      // Expose method to manually refresh cache
-      refreshCache: async () => {
-        lastFetch = 0;
-        return await fetchModels();
-      },
-      // Expose method to get current cached models
-      getCachedModels: () => [...cachedModels]
     };
   }
 }
 
-/**
- * Create a new autocomplete manager
- * @returns {Autocomplete} New autocomplete instance
- */
 export function createAutocomplete() {
-  return new Autocomplete();
+  return new AutocompleteEngine();
 }
 
-export default Autocomplete;
+export default AutocompleteEngine;
