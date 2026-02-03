@@ -28,3 +28,5 @@ npm-debug.log*
 
 # Ollama binary (too large for git)
 bin/ollama.exe
+nul  
+\"[nazwa_pliku_lub_sciezka_wzgledna]\"  

@@ -1,0 +1,1 @@
+CRITICAL: CLI terminates after single task. Fix: Implement while(true) loop around prompt logic.

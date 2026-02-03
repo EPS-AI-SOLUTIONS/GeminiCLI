@@ -8,7 +8,7 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { TAURI_COMMANDS } from '../constants';
-import type { BridgeState } from '../types';
+import type { BridgeState, AgentMemory, KnowledgeNode, KnowledgeEdge, KnowledgeGraph } from '../types';
 
 // ============================================================================
 // TYPES
@@ -17,148 +17,245 @@ import type { BridgeState } from '../types';
 export interface EnvVars {
   GEMINI_API_KEY?: string;
   GOOGLE_API_KEY?: string;
-  OLLAMA_HOST?: string;
   [key: string]: string | undefined;
 }
 
-export interface AgentMemory {
-  id: string;
-  agentName: string;
+export interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
   content: string;
-  timestamp: number;
-  metadata?: Record<string, unknown>;
 }
 
-export interface KnowledgeNode {
-  id: string;
-  label: string;
-  type: string;
-  data?: Record<string, unknown>;
+export interface GenerateOptions {
+  system?: string;
+  temperature?: number;
+  maxTokens?: number;
 }
 
-export interface KnowledgeEdge {
-  source: string;
-  target: string;
-  label: string;
+export interface GGUFModelInfo {
+  name: string;
+  path: string;
+  size_bytes: number;
+  size_human: string;
+  quantization: string;
+  parameters: string;
+  context_length: number;
+  architecture: string;
+  gguf_version: number;
+  tensor_count: number;
+  metadata_count: number;
 }
 
-export interface KnowledgeGraph {
-  nodes: KnowledgeNode[];
-  edges: KnowledgeEdge[];
+export interface RecommendedModel {
+  name: string;
+  repo_id: string;
+  filename: string;
+  size_gb: number;
+  description: string;
+  min_vram_gb: number;
+  category: string;
 }
+
+export interface DownloadProgress {
+  filename: string;
+  downloaded: number;
+  total: number;
+  speed_bps: number;
+  percentage: number;
+  complete: boolean;
+  error?: string;
+}
+
+// Re-export types from centralized types for convenience
+export type { AgentMemory, KnowledgeNode, KnowledgeEdge, KnowledgeGraph } from '../types';
 
 // ============================================================================
 // BRIDGE SERVICE
 // ============================================================================
 
 export const BridgeService = {
-  /**
-   * Get current bridge state
-   */
   async getState(): Promise<BridgeState> {
     return invoke<BridgeState>(TAURI_COMMANDS.GET_BRIDGE_STATE);
   },
 
-  /**
-   * Set auto-approve mode
-   */
   async setAutoApprove(enabled: boolean): Promise<void> {
     return invoke(TAURI_COMMANDS.SET_AUTO_APPROVE, { enabled });
   },
 
-  /**
-   * Approve pending request
-   */
   async approveRequest(requestId: string): Promise<void> {
     return invoke(TAURI_COMMANDS.APPROVE_REQUEST, { requestId });
   },
 
-  /**
-   * Reject pending request
-   */
   async rejectRequest(requestId: string): Promise<void> {
     return invoke(TAURI_COMMANDS.REJECT_REQUEST, { requestId });
   },
 };
 
 // ============================================================================
-// MODEL SERVICE
+// LLAMA SERVICE (llama.cpp integration)
 // ============================================================================
 
-export const ModelService = {
+export const LlamaService = {
   /**
-   * Get available Ollama models
+   * Initialize llama.cpp backend
    */
-  async getOllamaModels(): Promise<string[]> {
-    return invoke<string[]>(TAURI_COMMANDS.GET_OLLAMA_MODELS);
+  async initialize(): Promise<string> {
+    return invoke<string>(TAURI_COMMANDS.LLAMA_INITIALIZE);
   },
 
   /**
-   * Get available Gemini models
+   * Load a model into GPU memory
    */
-  async getGeminiModels(apiKey: string): Promise<string[]> {
-    return invoke<string[]>(TAURI_COMMANDS.GET_GEMINI_MODELS, { apiKey });
+  async loadModel(modelPath: string, gpuLayers: number = 99): Promise<string> {
+    return invoke<string>(TAURI_COMMANDS.LLAMA_LOAD_MODEL, {
+      modelPath,
+      gpuLayers,
+    });
   },
 
   /**
-   * Get Gemini models sorted by capability
+   * Unload the current model from memory
    */
-  async getGeminiModelsSorted(apiKey: string): Promise<string[]> {
-    return invoke<string[]>(TAURI_COMMANDS.GET_GEMINI_MODELS_SORTED, { apiKey });
+  async unloadModel(): Promise<string> {
+    return invoke<string>(TAURI_COMMANDS.LLAMA_UNLOAD_MODEL);
+  },
+
+  /**
+   * Check if a model is currently loaded
+   */
+  async isModelLoaded(): Promise<boolean> {
+    return invoke<boolean>(TAURI_COMMANDS.LLAMA_IS_MODEL_LOADED);
+  },
+
+  /**
+   * Get the path of the currently loaded model
+   */
+  async getCurrentModel(): Promise<string | null> {
+    return invoke<string | null>(TAURI_COMMANDS.LLAMA_GET_CURRENT_MODEL);
+  },
+
+  /**
+   * Generate text from a prompt (non-streaming)
+   */
+  async generate(prompt: string, options?: GenerateOptions): Promise<string> {
+    return invoke<string>(TAURI_COMMANDS.LLAMA_GENERATE, {
+      prompt,
+      system: options?.system,
+      temperature: options?.temperature,
+      maxTokens: options?.maxTokens,
+    });
+  },
+
+  /**
+   * Generate text with streaming
+   */
+  async generateStream(prompt: string, options?: GenerateOptions): Promise<void> {
+    return invoke(TAURI_COMMANDS.LLAMA_GENERATE_STREAM, {
+      prompt,
+      system: options?.system,
+      temperature: options?.temperature,
+      maxTokens: options?.maxTokens,
+    });
+  },
+
+  /**
+   * Chat with the model (non-streaming)
+   */
+  async chat(messages: ChatMessage[], options?: Omit<GenerateOptions, 'system'>): Promise<string> {
+    return invoke<string>(TAURI_COMMANDS.LLAMA_CHAT, {
+      messages,
+      temperature: options?.temperature,
+      maxTokens: options?.maxTokens,
+    });
+  },
+
+  /**
+   * Chat with streaming
+   */
+  async chatStream(messages: ChatMessage[], options?: Omit<GenerateOptions, 'system'>): Promise<void> {
+    return invoke(TAURI_COMMANDS.LLAMA_CHAT_STREAM, {
+      messages,
+      temperature: options?.temperature,
+      maxTokens: options?.maxTokens,
+    });
+  },
+
+  /**
+   * Get embeddings for text
+   */
+  async getEmbeddings(text: string): Promise<number[]> {
+    return invoke<number[]>(TAURI_COMMANDS.LLAMA_GET_EMBEDDINGS, { text });
+  },
+
+  /**
+   * List available GGUF models
+   */
+  async listModels(): Promise<GGUFModelInfo[]> {
+    return invoke<GGUFModelInfo[]>(TAURI_COMMANDS.LLAMA_LIST_MODELS);
+  },
+
+  /**
+   * Get information about a specific model
+   */
+  async getModelInfo(modelPath: string): Promise<GGUFModelInfo> {
+    return invoke<GGUFModelInfo>(TAURI_COMMANDS.LLAMA_GET_MODEL_INFO, { modelPath });
+  },
+
+  /**
+   * Delete a model file
+   */
+  async deleteModel(modelPath: string): Promise<void> {
+    return invoke(TAURI_COMMANDS.LLAMA_DELETE_MODEL, { modelPath });
+  },
+
+  /**
+   * Get recommended models for download
+   */
+  async getRecommendedModels(): Promise<RecommendedModel[]> {
+    return invoke<RecommendedModel[]>(TAURI_COMMANDS.LLAMA_GET_RECOMMENDED_MODELS);
+  },
+
+  /**
+   * Download a model from HuggingFace
+   */
+  async downloadModel(repoId: string, filename: string): Promise<string> {
+    return invoke<string>(TAURI_COMMANDS.LLAMA_DOWNLOAD_MODEL, {
+      repoId,
+      filename,
+    });
+  },
+
+  /**
+   * Cancel ongoing download
+   */
+  async cancelDownload(): Promise<void> {
+    return invoke(TAURI_COMMANDS.LLAMA_CANCEL_DOWNLOAD);
   },
 };
 
 // ============================================================================
-// PROMPT SERVICE
+// GEMINI SERVICE
 // ============================================================================
 
-export const PromptService = {
+export const GeminiService = {
   /**
-   * Send prompt to Ollama (non-streaming)
+   * Get available Gemini models
    */
-  async promptOllama(
-    model: string,
-    prompt: string,
-    systemPrompt?: string
-  ): Promise<string> {
-    return invoke<string>(TAURI_COMMANDS.PROMPT_OLLAMA, {
-      model,
-      prompt,
-      systemPrompt,
-    });
-  },
-
-  /**
-   * Start Ollama streaming prompt
-   */
-  async promptOllamaStream(
-    model: string,
-    prompt: string,
-    systemPrompt?: string
-  ): Promise<void> {
-    return invoke(TAURI_COMMANDS.PROMPT_OLLAMA_STREAM, {
-      model,
-      prompt,
-      systemPrompt,
-    });
+  async getModels(apiKey: string): Promise<string[]> {
+    return invoke<string[]>(TAURI_COMMANDS.GET_GEMINI_MODELS, { apiKey });
   },
 
   /**
    * Start Gemini streaming prompt
    */
-  async promptGeminiStream(
+  async promptStream(
     model: string,
-    prompt: string,
-    apiKey: string,
-    systemPrompt?: string,
-    imageBase64?: string
+    messages: ChatMessage[],
+    apiKey: string
   ): Promise<void> {
     return invoke(TAURI_COMMANDS.PROMPT_GEMINI_STREAM, {
       model,
-      prompt,
+      messages,
       apiKey,
-      systemPrompt,
-      imageBase64,
     });
   },
 };
@@ -194,13 +291,6 @@ export const SystemService = {
    */
   async getEnvVars(): Promise<EnvVars> {
     return invoke<EnvVars>(TAURI_COMMANDS.GET_ENV_VARS);
-  },
-
-  /**
-   * Start Ollama server
-   */
-  async startOllamaServer(): Promise<void> {
-    return invoke(TAURI_COMMANDS.START_OLLAMA_SERVER);
   },
 };
 
@@ -268,8 +358,8 @@ export const MemoryService = {
 
 export const TauriService = {
   bridge: BridgeService,
-  models: ModelService,
-  prompts: PromptService,
+  llama: LlamaService,
+  gemini: GeminiService,
   system: SystemService,
   memory: MemoryService,
 };

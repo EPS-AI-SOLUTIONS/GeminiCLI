@@ -1,20 +1,6 @@
 import { useState, memo } from 'react';
 import { Plus, Search, MessageSquare, Edit2, Trash2 } from 'lucide-react';
-
-interface Session {
-  id: string;
-  title: string;
-  createdAt: number;
-}
-
-interface SessionSidebarProps {
-  sessions: Session[];
-  currentSessionId: string | null;
-  onCreateSession: () => void;
-  onSelectSession: (id: string) => void;
-  onDeleteSession: (id: string) => void;
-  onUpdateTitle: (id: string, title: string) => void;
-}
+import type { Session, SessionSidebarProps } from '../types';
 
 const SessionSidebarComponent: React.FC<SessionSidebarProps> = ({
   sessions,

@@ -57,9 +57,18 @@ export default defineConfig({
       include: ['src/**/*.{ts,tsx}'],
     },
 
-    // Test file patterns
-    include: ['src/**/*.test.{ts,tsx}', 'src/**/*.spec.{ts,tsx}'],
-    exclude: ['node_modules', 'dist', '.idea', '.git', '.cache', 'src-tauri'],
+    // Test file patterns - only unit tests, not Playwright e2e tests
+    include: ['src/**/*.test.{ts,tsx}'],
+    exclude: [
+      'node_modules',
+      'dist',
+      '.idea',
+      '.git',
+      '.cache',
+      'src-tauri',
+      'tests/**', // Playwright e2e and integration tests
+      '**/*.spec.{ts,tsx}', // All Playwright tests
+    ],
 
     // Test timeout in milliseconds
     testTimeout: 10000,

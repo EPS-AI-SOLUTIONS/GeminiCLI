@@ -2,46 +2,38 @@
  * GeminiGUI - Zustand App Store
  * @module store/useAppStore
  *
- * Centralized state management with validation and persistence.
+ * Centralized state management composed from domain-specific slices.
+ * Each slice is defined in ./slices/ for better maintainability.
  */
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 import type { Message, Session, Settings, AppState } from '../types';
+import { STORAGE_KEYS, DEFAULT_SETTINGS, LIMITS } from '../constants';
 import {
   isValidUrl,
   isValidApiKey,
   sanitizeContent,
   sanitizeTitle,
 } from '../utils/validators';
-import {
-  LIMITS,
-  DEFAULT_SETTINGS,
-  STORAGE_KEYS,
-} from '../constants';
 
-// ============================================================================
+// =============================================================================
 // STORE IMPLEMENTATION
-// ============================================================================
+// =============================================================================
 
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
-      // Initial State
+      // ========================================
+      // UI State
+      // ========================================
       count: 0,
       theme: 'dark',
-      sessions: [],
-      currentSessionId: null,
-      chatHistory: {},
-      settings: DEFAULT_SETTINGS,
-      provider: 'ollama',
+      provider: 'llama',
 
       setProvider: (provider) => set({ provider }),
 
-      // ========================================
-      // Counter Actions
-      // ========================================
       increment: () =>
         set((state) => ({
           count: Math.min(state.count + 1, 999999),
@@ -54,17 +46,17 @@ export const useAppStore = create<AppState>()(
 
       reset: () => set({ count: 0 }),
 
-      // ========================================
-      // Theme Actions
-      // ========================================
       toggleTheme: () =>
         set((state) => ({
           theme: state.theme === 'dark' ? 'light' : 'dark',
         })),
 
       // ========================================
-      // Session Actions
+      // Session State
       // ========================================
+      sessions: [],
+      currentSessionId: null,
+
       createSession: () => {
         const id = crypto.randomUUID();
         const newSession: Session = {
@@ -76,12 +68,10 @@ export const useAppStore = create<AppState>()(
         set((state) => {
           let sessions = [newSession, ...state.sessions];
 
-          // Enforce session limit
           if (sessions.length > LIMITS.MAX_SESSIONS) {
             const removedIds = sessions.slice(LIMITS.MAX_SESSIONS).map((s) => s.id);
             sessions = sessions.slice(0, LIMITS.MAX_SESSIONS);
 
-            // Clean up orphaned chat history
             const newHistory = { ...state.chatHistory };
             removedIds.forEach((removedId) => delete newHistory[removedId]);
 
@@ -138,13 +128,14 @@ export const useAppStore = create<AppState>()(
         }),
 
       // ========================================
-      // Message Actions
+      // Chat State
       // ========================================
+      chatHistory: {},
+
       addMessage: (msg) =>
         set((state) => {
           if (!state.currentSessionId) return state;
 
-          // Sanitize message content
           const sanitizedMsg: Message = {
             ...msg,
             content: sanitizeContent(msg.content, LIMITS.MAX_CONTENT_LENGTH),
@@ -152,13 +143,11 @@ export const useAppStore = create<AppState>()(
 
           const currentMessages = state.chatHistory[state.currentSessionId] || [];
 
-          // Enforce message limit per session
           let updatedMessages = [...currentMessages, sanitizedMsg];
           if (updatedMessages.length > LIMITS.MAX_MESSAGES_PER_SESSION) {
             updatedMessages = updatedMessages.slice(-LIMITS.MAX_MESSAGES_PER_SESSION);
           }
 
-          // Auto-update session title on first user message
           let updatedSessions = state.sessions;
           if (msg.role === 'user' && currentMessages.length === 0) {
             const title = sanitizeTitle(
@@ -188,7 +177,6 @@ export const useAppStore = create<AppState>()(
           const newMessages = [...messages];
           const lastMsg = newMessages[newMessages.length - 1];
 
-          // Sanitize and limit content growth
           const newContent = sanitizeContent(
             lastMsg.content + content,
             LIMITS.MAX_CONTENT_LENGTH
@@ -219,31 +207,26 @@ export const useAppStore = create<AppState>()(
         }),
 
       // ========================================
-      // Settings Actions
+      // Settings State
       // ========================================
+      settings: DEFAULT_SETTINGS,
+
       updateSettings: (newSettings) =>
         set((state) => {
           const validated: Partial<Settings> = {};
 
-          // Validate ollamaEndpoint
           if (newSettings.ollamaEndpoint !== undefined) {
             if (isValidUrl(newSettings.ollamaEndpoint)) {
               validated.ollamaEndpoint = newSettings.ollamaEndpoint;
-            } else {
-              console.warn('[Store] Invalid Ollama endpoint URL');
             }
           }
 
-          // Validate geminiApiKey
           if (newSettings.geminiApiKey !== undefined) {
             if (isValidApiKey(newSettings.geminiApiKey)) {
               validated.geminiApiKey = newSettings.geminiApiKey;
-            } else {
-              console.warn('[Store] Invalid Gemini API key format');
             }
           }
 
-          // Validate systemPrompt
           if (newSettings.systemPrompt !== undefined) {
             validated.systemPrompt = sanitizeContent(
               newSettings.systemPrompt,
@@ -251,7 +234,6 @@ export const useAppStore = create<AppState>()(
             );
           }
 
-          // Validate useSwarm
           if (newSettings.useSwarm !== undefined) {
             validated.useSwarm = Boolean(newSettings.useSwarm);
           }
@@ -275,9 +257,9 @@ export const useAppStore = create<AppState>()(
   )
 );
 
-// ============================================================================
+// =============================================================================
 // SELECTORS (for optimized subscriptions)
-// ============================================================================
+// =============================================================================
 
 const EMPTY_ARRAY: Message[] = [];
 
@@ -287,67 +269,34 @@ export const selectSessions = (state: AppState) => state.sessions;
 export const selectCurrentSessionId = (state: AppState) => state.currentSessionId;
 export const selectChatHistory = (state: AppState) => state.chatHistory;
 
-/**
- * Get messages for current session
- */
 export const selectCurrentMessages = (state: AppState): Message[] => {
   if (!state.currentSessionId) return EMPTY_ARRAY;
   return state.chatHistory[state.currentSessionId] || EMPTY_ARRAY;
 };
 
-/**
- * Check if Gemini API key is set
- * @param state - Current app state
- * @returns Boolean indicating if API key exists and is non-empty
- */
 export const selectIsApiKeySet = (state: AppState): boolean => {
   return Boolean(state.settings.geminiApiKey && state.settings.geminiApiKey.length > 0);
 };
 
-/**
- * Get session by ID (curried selector for memoization)
- * @param id - Session ID to find
- * @returns Function that takes state and returns the session or undefined
- */
 export const selectSessionById = (id: string) => (state: AppState) => {
   return state.sessions.find((session) => session.id === id);
 };
 
-/**
- * Get total message count in current session
- * @param state - Current app state
- * @returns Number of messages in the current session
- */
 export const selectMessageCount = (state: AppState): number => {
   if (!state.currentSessionId) return 0;
   return (state.chatHistory[state.currentSessionId] || []).length;
 };
 
-/**
- * Check if current session has any messages
- * @param state - Current app state
- * @returns Boolean indicating if there are messages in current session
- */
 export const selectHasMessages = (state: AppState): boolean => {
   if (!state.currentSessionId) return false;
   const messages = state.chatHistory[state.currentSessionId] || [];
   return messages.length > 0;
 };
 
-/**
- * Get useSwarm setting
- * @param state - Current app state
- * @returns Boolean indicating if swarm mode is enabled
- */
 export const selectUseSwarm = (state: AppState): boolean => {
   return state.settings.useSwarm;
 };
 
-/**
- * Get Ollama endpoint setting
- * @param state - Current app state
- * @returns Ollama endpoint URL string
- */
 export const selectOllamaEndpoint = (state: AppState): string => {
   return state.settings.ollamaEndpoint;
 };

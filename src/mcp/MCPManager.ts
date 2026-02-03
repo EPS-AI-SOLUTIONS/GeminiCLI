@@ -10,6 +10,12 @@
  * - Parameter validation
  * - Batch operations
  * - Result caching
+ *
+ * This is the main facade that coordinates:
+ * - MCPToolRegistry - tool/prompt/resource management
+ * - MCPCircuitBreakerManager - per-server circuit breakers
+ * - MCPBatchExecutor - batch operations
+ * - MCPAutoDiscovery - automatic tool discovery
  */
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -18,8 +24,12 @@ import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import chalk from 'chalk';
 import fs from 'fs/promises';
 import path from 'path';
-import os from 'os';
 
+import {
+  logError,
+  logWarning,
+} from '../utils/errorHandling.js';
+import { logMCPConnection } from '../utils/startupLogger.js';
 import {
   MCPServerConfig,
   MCPTool,
@@ -32,18 +42,26 @@ import {
   MCPBatchResult,
   MCPValidationResult,
   MCPToolDiscoveryOptions,
-  ConnectedServer
+  ConnectedServer,
+  MCPClient,
+  MCPTransport
 } from './MCPTypes.js';
 import { resolveAlias } from './MCPAliases.js';
 import { RequestCache } from '../core/RequestCache.js';
-import { CircuitBreaker } from '../core/CircuitBreaker.js';
+import { GEMINIHYDRA_DIR } from '../config/paths.config.js';
+
+// Import extracted modules
+import { MCPToolRegistry } from './MCPToolRegistry.js';
+import { MCPCircuitBreakerManager } from './MCPCircuitBreaker.js';
+import { MCPBatchExecutor } from './MCPBatchOperations.js';
+import { MCPAutoDiscovery } from './MCPAutoDiscovery.js';
+import { NativeToolsServer, NATIVE_SERVER_NAME } from './NativeToolsServer.js';
 
 // ============================================================
 // Constants
 // ============================================================
 
-const CONFIG_DIR = path.join(os.homedir(), '.geminihydra');
-const MCP_CONFIG_FILE = path.join(CONFIG_DIR, 'mcp-servers.json');
+const MCP_CONFIG_FILE = path.join(GEMINIHYDRA_DIR, 'mcp-servers.json');
 
 // ============================================================
 // MCPManager Class
@@ -51,22 +69,40 @@ const MCP_CONFIG_FILE = path.join(CONFIG_DIR, 'mcp-servers.json');
 
 export class MCPManager {
   private servers: Map<string, ConnectedServer> = new Map();
-  private globalTools: Map<string, MCPTool> = new Map();
-  private globalPrompts: Map<string, MCPPrompt> = new Map();
-  private globalResources: Map<string, MCPResource> = new Map();
+  private initialized: boolean = false;
 
-  // Feature #23: Circuit breakers per server
-  private circuitBreakers: Map<string, CircuitBreaker> = new Map();
+  // Extracted modules
+  private toolRegistry: MCPToolRegistry;
+  private circuitBreakerManager: MCPCircuitBreakerManager;
+  private batchExecutor: MCPBatchExecutor;
+  private autoDiscovery: MCPAutoDiscovery;
+
+  // Native tools server (virtual MCP server for native tools)
+  private nativeToolsServer: NativeToolsServer;
 
   // Feature #26: Result cache
   private resultCache: RequestCache<any>;
 
-  // Feature #21: Auto-discovery
-  private discoveryInterval: NodeJS.Timeout | null = null;
-  private knownTools: Set<string> = new Set();
-  private discoveryOptions: MCPToolDiscoveryOptions = {};
-
   constructor() {
+    // Initialize extracted modules
+    this.toolRegistry = new MCPToolRegistry();
+    this.circuitBreakerManager = new MCPCircuitBreakerManager();
+    this.batchExecutor = new MCPBatchExecutor();
+    this.autoDiscovery = new MCPAutoDiscovery();
+    this.nativeToolsServer = new NativeToolsServer();
+
+    // Set up auto-discovery tool provider
+    this.autoDiscovery.setToolProvider(() => this.getAllTools());
+
+    // Set up circuit breaker reconnection handler
+    this.circuitBreakerManager.setReconnectionHandler(async (serverName) => {
+      const configs = await this.loadServerConfigs();
+      const config = configs.find(c => c.name === serverName);
+      if (config) {
+        await this.connectServer(config);
+      }
+    });
+
     this.resultCache = new RequestCache<any>({
       ttl: 5 * 60 * 1000, // 5 minutes
       maxSize: 200,
@@ -76,27 +112,173 @@ export class MCPManager {
   }
 
   // ============================================================
+  // Helper Methods (delegating to MCPToolRegistry)
+  // ============================================================
+
+  /**
+   * Parse a global tool/prompt name into server and item components
+   * Format: serverName__itemName (where itemName may contain __)
+   */
+  private parseServerToolName(fullName: string): { serverName: string; toolName: string } {
+    const parsed = this.toolRegistry.parseServerItemName(fullName);
+    return { serverName: parsed.serverName, toolName: parsed.itemName };
+  }
+
+  /**
+   * Format a global name from server and item name
+   */
+  private formatGlobalName(serverName: string, itemName: string): string {
+    return this.toolRegistry.formatGlobalName(serverName, itemName);
+  }
+
+  /**
+   * Validate that a server is connected and return it
+   * @throws Error if server is not connected
+   */
+  private validateConnectedServer(serverName: string): ConnectedServer {
+    const server = this.servers.get(serverName);
+    if (!server || server.status !== 'connected' || !server.client) {
+      throw new Error(`Server not connected: ${serverName}`);
+    }
+    return server;
+  }
+
+  // ============================================================
+  // Native Tools Server
+  // ============================================================
+
+  /**
+   * Initialize the native tools server
+   * Provides native implementations of Serena-compatible tools
+   */
+  private async initNativeToolsServer(projectRoot: string): Promise<void> {
+    try {
+      // Set root directory for native tools
+      await this.nativeToolsServer.setRootDir(projectRoot);
+
+      // Initialize (registers tools in MCPToolRegistry)
+      await this.nativeToolsServer.init();
+
+      console.log(chalk.green(`[MCP] Native tools server initialized (${this.nativeToolsServer.getToolCount()} tools)`));
+    } catch (error) {
+      logError('MCP', 'Failed to initialize native tools server', error);
+    }
+  }
+
+  /**
+   * Check if a tool name refers to a native tool
+   */
+  private isNativeTool(toolName: string): boolean {
+    const resolved = resolveAlias(toolName);
+    const { serverName } = this.parseServerToolName(resolved);
+    return serverName === NATIVE_SERVER_NAME;
+  }
+
+  /**
+   * Get native tools server instance
+   */
+  getNativeToolsServer(): NativeToolsServer {
+    return this.nativeToolsServer;
+  }
+
+  // ============================================================
   // Initialization & Configuration
   // ============================================================
 
-  async init(): Promise<void> {
-    await fs.mkdir(CONFIG_DIR, { recursive: true });
+  async init(options?: { projectRoot?: string; autoActivateSerena?: boolean }): Promise<void> {
+    // Prevent multiple initialization
+    if (this.initialized) {
+      return;
+    }
 
-    const configs = await this.loadServerConfigs();
+    await fs.mkdir(GEMINIHYDRA_DIR, { recursive: true });
+
+    // Initialize native tools server FIRST (no external dependencies)
+    const projectRoot = options?.projectRoot || process.cwd();
+    await this.initNativeToolsServer(projectRoot);
+
+    // PRIMARY: Load from project's .mcp.json (if projectRoot provided)
+    let configs: MCPServerConfig[] = [];
+
+    if (projectRoot) {
+      configs = await this.loadFromProjectConfig(projectRoot);
+    }
+
+    // FALLBACK: Load from ~/.geminihydra/mcp-servers.json
+    if (configs.length === 0) {
+      configs = await this.loadServerConfigs();
+    }
+
     const enabledConfigs = configs.filter(c => c.enabled !== false);
 
-    if (enabledConfigs.length === 0) return;
+    if (enabledConfigs.length === 0) {
+      console.log(chalk.yellow(`[MCP] No servers configured`));
+      return;
+    }
+
+    console.log(chalk.cyan(`[MCP] Connecting to ${enabledConfigs.length} servers...`));
 
     // Connect in parallel for speed
     const connectionPromises = enabledConfigs.map(async (config) => {
       try {
         await this.connectServer(config);
-      } catch (error: any) {
-        console.log(chalk.yellow(`[MCP] Failed to connect to ${config.name}: ${error.message}`));
+      } catch (error) {
+        logWarning('MCP', `Failed to connect to ${config.name}`, error);
       }
     });
 
     await Promise.all(connectionPromises);
+
+    // Auto-activate Serena project if enabled and Serena is connected
+    if (options?.autoActivateSerena !== false) {
+      await this.autoActivateSerena(projectRoot);
+    }
+
+    this.initialized = true;
+  }
+
+  /**
+   * Auto-activate Serena project based on .serena folder presence
+   * Note: In claude-code context, activate_project is excluded (single_project: true)
+   * so Serena auto-activates the project at startup. We skip manual activation.
+   */
+  private async autoActivateSerena(projectRoot: string): Promise<void> {
+    const serenaServer = this.servers.get('serena');
+    if (!serenaServer || serenaServer.status !== 'connected') {
+      return;
+    }
+
+    // Check if .serena folder exists
+    const serenaConfigPath = path.join(projectRoot, '.serena', 'project.yml');
+    try {
+      await fs.access(serenaConfigPath);
+    } catch {
+      // No .serena folder, skip activation
+      return;
+    }
+
+    // Detect project name from folder
+    const projectName = path.basename(projectRoot);
+
+    // Check if activate_project tool is available (not excluded in claude-code context)
+    const activateTool = serenaServer.tools.find(t => t.name === 'activate_project');
+    if (!activateTool) {
+      // In claude-code context, Serena auto-activates the project at startup
+      // No need to call activate_project manually - it's excluded by design
+      console.log(chalk.green(`[Serena] Project '${projectName}' ready (auto-activated at startup)`));
+      return;
+    }
+
+    try {
+      console.log(chalk.cyan(`[Serena] Activating project: ${projectName}...`));
+      const result = await this.callTool('serena__activate_project', { project: projectName });
+
+      if (result.success) {
+        console.log(chalk.green(`[Serena] Project '${projectName}' activated`));
+      }
+    } catch (error) {
+      logWarning('Serena', 'Auto-activation failed', error);
+    }
   }
 
   async loadServerConfigs(): Promise<MCPServerConfig[]> {
@@ -112,6 +294,67 @@ export class MCPManager {
 
   async saveServerConfigs(configs: MCPServerConfig[]): Promise<void> {
     await fs.writeFile(MCP_CONFIG_FILE, JSON.stringify(configs, null, 2), 'utf-8');
+  }
+
+  /**
+   * Load MCP server configs from project's .mcp.json file
+   * This is the PRIMARY source - project-specific configuration
+   */
+  async loadFromProjectConfig(projectRoot: string): Promise<MCPServerConfig[]> {
+    const mcpJsonPath = path.join(projectRoot, '.mcp.json');
+
+    try {
+      const data = await fs.readFile(mcpJsonPath, 'utf-8');
+      const config = JSON.parse(data);
+
+      if (!config.mcpServers) {
+        console.log(chalk.yellow(`[MCP] .mcp.json found but no mcpServers defined`));
+        return [];
+      }
+
+      // Convert .mcp.json format to MCPServerConfig[]
+      const configs: MCPServerConfig[] = [];
+      for (const [name, serverConfig] of Object.entries(config.mcpServers)) {
+        const sc = serverConfig as any;
+        configs.push({
+          name,
+          command: sc.command,
+          args: sc.args || [],
+          env: this.resolveEnvVars(sc.env || {}),
+          url: sc.url,
+          enabled: true
+        });
+      }
+
+      console.log(chalk.green(`[MCP] Loaded ${configs.length} servers from ${mcpJsonPath}`));
+      return configs;
+    } catch (error: any) {
+      if (error.code === 'ENOENT') {
+        logWarning('MCP', `No .mcp.json found in ${projectRoot}`);
+      } else {
+        logError('MCP', 'Error reading .mcp.json', error);
+      }
+      return [];
+    }
+  }
+
+  /**
+   * Resolve environment variable placeholders like ${VAR_NAME}
+   */
+  private resolveEnvVars(env: Record<string, string>): Record<string, string> {
+    const resolved: Record<string, string> = {};
+    for (const [key, value] of Object.entries(env)) {
+      if (typeof value === 'string' && value.startsWith('${') && value.endsWith('}')) {
+        const envVar = value.slice(2, -1);
+        resolved[key] = process.env[envVar] || '';
+        if (!process.env[envVar]) {
+          console.log(chalk.yellow(`[MCP] Warning: Environment variable ${envVar} not set`));
+        }
+      } else {
+        resolved[key] = value;
+      }
+    }
+    return resolved;
   }
 
   async addServer(config: MCPServerConfig): Promise<void> {
@@ -196,11 +439,15 @@ export class MCPManager {
 
       await client.connect(transport);
 
-      serverInfo.client = client;
-      serverInfo.transport = transport;
+      // Cast to our MCPClient interface (compatible subset of actual Client)
+      serverInfo.client = client as unknown as MCPClient;
+      serverInfo.transport = transport as unknown as MCPTransport;
       serverInfo.status = 'connected';
 
       await this.discoverServerCapabilities(serverInfo);
+
+      // Log connection to startup summary
+      logMCPConnection(config.name, serverInfo.tools.length, 'connected');
 
       console.log(chalk.green(`[MCP] Connected to ${config.name}`));
       console.log(chalk.gray(`  Tools: ${serverInfo.tools.length}`));
@@ -222,21 +469,15 @@ export class MCPManager {
         await server.client.close();
       }
 
-      // Remove from global registries
-      for (const tool of server.tools) {
-        this.globalTools.delete(`${name}__${tool.name}`);
-      }
-      for (const prompt of server.prompts) {
-        this.globalPrompts.delete(`${name}__${prompt.name}`);
-      }
-      for (const resource of server.resources) {
-        this.globalResources.delete(resource.uri);
-      }
+      // Remove from registry using MCPToolRegistry
+      this.toolRegistry.unregisterServerTools(name);
+      this.toolRegistry.unregisterServerPrompts(name);
+      this.toolRegistry.unregisterServerResources(name);
 
       this.servers.delete(name);
       console.log(chalk.yellow(`[MCP] Disconnected from ${name}`));
-    } catch (error: any) {
-      console.error(chalk.red(`[MCP] Error disconnecting from ${name}: ${error.message}`));
+    } catch (error) {
+      logError('MCP', `Error disconnecting from ${name}`, error);
     }
   }
 
@@ -244,7 +485,10 @@ export class MCPManager {
     for (const name of this.servers.keys()) {
       await this.disconnectServer(name);
     }
-    this.stopAutoDiscovery();
+    this.autoDiscovery.stop();
+
+    // Shutdown native tools server
+    await this.nativeToolsServer.shutdown();
   }
 
   // ============================================================
@@ -253,59 +497,64 @@ export class MCPManager {
 
   private async discoverServerCapabilities(server: ConnectedServer): Promise<void> {
     const client = server.client;
+    if (!client) {
+      console.log(chalk.yellow(`[MCP] ${server.name}: Client not connected`));
+      return;
+    }
 
-    // Discover tools
+    // Discover tools and register with MCPToolRegistry
     try {
       const toolsResult = await client.listTools();
-      server.tools = (toolsResult.tools || []).map((tool: any) => ({
-        name: tool.name,
-        serverName: server.name,
-        description: tool.description || '',
-        inputSchema: tool.inputSchema,
-      }));
-
-      for (const tool of server.tools) {
-        const globalName = `${server.name}__${tool.name}`;
-        this.globalTools.set(globalName, tool);
-      }
+      server.tools = (toolsResult.tools || []).map((tool: any) => {
+        const mcpTool: MCPTool = {
+          name: tool.name,
+          serverName: server.name,
+          description: tool.description || '',
+          inputSchema: tool.inputSchema,
+        };
+        this.toolRegistry.registerTool(mcpTool);
+        return mcpTool;
+      });
     } catch {
       console.log(chalk.gray(`[MCP] ${server.name}: No tools available`));
+      server.tools = [];
     }
 
-    // Discover prompts
+    // Discover prompts and register with MCPToolRegistry
     try {
       const promptsResult = await client.listPrompts();
-      server.prompts = (promptsResult.prompts || []).map((prompt: any) => ({
-        name: prompt.name,
-        serverName: server.name,
-        description: prompt.description,
-        arguments: prompt.arguments,
-      }));
-
-      for (const prompt of server.prompts) {
-        const globalName = `${server.name}__${prompt.name}`;
-        this.globalPrompts.set(globalName, prompt);
-      }
+      server.prompts = (promptsResult.prompts || []).map((prompt: any) => {
+        const mcpPrompt: MCPPrompt = {
+          name: prompt.name,
+          serverName: server.name,
+          description: prompt.description,
+          arguments: prompt.arguments,
+        };
+        this.toolRegistry.registerPrompt(mcpPrompt);
+        return mcpPrompt;
+      });
     } catch {
-      console.log(chalk.gray(`[MCP] ${server.name}: No prompts available`));
+      // Silently ignore - no prompts is normal for most servers
+      server.prompts = [];
     }
 
-    // Discover resources
+    // Discover resources and register with MCPToolRegistry
     try {
       const resourcesResult = await client.listResources();
-      server.resources = (resourcesResult.resources || []).map((resource: any) => ({
-        uri: resource.uri,
-        serverName: server.name,
-        name: resource.name,
-        description: resource.description,
-        mimeType: resource.mimeType,
-      }));
-
-      for (const resource of server.resources) {
-        this.globalResources.set(resource.uri, resource);
-      }
+      server.resources = (resourcesResult.resources || []).map((resource: any) => {
+        const mcpResource: MCPResource = {
+          uri: resource.uri,
+          serverName: server.name,
+          name: resource.name,
+          description: resource.description,
+          mimeType: resource.mimeType,
+        };
+        this.toolRegistry.registerResource(mcpResource);
+        return mcpResource;
+      });
     } catch {
-      console.log(chalk.gray(`[MCP] ${server.name}: No resources available`));
+      // Silently ignore - no resources is normal for most servers
+      server.resources = [];
     }
   }
 
@@ -313,19 +562,127 @@ export class MCPManager {
   // Tool Execution
   // ============================================================
 
-  async callTool(toolName: string, params: Record<string, any>): Promise<MCPToolResult> {
-    // Resolve alias first
-    const resolved = resolveAlias(toolName);
+  /**
+   * Validate path parameter before MCP tool execution
+   * Ensures paths don't contain AI hallucinations like trailing parentheses
+   * and don't attempt path traversal attacks
+   */
+  private validateMCPToolPath(toolPath: string): { valid: boolean; sanitized?: string; error?: string } {
+    if (!toolPath || typeof toolPath !== 'string') {
+      return { valid: false, error: 'Invalid path parameter' };
+    }
 
-    // Parse tool name (format: serverName__toolName)
-    const parts = resolved.split('__');
+    // Remove trailing parentheses (AI hallucinations)
+    let cleanPath = toolPath.trim().replace(/\s*\([^)]*\)\s*$/, '').replace(/\)$/, '');
+
+    // Check for path traversal patterns
+    const traversalPatterns = [
+      /\.\.\//,
+      /\.\.\\/,
+      /%2e%2e/i,
+      /%252e%252e/i
+    ];
+
+    for (const pattern of traversalPatterns) {
+      if (pattern.test(cleanPath)) {
+        return { valid: false, error: `Path traversal detected: ${toolPath}` };
+      }
+    }
+
+    return { valid: true, sanitized: cleanPath };
+  }
+
+  /**
+   * Normalize parameters for memory tools
+   * Converts string arguments to arrays as expected by MCP memory server
+   * Fixes: [bug] request payload entities array, [bug] memory tools failures with string arguments
+   */
+  private normalizeMemoryParams(toolName: string, params: Record<string, any>): Record<string, any> {
+    const memoryTools = ['create_entities', 'add_observations', 'create_relations', 'delete_entities', 'delete_relations', 'delete_observations'];
+    const baseTool = toolName.split('__').pop() || toolName;
+
+    if (!memoryTools.includes(baseTool)) return params;
+
+    const normalized = { ...params };
+
+    // Convert entities string → array
+    if (typeof normalized.entities === 'string') {
+      normalized.entities = [{
+        name: normalized.entities,
+        entityType: 'concept',
+        observations: []
+      }];
+    }
+
+    // Convert observations string → array
+    if (typeof normalized.observations === 'string') {
+      normalized.observations = [normalized.observations];
+    }
+
+    // Convert entityName for add_observations if missing
+    if (baseTool === 'add_observations' && !normalized.entityName && normalized.name) {
+      normalized.entityName = normalized.name;
+      delete normalized.name;
+    }
+
+    // Convert relations string → array (parse "A -> B" format)
+    if (typeof normalized.relations === 'string') {
+      const match = normalized.relations.match(/(.+?)\s*(?:->|relates?\s*to)\s*(.+)/i);
+      if (match) {
+        normalized.relations = [{
+          from: match[1].trim(),
+          to: match[2].trim(),
+          relationType: 'relates_to'
+        }];
+      }
+    }
+
+    return normalized;
+  }
+
+  async callTool(toolName: string, params: Record<string, any>): Promise<MCPToolResult> {
+    // Validate path parameters before execution
+    const pathParams = ['path', 'file', 'filepath', 'filename', 'directory', 'dir', 'target', 'source'];
+    for (const param of pathParams) {
+      if (params && params[param] && typeof params[param] === 'string') {
+        const validation = this.validateMCPToolPath(params[param] as string);
+        if (!validation.valid) {
+          console.log(chalk.red(`[MCP] Path validation failed: ${validation.error}`));
+          return {
+            success: false,
+            content: [{ type: 'text', text: `Security error: ${validation.error}` }],
+            isError: true
+          };
+        }
+        params[param] = validation.sanitized;
+      }
+    }
+
+    // Normalize memory tool parameters (string → array conversion)
+    params = this.normalizeMemoryParams(toolName, params);
+
+    // BUG-001 FIX: Normalize tool name format (native/tool -> native__tool)
+    // Dijkstra planner generates 'native/list_dir' but MCP expects 'native__list_dir'
+    let normalizedToolName = toolName;
+    if (toolName.includes('/') && !toolName.startsWith('http')) {
+      normalizedToolName = toolName.replace(/\//g, '__');
+      console.log(chalk.gray(`[MCP] Normalized tool name: ${toolName} -> ${normalizedToolName}`));
+    }
+
+    // Resolve alias first
+    const resolved = resolveAlias(normalizedToolName);
+
+    // Parse tool name using helper method
+    const parsed = this.parseServerToolName(resolved);
     let serverName: string;
     let actualToolName: string;
 
-    if (parts.length === 2) {
-      [serverName, actualToolName] = parts;
+    if (parsed.toolName) {
+      serverName = parsed.serverName;
+      actualToolName = parsed.toolName;
     } else {
-      const tool = this.globalTools.get(resolved);
+      // Single part name - look up in tool registry
+      const tool = this.toolRegistry.getTool(resolved);
       if (!tool) {
         throw new Error(`Tool not found: ${toolName}`);
       }
@@ -333,15 +690,32 @@ export class MCPManager {
       actualToolName = tool.name;
     }
 
-    const server = this.servers.get(serverName);
-    if (!server || server.status !== 'connected') {
-      throw new Error(`Server not connected: ${serverName}`);
+    // ============================================================
+    // Native Tools Server Handler
+    // ============================================================
+    // If this is a native tool, delegate to NativeToolsServer
+    if (serverName === NATIVE_SERVER_NAME) {
+      console.log(chalk.cyan(`[MCP] Calling native/${actualToolName}...`));
+
+      try {
+        const result = await this.nativeToolsServer.callTool(actualToolName, params);
+        return result;
+      } catch (error) {
+        logError('MCP', `Native tool call failed: ${actualToolName}`, error);
+        throw error;
+      }
     }
+
+    // ============================================================
+    // Standard MCP Server Handler
+    // ============================================================
+    // Validate server connection using helper method
+    const server = this.validateConnectedServer(serverName);
 
     console.log(chalk.cyan(`[MCP] Calling ${serverName}/${actualToolName}...`));
 
     try {
-      const result = await server.client.callTool({
+      const result = await server.client!.callTool({
         name: actualToolName,
         arguments: params,
       });
@@ -350,41 +724,26 @@ export class MCPManager {
         content: result.content,
         isError: result.isError
       };
-    } catch (error: any) {
-      console.error(chalk.red(`[MCP] Tool call failed: ${error.message}`));
+    } catch (error) {
+      logError('MCP', 'Tool call failed', error);
       throw error;
     }
   }
 
-  // Feature #23: Call with retry and circuit breaker
+  // Feature #23: Call with retry and circuit breaker (using MCPCircuitBreakerManager)
   async callToolWithRecovery(
     toolName: string,
     params: Record<string, any>,
     options: { maxRetries?: number; retryDelay?: number } = {}
   ): Promise<MCPToolResult> {
-    const { maxRetries = 3, retryDelay = 1000 } = options;
     const resolved = resolveAlias(toolName);
-    const serverName = resolved.split('__')[0];
-    const breaker = this.getCircuitBreaker(serverName);
+    const { serverName } = this.parseServerToolName(resolved);
 
-    return breaker.execute(async () => {
-      let lastError: Error | null = null;
-
-      for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        try {
-          return await this.callTool(resolved, params);
-        } catch (error: any) {
-          lastError = error;
-          console.log(chalk.yellow(`[MCP] Attempt ${attempt}/${maxRetries} failed: ${error.message}`));
-
-          if (attempt < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, retryDelay * attempt));
-          }
-        }
-      }
-
-      throw lastError || new Error('MCP call failed after retries');
-    });
+    return this.circuitBreakerManager.executeWithRetry(
+      serverName,
+      () => this.callTool(resolved, params),
+      options
+    );
   }
 
   // Feature #26: Call with caching
@@ -408,14 +767,17 @@ export class MCPManager {
   // ============================================================
 
   async getPrompt(promptName: string, params: Record<string, any>): Promise<any> {
-    const parts = promptName.split('__');
+    // Parse prompt name using helper method
+    const parsed = this.parseServerToolName(promptName);
     let serverName: string;
     let actualPromptName: string;
 
-    if (parts.length === 2) {
-      [serverName, actualPromptName] = parts;
+    if (parsed.toolName) {
+      serverName = parsed.serverName;
+      actualPromptName = parsed.toolName;
     } else {
-      const prompt = this.globalPrompts.get(promptName);
+      // Single part name - look up in tool registry
+      const prompt = this.toolRegistry.getPrompt(promptName);
       if (!prompt) {
         throw new Error(`Prompt not found: ${promptName}`);
       }
@@ -423,226 +785,80 @@ export class MCPManager {
       actualPromptName = prompt.name;
     }
 
-    const server = this.servers.get(serverName);
-    if (!server || server.status !== 'connected') {
-      throw new Error(`Server not connected: ${serverName}`);
-    }
+    // Validate server connection using helper method
+    const server = this.validateConnectedServer(serverName);
 
-    return server.client.getPrompt({
+    return server.client!.getPrompt({
       name: actualPromptName,
       arguments: params,
     });
   }
 
   async readResource(uri: string): Promise<any> {
-    const resource = this.globalResources.get(uri);
+    const resource = this.toolRegistry.getResource(uri);
     if (!resource) {
       throw new Error(`Resource not found: ${uri}`);
     }
 
-    const server = this.servers.get(resource.serverName);
-    if (!server || server.status !== 'connected') {
-      throw new Error(`Server not connected: ${resource.serverName}`);
-    }
+    // Validate server connection using helper method
+    const server = this.validateConnectedServer(resource.serverName);
 
-    return server.client.readResource({ uri });
+    return server.client!.readResource({ uri });
   }
 
   // ============================================================
-  // Feature #24: Parameter Validation
+  // Feature #24: Parameter Validation (delegated to MCPToolRegistry)
   // ============================================================
 
   validateToolParams(toolName: string, params: Record<string, any>): MCPValidationResult {
-    const errors: string[] = [];
-    const warnings: string[] = [];
-
-    const resolved = resolveAlias(toolName);
-    const tools = this.getAllTools();
-    const tool = tools.find(t =>
-      `${t.serverName}__${t.name}` === resolved || t.name === resolved
-    );
-
-    if (!tool) {
-      errors.push(`Tool not found: ${toolName}`);
-      return { valid: false, errors, warnings };
-    }
-
-    const schema = tool.inputSchema;
-    if (!schema || !schema.properties) {
-      return { valid: true, errors, warnings };
-    }
-
-    // Check required properties
-    const required = schema.required || [];
-    for (const prop of required) {
-      if (params[prop] === undefined || params[prop] === null) {
-        errors.push(`Missing required parameter: ${prop}`);
-      }
-    }
-
-    // Check types
-    for (const [key, value] of Object.entries(params)) {
-      const propSchema = schema.properties[key];
-      if (!propSchema) {
-        warnings.push(`Unknown parameter: ${key}`);
-        continue;
-      }
-
-      const expectedType = propSchema.type;
-      const actualType = typeof value;
-
-      if (expectedType === 'string' && actualType !== 'string') {
-        errors.push(`Parameter ${key} should be string, got ${actualType}`);
-      } else if (expectedType === 'number' && actualType !== 'number') {
-        errors.push(`Parameter ${key} should be number, got ${actualType}`);
-      } else if (expectedType === 'boolean' && actualType !== 'boolean') {
-        errors.push(`Parameter ${key} should be boolean, got ${actualType}`);
-      } else if (expectedType === 'array' && !Array.isArray(value)) {
-        errors.push(`Parameter ${key} should be array, got ${actualType}`);
-      } else if (expectedType === 'object' && (actualType !== 'object' || Array.isArray(value))) {
-        errors.push(`Parameter ${key} should be object, got ${actualType}`);
-      }
-    }
-
-    return { valid: errors.length === 0, errors, warnings };
+    return this.toolRegistry.validateToolParams(toolName, params);
   }
 
   // ============================================================
-  // Feature #25: Batch Operations
+  // Feature #25: Batch Operations (delegated to MCPBatchExecutor)
   // ============================================================
 
   async batchExecute(
     operations: MCPBatchOperation[],
-    options: { maxConcurrency?: number } = {}
+    options: { maxConcurrency?: number; onProgress?: (completed: number, total: number) => void } = {}
   ): Promise<MCPBatchResult[]> {
-    const { maxConcurrency = 5 } = options;
-    const results: MCPBatchResult[] = [];
-    const chunks: MCPBatchOperation[][] = [];
-
-    // Split into chunks
-    for (let i = 0; i < operations.length; i += maxConcurrency) {
-      chunks.push(operations.slice(i, i + maxConcurrency));
-    }
-
-    // Process chunks
-    for (const chunk of chunks) {
-      const chunkResults = await Promise.all(
-        chunk.map(async (op): Promise<MCPBatchResult> => {
-          try {
-            const result = await this.callToolWithRecovery(op.tool, op.params);
-            return { id: op.id, success: true, result };
-          } catch (error: any) {
-            return { id: op.id, success: false, error: error.message };
-          }
-        })
-      );
-      results.push(...chunkResults);
-    }
-
+    const { results } = await this.batchExecutor.execute(
+      operations,
+      (toolName, params) => this.callToolWithRecovery(toolName, params),
+      options
+    );
     return results;
   }
 
   async batchReadFiles(paths: string[]): Promise<MCPBatchResult[]> {
-    return this.batchExecute(
-      paths.map((filePath) => ({
-        tool: 'filesystem__read_file',
-        params: { path: filePath },
-        id: filePath
-      }))
+    return this.batchExecutor.batchReadFiles(
+      paths,
+      (toolName, params) => this.callToolWithRecovery(toolName, params)
     );
   }
 
   // ============================================================
-  // Feature #21: Auto-Discovery
+  // Feature #21: Auto-Discovery (delegated to MCPAutoDiscovery)
   // ============================================================
 
   startAutoDiscovery(options: MCPToolDiscoveryOptions = {}): void {
-    if (this.discoveryInterval) return;
-
-    this.discoveryOptions = {
-      interval: options.interval ?? 60000,
-      onNewTool: options.onNewTool ?? ((tool) => {
-        console.log(chalk.green(`[MCP] New tool discovered: ${tool.server}__${tool.name}`));
-      }),
-      onToolRemoved: options.onToolRemoved ?? ((tool) => {
-        console.log(chalk.yellow(`[MCP] Tool removed: ${tool.server}__${tool.name}`));
-      })
-    };
-
-    this.scanForTools();
-    this.discoveryInterval = setInterval(() => {
-      this.scanForTools();
-    }, this.discoveryOptions.interval);
-
-    console.log(chalk.gray(`[MCP] Auto-discovery started (interval: ${this.discoveryOptions.interval}ms)`));
+    this.autoDiscovery.start(options);
   }
 
   stopAutoDiscovery(): void {
-    if (this.discoveryInterval) {
-      clearInterval(this.discoveryInterval);
-      this.discoveryInterval = null;
-      console.log(chalk.gray('[MCP] Auto-discovery stopped'));
-    }
-  }
-
-  private async scanForTools(): Promise<void> {
-    try {
-      const currentTools = this.getAllTools();
-      const currentToolNames = new Set(
-        currentTools.map(t => `${t.serverName}__${t.name}`)
-      );
-
-      // Check for new tools
-      for (const tool of currentTools) {
-        const fullName = `${tool.serverName}__${tool.name}`;
-        if (!this.knownTools.has(fullName)) {
-          this.discoveryOptions.onNewTool?.({ name: tool.name, server: tool.serverName });
-          this.knownTools.add(fullName);
-        }
-      }
-
-      // Check for removed tools
-      for (const known of this.knownTools) {
-        if (!currentToolNames.has(known)) {
-          const [server, ...nameParts] = known.split('__');
-          this.discoveryOptions.onToolRemoved?.({ name: nameParts.join('__'), server });
-          this.knownTools.delete(known);
-        }
-      }
-    } catch (error: any) {
-      console.error(chalk.red(`[MCP] Auto-discovery error: ${error.message}`));
-    }
+    this.autoDiscovery.stop();
   }
 
   // ============================================================
-  // Circuit Breaker (Feature #23)
+  // Circuit Breaker Access
   // ============================================================
 
-  private getCircuitBreaker(serverName: string): CircuitBreaker {
-    if (!this.circuitBreakers.has(serverName)) {
-      this.circuitBreakers.set(serverName, new CircuitBreaker(serverName, {
-        failureThreshold: 3,
-        successThreshold: 2,
-        timeout: 30000,
-        onStateChange: async (from, to, name) => {
-          console.log(chalk.yellow(`[MCP:${name}] Circuit: ${from} -> ${to}`));
+  getCircuitBreakerState(serverName: string): 'CLOSED' | 'OPEN' | 'HALF_OPEN' | 'UNKNOWN' {
+    return this.circuitBreakerManager.getState(serverName);
+  }
 
-          if (to === 'HALF_OPEN') {
-            try {
-              const configs = await this.loadServerConfigs();
-              const config = configs.find(c => c.name === name);
-              if (config) {
-                console.log(chalk.cyan(`[MCP:${name}] Attempting reconnection...`));
-                await this.connectServer(config);
-              }
-            } catch (error: any) {
-              console.error(chalk.red(`[MCP:${name}] Reconnection failed: ${error.message}`));
-            }
-          }
-        }
-      }));
-    }
-    return this.circuitBreakers.get(serverName)!;
+  resetCircuitBreaker(serverName: string): void {
+    this.circuitBreakerManager.resetBreaker(serverName);
   }
 
   // ============================================================
@@ -658,19 +874,19 @@ export class MCPManager {
   }
 
   // ============================================================
-  // Getters
+  // Getters (delegated to MCPToolRegistry)
   // ============================================================
 
   getAllTools(): MCPTool[] {
-    return Array.from(this.globalTools.values());
+    return this.toolRegistry.getAllTools();
   }
 
   getAllPrompts(): MCPPrompt[] {
-    return Array.from(this.globalPrompts.values());
+    return this.toolRegistry.getAllPrompts();
   }
 
   getAllResources(): MCPResource[] {
-    return Array.from(this.globalResources.values());
+    return this.toolRegistry.getAllResources();
   }
 
   getServerStatus(name: string): MCPServerStatus {
@@ -688,11 +904,7 @@ export class MCPManager {
   }
 
   getToolDefinitionsForGemini(): any[] {
-    return Array.from(this.globalTools.values()).map(tool => ({
-      name: `mcp__${tool.serverName}__${tool.name}`,
-      description: `[MCP:${tool.serverName}] ${tool.description}`,
-      parameters: tool.inputSchema,
-    }));
+    return this.toolRegistry.getToolDefinitionsForGemini();
   }
 
   // ============================================================
@@ -702,8 +914,16 @@ export class MCPManager {
   printStatus(): void {
     console.log(chalk.cyan('\n=== MCP Status ===\n'));
 
+    // Native tools server status (always first)
+    if (this.nativeToolsServer.isInitialized()) {
+      console.log(chalk.green(`[OK] ${NATIVE_SERVER_NAME} (native)`));
+      console.log(chalk.gray(`    Tools: ${this.nativeToolsServer.getToolCount()} | Aliases: ${Object.keys(this.nativeToolsServer.getAllAliases()).length}`));
+    } else {
+      console.log(chalk.yellow(`[..] ${NATIVE_SERVER_NAME} (native) - not initialized`));
+    }
+
     const servers = this.getAllServers();
-    if (servers.length === 0) {
+    if (servers.length === 0 && !this.nativeToolsServer.isInitialized()) {
       console.log(chalk.gray('No MCP servers configured'));
       console.log(chalk.gray('Use `gemini mcp add <name> <command>` to add a server'));
       return;
@@ -717,7 +937,9 @@ export class MCPManager {
       console.log(chalk.gray(`    Tools: ${server.tools} | Prompts: ${server.prompts} | Resources: ${server.resources}`));
     }
 
-    console.log(chalk.gray(`\nTotal: ${this.globalTools.size} tools, ${this.globalPrompts.size} prompts, ${this.globalResources.size} resources`));
+    // Include native tools in total count
+    const nativeToolCount = this.nativeToolsServer.isInitialized() ? this.nativeToolsServer.getToolCount() : 0;
+    console.log(chalk.gray(`\nTotal: ${this.toolRegistry.toolCount + nativeToolCount} tools, ${this.toolRegistry.promptCount} prompts, ${this.toolRegistry.resourceCount} resources`));
 
     const cacheStats = this.getCacheStats();
     console.log(chalk.gray(`Cache: ${cacheStats.size} entries, ${cacheStats.hits} hits, ${cacheStats.misses} misses\n`));

@@ -91,32 +91,93 @@ export const sanitizeTitle = (title: string, maxLength: number = 100): string =>
  */
 export const escapeForShell = (code: string): string => {
   return code
-    .replace(/\\/g, '\\\\')
-    .replace(/"/g, '\\"')
-    .replace(/`/g, '\\`')
-    .replace(/\$/g, '\\$');
+    .replace(/\\/g, '\\\\')     // Escape backslashes first
+    .replace(/"/g, '\\"')       // Escape double quotes
+    .replace(/`/g, '\\`')       // Escape backticks (command substitution)
+    .replace(/\$/g, '\\$')      // Escape dollar signs (variable expansion)
+    .replace(/!/g, '\\!')       // Escape history expansion
+    .replace(/\n/g, '\\n');     // Escape newlines
 };
+
+/**
+ * Consolidated dangerous patterns for security checks.
+ * SYNC WITH: src/core/SecuritySystem.ts - DEFAULT_BLOCKED_PATTERNS
+ *
+ * This is a frontend copy of the canonical list from SecuritySystem.ts.
+ * When updating, ensure both files are synchronized.
+ */
+export const DANGEROUS_PATTERNS: RegExp[] = [
+  // === Shell injection patterns ===
+  /;\s*rm\s+-rf/i,
+  /rm\s+-rf/i,
+  /;\s*dd\s+if=/i,
+  /dd\s+if=/i,
+  /;\s*mkfs\./i,
+  /mkfs/i,
+  />\s*\/dev\/(sda|hda|nvme)/i,
+  />\s*\/dev\//i,
+  /\|\s*sh\s*$/i,
+  /\|\s*bash\s*$/i,
+  /\|\|\s*(rm|del|sh|bash|powershell|cmd)/i,  // || OR operator with dangerous commands
+  /&&\s*(rm|del|sh|bash|powershell|cmd)/i,    // && AND operator with dangerous commands
+  /\|\|.*\b(Remove-Item|Clear-Content)\b/i,   // || with PowerShell destructive cmdlets
+  /&&.*\b(Remove-Item|Clear-Content)\b/i,     // && with PowerShell destructive cmdlets
+  /\$\(.*\)/,
+  /`[^`]+`/,
+
+  // === File system destruction (Windows) ===
+  /del\s+\/[sfq]/i,
+  /format\s+[a-z]:/i,
+
+  // === Remote code execution via pipe ===
+  /curl.*\|\s*(ba)?sh/i,
+  /wget.*\|\s*(ba)?sh/i,
+
+  // === Path traversal ===
+  /\.\.\/\.\.\/\.\.\//,
+  /\.\.\\\.\.\\\.\.\\/,
+
+  // === SQL injection (basic) ===
+  /'\s*OR\s+'1'\s*=\s*'1/i,
+  /'\s*;\s*DROP\s+TABLE/i,
+  /UNION\s+SELECT/i,
+
+  // === XSS patterns ===
+  /<script[^>]*>/i,
+  /javascript:/i,
+  /on\w+\s*=/i,
+
+  // === Credential patterns (prevent accidental logging) ===
+  /password\s*[:=]\s*['"][^'"]+['"]/i,
+  /api[_-]?key\s*[:=]\s*['"][^'"]+['"]/i,
+  /secret\s*[:=]\s*['"][^'"]+['"]/i,
+
+  // === Dangerous PowerShell ===
+  /Invoke-Expression/i,
+  /IEX\s*\(/i,
+  /-EncodedCommand/i,
+  /powershell.*-enc/i,
+  /Start-Process.*-Verb\s+RunAs/i,
+
+  // === Code evaluation patterns ===
+  /eval\s*\(/i,
+  /exec\s*\(/i,
+
+  // === Python-specific dangerous patterns ===
+  /__import__\s*\(/i,
+  /subprocess/i,
+  /os\.system/i,
+
+  // === Node.js dangerous patterns ===
+  /child_process/i,
+];
 
 /**
  * Checks for potentially dangerous patterns in code
  * Returns true if dangerous patterns found
  */
 export const containsDangerousPatterns = (code: string): boolean => {
-  const dangerousPatterns = [
-    /rm\s+-rf/i,
-    /del\s+\/[sf]/i,
-    /format\s+[a-z]:/i,
-    /mkfs/i,
-    /dd\s+if=/i,
-    />\s*\/dev\//i,
-    /curl.*\|\s*(ba)?sh/i,
-    /wget.*\|\s*(ba)?sh/i,
-    /powershell.*-enc/i,
-    /invoke-expression/i,
-    /iex\s*\(/i,
-  ];
-
-  return dangerousPatterns.some(pattern => pattern.test(code));
+  return DANGEROUS_PATTERNS.some(pattern => pattern.test(code));
 };
 
 // ============================================================================

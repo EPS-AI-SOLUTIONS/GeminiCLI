@@ -3,20 +3,28 @@
  * @module hooks/useOllamaModels
  *
  * Fetches available Ollama models from the local server.
+ *
+ * Now uses the generic useModelFetcher internally.
  */
 
-import { useQuery } from '@tanstack/react-query';
-import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '../store/useAppStore';
 import { QUERY_KEYS, FALLBACK_MODELS, TAURI_COMMANDS } from '../constants';
-import { useMemo } from 'react';
+import { useModelFetcher } from './useModelFetcher';
 
-interface UseOllamaModelsReturn {
+// ============================================================================
+// Types (preserved for backward compatibility)
+// ============================================================================
+
+export interface UseOllamaModelsReturn {
   models: string[];
   isLoading: boolean;
   error: Error | null;
   refetch: () => void;
 }
+
+// ============================================================================
+// Hook Implementation
+// ============================================================================
 
 /**
  * Hook for fetching Ollama models
@@ -29,48 +37,21 @@ interface UseOllamaModelsReturn {
 export const useOllamaModels = (): UseOllamaModelsReturn => {
   const ollamaEndpoint = useAppStore((state) => state.settings.ollamaEndpoint);
 
-  const {
-    data: models,
-    isPending: isLoading,
-    error,
-    refetch,
-  } = useQuery({
-    queryKey: [QUERY_KEYS.OLLAMA_MODELS, ollamaEndpoint],
-    queryFn: async (): Promise<string[]> => {
-      console.log('[useOllamaModels] Fetching models...');
-
-      try {
-        const fetchedModels = await invoke<string[]>(
-          TAURI_COMMANDS.GET_OLLAMA_MODELS,
-          { endpoint: ollamaEndpoint }
-        );
-
-        console.log('[useOllamaModels] Models loaded:', fetchedModels);
-
-        if (fetchedModels && fetchedModels.length > 0) {
-          return fetchedModels;
-        }
-
-        return [...FALLBACK_MODELS.ollama];
-      } catch (error) {
-        console.warn('[useOllamaModels] Failed to fetch (server might be down):', error);
-        // Do not throw, just return fallback/empty so UI doesn't crash
-        return [...FALLBACK_MODELS.ollama];
-      }
-    },
-    enabled: true,
-    retry: 2,
-    staleTime: Infinity,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
+  const { models, isLoading, error, refetch } = useModelFetcher({
+    provider: 'ollama',
+    credential: ollamaEndpoint,
+    fallbackModels: FALLBACK_MODELS.ollama,
+    tauriCommand: TAURI_COMMANDS.GET_OLLAMA_MODELS,
+    queryKey: QUERY_KEYS.OLLAMA_MODELS,
+    credentialParamName: 'endpoint',
+    retry: 2, // Ollama uses more retries since server might be starting up
+    requireCredential: false, // Ollama doesn't require credential to be set
   });
 
-  const finalModels = useMemo(() => models ?? [...FALLBACK_MODELS.ollama], [models]);
-
   return {
-    models: finalModels,
+    models,
     isLoading,
-    error: error as Error | null,
+    error,
     refetch,
   };
 };

@@ -1,0 +1,12 @@
+{
+  "models": [
+    {
+      "name": "Model1",
+      "description": "Tutaj opis modelu"
+    },
+    {
+      "name": "Model2",
+      "description": "Tutaj opis drugiego modelu"
+    }
+  ]
+}

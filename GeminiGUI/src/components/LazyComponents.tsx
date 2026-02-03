@@ -10,8 +10,7 @@
  * - Components only loaded when needed
  */
 
-import { lazy, Suspense, ReactNode } from 'react';
-import { SuspenseFallback } from './SuspenseFallback';
+import { lazy } from 'react';
 
 /**
  * Lazy-loaded SettingsModal component
@@ -53,60 +52,9 @@ const ShortcutsModalLazy = lazy(() =>
   }))
 );
 
-/**
- * Lazy-loaded ErrorBoundary component
- * Error handling UI
- */
-const ErrorBoundaryLazy = lazy(() =>
-  import('./ErrorBoundary').then((m) => ({
-    default: m.ErrorBoundary,
-  }))
-);
-
-interface LazyComponentWrapperProps {
-  children: ReactNode;
-  fallback?: ReactNode;
-}
-
-/**
- * Wrapper component for lazy-loaded components with Suspense fallback
- * Provides consistent loading experience across all lazy components
- */
-function LazyComponentWrapper({
-  children,
-  fallback,
-}: LazyComponentWrapperProps) {
-  return (
-    <Suspense fallback={fallback || <SuspenseFallback />}>
-      {children}
-    </Suspense>
-  );
-}
-
-/**
- * Higher-order component to wrap lazy-loaded components with Suspense
- * Usage: <WithSuspense component={MyLazyComponent} />
- */
-function WithSuspense({
-  component: Component,
-  fallback,
-  ...props
-}: any) {
-  return (
-    <LazyComponentWrapper fallback={fallback}>
-      <Component {...props} />
-    </LazyComponentWrapper>
-  );
-}
-
 export {
-  // Lazy components
   SettingsModalLazy,
   MemoryPanelLazy,
   BridgePanelLazy,
   ShortcutsModalLazy,
-  ErrorBoundaryLazy,
-  // Utilities
-  LazyComponentWrapper,
-  WithSuspense,
 };

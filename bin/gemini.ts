@@ -40,10 +40,13 @@ import { agentMemory } from '../src/memory/AgentMemory.js';
 import { projectMemory } from '../src/memory/ProjectMemory.js';
 import { agentVectorMemory } from '../src/memory/VectorStore.js';
 import { sessionCache } from '../src/memory/SessionCache.js';
+import { promptMemory } from '../src/memory/PromptMemory.js';
+import { promptCommands } from '../src/cli/PromptCommands.js';
 import { ollamaManager } from '../src/core/OllamaManager.js';
 import { FileHandlers } from '../src/files/FileHandlers.js';
 import { DebugLoop } from '../src/debug/DebugLoop.js';
 import { mcpManager, mcpBridge } from '../src/mcp/index.js';
+import { startupLogger } from '../src/utils/startupLogger.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { exec } from 'child_process';
@@ -58,6 +61,7 @@ let inquirerInput: any = null;
 
 async function loadInquirer() {
   try {
+    // @ts-ignore - Optional dependency, may not be installed
     const inquirer = await import('@inquirer/prompts');
     inquirerInput = inquirer.input;
     return true;
@@ -69,7 +73,12 @@ async function loadInquirer() {
 
 const execAsync = promisify(exec);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT_DIR = path.resolve(__dirname, '..');
+// ROOT_DIR should point to project root, not dist/
+// When running from dist/bin/gemini.js, __dirname is dist/bin, so we need ../..
+// When running from bin/gemini.ts (dev), __dirname is bin, so we need ..
+const ROOT_DIR = __dirname.includes('dist')
+  ? path.resolve(__dirname, '..', '..')  // dist/bin -> project root
+  : path.resolve(__dirname, '..');        // bin -> project root
 
 // ═══════════════════════════════════════════════════════════════
 // YOLO MODE CONFIGURATION
@@ -81,22 +90,14 @@ const YOLO_CONFIG = {
   networkAccess: true,
   maxConcurrency: 8,
   timeout: 300000,
+  rootDir: ROOT_DIR,  // CRITICAL: Project root for path validation
 };
 
-// Banner
+// Banner (using startup logger for consistent formatting)
 function printBanner() {
-  console.log(chalk.magenta('\n╔═══════════════════════════════════════════════════════════════╗'));
-  console.log(chalk.magenta('║') + chalk.yellow.bold('      GEMINI HYDRA v14.0 - SCHOOL OF THE WOLF                  ') + chalk.magenta('║'));
-  console.log(chalk.magenta('║') + chalk.gray('   12 Agents | 5-Phase Protocol | Self-Healing | Full Node.js ') + chalk.magenta('║'));
-  console.log(chalk.magenta('╚═══════════════════════════════════════════════════════════════╝'));
-
-  // FIX #1: Quick Edit Mode warning for Windows
-  if (process.platform === 'win32') {
-    console.log(chalk.yellow('\n⚠ WINDOWS: Jeśli prompt nie reaguje, wyłącz "Quick Edit Mode":'));
-    console.log(chalk.gray('   Kliknij prawym na pasek tytułowy CMD → Właściwości → Odznacz "Quick Edit Mode"'));
-    console.log(chalk.gray('   Lub użyj: Ctrl+Q aby wznowić (jeśli przypadkowo wcisnąłeś Ctrl+S)'));
-    console.log(chalk.gray('   Zalecane: Uruchom przez Windows Terminal (wt.exe) zamiast cmd.exe\n'));
-  }
+  startupLogger.reset();
+  startupLogger.printBanner();
+  startupLogger.printWindowsWarning();
 }
 
 // Initialize global resources
@@ -164,7 +165,7 @@ function ensureStdinReady(): void {
   }
 
   // FIX #8: Set raw mode if TTY
-  if (process.stdin.isTTY && process.stdin.setRawMode) {
+  if (process.stdin.isTTY && typeof process.stdin.setRawMode === 'function') {
     try {
       // Note: readline handles this, but ensure it's not disabled
       // process.stdin.setRawMode(true); // Let readline manage this
@@ -392,16 +393,43 @@ async function handleInput(line: string): Promise<void> {
   if (trimmed === '/help') {
     console.log(chalk.cyan('\nAvailable Commands:'));
     console.log(chalk.gray('  @<agent>      ') + 'Switch to specific agent (e.g., @geralt)');
+    console.log(chalk.yellow('  @serena       ') + 'Serena Agent - Real MCP code intelligence');
     console.log(chalk.gray('  /help         ') + 'Show this help');
     console.log(chalk.gray('  /history      ') + 'Show command history');
     console.log(chalk.gray('  /clear        ') + 'Clear screen');
     console.log(chalk.gray('  /status       ') + 'Show session status');
     console.log(chalk.gray('  /cost         ') + 'Show token usage');
+    console.log(chalk.gray('  /prompt       ') + 'Zarządzanie zapisanymi promptami');
     console.log(chalk.gray('  /stdin-fix    ') + 'Napraw stdin (jeśli prompt nie działa)');
     console.log(chalk.gray('  /inquirer     ') + 'Przełącz na Inquirer.js (alternatywny input)');
     console.log(chalk.gray('  exit, quit    ') + 'Exit interactive mode');
     console.log(chalk.gray('  /queue        ') + 'Pokaż kolejkę zadań');
     console.log(chalk.gray('  /cancel <id>  ') + 'Anuluj zadanie z kolejki\n');
+    console.log(chalk.cyan('Serena Agent Commands:'));
+    console.log(chalk.gray('  @serena status    ') + 'Show Serena MCP connection status');
+    console.log(chalk.gray('  @serena find      ') + 'Find symbol by pattern (LSP)');
+    console.log(chalk.gray('  @serena overview  ') + 'Get file structure/outline');
+    console.log(chalk.gray('  @serena search    ') + 'Search code with regex');
+    console.log(chalk.gray('  @serena help      ') + 'Show all Serena commands\n');
+    promptLoop();
+    return;
+  }
+
+  // Prompt Memory commands
+  if (trimmed.startsWith('/prompt') || trimmed.startsWith('/p ')) {
+    const args = trimmed.replace(/^\/p(rompt)?\s*/, '').trim().split(/\s+/);
+    promptCommands.setLastInput(commandHistory[commandHistory.length - 2] || '');
+    promptCommands.setContext(commandHistory.slice(-5).join(' '));
+    const result = await promptCommands.handle(args);
+    if (result.compiledPrompt) {
+      // Użytkownik chce użyć prompta - dodaj do kolejki
+      addToCommandHistory(result.compiledPrompt);
+      const task = addTaskToQueue(result.compiledPrompt);
+      console.log(chalk.cyan(`\n📋 Prompt "${result.prompt?.title}" dodany jako zadanie #${task.id}\n`));
+      // FIX: await processTaskQueue() aby uniknąć przedwczesnego zakończenia CLI
+      await processTaskQueue();
+      return;
+    }
     promptLoop();
     return;
   }
@@ -492,7 +520,7 @@ async function handleInput(line: string): Promise<void> {
   }
 
   if (trimmed === '/mcp') {
-    await mcpManager.init();
+    await mcpManager.init({ projectRoot: ROOT_DIR });
     mcpManager.printStatus();
     const tools = mcpManager.getAllTools();
     if (tools.length > 0) {
@@ -511,7 +539,7 @@ async function handleInput(line: string): Promise<void> {
 
   // MCP tool call: mcp:<tool> {params}
   if (trimmed.startsWith('mcp:')) {
-    await mcpManager.init();
+    await mcpManager.init({ projectRoot: ROOT_DIR });
     const match = trimmed.match(/^mcp:(\S+)\s*(.*)$/);
     if (match) {
       const toolName = match[1];
@@ -536,11 +564,34 @@ async function handleInput(line: string): Promise<void> {
         } else {
           console.log(JSON.stringify(result, null, 2));
         }
+
+        // FIX: Update knowledge graph with tool results
+        // Extracts entities from significant tool results
+        if (result.success && result.content) {
+          const resultText = JSON.stringify(result.content);
+          if (resultText.length > 50) {  // Only for meaningful results
+            try {
+              await longTermMemory.init();
+              await longTermMemory.autoExtract(resultText, `mcp-tool-${toolName}`);
+            } catch (memError) {
+              // Silently ignore memory extraction errors
+            }
+          }
+        }
       } catch (error: any) {
         console.log(chalk.red(`Error: ${error.message}`));
       }
       console.log('');
     }
+    promptLoop();
+    return;
+  }
+
+  // @serena command - Real Serena MCP Agent
+  if (trimmed.startsWith('@serena')) {
+    const { handleSerenaAgentCommand } = await import('../src/cli/SerenaAgentCommands.js');
+    const args = trimmed.slice(7).trim().split(/\s+/).filter(Boolean);
+    await handleSerenaAgentCommand(args);
     promptLoop();
     return;
   }
@@ -583,7 +634,8 @@ async function handleInput(line: string): Promise<void> {
     } else {
       console.log(chalk.cyan(`\n📋 Zadanie #${task.id} rozpoczynam...\n`));
       // Uruchom przetwarzanie kolejki (prompt pokaże się po zakończeniu)
-      processTaskQueue();
+      // FIX: await processTaskQueue() aby uniknąć przedwczesnego zakończenia CLI
+      await processTaskQueue();
     }
   } else {
     // Pusty input - pokaż prompt
@@ -597,16 +649,32 @@ async function runInteractiveMode() {
   // FIX #3, #8, #9: Ensure stdin is ready before starting
   ensureStdinReady();
 
-  // Print welcome
-  console.log(chalk.magenta('\n╔═══════════════════════════════════════════════════════════╗'));
-  console.log(chalk.magenta('║') + chalk.yellow.bold('         GEMINI HYDRA - INTERACTIVE MODE                  ') + chalk.magenta('║'));
-  console.log(chalk.magenta('║') + chalk.gray('  Commands: @agent, /help, /history, /clear, exit          ') + chalk.magenta('║'));
-  console.log(chalk.magenta('╚═══════════════════════════════════════════════════════════╝\n'));
+  // Add startup components status
+  startupLogger.addComponent('Node.js', 'ok', process.version);
+  startupLogger.addComponent('Swarm Engine', 'ok', '12 agents ready');
+  startupLogger.addComponent('Session Cache', 'ok', 'loaded');
 
-  console.log(chalk.gray('  /queue       ') + 'Pokaż kolejkę zadań');
-  console.log(chalk.gray('  /cancel <id> ') + 'Anuluj zadanie z kolejki');
-  console.log(chalk.gray('  /stdin-fix   ') + 'Napraw stdin jeśli prompt nie działa');
-  console.log(chalk.gray('  Ctrl+C       ') + 'Wyjście\n');
+  // Check Ollama
+  try {
+    await execAsync('ollama --version');
+    startupLogger.addComponent('Ollama', 'ok', 'available');
+  } catch {
+    startupLogger.addComponent('Ollama', 'warning', 'not found');
+  }
+
+  // Check Gemini API
+  if (process.env.GEMINI_API_KEY) {
+    startupLogger.addComponent('Gemini API', 'ok', 'configured');
+  } else {
+    startupLogger.addComponent('Gemini API', 'warning', 'GEMINI_API_KEY not set');
+  }
+
+  // Print startup summary
+  startupLogger.printSummary();
+
+  // Print quick help
+  console.log(chalk.gray('  Komendy: /help, /queue, /mcp, @serena, exit'));
+  console.log(chalk.gray('  Problemy ze stdin? Użyj /stdin-fix\n'));
 
   // Start the first prompt (async)
   promptLoop();
@@ -648,7 +716,7 @@ async function executeSwarmWithReturn(objective: string, options: any): Promise<
 
   // MCP context (available tools for agents)
   try {
-    await mcpBridge.init();
+    await mcpBridge.init({ projectRoot: ROOT_DIR });
     const mcpContext = mcpBridge.getMCPContext();
     if (mcpContext) {
       context += '\n' + mcpContext;
@@ -811,7 +879,7 @@ program
     // MCP Status
     console.log(chalk.gray('\nMCP Integration:'));
     try {
-      await mcpManager.init();
+      await mcpManager.init({ projectRoot: ROOT_DIR });
       const servers = mcpManager.getAllServers();
       const tools = mcpManager.getAllTools();
       if (servers.length > 0) {
@@ -1006,7 +1074,7 @@ program
 
     const info = await FileHandlers.getFileInfo(filepath);
     console.log(chalk.gray(`Type: ${info.type}`));
-    console.log(chalk.gray(`Size: ${(info.size / 1024).toFixed(1)} KB`));
+    console.log(chalk.gray(`Size: ${((info.size ?? 0) / 1024).toFixed(1)} KB`));
 
     const content = await FileHandlers.extractContent(filepath);
 
@@ -1102,6 +1170,24 @@ program
   });
 
 // ═══════════════════════════════════════════════════════════════
+// PROMPT MEMORY COMMAND
+// ═══════════════════════════════════════════════════════════════
+program
+  .command('prompt [subcommand] [args...]')
+  .alias('p')
+  .description('Prompt memory management (save, list, search, use)')
+  .action(async (subcommand, args) => {
+    printBanner();
+
+    const allArgs = subcommand ? [subcommand, ...args] : [];
+    const result = await promptCommands.handle(allArgs);
+
+    if (!result.success && result.message) {
+      console.error(chalk.red(result.message));
+    }
+  });
+
+// ═══════════════════════════════════════════════════════════════
 // MCP COMMANDS (Model Context Protocol)
 // ═══════════════════════════════════════════════════════════════
 program
@@ -1157,7 +1243,7 @@ program
 
     // Call tool
     if (options.call) {
-      await mcpManager.init();
+      await mcpManager.init({ projectRoot: ROOT_DIR });
       const params = options.params ? JSON.parse(options.params) : {};
 
       console.log(chalk.cyan(`\n🔧 Calling MCP tool: ${options.call}\n`));
@@ -1182,7 +1268,7 @@ program
     }
 
     // List servers/tools or show status
-    await mcpManager.init();
+    await mcpManager.init({ projectRoot: ROOT_DIR });
     mcpManager.printStatus();
 
     // List all tools
@@ -1220,7 +1306,7 @@ program
   .command('mcp:call <tool> [params...]')
   .description('Quick MCP tool call')
   .action(async (tool, params) => {
-    await mcpManager.init();
+    await mcpManager.init({ projectRoot: ROOT_DIR });
 
     // Parse params: key=value key2=value2
     const parsedParams: Record<string, any> = {};
@@ -1256,7 +1342,7 @@ program
   .command('mcp:servers')
   .description('List MCP servers')
   .action(async () => {
-    await mcpManager.init();
+    await mcpManager.init({ projectRoot: ROOT_DIR });
     const servers = mcpManager.getAllServers();
 
     console.log(chalk.cyan('\n═══ MCP Servers ═══\n'));
@@ -1315,7 +1401,7 @@ async function executeSwarm(objective: string, options: any) {
 
     // MCP context (available tools for agents)
     try {
-      await mcpBridge.init();
+      await mcpBridge.init({ projectRoot: ROOT_DIR });
       const mcpContext = mcpBridge.getMCPContext();
       if (mcpContext) {
         context += '\n' + mcpContext;

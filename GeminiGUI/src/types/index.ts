@@ -4,6 +4,28 @@
  */
 
 // ============================================================================
+// RE-EXPORTED SHARED TYPES (Knowledge Graph)
+// ============================================================================
+
+// Re-export unified knowledge types from shared location
+// Note: Using relative path to reach the shared types in src/types
+export type {
+  KnowledgeNode,
+  KnowledgeEdge,
+  KnowledgeGraphData,
+  KnowledgeNodeType,
+  IKnowledgeGraph,
+} from '../../../src/types/knowledge.types';
+
+export {
+  createKnowledgeNode,
+  createKnowledgeEdge,
+} from '../../../src/types/knowledge.types';
+
+// Alias for backward compatibility - use KnowledgeGraphData for new code
+export type { KnowledgeGraphData as KnowledgeGraph } from '../../../src/types/knowledge.types';
+
+// ============================================================================
 // MESSAGE TYPES
 // ============================================================================
 
@@ -29,14 +51,15 @@ export interface Session {
 // SETTINGS TYPES
 // ============================================================================
 
-export type Provider = 'ollama' | 'gemini';
+export type Provider = 'llama' | 'gemini';
 
 export interface Settings {
-  ollamaEndpoint: string;
   systemPrompt: string;
   geminiApiKey: string;
   defaultProvider: Provider;
   useSwarm: boolean;
+  llamaModelsDir?: string;
+  llamaGpuLayers?: number;
 }
 
 // ============================================================================
@@ -64,9 +87,10 @@ export interface BridgeState {
 
 export interface BridgeRequest {
   id: string;
-  command: string;
+  command?: string;
+  message?: string;
   status: 'pending' | 'approved' | 'rejected';
-  timestamp: number;
+  timestamp?: number;
 }
 
 // ============================================================================
@@ -79,61 +103,12 @@ export interface AgentMemory {
   content: string;
   timestamp: number;
   tags?: string[];
+  importance?: number;
+  metadata?: Record<string, unknown>;
 }
 
-export interface KnowledgeNode {
-  id: string;
-  label: string;
-  type: 'concept' | 'entity' | 'action';
-}
-
-export interface KnowledgeEdge {
-  from: string;
-  to: string;
-  relation: string;
-}
-
-export interface KnowledgeGraph {
-  nodes: KnowledgeNode[];
-  edges: KnowledgeEdge[];
-}
-
-// ============================================================================
-// COMPONENT PROPS TYPES
-// ============================================================================
-
-export interface ChatContainerProps {
-  messages: Message[];
-  isStreaming: boolean;
-  modelsLoading: boolean;
-  modelsError: Error | null;
-  models: string[] | undefined;
-  selectedModel: string;
-  onSelectModel: (model: string) => void;
-  onSubmit: (prompt: string, image: string | null) => Promise<void>;
-  onExecuteCommand: (cmd: string) => Promise<void>;
-}
-
-export interface SessionSidebarProps {
-  sessions: Session[];
-  currentSessionId: string | null;
-  onCreateSession: () => void;
-  onSelectSession: (id: string) => void;
-  onDeleteSession: (id: string) => void;
-  onUpdateTitle: (id: string, title: string) => void;
-}
-
-export interface StatusFooterProps {
-  isStreaming: boolean;
-  isWorking: boolean;
-  hasError: boolean;
-  selectedModel: string;
-}
-
-export interface SettingsModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
+// KnowledgeNode, KnowledgeEdge, and KnowledgeGraph are now imported from
+// shared types at ../../../src/types/knowledge.types.ts
 
 // ============================================================================
 // APP STATE TYPES (Zustand Store)

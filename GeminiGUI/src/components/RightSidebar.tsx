@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, memo } from 'react';
 import { Lock, Download } from 'lucide-react';
 import { MemoryPanel } from './MemoryPanel';
+import { PanelHeader } from './ui/PanelHeader';
 
 interface RightSidebarProps {
   count: number;
@@ -53,9 +54,7 @@ const RightSidebarComponent: React.FC<RightSidebarProps> = ({
 
       {/* ACTIONS SECTION */}
       <div className="glass-panel p-4 rounded-lg flex flex-col justify-center gap-4 border-[var(--matrix-border)]">
-        <div className="flex justify-between items-center text-[var(--matrix-text-dim)] border-b border-[var(--matrix-border)] pb-2">
-          <span className="flex items-center gap-2 font-semibold text-sm">Akcje Sesji</span>
-        </div>
+        <PanelHeader title="Akcje Sesji" />
         <button
           onClick={onExport}
           className="glass-button text-xs flex items-center justify-center gap-2"
@@ -67,16 +66,13 @@ const RightSidebarComponent: React.FC<RightSidebarProps> = ({
 
       {/* WORKER SECTION */}
       <div className="glass-panel p-4 rounded-lg flex flex-col justify-center gap-4 border-[var(--matrix-border)]">
-        <div className="flex justify-between items-center text-[var(--matrix-text-dim)] border-b border-[var(--matrix-border)] pb-2">
-          <span className="flex items-center gap-2 font-semibold text-sm">
-            <Lock size={16}/> Deszyfracja
-          </span>
+        <PanelHeader icon={Lock} title="Deszyfracja">
           {isWorking && <span className="text-[10px] animate-pulse text-[var(--matrix-accent)]">PRACA</span>}
-        </div>
+        </PanelHeader>
 
-        <div className="w-full bg-black/10 rounded-full h-2.5 border border-[var(--matrix-border)] overflow-hidden">
+        <div className="progress-bar">
           <div
-            className="bg-[var(--matrix-accent)] h-2.5 rounded-full transition-all duration-300"
+            className="progress-bar-fill"
             style={{ width: `${workerProgress}%` }}
           ></div>
         </div>
@@ -97,9 +93,7 @@ const RightSidebarComponent: React.FC<RightSidebarProps> = ({
 
       {/* ZUSTAND SECTION */}
       <div className="glass-panel p-4 rounded-lg flex flex-col justify-center gap-4 border-[var(--matrix-border)]">
-        <h2 className="text-sm font-semibold text-[var(--matrix-text-dim)] border-b border-[var(--matrix-border)] pb-2">
-          Stan Systemu
-        </h2>
+        <PanelHeader title="Stan Systemu" />
         <div className="flex items-center justify-between text-[var(--matrix-text)]">
           <span>Licznik Sync:</span>
           <span className="text-xl font-bold text-[var(--matrix-accent)]">{count}</span>

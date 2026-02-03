@@ -5,7 +5,7 @@
  * Virtualized list of chat messages with Markdown rendering.
  */
 
-import { useRef, memo, useState } from 'react';
+import { useRef, memo } from 'react';
 import { motion } from 'framer-motion';
 import { FileText, Terminal, Copy, Check } from 'lucide-react';
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
@@ -14,6 +14,7 @@ import remarkGfm from 'remark-gfm';
 import { CodeBlock } from '../CodeBlock';
 import type { Message } from '../../types';
 import { UI } from '../../constants';
+import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 
 // ============================================================================
 // TYPES
@@ -42,12 +43,10 @@ const MessageItem = memo<MessageItemProps>(
   ({ message, isLast, isStreaming, onExecuteCommand, onContextMenu }) => {
     const isUser = message.role === 'user';
     const isSystem = message.role === 'system';
-    const [copied, setCopied] = useState(false);
+    const { copied, copyToClipboard } = useCopyToClipboard();
 
-    const handleCopyMessage = async () => {
-        await navigator.clipboard.writeText(message.content);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+    const handleCopyMessage = () => {
+        copyToClipboard(message.content);
     };
 
     return (
@@ -58,29 +57,31 @@ const MessageItem = memo<MessageItemProps>(
         className={`flex ${isUser ? 'justify-end' : 'justify-start'} py-2 px-4 group relative`}
         onContextMenu={(e) => onContextMenu(e, message)}
       >
-        {/* Copy Button (Floating outside or inside) - Inside looks cleaner for bubbles */}
-        <button 
-            onClick={handleCopyMessage}
-            className={`
-                absolute top-2 ${isUser ? 'right-4' : 'left-4'} 
-                p-1.5 rounded-full bg-black/40 text-white/70 hover:bg-black/60 hover:text-white 
-                opacity-0 group-hover:opacity-100 transition-all z-10 scale-90 hover:scale-100
-                border border-white/10
-            `}
-            title="Kopiuj wiadomość"
-        >
-            {copied ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
-        </button>
-
         <div
-          className={`max-w-[95%] p-3 rounded-lg text-sm overflow-hidden relative ${
+          className={
             isUser
-              ? 'bg-[var(--matrix-accent)] text-black font-bold font-sans'
+              ? 'message-bubble-user'
               : isSystem
-                ? 'bg-blue-900/20 text-blue-200 border border-blue-500/30 font-mono text-xs'
-                : 'bg-black/20 text-[var(--matrix-text)] border border-[var(--matrix-border)] font-mono'
-          }`}
+                ? 'message-bubble-system'
+                : 'message-bubble-assistant'
+          }
         >
+          {/* Copy Button (Now inside bubble, top-right) */}
+          <button 
+              onClick={handleCopyMessage}
+              className={`
+                  absolute top-2 right-2
+                  p-2 rounded-full 
+                  bg-neutral-900/90 text-white 
+                  hover:bg-white hover:text-black
+                  opacity-0 group-hover:opacity-100 transition-all duration-200 z-20 
+                  border border-white/20 shadow-md transform hover:scale-110
+              `}
+              title="Kopiuj wiadomość"
+          >
+              {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
+          </button>
+
           {isSystem && (
             <div className="flex items-center gap-2 mb-1 border-b border-blue-500/20 pb-1 text-blue-400">
               <Terminal size={14} />

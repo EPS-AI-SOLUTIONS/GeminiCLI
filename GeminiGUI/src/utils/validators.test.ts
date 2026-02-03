@@ -797,8 +797,8 @@ describe('isValidSessionId', () => {
 describe('isValidModelName', () => {
   describe('valid model names', () => {
     it('should accept Gemini models', () => {
-      expect(isValidModelName('gemini-1.5-pro')).toBe(true);
-      expect(isValidModelName('gemini-pro')).toBe(true);
+      expect(isValidModelName('gemini-3-flash-preview')).toBe(true);
+      expect(isValidModelName('gemini-3-pro-preview')).toBe(true);
     });
 
     it('should accept Ollama models', () => {

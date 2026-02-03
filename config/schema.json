@@ -1,0 +1,178 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GeminiHydra Configuration Schema",
+  "description": "Configuration schema for GeminiHydra v14.0",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "version": {
+      "type": "string",
+      "description": "Configuration version"
+    },
+    "models": {
+      "type": "object",
+      "description": "Model configuration",
+      "properties": {
+        "gemini": {
+          "type": "object",
+          "properties": {
+            "pro": { "type": "string" },
+            "flash": { "type": "string" },
+            "exp": { "type": "string" }
+          }
+        },
+        "ollama": {
+          "type": "object",
+          "properties": {
+            "default": { "type": "string" },
+            "coder": { "type": "string" },
+            "small": { "type": "string" }
+          }
+        },
+        "default": { "type": "string" },
+        "fast": { "type": "string" },
+        "quality": { "type": "string" }
+      }
+    },
+    "temperatures": {
+      "type": "object",
+      "description": "Temperature configuration",
+      "properties": {
+        "presets": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 2
+          }
+        },
+        "tasks": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 2
+          }
+        }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "description": "System limits",
+      "properties": {
+        "retry": {
+          "type": "object",
+          "properties": {
+            "maxRetries": { "type": "integer", "minimum": 0 },
+            "maxCriticalRetries": { "type": "integer", "minimum": 0 },
+            "initialDelayMs": { "type": "integer", "minimum": 0 },
+            "maxDelayMs": { "type": "integer", "minimum": 0 },
+            "backoffMultiplier": { "type": "number", "minimum": 1 }
+          }
+        },
+        "timeout": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "tokens": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "concurrency": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "cache": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "memory": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "file": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "queue": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "agents": {
+      "type": "object",
+      "description": "Agent configurations",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "role": { "type": "string" },
+          "model": { "type": "string" },
+          "temperatureProfile": {
+            "type": "object",
+            "properties": {
+              "base": { "type": "number", "minimum": 0, "maximum": 2 },
+              "creativityBias": { "type": "number" },
+              "precisionBias": { "type": "number" }
+            }
+          }
+        },
+        "required": ["role", "model"]
+      }
+    },
+    "execution": {
+      "type": "object",
+      "description": "Execution engine features",
+      "additionalProperties": {
+        "type": "boolean"
+      }
+    },
+    "mcp": {
+      "type": "object",
+      "description": "MCP configuration",
+      "properties": {
+        "autoDiscovery": { "type": "boolean" },
+        "circuitBreaker": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "failureThreshold": { "type": "integer", "minimum": 1 },
+            "resetTimeout": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "cache": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "ttl": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    }
+  },
+  "required": ["version", "models", "limits"]
+}

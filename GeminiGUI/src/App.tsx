@@ -1,6 +1,13 @@
 // Store & Hooks
 import { useAppStore, selectCurrentMessages } from './store/useAppStore';
-import { useAppTheme, useStreamListeners, useEnvLoader } from './hooks';
+import {
+  useAppTheme,
+  useStreamListeners,
+  useEnvLoader,
+  useAppKeyboardShortcuts,
+  useCommandExecution,
+  useContextMenuActions,
+} from './hooks';
 
 // Components
 import { SettingsModal } from './components/SettingsModal';
@@ -94,22 +101,12 @@ function App() {
     }
   }, [clearHistory]);
 
-  const executeCommand = useCallback(async (cmd: string) => {
-    addMessage({ role: 'system', content: `> ${STATUS.EXECUTING} ${cmd}`, timestamp: Date.now() });
-    
-    if (!isTauri) {
-       updateLastMessage('\n\n[WEB SIMULATION] Command executed: ' + cmd);
-       return;
-    }
-
-    try {
-      const result = await invoke<string>(TAURI_COMMANDS.RUN_SYSTEM_COMMAND, { command: cmd });
-      updateLastMessage('\n\nRESULT:\n```\n' + result + '\n```\n');
-    } catch (err) {
-      updateLastMessage('\n\nERROR:\n' + String(err));
-      toast.error(`Błąd komendy: ${err}`);
-    }
-  }, [addMessage, updateLastMessage, isTauri]);
+  // Command execution (using dedicated hook)
+  const { executeCommand } = useCommandExecution({
+    addMessage,
+    updateLastMessage,
+    isTauri,
+  });
 
   const handleSubmit = useCallback(async (userPrompt: string, attachedImage: string | null) => {
     let displayContent = userPrompt;
@@ -159,50 +156,20 @@ function App() {
   });
 
   // ========================================
-  // Keyboard Shortcuts
+  // Keyboard Shortcuts (using dedicated hook)
   // ========================================
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl+, -> Settings
-      if (e.ctrlKey && e.key === ',') {
-        e.preventDefault();
-        setIsSettingsOpen((p) => !p);
-      }
-      // Ctrl+/ -> Shortcuts
-      if (e.ctrlKey && e.key === '/') {
-        e.preventDefault();
-        setIsShortcutsOpen((p) => !p);
-      }
-      // Ctrl+L -> Clear
-      if (e.ctrlKey && e.key.toLowerCase() === 'l') {
-        e.preventDefault();
-        handleClearHistory();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleClearHistory]);
+  useAppKeyboardShortcuts({
+    onToggleSettings: () => setIsSettingsOpen((p) => !p),
+    onToggleShortcuts: () => setIsShortcutsOpen((p) => !p),
+    onClearHistory: handleClearHistory,
+    onNewSession: createSession,
+    onToggleTheme: handleToggleTheme,
+  });
 
   // ========================================
-  // Context Menu Actions Listener
+  // Context Menu Actions (using dedicated hook)
   // ========================================
-  useEffect(() => {
-    const handleContextAction = (e: Event) => {
-        const customEvent = e as CustomEvent<{ action: string; content: string }>;
-        const { action, content } = customEvent.detail;
-
-        if (action === 'ask') {
-            handleSubmit(content, null);
-        } else if (action === 'analyze') {
-            handleSubmit(`[ANALIZA KODU/TEKSTU]\n\n\`\`\`\n${content}\n\`\`\`\n\nPrzeanalizuj powyższy fragment. Wskaż błędy, potencjalne problemy i zaproponuj optymalizację.`, null);
-        } else if (action === 'run') {
-            handleSubmit(`Chcę uruchomić komendę:\n\`${content}\`\n\nCzy jest bezpieczna? Jeśli tak, wykonaj ją.`, null);
-        }
-    };
-
-    window.addEventListener('gemini-context-action', handleContextAction);
-    return () => window.removeEventListener('gemini-context-action', handleContextAction);
-  }, [handleSubmit]);
+  useContextMenuActions({ handleSubmit });
 
   // ========================================
   // Effects & Memos
@@ -295,7 +262,7 @@ function App() {
         isStreaming={isStreaming}
         isWorking={false}
         hasError={false}
-        selectedModel="Wolf Swarm v3.0"
+        selectedModel="Wolf Swarm v4.0 (Regis Patched)"
       />
     </main>
   );

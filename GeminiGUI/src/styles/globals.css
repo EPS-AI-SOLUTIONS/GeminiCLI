@@ -54,12 +54,17 @@
   --matrix-bg-primary: #0a1f0a;
   --matrix-bg-secondary: #001a00;
   --matrix-accent: #00ff41;
-  --matrix-text: #c0ffc0;
-  --matrix-text-dim: #80c080;
-  --matrix-glass-bg: rgba(0, 31, 0, 0.85);
-  --matrix-panel-bg: rgba(10, 20, 10, 0.8);
-  --matrix-border: rgba(0, 255, 65, 0.15);
-  --matrix-input-bg: rgba(0, 0, 0, 0.5);
+  --matrix-text: #e2e8f0; /* Slate-200 */
+  --matrix-text-dim: #94a3b8; /* Slate-400 */
+  --matrix-glass-bg: rgba(0, 31, 0, 0.4);
+  --matrix-panel-bg: rgba(10, 20, 10, 0.4);
+  --matrix-border: rgba(0, 255, 65, 0.3);
+  --matrix-input-bg: rgba(0, 0, 0, 0.4);
+  --bg-image: url('/background.webp');
+  --bg-overlay: rgba(10, 31, 10, 0.85);
+
+  --glass-blur: blur(16px) saturate(180%);
+  --glass-radius: 12px;
 }
 
 /* ============================================
@@ -75,12 +80,14 @@
   --matrix-bg-primary: #f0fdf4;
   --matrix-bg-secondary: #ffffff;
   --matrix-accent: #059669;
-  --matrix-text: #064e3b;
-  --matrix-text-dim: #34d399;
-  --matrix-glass-bg: rgba(255, 255, 255, 0.7);
-  --matrix-panel-bg: rgba(255, 255, 255, 0.6);
+  --matrix-text: #334155; /* Slate-700 (Gray) */
+  --matrix-text-dim: #64748b; /* Slate-500 (Dim Gray) */
+  --matrix-glass-bg: rgba(255, 255, 255, 0.5);
+  --matrix-panel-bg: rgba(255, 255, 255, 0.4);
   --matrix-border: rgba(5, 150, 105, 0.2);
   --matrix-input-bg: rgba(255, 255, 255, 0.5);
+  --bg-image: url('/backgroundlight.webp');
+  --bg-overlay: rgba(255, 255, 255, 0.6);
 }
 
 /* ============================================
@@ -153,11 +160,33 @@ body {
 
 /* Selection */
 ::selection {
-  @apply bg-emerald-400/30 text-emerald-50;
+  background: var(--matrix-accent);
+  color: var(--matrix-bg-secondary);
+  text-shadow: none;
 }
 
 [data-theme='light'] ::selection {
   @apply bg-emerald-200 text-emerald-900;
+}
+
+/* ============================================
+   USER SELECTION CONTROL
+   ============================================ */
+/* Prevent selecting UI elements */
+img, button, header, footer, .sidebar-item, .status-badge, .noselect {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Ensure message content is selectable */
+.markdown-body, .matrix-input {
+  user-select: text;
+  cursor: text;
+}
+
+/* Helper for selectable areas */
+.select-safe {
+  user-select: text;
 }
 
 /* ============================================
@@ -169,11 +198,11 @@ body {
 
 .glass-panel {
   background: var(--matrix-panel-bg);
-  backdrop-filter: blur(24px) saturate(200%);
-  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--matrix-border);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 255, 65, 0.1) inset;
+  border-radius: var(--glass-radius);
   transition: background 0.3s ease, border-color 0.3s ease;
 }
 
@@ -302,7 +331,7 @@ body {
 .markdown-body p { margin-bottom: 0.5em; }
 .markdown-body p:last-child { margin-bottom: 0; }
 .markdown-body pre {
-  background: rgba(0,0,0,0.3);
+  background: rgba(0,0,0,0.5);
   padding: 0.5em;
   border-radius: 4px;
   overflow-x: auto;
@@ -310,22 +339,24 @@ body {
   margin: 0.5em 0;
 }
 .markdown-body code {
-  background: rgba(0,0,0,0.2);
+  background: rgba(255,255,255,0.1);
   padding: 0.1em 0.3em;
   border-radius: 2px;
   font-family: var(--font-mono);
   font-size: 0.9em;
+  color: #ffffff;
 }
 .markdown-body pre code {
   background: transparent;
   padding: 0;
+  color: var(--matrix-text);
 }
 .markdown-body ul, .markdown-body ol { margin-left: 1.5em; margin-bottom: 0.5em; }
 .markdown-body li { margin-bottom: 0.2em; }
 .markdown-body strong { color: var(--matrix-accent); font-weight: bold; }
 .markdown-body a { color: var(--matrix-accent); text-decoration: underline; }
-.markdown-body h1, .markdown-body h2, .markdown-body h3 {
-  color: var(--matrix-text);
+.markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4, .markdown-body h5, .markdown-body h6 {
+  color: var(--matrix-accent);
   margin-top: 0.5em;
   margin-bottom: 0.2em;
   font-weight: bold;
@@ -337,6 +368,7 @@ body {
   margin-left: 0;
   font-style: italic;
   opacity: 0.8;
+  color: var(--matrix-text-dim);
 }
 
 /* ============================================
@@ -365,4 +397,132 @@ body {
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* ============================================
+   REUSABLE PANEL COMPONENTS
+   ============================================ */
+
+/* Panel Header - common styling for panel headers */
+.panel-header {
+  @apply flex justify-between items-center pb-2 border-b;
+  border-color: var(--matrix-border);
+  color: var(--matrix-text-dim);
+}
+
+.panel-header-title {
+  @apply flex items-center gap-2 font-semibold text-sm;
+}
+
+/* ============================================
+   ERROR/ALERT COMPONENTS
+   ============================================ */
+
+/* Error Alert - for error messages in panels */
+.error-alert {
+  @apply text-xs p-2 rounded;
+  background: rgba(127, 29, 29, 0.2);
+  color: #f87171;
+}
+
+.error-alert-bordered {
+  @apply text-xs p-2 rounded border;
+  background: rgba(127, 29, 29, 0.2);
+  color: #f87171;
+  border-color: rgba(248, 113, 113, 0.3);
+}
+
+/* Warning Alert */
+.warning-alert {
+  @apply text-[10px] px-2 py-1 rounded text-center;
+  background: rgba(113, 63, 18, 0.2);
+  color: #facc15;
+  border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+/* Success Alert */
+.success-alert {
+  @apply text-[10px] px-2 py-1 rounded text-center;
+  background: rgba(20, 83, 45, 0.2);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+/* ============================================
+   PROGRESS BAR COMPONENTS
+   ============================================ */
+
+/* Progress Bar Container */
+.progress-bar {
+  @apply w-full rounded-full h-2.5 overflow-hidden;
+  background: rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--matrix-border);
+}
+
+/* Progress Bar Fill */
+.progress-bar-fill {
+  @apply h-2.5 rounded-full transition-all duration-300;
+  background: var(--matrix-accent);
+}
+
+/* ============================================
+   MESSAGE BUBBLE COMPONENTS
+   ============================================ */
+
+/* Base message bubble */
+.message-bubble {
+  @apply max-w-[95%] p-3 rounded-lg text-sm overflow-hidden relative shadow-lg;
+}
+
+/* User message bubble */
+.message-bubble-user {
+  @apply max-w-[95%] p-3 rounded-lg text-sm overflow-hidden relative shadow-lg;
+  @apply font-bold font-sans;
+  background: var(--matrix-accent);
+  color: black;
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
+}
+
+/* Assistant message bubble */
+.message-bubble-assistant {
+  @apply max-w-[95%] p-3 rounded-lg text-sm overflow-hidden relative shadow-lg;
+  @apply font-mono backdrop-blur-md;
+  background: rgba(0, 0, 0, 0.6);
+  color: var(--matrix-text);
+  border: 1px solid var(--matrix-border);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+}
+
+/* System message bubble */
+.message-bubble-system {
+  @apply max-w-[95%] p-3 rounded-lg text-sm overflow-hidden relative shadow-lg;
+  @apply font-mono text-xs backdrop-blur-md;
+  background: rgba(30, 58, 138, 0.4);
+  color: #bfdbfe;
+  border: 1px solid rgba(59, 130, 246, 0.5);
+}
+
+/* ============================================
+   DATA DISPLAY COMPONENTS
+   ============================================ */
+
+/* Data Box - for displaying code/data content */
+.data-box {
+  @apply text-xs font-mono p-2 rounded;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--matrix-border);
+}
+
+/* Data Box with scroll */
+.data-box-scroll {
+  @apply text-xs font-mono p-2 rounded overflow-auto;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--matrix-border);
+}
+
+/* Request Card - for pending requests */
+.request-card {
+  @apply p-2 rounded text-xs animate-pulse;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--matrix-border);
 }

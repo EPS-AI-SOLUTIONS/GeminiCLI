@@ -1,0 +1,4 @@
+// Automatycznie wygenerowany plik testowy
+// Data: 2026-01-30T13:08:56.720Z
+
+console.log('Test działa!');

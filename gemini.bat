@@ -10,9 +10,15 @@ echo [INFO] Jesli prompt nie reaguje, uzyj: gemini-wt.bat (Windows Terminal)
 echo        lub wylacz Quick Edit Mode w CMD (PPM na pasek tytulowy -^> Wlasciwosci)
 echo.
 
-REM If no arguments, start interactive mode with tsx
+REM Build if dist doesn't exist
+if not exist "%~dp0dist\bin\gemini.js" (
+    echo [!] Building TypeScript...
+    call npx tsc
+)
+
+REM If no arguments, start interactive mode
 if "%~1"=="" (
-    npx tsx "%~dp0bin\gemini.ts" --interactive
+    node "%~dp0dist\bin\gemini.js" --interactive
 ) else (
-    npx tsx "%~dp0bin\gemini.ts" %*
+    node "%~dp0dist\bin\gemini.js" %*
 )

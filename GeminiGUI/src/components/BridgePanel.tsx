@@ -1,13 +1,9 @@
 import { useState, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Shield, Check, X, RefreshCw, ToggleLeft, ToggleRight, Clock } from 'lucide-react';
-
-interface BridgeRequest {
-    id: string;
-    message: string;
-    status: "pending" | "approved" | "rejected";
-}
+import { Shield, Check, X, ToggleLeft, ToggleRight, Clock } from 'lucide-react';
+import { PanelHeader } from './ui/PanelHeader';
+import type { BridgeRequest } from '../types';
 
 interface BridgeData {
     requests: BridgeRequest[];
@@ -77,27 +73,19 @@ export const BridgePanel: React.FC = () => {
 
     return (
         <div className="glass-panel p-4 rounded-lg flex flex-col gap-4 border-[var(--matrix-border)]">
-            <div className="flex justify-between items-center text-[var(--matrix-text-dim)] border-b border-[var(--matrix-border)] pb-2">
-                <span className="flex items-center gap-2 font-semibold text-sm">
-                    <Shield size={16} /> CLI Bridge
+            <PanelHeader
+                icon={Shield}
+                title="CLI Bridge"
+                onRefresh={() => refetch()}
+                isLoading={isLoading}
+            >
+                <span className="text-[10px] flex items-center gap-1 opacity-50">
+                    <Clock size={10} /> {formatTime(lastUpdate)}
                 </span>
-                <div className="flex items-center gap-2">
-                    <span className="text-[10px] flex items-center gap-1 opacity-50">
-                        <Clock size={10} /> {formatTime(lastUpdate)}
-                    </span>
-                    <button
-                        onClick={() => refetch()}
-                        disabled={isLoading}
-                        className={`hover:text-[var(--matrix-accent)] transition-colors ${isLoading ? 'animate-spin' : ''}`}
-                        title="Odswiez"
-                    >
-                        <RefreshCw size={12} />
-                    </button>
-                </div>
-            </div>
+            </PanelHeader>
 
             {error && (
-                <div className="text-xs text-red-400 bg-red-900/20 p-2 rounded">
+                <div className="error-alert">
                     Blad polaczenia z Bridge
                 </div>
             )}
@@ -119,11 +107,7 @@ export const BridgePanel: React.FC = () => {
             </div>
 
             {/* Status indicator */}
-            <div className={`text-[10px] px-2 py-1 rounded text-center ${
-                data?.auto_approve
-                    ? 'bg-green-900/20 text-green-400 border border-green-500/30'
-                    : 'bg-yellow-900/20 text-yellow-400 border border-yellow-500/30'
-            }`}>
+            <div className={data?.auto_approve ? 'success-alert' : 'warning-alert'}>
                 {data?.auto_approve ? 'TRYB AUTOMATYCZNY' : 'TRYB RECZNY - wymaga zatwierdzenia'}
             </div>
 
@@ -141,13 +125,13 @@ export const BridgePanel: React.FC = () => {
                     pendingRequests.map(req => (
                         <div
                             key={req.id}
-                            className="bg-black/20 border border-[var(--matrix-border)] p-2 rounded text-xs animate-pulse"
+                            className="request-card"
                         >
                             <div className="mb-2 font-mono break-all text-[var(--matrix-text)]">
-                                {req.message.length > 100
-                                    ? `${req.message.substring(0, 100)}...`
-                                    : req.message
-                                }
+                                {(() => {
+                                    const text = req.message || req.command || '';
+                                    return text.length > 100 ? `${text.substring(0, 100)}...` : text;
+                                })()}
                             </div>
                             <div className="flex gap-2 justify-end">
                                 <button

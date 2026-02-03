@@ -1,38 +1,16 @@
 import { useEffect, useState, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { BrainCircuit, User, Share2, Trash2, RefreshCw, Plus } from 'lucide-react';
-
-interface MemoryEntry {
-    id: string;
-    agent: string;
-    content: string;
-    timestamp: number;
-    importance: number;
-}
-
-interface KnowledgeNode {
-    id: string;
-    type: string;
-    label: string;
-}
-
-interface KnowledgeEdge {
-    source: string;
-    target: string;
-    label: string;
-}
-
-interface KnowledgeGraph {
-    nodes: KnowledgeNode[];
-    edges: KnowledgeEdge[];
-}
+import { BrainCircuit, User, Share2, Trash2, Plus } from 'lucide-react';
+import { PanelHeader } from './ui/PanelHeader';
+import type { AgentMemory, KnowledgeGraph } from '../types';
+import { AGENTS } from '../constants';
 
 const KnowledgeGraphVisualizer = ({ data }: { data: KnowledgeGraph | null }) => {
     if (!data || data.nodes.length === 0) {
         return <div className="text-xs italic text-[var(--matrix-text-dim)]">Graf wiedzy jest pusty.</div>;
     }
     return (
-        <div className="text-xs font-mono p-2 bg-black/20 rounded border border-[var(--matrix-border)] max-h-40 overflow-auto">
+        <div className="data-box-scroll max-h-40">
             <h4 className="font-bold text-[var(--matrix-accent)]">Wezly ({data.nodes.length})</h4>
             <ul className="mb-2">
                 {data.nodes.slice(0, 10).map((node) => (
@@ -61,15 +39,13 @@ const KnowledgeGraphVisualizer = ({ data }: { data: KnowledgeGraph | null }) => 
 
 export const MemoryPanel: React.FC = () => {
     const [knowledgeGraph, setKnowledgeGraph] = useState<KnowledgeGraph | null>(null);
-    const [agentMemories, setAgentMemories] = useState<MemoryEntry[]>([]);
+    const [agentMemories, setAgentMemories] = useState<AgentMemory[]>([]);
     const [selectedAgent, setSelectedAgent] = useState<string>("Dijkstra");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const agentList = [
-        "Geralt", "Yennefer", "Triss", "Jaskier", "Vesemir", "Ciri",
-        "Eskel", "Lambert", "Zoltan", "Regis", "Dijkstra", "Philippa"
-    ];
+    // Use centralized agent list from constants
+    const agentList = Object.values(AGENTS).map(agent => agent.name);
 
     const fetchKnowledgeGraph = useCallback(async () => {
         try {
@@ -86,7 +62,7 @@ export const MemoryPanel: React.FC = () => {
         if (!selectedAgent) return;
         setLoading(true);
         try {
-            const memories = await invoke<MemoryEntry[]>('get_agent_memories', {
+            const memories = await invoke<AgentMemory[]>('get_agent_memories', {
                 agentName: selectedAgent,
                 topK: 10
             }) || [];
@@ -143,21 +119,15 @@ export const MemoryPanel: React.FC = () => {
 
     return (
         <div className="glass-panel p-4 rounded-lg flex flex-col gap-4 border-[var(--matrix-border)]">
-            <div className="flex justify-between items-center text-[var(--matrix-text-dim)] border-b border-[var(--matrix-border)] pb-2">
-                <span className="flex items-center gap-2 font-semibold text-sm">
-                    <BrainCircuit size={16} /> Swiadomosc Roju
-                </span>
-                <button
-                    onClick={() => { fetchKnowledgeGraph(); fetchAgentMemory(); }}
-                    className="hover:text-[var(--matrix-accent)] transition-colors"
-                    title="Odswiez"
-                >
-                    <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-                </button>
-            </div>
+            <PanelHeader
+                icon={BrainCircuit}
+                title="Swiadomosc Roju"
+                onRefresh={() => { fetchKnowledgeGraph(); fetchAgentMemory(); }}
+                isLoading={loading}
+            />
 
             {error && (
-                <div className="text-xs text-red-400 bg-red-900/20 p-2 rounded">
+                <div className="error-alert">
                     {error}
                 </div>
             )}
@@ -200,7 +170,7 @@ export const MemoryPanel: React.FC = () => {
                         <Trash2 size={14} />
                     </button>
                 </div>
-                <div className="text-xs font-mono p-2 bg-black/20 rounded border border-[var(--matrix-border)] h-40 overflow-auto">
+                <div className="data-box-scroll h-40">
                     {loading && (
                         <span className="text-[var(--matrix-text-dim)]">Ladowanie...</span>
                     )}
@@ -216,7 +186,7 @@ export const MemoryPanel: React.FC = () => {
                         >
                             <div className="flex justify-between items-start">
                                 <span className="text-[var(--matrix-accent)] font-bold">
-                                    {(mem.importance * 100).toFixed(0)}%
+                                    {mem.importance !== undefined ? `${(mem.importance * 100).toFixed(0)}%` : '--'}
                                 </span>
                                 <span className="text-[var(--matrix-text-dim)] opacity-50">
                                     {formatTimestamp(mem.timestamp)}

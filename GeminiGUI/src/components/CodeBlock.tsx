@@ -2,6 +2,8 @@ import React, { useState, memo, useRef } from 'react';
 import { Check, Copy, Play, Save, Terminal } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { save } from '@tauri-apps/plugin-dialog';
+import { useCopyToClipboard } from '../hooks/useCopyToClipboard';
+import { escapeForShell, containsDangerousPatterns } from '../utils/validators';
 
 interface CodeBlockProps {
   language: string;
@@ -10,15 +12,13 @@ interface CodeBlockProps {
 }
 
 const CodeBlockComponent: React.FC<CodeBlockProps> = ({ language, value, onRun }) => {
-  const [copied, setCopied] = useState(false);
+  const { copied, copyToClipboard } = useCopyToClipboard();
   const [isRunning, setIsRunning] = useState(false);
   const codeRef = useRef<HTMLPreElement>(null);
 
-  const handleCopy = async (e?: React.MouseEvent) => {
+  const handleCopy = (e?: React.MouseEvent) => {
     e?.stopPropagation();
-    await navigator.clipboard.writeText(value);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    copyToClipboard(value);
   };
 
   const handleSelectAll = () => {
@@ -48,43 +48,6 @@ const CodeBlockComponent: React.FC<CodeBlockProps> = ({ language, value, onRun }
       console.error('Failed to save file:', error);
       alert('Failed to save file: ' + error);
     }
-  };
-
-  /**
-   * SECURITY: Safely escape code for shell execution
-   * Prevents command injection via malicious code content
-   */
-  const escapeForShell = (code: string): string => {
-    // Replace dangerous characters
-    return code
-      .replace(/\\/g, '\\\\')     // Escape backslashes first
-      .replace(/"/g, '\\"')       // Escape double quotes
-      .replace(/`/g, '\\`')       // Escape backticks (command substitution)
-      .replace(/\$/g, '\\$')      // Escape dollar signs (variable expansion)
-      .replace(/!/g, '\\!')       // Escape history expansion
-      .replace(/\n/g, '\\n');     // Escape newlines
-  };
-
-  /**
-   * SECURITY: Check if code contains potentially dangerous patterns
-   */
-  const containsDangerousPatterns = (code: string): boolean => {
-    const dangerousPatterns = [
-      /rm\s+-rf/i,
-      /del\s+\/[sq]/i,
-      /format\s+[a-z]:/i,
-      />\s*\/dev\//i,
-      /\|\s*sh\s*$/i,
-      /\|\s*bash\s*$/i,
-      /eval\s*\(/i,
-      /exec\s*\(/i,
-      /__import__\s*\(/i,
-      /subprocess/i,
-      /os\.system/i,
-      /child_process/i,
-    ];
-
-    return dangerousPatterns.some(pattern => pattern.test(code));
   };
 
   const handleRun = () => {

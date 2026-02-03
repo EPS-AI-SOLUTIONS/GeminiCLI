@@ -155,7 +155,7 @@ describe('ModelService', () => {
   describe('getGeminiModels', () => {
     it('should call invoke with GET_GEMINI_MODELS command and apiKey', async () => {
       const apiKey = 'test-api-key-123';
-      const mockModels = ['gemini-2.0-flash-exp', 'gemini-1.5-pro'];
+      const mockModels = ['gemini-3-flash-preview', 'gemini-3-pro-preview'];
       mockInvoke.mockResolvedValueOnce(mockModels);
 
       const result = await ModelService.getGeminiModels(apiKey);
@@ -190,7 +190,7 @@ describe('ModelService', () => {
   describe('getGeminiModelsSorted', () => {
     it('should call invoke with GET_GEMINI_MODELS_SORTED command and apiKey', async () => {
       const apiKey = 'test-api-key-456';
-      const mockModels = ['gemini-1.5-pro', 'gemini-2.0-flash-exp'];
+      const mockModels = ['gemini-3-pro-preview', 'gemini-3-flash-preview'];
       mockInvoke.mockResolvedValueOnce(mockModels);
 
       const result = await ModelService.getGeminiModelsSorted(apiKey);
@@ -204,12 +204,12 @@ describe('ModelService', () => {
     });
 
     it('should return models sorted by capability', async () => {
-      const mockModels = ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-2.0-flash-exp'];
+      const mockModels = ['gemini-3-pro-preview', 'gemini-3-flash-preview'];
       mockInvoke.mockResolvedValueOnce(mockModels);
 
       const result = await ModelService.getGeminiModelsSorted('api-key');
 
-      expect(result).toHaveLength(3);
+      expect(result).toHaveLength(2);
       expect(result).toEqual(mockModels);
     });
   });
@@ -294,7 +294,7 @@ describe('PromptService', () => {
 
   describe('promptGeminiStream', () => {
     it('should call invoke with PROMPT_GEMINI_STREAM command and all parameters', async () => {
-      const model = 'gemini-1.5-pro';
+      const model = 'gemini-3-pro-preview';
       const prompt = 'Test prompt';
       const apiKey = 'test-key-789';
       const systemPrompt = 'You are Jaskier';
@@ -327,7 +327,7 @@ describe('PromptService', () => {
       mockInvoke.mockResolvedValueOnce(undefined);
 
       await PromptService.promptGeminiStream(
-        'gemini-2.0-flash-exp',
+        'gemini-3-flash-preview',
         'prompt',
         apiKey
       );
@@ -340,7 +340,7 @@ describe('PromptService', () => {
       mockInvoke.mockResolvedValueOnce(undefined);
 
       await PromptService.promptGeminiStream(
-        'gemini-1.5-flash',
+        'gemini-3-flash-preview',
         'Simple prompt',
         'api-key'
       );
@@ -356,7 +356,7 @@ describe('PromptService', () => {
 
       await expect(
         PromptService.promptGeminiStream(
-          'gemini-1.5-pro',
+          'gemini-3-pro-preview',
           'prompt',
           'invalid-key'
         )

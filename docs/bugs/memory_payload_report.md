@@ -1,0 +1,1 @@
+CRITICAL: Memory tools fail with string args. Fix: Ensure entities array with name/entityType objects.

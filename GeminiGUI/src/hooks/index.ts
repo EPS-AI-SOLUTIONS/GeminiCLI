@@ -5,10 +5,27 @@
  * Centralized export of all custom React hooks.
  */
 
-export { useAppTheme, default as useAppThemeDefault } from './useAppTheme';
-export { useStreamListeners, default as useStreamListenersDefault } from './useStreamListeners';
-export { useGeminiModels, default as useGeminiModelsDefault } from './useGeminiModels';
-export { useOllamaModels, default as useOllamaModelsDefault } from './useOllamaModels';
-export { useEnvLoader, default as useEnvLoaderDefault } from './useEnvLoader';
-export { useHotkey, isHotkeyPressed, default as useHotkeyDefault } from './useHotkey';
-export { useKeyboardShortcuts, default as useKeyboardShortcutsDefault } from './useKeyboardShortcuts';
+export { useAppTheme } from './useAppTheme';
+export { useStreamListeners } from './useStreamListeners';
+export { useGeminiModels } from './useGeminiModels';
+export type { UseGeminiModelsReturn } from './useGeminiModels';
+export { useLlamaModels } from './useLlamaModels';
+export type { UseLlamaModelsReturn } from './useLlamaModels';
+export { useLlamaChat } from './useLlamaChat';
+export type { UseLlamaChatOptions, UseLlamaChatReturn } from './useLlamaChat';
+export { useEnvLoader } from './useEnvLoader';
+export {
+  useKeyboardListener,
+  isHotkeyPressed,
+  applyEventModifiers,
+  DEFAULT_KEYBOARD_OPTIONS,
+  KEY_MAP,
+} from './useKeyboardListener';
+export type { UseKeyboardOptions } from './useKeyboardListener';
+export { useCopyToClipboard } from './useCopyToClipboard';
+export { useAppKeyboardShortcuts } from './useAppKeyboardShortcuts';
+export type { KeyboardShortcutHandlers } from './useAppKeyboardShortcuts';
+export { useCommandExecution } from './useCommandExecution';
+export type { UseCommandExecutionOptions, UseCommandExecutionReturn } from './useCommandExecution';
+export { useContextMenuActions } from './useContextMenuActions';
+export type { ContextAction, ContextActionDetail, UseContextMenuActionsOptions } from './useContextMenuActions';

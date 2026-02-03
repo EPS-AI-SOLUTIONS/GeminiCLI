@@ -16,18 +16,11 @@
         "title": "GeminiGUI",
         "width": 1024,
         "height": 768,
-        "visible": false
-      },
-      {
-        "label": "live-preview",
-        "title": "Live Preview",
-        "width": 800,
-        "height": 600,
-        "url": "http://localhost:1420"
+        "visible": true
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://localhost:* https://generativelanguage.googleapis.com https://*.googleapis.com"
     }
   },
   "bundle": {

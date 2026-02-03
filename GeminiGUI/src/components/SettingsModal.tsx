@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { X, Save } from 'lucide-react';
+import { DEFAULT_OLLAMA_ENDPOINT } from '../constants';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -42,7 +43,7 @@ const SettingsModalComponent: React.FC<SettingsModalProps> = ({ isOpen, onClose 
               value={localSettings.ollamaEndpoint}
               onChange={(e) => setLocalSettings({...localSettings, ollamaEndpoint: e.target.value})}
               className="matrix-input p-2 rounded text-sm font-mono"
-              placeholder="http://localhost:11434"
+              placeholder={DEFAULT_OLLAMA_ENDPOINT}
             />
           </div>
 

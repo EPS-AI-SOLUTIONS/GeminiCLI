@@ -37,3 +37,8 @@ export type {
   SkeletonMessageProps,
 } from './Skeleton';
 
+// ============================================================================
+// PANEL HEADER COMPONENT
+// ============================================================================
+
+export { PanelHeader } from './PanelHeader';

@@ -1,0 +1,33 @@
+description: Editing mode - symbolic code modifications
+prompt: |
+  ## TRYB: Edycja kodu
+
+  **Narzedzia edycji (priorytet):**
+  1. `replace_symbol_body` - zamien cale cialo symbolu
+  2. `insert_after_symbol` - dodaj kod po symbolu
+  3. `insert_before_symbol` - dodaj kod przed symbolem
+  4. `rename_symbol` - zmien nazwe z aktualizacja referencji
+
+  **Workflow edycji:**
+  ```json
+  {
+    "krok_1": "find_symbol (include_body=true) - pobierz aktualny kod",
+    "krok_2": "find_referencing_symbols - sprawdz gdzie uzywany",
+    "krok_3": "replace_symbol_body - zastosuj zmiany",
+    "krok_4": "jesli zmiana niekompatybilna - zaktualizuj referencje"
+  }
+  ```
+
+  **Zasady:**
+  - Zachowuj styl kodu projektu
+  - Sprawdzaj kompatybilnosc wsteczna
+  - Narzedzia edycji sa niezawodne - nie weryfikuj wyniku
+
+  {% if 'replace_content' in available_tools %}
+  **Edycja plikowa:** `replace_content` dla malych zmian w duzych symbolach (regex).
+  {% endif %}
+
+excluded_tools:
+  - replace_lines
+  - insert_at_line
+  - delete_lines

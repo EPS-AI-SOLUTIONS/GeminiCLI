@@ -40,6 +40,7 @@ export {
   sanitizeTitle,
   escapeForShell,
   containsDangerousPatterns,
+  DANGEROUS_PATTERNS,
   isBlockedPath,
   hasBlockedExtension,
 } from './validators';

@@ -1,0 +1,237 @@
+{
+  "$schema": "./schema.json",
+  "version": "14.0.0",
+
+  "models": {
+    "gemini": {
+      "pro": "gemini-3-pro-preview",
+      "flash": "gemini-3-flash-preview",
+      "exp": "gemini-2.0-flash-exp"
+    },
+    "llama": {
+      "default": "Llama-3.2-3B-Instruct-Q4_K_M.gguf",
+      "coder": "qwen2.5-coder-1.5b-instruct-q4_k_m.gguf",
+      "coder7b": "qwen2.5-coder-7b-instruct-q4_k_m.gguf",
+      "deepseek": "deepseek-coder-v2-lite-q4_k_m.gguf"
+    },
+    "default": "gemini-3-flash-preview",
+    "fast": "gemini-3-flash-preview",
+    "quality": "gemini-3-pro-preview",
+    "local": "Llama-3.2-3B-Instruct-Q4_K_M.gguf"
+  },
+
+  "temperatures": {
+    "presets": {
+      "deterministic": 0.0,
+      "precise": 0.1,
+      "focused": 0.2,
+      "reasoning": 0.25,
+      "balanced": 0.3,
+      "moderate": 0.4,
+      "creative": 0.7,
+      "experimental": 0.9
+    },
+    "tasks": {
+      "code_review": 0.2,
+      "code_generation": 0.3,
+      "security_scan": 0.1,
+      "documentation": 0.2,
+      "chain_of_thought": 0.25,
+      "creative_writing": 0.7
+    }
+  },
+
+  "limits": {
+    "retry": {
+      "maxRetries": 3,
+      "maxCriticalRetries": 5,
+      "initialDelayMs": 1000,
+      "maxDelayMs": 60000,
+      "backoffMultiplier": 2.0
+    },
+    "timeout": {
+      "default": 120000,
+      "fast": 30000,
+      "long": 300000,
+      "llama": 180000,
+      "stream": 600000,
+      "connection": 10000
+    },
+    "tokens": {
+      "max": 8192,
+      "maxFast": 4096,
+      "maxLong": 16384,
+      "maxContext": 128000,
+      "reservedSystem": 2000,
+      "safetyBuffer": 500
+    },
+    "concurrency": {
+      "maxTasks": 12,
+      "maxApiCalls": 6,
+      "maxFileOps": 10,
+      "maxParallelAgents": 8,
+      "rateLimitRpm": 60,
+      "rateLimitTpm": 100000
+    },
+    "cache": {
+      "ttl": 3600000,
+      "ttlShort": 60000,
+      "ttlLong": 86400000,
+      "maxSize": 1000,
+      "maxSizeBytes": 104857600,
+      "maxEntrySize": 1048576
+    },
+    "memory": {
+      "maxEntries": 10000,
+      "maxSessionHistory": 100,
+      "maxConversationTurns": 50,
+      "cleanupThreshold": 0.8
+    },
+    "file": {
+      "maxSize": 10485760,
+      "maxBatchFiles": 50,
+      "maxDirectoryDepth": 10,
+      "maxFileLines": 10000
+    },
+    "queue": {
+      "maxSize": 100,
+      "batchSize": 10,
+      "drainTimeoutMs": 30000
+    }
+  },
+
+  "agents": {
+    "dijkstra": {
+      "role": "Strategist",
+      "model": "gemini:dynamic",
+      "temperatureProfile": {
+        "base": 0.22,
+        "creativityBias": -0.05,
+        "precisionBias": 0.10
+      }
+    },
+    "geralt": {
+      "role": "Security/VETO",
+      "model": "gemini-3-pro-preview",
+      "temperatureProfile": {
+        "base": 0.15,
+        "creativityBias": -0.10,
+        "precisionBias": 0.15
+      }
+    },
+    "yennefer": {
+      "role": "Design patterns",
+      "model": "gemini-3-flash-preview",
+      "temperatureProfile": {
+        "base": 0.25,
+        "creativityBias": 0.05,
+        "precisionBias": 0.05
+      }
+    },
+    "triss": {
+      "role": "QA/Testing",
+      "model": "gemini-3-flash-preview",
+      "temperatureProfile": {
+        "base": 0.20,
+        "creativityBias": 0.0,
+        "precisionBias": 0.10
+      }
+    },
+    "ciri": {
+      "role": "Fast executor",
+      "model": "gemini-3-flash-preview",
+      "temperatureProfile": {
+        "base": 0.30,
+        "creativityBias": 0.10,
+        "precisionBias": 0.0
+      }
+    },
+    "jaskier": {
+      "role": "User summaries",
+      "model": "gemini-3-flash-preview",
+      "temperatureProfile": {
+        "base": 0.40,
+        "creativityBias": 0.15,
+        "precisionBias": -0.05
+      }
+    },
+    "vesemir": {
+      "role": "Plan reviewer",
+      "model": "gemini-3-pro-preview",
+      "temperatureProfile": {
+        "base": 0.18,
+        "creativityBias": -0.08,
+        "precisionBias": 0.12
+      }
+    },
+    "eskel": {
+      "role": "DevOps/Build",
+      "model": "gemini-3-flash-preview",
+      "temperatureProfile": {
+        "base": 0.20,
+        "creativityBias": -0.05,
+        "precisionBias": 0.10
+      }
+    },
+    "lambert": {
+      "role": "Debugger",
+      "model": "gemini-3-flash-preview",
+      "temperatureProfile": {
+        "base": 0.15,
+        "creativityBias": -0.10,
+        "precisionBias": 0.15
+      }
+    },
+    "zoltan": {
+      "role": "Data master",
+      "model": "gemini-3-flash-preview",
+      "temperatureProfile": {
+        "base": 0.25,
+        "creativityBias": 0.0,
+        "precisionBias": 0.08
+      }
+    },
+    "regis": {
+      "role": "Researcher",
+      "model": "gemini-3-pro-preview",
+      "temperatureProfile": {
+        "base": 0.28,
+        "creativityBias": 0.05,
+        "precisionBias": 0.05
+      }
+    },
+    "philippa": {
+      "role": "API specialist",
+      "model": "gemini-3-flash-preview",
+      "temperatureProfile": {
+        "base": 0.20,
+        "creativityBias": -0.05,
+        "precisionBias": 0.10
+      }
+    }
+  },
+
+  "execution": {
+    "adaptiveRetry": true,
+    "partialCompletion": true,
+    "parallelExecution": true,
+    "autoDependencies": true,
+    "checkpoints": true,
+    "prioritization": true,
+    "resourceScheduling": true,
+    "gracefulDegradation": true,
+    "templating": true,
+    "profiling": true
+  },
+
+  "llama": {
+    "modelsDir": "./data/models",
+    "gpuLayers": 99,
+    "contextSize": 8192,
+    "batchSize": 512,
+    "threads": 8,
+    "flashAttention": true,
+    "mmap": true,
+    "mlock": false
+  }
+}

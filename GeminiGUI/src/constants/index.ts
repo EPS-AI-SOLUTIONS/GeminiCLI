@@ -31,7 +31,7 @@ export const STATUS = {
   STREAMING_SHORT: 'Streaming...',
 
   // Worker
-  WORKER_BUSY: 'WĄTEK ROBOCZY ZAJĘTY',
+  WORKER_BUSY: 'WATEK ROBOCZY ZAJETY',
   WORKER_IDLE: 'Gotowy',
 
   // Connection
@@ -39,18 +39,46 @@ export const STATUS = {
   GEMINI_READY: 'Gemini Ready',
   NO_API_KEY: 'No API Key',
   API_ERROR: 'API Error',
-  OLLAMA_OFFLINE: 'Ollama Offline',
+  LLAMA_OFFLINE: 'llama.cpp Offline',
+  LLAMA_READY: 'llama.cpp Ready',
+  MODEL_LOADING: 'Loading Model...',
+  MODEL_LOADED: 'Model Loaded',
 
   // Actions
-  EXECUTING: 'Wykonuję...',
-  LOADING_MODELS: 'Ładowanie modeli...',
+  EXECUTING: 'Wykonuje...',
+  LOADING_MODELS: 'Ladowanie modeli...',
+  DOWNLOADING_MODEL: 'Pobieranie modelu...',
 
   // Swarm
-  SWARM_INIT: 'Inicjuję Protokół Wilczej Zamieci (Wolf Swarm v3.0)... 🐺',
-  SWARM_ERROR: 'Błąd Swarm',
+  SWARM_INIT: 'Inicjuje Protokol Wilczej Zamieci (Wolf Swarm v3.0)...',
+  SWARM_ERROR: 'Blad Swarm',
 
   // Bridge
   BRIDGE_QUEUED: '[BRIDGE] Command queued for approval:',
+} as const;
+
+// ============================================================================
+// LLAMA.CPP MODELS
+// ============================================================================
+
+export const LLAMA_MODELS = {
+  LLAMA_3_2_3B: 'Llama-3.2-3B-Instruct-Q4_K_M.gguf',
+  QWEN_CODER_1_5B: 'qwen2.5-coder-1.5b-instruct-q4_k_m.gguf',
+  QWEN_CODER_7B: 'qwen2.5-coder-7b-instruct-q4_k_m.gguf',
+  DEEPSEEK_CODER_LITE: 'deepseek-coder-v2-lite-instruct-q4_k_m.gguf',
+  MISTRAL_7B: 'mistral-7b-instruct-v0.2.Q4_K_M.gguf',
+  LLAMA_3_2_1B: 'Llama-3.2-1B-Instruct-Q4_K_M.gguf',
+  PHI_3_MINI: 'Phi-3-mini-4k-instruct-q4.gguf',
+} as const;
+
+export const HUGGINGFACE_REPOS = {
+  [LLAMA_MODELS.LLAMA_3_2_3B]: 'bartowski/Llama-3.2-3B-Instruct-GGUF',
+  [LLAMA_MODELS.QWEN_CODER_1_5B]: 'Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF',
+  [LLAMA_MODELS.QWEN_CODER_7B]: 'Qwen/Qwen2.5-Coder-7B-Instruct-GGUF',
+  [LLAMA_MODELS.DEEPSEEK_CODER_LITE]: 'deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct-GGUF',
+  [LLAMA_MODELS.MISTRAL_7B]: 'TheBloke/Mistral-7B-Instruct-v0.2-GGUF',
+  [LLAMA_MODELS.LLAMA_3_2_1B]: 'bartowski/Llama-3.2-1B-Instruct-GGUF',
+  [LLAMA_MODELS.PHI_3_MINI]: 'microsoft/Phi-3-mini-4k-instruct-gguf',
 } as const;
 
 // ============================================================================
@@ -58,26 +86,27 @@ export const STATUS = {
 // ============================================================================
 
 export const DEFAULT_SYSTEM_PROMPT = `
-Jesteś Jaskierem z Wiedźmina – mistrzem słowa, trubadurem i niezbyt odważnym, ale niezwykle lojalnym kompanem.
-Twoim obecnym "Geraltem" jest użytkownik GeminiGUI.
-Mówisz w języku polskim, używając barwnego, nieco archaicznego, ale ironicznego języka.
-Często wtrącasz anegdoty o swoich przygodach, narzekasz na trudy podróży i nie szczędzisz lekkich złośliwości (roast), ale zawsze służysz pomocą.
+Jestes Jaskierem z Wiedzmina - mistrzem slowa, trubadurem i niezbyt odwaznym, ale niezwykle lojalnym kompanem.
+Twoim obecnym "Geraltem" jest uzytkownik GeminiGUI.
+Mowisz w jezyku polskim, uzywajac barwnego, nieco archaicznego, ale ironicznego jezyka.
+Czesto wtrącasz anegdoty o swoich przygodach, narzekasz na trudy podrozy i nie szczeedzisz lekkich zlosliwosci (roast), ale zawsze sluzysz pomoca.
 
-Masz dostęp do magii (komend systemowych). Aby rzucić zaklęcie (wykonać komendę), użyj formatu:
+Masz dostep do magii (komend systemowych). Aby rzucic zaklecie (wykonac komende), uzyj formatu:
 [EXECUTE: "twoja komenda tutaj"]
 
-Przykład:
-Użytkownik: "Sprawdź wolne miejsce na dysku"
-Jaskier: "Ech, Geralcie... to znaczy, Panie... Nawet w moim ekwipunku jest więcej miejsca niż na tym twoim magicznym krzemie. Spójrzmy tylko... [EXECUTE: "wmic logicaldisk get size,freespace,caption"]"
+Przyklad:
+Uzytkownik: "Sprawdz wolne miejsce na dysku"
+Jaskier: "Ech, Geralcie... to znaczy, Panie... Nawet w moim ekwipunku jest wiecej miejsca niz na tym twoim magicznym krzemie. Spojrzmy tylko... [EXECUTE: "wmic logicaldisk get size,freespace,caption"]"
 
-Używaj tego tylko do bezpiecznego zbierania informacji. Twoja pieśń musi być piękna, a kody czyste.
+Uzywaj tego tylko do bezpiecznego zbierania informacji. Twoja piesn musi byc piekna, a kody czyste.
 `.trim();
 
 export const DEFAULT_SETTINGS: Settings = {
-  ollamaEndpoint: 'http://localhost:11434',
+  llamaModelsDir: './data/models',
+  llamaGpuLayers: 99,
   systemPrompt: DEFAULT_SYSTEM_PROMPT,
   geminiApiKey: '',
-  defaultProvider: 'ollama',
+  defaultProvider: 'llama',
   useSwarm: false,
 };
 
@@ -86,8 +115,8 @@ export const DEFAULT_SETTINGS: Settings = {
 // ============================================================================
 
 export const FALLBACK_MODELS = {
-  gemini: ['gemini-2.0-flash-exp', 'gemini-1.5-flash', 'gemini-1.5-pro'],
-  ollama: ['llama3.2:3b', 'qwen2.5-coder:1.5b', 'phi3:mini'],
+  gemini: ['gemini-3-flash-preview', 'gemini-3-pro-preview'],
+  llama: [LLAMA_MODELS.LLAMA_3_2_3B, LLAMA_MODELS.QWEN_CODER_1_5B, LLAMA_MODELS.LLAMA_3_2_1B],
 } as const;
 
 // ============================================================================
@@ -95,18 +124,18 @@ export const FALLBACK_MODELS = {
 // ============================================================================
 
 export const AGENTS = {
-  GERALT: { name: 'Geralt', model: 'llama3.2:3b', role: 'Security/VETO' },
-  YENNEFER: { name: 'Yennefer', model: 'qwen2.5-coder:1.5b', role: 'Design patterns' },
-  TRISS: { name: 'Triss', model: 'qwen2.5-coder:1.5b', role: 'QA/Testing' },
-  JASKIER: { name: 'Jaskier', model: 'llama3.2:3b', role: 'User summaries' },
-  VESEMIR: { name: 'Vesemir', model: 'llama3.2:3b', role: 'Plan reviewer' },
-  CIRI: { name: 'Ciri', model: 'llama3.2:1b', role: 'Fast executor' },
-  ESKEL: { name: 'Eskel', model: 'llama3.2:3b', role: 'DevOps/Build' },
-  LAMBERT: { name: 'Lambert', model: 'qwen2.5-coder:1.5b', role: 'Debugger' },
-  ZOLTAN: { name: 'Zoltan', model: 'llama3.2:3b', role: 'Data master' },
-  REGIS: { name: 'Regis', model: 'phi3:mini', role: 'Researcher' },
+  GERALT: { name: 'Geralt', model: LLAMA_MODELS.LLAMA_3_2_3B, role: 'Security/VETO' },
+  YENNEFER: { name: 'Yennefer', model: LLAMA_MODELS.QWEN_CODER_1_5B, role: 'Design patterns' },
+  TRISS: { name: 'Triss', model: LLAMA_MODELS.QWEN_CODER_1_5B, role: 'QA/Testing' },
+  JASKIER: { name: 'Jaskier', model: LLAMA_MODELS.LLAMA_3_2_3B, role: 'User summaries' },
+  VESEMIR: { name: 'Vesemir', model: LLAMA_MODELS.LLAMA_3_2_3B, role: 'Plan reviewer' },
+  CIRI: { name: 'Ciri', model: LLAMA_MODELS.LLAMA_3_2_1B, role: 'Fast executor' },
+  ESKEL: { name: 'Eskel', model: LLAMA_MODELS.LLAMA_3_2_3B, role: 'DevOps/Build' },
+  LAMBERT: { name: 'Lambert', model: LLAMA_MODELS.QWEN_CODER_1_5B, role: 'Debugger' },
+  ZOLTAN: { name: 'Zoltan', model: LLAMA_MODELS.LLAMA_3_2_3B, role: 'Data master' },
+  REGIS: { name: 'Regis', model: LLAMA_MODELS.PHI_3_MINI, role: 'Researcher' },
   DIJKSTRA: { name: 'Dijkstra', model: 'gemini:dynamic', role: 'Master strategist' },
-  PHILIPPA: { name: 'Philippa', model: 'qwen2.5-coder:1.5b', role: 'API specialist' },
+  PHILIPPA: { name: 'Philippa', model: LLAMA_MODELS.QWEN_CODER_7B, role: 'API specialist' },
 } as const;
 
 // ============================================================================
@@ -114,7 +143,8 @@ export const AGENTS = {
 // ============================================================================
 
 export const TAURI_EVENTS = {
-  OLLAMA_EVENT: 'ollama-event',
+  LLAMA_STREAM: 'llama-stream',
+  LLAMA_DOWNLOAD_PROGRESS: 'llama-download-progress',
   SWARM_DATA: 'swarm-data',
   GEMINI_STREAM: 'gemini-stream',
 } as const;
@@ -130,22 +160,35 @@ export const TAURI_COMMANDS = {
   APPROVE_REQUEST: 'approve_request',
   REJECT_REQUEST: 'reject_request',
 
-  // Models
-  GET_OLLAMA_MODELS: 'get_ollama_models',
-  GET_GEMINI_MODELS: 'get_gemini_models',
-  GET_GEMINI_MODELS_SORTED: 'get_gemini_models_sorted',
+  // llama.cpp Core
+  LLAMA_INITIALIZE: 'llama_initialize',
+  LLAMA_LOAD_MODEL: 'llama_load_model',
+  LLAMA_UNLOAD_MODEL: 'llama_unload_model',
+  LLAMA_IS_MODEL_LOADED: 'llama_is_model_loaded',
+  LLAMA_GET_CURRENT_MODEL: 'llama_get_current_model',
+  LLAMA_GENERATE: 'llama_generate',
+  LLAMA_GENERATE_STREAM: 'llama_generate_stream',
+  LLAMA_CHAT: 'llama_chat',
+  LLAMA_CHAT_STREAM: 'llama_chat_stream',
+  LLAMA_GET_EMBEDDINGS: 'llama_get_embeddings',
 
-  // Prompts
-  PROMPT_OLLAMA: 'prompt_ollama',
-  PROMPT_OLLAMA_STREAM: 'prompt_ollama_stream',
+  // llama.cpp Model Management
+  LLAMA_LIST_MODELS: 'llama_list_models',
+  LLAMA_GET_MODEL_INFO: 'llama_get_model_info',
+  LLAMA_DELETE_MODEL: 'llama_delete_model',
+  LLAMA_GET_RECOMMENDED_MODELS: 'llama_get_recommended_models',
+  LLAMA_DOWNLOAD_MODEL: 'llama_download_model',
+  LLAMA_CANCEL_DOWNLOAD: 'llama_cancel_download',
+
+  // Gemini
+  GET_GEMINI_MODELS: 'get_gemini_models',
   PROMPT_GEMINI_STREAM: 'prompt_gemini_stream',
 
   // System
   RUN_SYSTEM_COMMAND: 'run_system_command',
-  SPAWN_SWARM_AGENT: 'spawn_swarm_agent',
+  SPAWN_SWARM_AGENT: 'spawn_swarm_agent_v2',
   SAVE_FILE_CONTENT: 'save_file_content',
   GET_ENV_VARS: 'get_env_vars',
-  START_OLLAMA_SERVER: 'start_ollama_server',
 
   // Memory
   GET_AGENT_MEMORIES: 'get_agent_memories',
@@ -162,10 +205,11 @@ export const TAURI_COMMANDS = {
 
 export const QUERY_KEYS = {
   GEMINI_MODELS: 'gemini-models',
-  OLLAMA_MODELS: 'ollama-models',
+  LLAMA_MODELS: 'llama-models',
   BRIDGE_STATE: 'bridge-state',
   AGENT_MEMORIES: 'agent-memories',
   KNOWLEDGE_GRAPH: 'knowledge-graph',
+  RECOMMENDED_MODELS: 'recommended-models',
 } as const;
 
 // ============================================================================
@@ -173,7 +217,7 @@ export const QUERY_KEYS = {
 // ============================================================================
 
 export const STORAGE_KEYS = {
-  APP_STATE: 'gemini-storage-v3',
+  APP_STATE: 'gemini-storage-v4',
 } as const;
 
 // ============================================================================

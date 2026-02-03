@@ -7,7 +7,7 @@
   "mcpServers": {
     "ollama": {
       "command": "cmd",
-      "args": ["/c", "cd mcp && npx ollama-mcp"],
+      "args": ["/c", "cd", "/d", "C:\\Users\\BIURODOM\\Desktop\\GeminiHydra", "&&", "npx", "tsx", "src/mcp/servers/OllamaMCPServer.ts"],
       "env": {
         "OLLAMA_HOST": "http://127.0.0.1:11434"
       },

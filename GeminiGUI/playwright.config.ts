@@ -6,14 +6,27 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
-  
+
+  // Reporters
+  reporter: [
+    ['html', { open: 'never' }],
+    ['list'],
+    process.env.CI ? ['github'] : ['line'],
+  ],
+
   // Global timeout for tests
   timeout: 60000,
+
+  // Expect timeout
+  expect: {
+    timeout: 10000,
+  },
 
   use: {
     baseURL: 'http://localhost:1420',
     trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
     actionTimeout: 10000,
     navigationTimeout: 30000,
   },
@@ -21,7 +34,16 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1280, height: 720 },
+      },
+    },
+    {
+      name: 'chromium-mobile',
+      use: {
+        ...devices['Pixel 5'],
+      },
     },
   ],
 
@@ -34,4 +56,7 @@ export default defineConfig({
     stdout: 'pipe',
     stderr: 'pipe',
   },
+
+  /* Output directory for test artifacts */
+  outputDir: 'test-results',
 });
