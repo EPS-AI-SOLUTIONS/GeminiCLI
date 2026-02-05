@@ -1,3 +1,0 @@
-Wynik narzędzia MCP.
- entities: []
- relations: []

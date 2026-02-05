@@ -1,34 +1,71 @@
-# Environment and secrets
-.env
-.env.*
+# ===============================================
+# GeminiHydra - Comprehensive .gitignore
+# AI Agent + Node.js + Tauri Project
+# ===============================================
 
-# Dependencies
-node_modules/
+# ----- COMMON (All Projects) -----
 
-# Build outputs
-dist/
-GeminiGUI/dist/
-GeminiGUI/src-tauri/target/
-
-# Local data
-data/
-.serena/
-
-# OS files
+# OS
 .DS_Store
 Thumbs.db
+nul
 
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
 
 # Logs
 *.log
 npm-debug.log*
 
-# Binaries (too large for git)
+# Temporary
+*.tmp
+*.temp
+
+# ----- NODE.JS -----
+
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.cache/
+.vite/
+vite.config.js
+vite.config.d.ts
+.env
+.env.local
+.env.*.local
+
+# ----- AI AGENT -----
+
+# AI/Data artifacts
+data/
+logs/
+transcripts/
+.serena/
+.claude/
+.hydra/
+.hydra-data/
+
+# Binaries
+*.exe
+*.zip
+models/*.gguf
 bin/ollama.exe
 bin/llama/
-nul  
-\"[nazwa_pliku_lub_sciezka_wzgledna]\"  
-models/*.gguf
+
+# Generated
+repomix-output.xml
+
+# ----- PROJECT-SPECIFIC -----
+
+# Tauri build outputs
+GeminiGUI/dist/
+GeminiGUI/src-tauri/target/
+
+# Rust/Cargo
+target/
+Cargo.lock
+**/*.rs.bk
