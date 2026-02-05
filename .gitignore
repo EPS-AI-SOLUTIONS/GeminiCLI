@@ -26,8 +26,9 @@ Thumbs.db
 *.log
 npm-debug.log*
 
-# Ollama binary (too large for git)
+# Binaries (too large for git)
 bin/ollama.exe
+bin/llama/
 nul  
 \"[nazwa_pliku_lub_sciezka_wzgledna]\"  
 models/*.gguf

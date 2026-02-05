@@ -57,7 +57,7 @@ export class LlamaCppProvider implements LLMProvider {
   private timeout: number;
 
   constructor(config: LlamaCppConfig = {}) {
-    this.baseUrl = (config.baseUrl || 'http://localhost:8000').replace(/\/$/, '');
+    this.baseUrl = (config.baseUrl || 'http://localhost:8081').replace(/\/$/, '');
     this.model = config.model || 'default';
     this.apiKey = config.apiKey;
     this.timeout = config.timeout || 120000;
@@ -250,7 +250,7 @@ export class LlamaCppProvider implements LLMProvider {
  */
 export function createLlamaCppProvider(config?: LlamaCppConfig): LlamaCppProvider {
   return new LlamaCppProvider({
-    baseUrl: config?.baseUrl || process.env.LLAMA_CPP_URL || 'http://localhost:8000',
+    baseUrl: config?.baseUrl || process.env.LLAMA_CPP_URL || 'http://localhost:8081',
     model: config?.model || process.env.LLAMA_CPP_MODEL || 'default',
     apiKey: config?.apiKey || process.env.LLAMA_CPP_API_KEY,
     timeout: config?.timeout || parseInt(process.env.LLAMA_CPP_TIMEOUT || '120000', 10),
