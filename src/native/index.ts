@@ -303,6 +303,11 @@ export type {
   NativeToolResult
 } from './NativeSerenaTools.js';
 
+// Document Tools - Word, Excel, PDF creation and editing
+export {
+  createDocumentToolDefinitions
+} from './NativeDocumentTools.js';
+
 // LSP Languages - language server configurations (~30 languages)
 export {
   getLanguageById,

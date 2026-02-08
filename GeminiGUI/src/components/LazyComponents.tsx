@@ -8,13 +8,15 @@
  * - Code splitting at component level
  * - Better performance for users with slower connections
  * - Components only loaded when needed
+ *
+ * Usage: Wrap in <Suspense fallback={...}> at the call site.
  */
 
 import { lazy } from 'react';
 
 /**
  * Lazy-loaded SettingsModal component
- * Heavy component due to extensive form fields
+ * Heavy component due to extensive form fields and model fetching
  */
 const SettingsModalLazy = lazy(() =>
   import('./SettingsModal').then((m) => ({
@@ -24,21 +26,11 @@ const SettingsModalLazy = lazy(() =>
 
 /**
  * Lazy-loaded MemoryPanel component
- * Heavy due to knowledge graph visualization
+ * Heavy due to knowledge graph visualization and agent memory data fetching
  */
 const MemoryPanelLazy = lazy(() =>
   import('./MemoryPanel').then((m) => ({
     default: m.MemoryPanel,
-  }))
-);
-
-/**
- * Lazy-loaded BridgePanel component
- * Contains command approval system
- */
-const BridgePanelLazy = lazy(() =>
-  import('./BridgePanel').then((m) => ({
-    default: m.BridgePanel,
   }))
 );
 
@@ -52,9 +44,32 @@ const ShortcutsModalLazy = lazy(() =>
   }))
 );
 
+/**
+ * Lazy-loaded WitcherRunes component
+ * Heavy due to continuous canvas animation (setInterval drawing loop)
+ * Defers loading of the visual effect to prioritize critical UI
+ */
+const WitcherRunesLazy = lazy(() =>
+  import('./effects/WitcherRunes').then((m) => ({
+    default: m.WitcherRunes,
+  }))
+);
+
+/**
+ * Lazy-loaded SystemContextMenu component
+ * Custom context menu with DOM event listeners
+ * Not needed until user right-clicks, so defer loading
+ */
+const SystemContextMenuLazy = lazy(() =>
+  import('./SystemContextMenu').then((m) => ({
+    default: m.SystemContextMenu,
+  }))
+);
+
 export {
   SettingsModalLazy,
   MemoryPanelLazy,
-  BridgePanelLazy,
   ShortcutsModalLazy,
+  WitcherRunesLazy,
+  SystemContextMenuLazy,
 };

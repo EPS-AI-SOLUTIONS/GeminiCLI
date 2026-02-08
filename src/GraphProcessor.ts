@@ -26,7 +26,7 @@ export class GraphProcessor {
       let context = '';
       for (const depId of task.dependencies) {
         const dep = completed.get(depId);
-        if (dep?.success) {
+        if (dep?.success && dep.content) {
           context += `[Wynik zadania #${depId}]: ${dep.content.substring(0, 500)}\n`;
         }
       }
@@ -40,7 +40,8 @@ export class GraphProcessor {
           id: task.id,
           agent: task.agent,
           success: true,
-          content: response
+          content: response,
+          logs: []
         };
 
         results.push(result);
@@ -53,7 +54,8 @@ export class GraphProcessor {
           agent: task.agent,
           success: false,
           content: '',
-          error: error.message
+          error: error.message,
+          logs: []
         };
 
         results.push(result);

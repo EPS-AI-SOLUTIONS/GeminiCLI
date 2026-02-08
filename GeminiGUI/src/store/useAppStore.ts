@@ -9,20 +9,32 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-import type { Message, Session, Settings, AppState } from '../types';
-import { STORAGE_KEYS, DEFAULT_SETTINGS, LIMITS } from '../constants';
+import type { Message, Session, Settings } from '../types';
+import { STORAGE_KEYS, DEFAULT_SETTINGS, LIMITS, GEMINI_MODELS } from '../constants';
+
 import {
   isValidUrl,
   isValidApiKey,
   sanitizeContent,
   sanitizeTitle,
 } from '../utils/validators';
+import type { AppState } from '../types';
+
+// Extended AppState with pagination
+interface PaginationState {
+  messagesPerPage: number;
+  currentPage: number;
+  setCurrentPage: (page: number) => void;
+  setMessagesPerPage: (count: number) => void;
+}
+
+type AppStateWithPagination = AppState & PaginationState;
 
 // =============================================================================
 // STORE IMPLEMENTATION
 // =============================================================================
 
-export const useAppStore = create<AppState>()(
+export const useAppStore = create<AppStateWithPagination>()(
   persist(
     (set) => ({
       // ========================================
@@ -31,6 +43,18 @@ export const useAppStore = create<AppState>()(
       count: 0,
       theme: 'dark',
       provider: 'llama',
+
+      // ========================================
+      // Pagination State
+      // ========================================
+      messagesPerPage: 50,
+      currentPage: 0,
+
+      setCurrentPage: (page) => set({ currentPage: Math.max(0, page) }),
+      setMessagesPerPage: (count) => set({
+        messagesPerPage: Math.max(10, Math.min(count, 200)),
+        currentPage: 0 // Reset to first page when changing page size
+      }),
 
       setProvider: (provider) => set({ provider }),
 
@@ -234,6 +258,13 @@ export const useAppStore = create<AppState>()(
             );
           }
 
+          if (newSettings.selectedModel !== undefined) {
+            const isValid = GEMINI_MODELS.some((m) => m.id === newSettings.selectedModel);
+            if (isValid) {
+              validated.selectedModel = newSettings.selectedModel;
+            }
+          }
+
           if (newSettings.useSwarm !== undefined) {
             validated.useSwarm = Boolean(newSettings.useSwarm);
           }
@@ -253,6 +284,15 @@ export const useAppStore = create<AppState>()(
         chatHistory: state.chatHistory,
         settings: state.settings,
       }),
+      merge: (persisted, current) => {
+        const p = persisted as Partial<AppStateWithPagination>;
+        const merged = { ...current, ...p };
+        // Ensure new settings fields have defaults when migrating from old schema
+        if (p?.settings) {
+          merged.settings = { ...DEFAULT_SETTINGS, ...p.settings };
+        }
+        return merged;
+      },
     }
   )
 );
@@ -260,6 +300,14 @@ export const useAppStore = create<AppState>()(
 // =============================================================================
 // SELECTORS (for optimized subscriptions)
 // =============================================================================
+// NOTE: Selectors returning objects/arrays should be used with useShallow
+// to prevent unnecessary re-renders:
+//   import { useShallow } from 'zustand/shallow';
+//   const sessions = useAppStore(useShallow(selectSessions));
+//   const settings = useAppStore(useShallow(selectSettings));
+//   const messages = useAppStore(useShallow(selectCurrentMessages));
+//   const pagination = useAppStore(useShallow(selectPaginationInfo));
+// Primitive selectors (string, number, boolean) do NOT need useShallow.
 
 const EMPTY_ARRAY: Message[] = [];
 
@@ -297,8 +345,43 @@ export const selectUseSwarm = (state: AppState): boolean => {
   return state.settings.useSwarm;
 };
 
-export const selectOllamaEndpoint = (state: AppState): string => {
-  return state.settings.ollamaEndpoint;
+export const selectOllamaEndpoint = (state: AppStateWithPagination): string => {
+  return state.settings.ollamaEndpoint ?? '';
 };
+
+// =============================================================================
+// PAGINATION SELECTORS
+// =============================================================================
+
+export const selectPaginatedMessages = (state: AppStateWithPagination): Message[] => {
+  if (!state.currentSessionId) return EMPTY_ARRAY;
+  const allMessages = state.chatHistory[state.currentSessionId] || EMPTY_ARRAY;
+
+  // For pagination, we paginate from the END (newest messages first conceptually)
+  // But display oldest-to-newest, so we slice from the end
+  const totalMessages = allMessages.length;
+  const { messagesPerPage, currentPage } = state;
+
+  // Calculate offset from the end
+  const endOffset = totalMessages - (currentPage * messagesPerPage);
+  const startOffset = Math.max(0, endOffset - messagesPerPage);
+
+  return allMessages.slice(startOffset, endOffset);
+};
+
+export const selectTotalPages = (state: AppStateWithPagination): number => {
+  if (!state.currentSessionId) return 0;
+  const allMessages = state.chatHistory[state.currentSessionId] || EMPTY_ARRAY;
+  return Math.ceil(allMessages.length / state.messagesPerPage);
+};
+
+export const selectPaginationInfo = (state: AppStateWithPagination) => ({
+  currentPage: state.currentPage,
+  totalPages: selectTotalPages(state),
+  messagesPerPage: state.messagesPerPage,
+  totalMessages: selectMessageCount(state),
+  hasNextPage: state.currentPage < selectTotalPages(state) - 1,
+  hasPreviousPage: state.currentPage > 0,
+});
 
 export default useAppStore;

@@ -1195,9 +1195,8 @@ export class Agent {
    */
   private async thinkInternal(prompt: string, context: string): Promise<string> {
     // Solution 26: Check for prompt injection attacks
-    // DISABLED: Prompt injection detection causes false positives with MCP tool outputs
-    // To re-enable, set ENABLE_PROMPT_INJECTION_DETECTION=true in environment
-    const enableInjectionDetection = process.env.ENABLE_PROMPT_INJECTION_DETECTION === 'true';
+    // Enabled by default. Set DISABLE_PROMPT_INJECTION_DETECTION=true to turn off
+    const enableInjectionDetection = process.env.DISABLE_PROMPT_INJECTION_DETECTION !== 'true';
 
     if (enableInjectionDetection) {
       const injectionCheck = promptInjectionDetector.detectInjection(prompt);
@@ -1261,6 +1260,7 @@ export class Agent {
     }
 
     // Solution 20: Include execution evidence rules to prevent hallucinations (for non-dijkstra agents)
+    // Identity context (TOŻSAMOŚĆ) is injected centrally via sessionMemory init message — see getIdentityContext()
     const fullPrompt = `
 SYSTEM: ${polishSystemPrompt}
 
@@ -1301,7 +1301,7 @@ WAŻNE: Dołącz dowody wykonania (===ZAPIS===, [ODCZYTANO], EXEC:, [MCP:], etc.
         );
         const modelToUse: string = isOllamaModelOverride
           ? this.modelOverride!
-          : (this.persona.model !== 'gemini-cloud' ? this.persona.model : 'llama3.2:3b');
+          : (this.persona.model && this.persona.model !== 'gemini-cloud' ? this.persona.model : 'llama3.2:3b');
 
         const startTime = Date.now();
 

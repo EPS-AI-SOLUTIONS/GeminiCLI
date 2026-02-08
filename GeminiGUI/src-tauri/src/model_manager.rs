@@ -5,10 +5,10 @@
 use bytesize::ByteSize;
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
-use std::io::{BufReader, Read, Seek, SeekFrom};
+use std::io::{BufReader, Read};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 use walkdir::WalkDir;
 
 /// GGUF magic number
@@ -77,6 +77,7 @@ impl ModelManager {
     }
 
     /// Get the models directory path
+    #[allow(dead_code)]
     pub fn models_dir(&self) -> &Path {
         &self.models_dir
     }
@@ -127,6 +128,7 @@ impl ModelManager {
     }
 
     /// Get cached models (use scan_models first)
+    #[allow(dead_code)]
     pub fn get_cached_models(&self) -> &[GGUFModelInfo] {
         &self.cached_models
     }

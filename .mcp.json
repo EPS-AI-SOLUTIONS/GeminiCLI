@@ -7,6 +7,11 @@
     "serena": {
       "command": "C:\\Users\\BIURODOM\\Desktop\\GeminiHydra\\serena\\.venv\\Scripts\\serena-mcp-server.exe",
       "args": ["--project-from-cwd", "--context", "claude-code"]
+    },
+    "document-edit": {
+      "command": "python",
+      "args": ["-m", "document_edit_mcp.server"],
+      "enabled": false
     }
   }
 }

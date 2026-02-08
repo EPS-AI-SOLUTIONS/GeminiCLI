@@ -144,7 +144,7 @@ export const ChatInput = memo<ChatInputProps>(
     return (
       <form
         onSubmit={handleSubmit(handleFormSubmit)}
-        className="p-4 border-t border-[var(--matrix-border)] bg-black/60 backdrop-blur-md flex flex-col relative transition-all duration-500 z-10"
+        className="p-4 bg-transparent backdrop-blur-xl flex flex-col relative transition-all duration-500 z-10"
       >
         {/* Error Toast */}
         <AnimatePresence>
@@ -182,9 +182,9 @@ export const ChatInput = memo<ChatInputProps>(
               disabled={isStreaming}
               placeholder={pendingImage ? 'Opisz cel wizualny...' : 'Wpisz polecenie dla Roju...'}
               className={cn(
-                "w-full bg-[var(--matrix-bg)]/80 text-[var(--matrix-text)]",
-                "border border-[var(--matrix-border)] rounded-2xl px-5 py-3 pr-24", // pr-24 for counters/buttons inside
-                "focus:outline-none focus:ring-1 focus:ring-[var(--matrix-accent)] focus:border-[var(--matrix-accent)]",
+                "w-full bg-[var(--matrix-input-bg)] text-[var(--matrix-text)]",
+                "rounded-2xl px-5 py-3 pr-24", // pr-24 for counters/buttons inside
+                "focus:outline-none focus:ring-2 focus:ring-[var(--matrix-accent)]/30",
                 "placeholder:text-[var(--matrix-text-dim)]/40 font-mono text-sm resize-none scrollbar-hide",
                 "transition-all duration-300 shadow-inner",
                 "disabled:opacity-50 disabled:cursor-not-allowed",

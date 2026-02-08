@@ -2,8 +2,13 @@ import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from '@tailwindcss/vite';
 import viteCompression from 'vite-plugin-compression';
+import { visualizer } from 'rollup-plugin-visualizer';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import os from 'os';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
@@ -14,6 +19,7 @@ export default defineConfig(async ({ mode }) => {
   const isTest = env.APP_ENV === 'test';
   const mockPath = path.resolve(process.cwd(), 'src/mocks/tauri.ts');
   const isProd = mode === 'production';
+  const isAnalyze = env.ANALYZE === 'true';
 
   return {
     plugins: [
@@ -31,15 +37,27 @@ export default defineConfig(async ({ mode }) => {
         threshold: 1024,
         deleteOriginFile: false,
       }),
+      // Bundle size visualization (run with ANALYZE=true)
+      isAnalyze && visualizer({
+        filename: 'dist/bundle-stats.html',
+        open: true,
+        gzipSize: true,
+        brotliSize: true,
+      }),
     ].filter(Boolean),
 
     resolve: {
-      alias: isTest ? {
-        '@tauri-apps/api/core': mockPath,
-        '@tauri-apps/api/event': mockPath,
-        '@tauri-apps/api/window': mockPath,
-        '@tauri-apps/api/webviewWindow': mockPath,
-      } : {},
+      alias: {
+        // Shared types between frontend and backend
+        '@shared': path.resolve(__dirname, '../shared'),
+        // Test mocks for Tauri APIs
+        ...(isTest ? {
+          '@tauri-apps/api/core': mockPath,
+          '@tauri-apps/api/event': mockPath,
+          '@tauri-apps/api/window': mockPath,
+          '@tauri-apps/api/webviewWindow': mockPath,
+        } : {}),
+      },
     },
 
     // Build optimization
@@ -53,8 +71,14 @@ export default defineConfig(async ({ mode }) => {
       },
       cssCodeSplit: true,
       sourcemap: !isProd,
+      // Report gzip/brotli compressed sizes after build
+      reportCompressedSize: true,
       rollupOptions: {
         output: {
+          // Cache-busting with content hashes
+          entryFileNames: 'assets/[name].[hash].js',
+          chunkFileNames: 'assets/[name].[hash].js',
+          assetFileNames: 'assets/[name].[hash][extname]',
           manualChunks: {
             // Core React - loads first, most stable
             'vendor-react': ['react', 'react-dom'],

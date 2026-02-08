@@ -46,7 +46,6 @@ export {
   selectSettings,
   selectIsApiKeySet,
   selectUseSwarm,
-  selectOllamaEndpoint,
   type SettingsState,
   type SettingsActions,
   type SettingsSlice,

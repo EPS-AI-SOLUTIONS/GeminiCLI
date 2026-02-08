@@ -4,6 +4,7 @@ import { BrainCircuit, User, Share2, Trash2, Plus } from 'lucide-react';
 import { PanelHeader } from './ui/PanelHeader';
 import type { AgentMemory, KnowledgeGraph } from '../types';
 import { AGENTS } from '../constants';
+import { MockService } from '../services/mock.service';
 
 const KnowledgeGraphVisualizer = ({ data }: { data: KnowledgeGraph | null }) => {
     if (!data || data.nodes.length === 0) {
@@ -43,45 +44,65 @@ export const MemoryPanel: React.FC = () => {
     const [selectedAgent, setSelectedAgent] = useState<string>("Dijkstra");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isWebMode, setIsWebMode] = useState(false);
 
     // Use centralized agent list from constants
     const agentList = Object.values(AGENTS).map(agent => agent.name);
 
+    // Detect web mode on mount
+    useEffect(() => {
+        setIsWebMode(MockService.isWebMode());
+    }, []);
+
     const fetchKnowledgeGraph = useCallback(async () => {
         try {
-            const graph = await invoke<KnowledgeGraph>('get_knowledge_graph') || { nodes: [], edges: [] };
+            let graph: KnowledgeGraph;
+            if (isWebMode) {
+                graph = await MockService.getKnowledgeGraph();
+            } else {
+                graph = await invoke<KnowledgeGraph>('get_knowledge_graph') || { nodes: [], edges: [] };
+            }
             setKnowledgeGraph(graph);
             setError(null);
         } catch (e) {
             console.error('Failed to fetch knowledge graph:', e);
-            setError('Blad ladowania grafu');
+            setError(isWebMode ? null : 'Blad ladowania grafu');
         }
-    }, []);
+    }, [isWebMode]);
 
     const fetchAgentMemory = useCallback(async () => {
         if (!selectedAgent) return;
         setLoading(true);
         try {
-            const memories = await invoke<AgentMemory[]>('get_agent_memories', {
-                agentName: selectedAgent,
-                topK: 10
-            }) || [];
+            let memories: AgentMemory[];
+            if (isWebMode) {
+                memories = await MockService.getAgentMemories(selectedAgent);
+            } else {
+                memories = await invoke<AgentMemory[]>('get_agent_memories', {
+                    agentName: selectedAgent,
+                    topK: 10
+                }) || [];
+            }
             setAgentMemories(memories);
             setError(null);
         } catch (e) {
             console.error('Failed to fetch agent memory:', e);
-            setError('Blad ladowania pamieci');
+            setError(isWebMode ? null : 'Blad ladowania pamieci');
         } finally {
             setLoading(false);
         }
-    }, [selectedAgent]);
+    }, [selectedAgent, isWebMode]);
 
     const handleClearMemories = async () => {
         if (!confirm(`Wyczysc pamiec agenta ${selectedAgent}?`)) return;
         try {
-            const removed = await invoke<number>('clear_agent_memories', { agentName: selectedAgent });
+            if (isWebMode) {
+                await MockService.clearAgentMemories(selectedAgent);
+            } else {
+                await invoke<number>('clear_agent_memories', { agentName: selectedAgent });
+            }
             setAgentMemories([]);
-            console.log(`Removed ${removed} memories`);
+            console.log(`Cleared memories for ${selectedAgent}`);
         } catch (e) {
             console.error('Failed to clear memories:', e);
         }
@@ -89,11 +110,20 @@ export const MemoryPanel: React.FC = () => {
 
     const handleAddTestMemory = async () => {
         try {
-            await invoke('add_agent_memory', {
-                agent: selectedAgent,
-                content: `Test memory added at ${new Date().toLocaleTimeString()}`,
-                importance: 0.5
-            });
+            if (isWebMode) {
+                await MockService.addAgentMemory({
+                    agent: selectedAgent,
+                    content: `Test memory added at ${new Date().toLocaleTimeString()}`,
+                    timestamp: Date.now() / 1000,
+                    importance: 0.5
+                });
+            } else {
+                await invoke('add_agent_memory', {
+                    agent: selectedAgent,
+                    content: `Test memory added at ${new Date().toLocaleTimeString()}`,
+                    importance: 0.5
+                });
+            }
             fetchAgentMemory();
         } catch (e) {
             console.error('Failed to add memory:', e);

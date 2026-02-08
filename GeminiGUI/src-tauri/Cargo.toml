@@ -35,18 +35,26 @@ thiserror = "1.0"
 tracing = "0.1"
 
 [features]
-default = ["cuda"]
+default = []
 cuda = ["llama-cpp-2/cuda"]
 metal = ["llama-cpp-2/metal"]
 vulkan = ["llama-cpp-2/vulkan"]
 
+# Fast release profile (default) - balanced speed/optimization
 [profile.release]
-lto = true
-opt-level = 3
-codegen-units = 1
-panic = "abort"
 strip = true
+lto = "thin"        # Faster than full LTO, still good optimization
+codegen-units = 4   # Parallel compilation (faster builds)
+panic = "abort"
+opt-level = 3       # Max optimization
 
+# Dev profile - fastest builds for development
 [profile.dev]
 opt-level = 0
 debug = true
+
+# Maximum optimization profile (for final distribution)
+[profile.release-max]
+inherits = "release"
+lto = true          # Full LTO for smallest binary
+codegen-units = 1   # Best optimization, slowest build

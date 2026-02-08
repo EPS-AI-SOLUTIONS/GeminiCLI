@@ -6,9 +6,14 @@
  * These selectors prevent unnecessary re-renders by only triggering when
  * their specific slice of state changes.
  *
- * Usage:
+ * Usage for primitive selectors (string, number, boolean):
  *   const isApiKeySet = useAppStore(selectIsApiKeySet);
- *   const session = useAppStore(selectSessionById(sessionId));
+ *
+ * Usage for object/array selectors (use useShallow to prevent unnecessary re-renders):
+ *   import { useShallow } from 'zustand/shallow';
+ *   const settings = useAppStore(useShallow(selectSettings));
+ *   const sessions = useAppStore(useShallow(selectSessions));
+ *   const metadata = useAppStore(useShallow(selectSessionMetadata));
  */
 
 import type { AppState, Session, Message } from '../types';
@@ -73,7 +78,7 @@ export const selectIsApiKeySet = (state: AppState): boolean => {
  * @returns Ollama endpoint URL string
  */
 export const selectOllamaEndpoint = (state: AppState): string => {
-  return state.settings.ollamaEndpoint;
+  return state.settings.ollamaEndpoint ?? '';
 };
 
 /**
@@ -290,7 +295,7 @@ export const selectSessionMetadata = (state: AppState) => ({
 export const selectApiConfigStatus = (state: AppState) => ({
   hasGeminiKey: selectIsApiKeySet(state),
   ollamaEndpoint: state.settings.ollamaEndpoint,
-  isConfigured: selectIsApiKeySet(state) || state.settings.ollamaEndpoint.length > 0,
+  isConfigured: selectIsApiKeySet(state) || (state.settings.ollamaEndpoint ?? '').length > 0,
 });
 
 /**

@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use thiserror::Error;
-use tracing::{debug, error, info, warn};
+use tracing::{info, warn};
 
 #[derive(Error, Debug)]
 pub enum DownloadError {
@@ -55,6 +55,7 @@ pub struct DownloadProgress {
 }
 
 /// Model downloader with progress tracking
+#[derive(Clone)]
 pub struct ModelDownloader {
     client: Client,
     models_dir: PathBuf,
@@ -82,6 +83,7 @@ impl ModelDownloader {
     }
 
     /// Get the models directory
+    #[allow(dead_code)]
     pub fn models_dir(&self) -> &Path {
         &self.models_dir
     }
@@ -102,6 +104,7 @@ impl ModelDownloader {
     }
 
     /// Get current download progress
+    #[allow(dead_code)]
     pub fn get_progress(&self) -> (u64, u64) {
         (
             self.downloaded_bytes.load(Ordering::Relaxed),
@@ -273,6 +276,7 @@ impl ModelDownloader {
     }
 
     /// Download with resume support (for interrupted downloads)
+    #[allow(dead_code)]
     pub async fn download_with_resume<F>(
         &self,
         repo_id: &str,
@@ -449,6 +453,7 @@ impl ModelDownloader {
 }
 
 /// Format bytes per second as human-readable speed
+#[allow(dead_code)]
 pub fn format_speed(bps: u64) -> String {
     if bps >= 1_000_000_000 {
         format!("{:.1} GB/s", bps as f64 / 1_000_000_000.0)
@@ -462,6 +467,7 @@ pub fn format_speed(bps: u64) -> String {
 }
 
 /// Format remaining time
+#[allow(dead_code)]
 pub fn format_eta(downloaded: u64, total: u64, speed_bps: u64) -> String {
     if speed_bps == 0 || downloaded >= total {
         return "Unknown".to_string();

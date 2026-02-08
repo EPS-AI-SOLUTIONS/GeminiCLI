@@ -11,6 +11,7 @@ import { registerSerenaAgentCommands as _registerSerenaAgentCommands } from './S
 import { registerMCPCommands as _registerMCPCommands } from './MCPCommands.js';
 import { registerDiagnosticCommands as _registerDiagnosticCommands } from './CommandDiagnostics.js';
 import { registerHelpCommand as _registerHelpCommand } from './HelpSystem.js';
+import { registerDocumentCommands as _registerDocumentCommands } from './DocumentCommands.js';
 
 // Core CLI modes
 export { InteractiveMode, COMPLETIONS, completer } from './InteractiveMode.js';
@@ -233,6 +234,12 @@ export {
   registerNativeCommands
 } from './NativeCommands.js';
 
+// Document Commands (Word, Excel, PDF)
+export {
+  documentCommands,
+  registerDocumentCommands
+} from './DocumentCommands.js';
+
 // Help System - Advanced help for commands
 export {
   registerHelpCommand,
@@ -280,5 +287,6 @@ export function initializeCommands(): void {
   _registerSerenaAgentCommands();  // @serena - Real Serena MCP
   _registerMCPCommands();
   _registerNativeCommands();
+  _registerDocumentCommands();
   _registerDiagnosticCommands();
 }

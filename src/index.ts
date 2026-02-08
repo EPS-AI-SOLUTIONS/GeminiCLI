@@ -96,6 +96,12 @@ export {
   getTimeoutForOperation,
   getMaxTokensForOperation,
 
+  // Runtime config
+  ConfigManager,
+  getConfig,
+  resetConfig,
+  validateEnvVars,
+
   // Paths
   HOME_DIR,
   GEMINIHYDRA_DIR,
@@ -721,8 +727,38 @@ export type {
 } from './core/developer/index.js';
 
 // ============================================================
+// Swarm Agents & Classification
+// ============================================================
+
+export {
+  classifyPrompt,
+  analyzeComplexity
+} from './swarm/agents/classifier.js';
+
+export {
+  getAgentSummaries,
+  AGENT_SPECS,
+  MODEL_TIERS,
+  getAgentRoles,
+  getAgentsByTier,
+  getCommanders,
+  getCoordinators,
+  getExecutors,
+  getAgentSpec
+} from './swarm/agents/definitions.js';
+
+export { createSwarm } from './Swarm.js';
+
+// ============================================================
 // Version Info
 // ============================================================
+
+// ============================================================
+// Health Check
+// ============================================================
+
+export { healthCheck, healthCheckSync } from './health.js';
+export type { HealthCheckResult } from './health.js';
 
 export const VERSION = '14.1.0';
 export const FEATURE_COUNT = 64;
@@ -736,8 +772,11 @@ export async function initGeminiHydra(): Promise<void> {
   const { initConversationSubsystems } = await import('./core/conversation/index.js');
   const { initDeveloperModules } = await import('./core/developer/index.js');
   const { initializeCommands } = await import('./cli/index.js');
-  const { getAllDirectories } = await import('./config/index.js');
+  const { getAllDirectories, validateEnvVars: validate } = await import('./config/index.js');
   const fs = await import('fs/promises');
+
+  // Validate environment variables at startup
+  validate();
 
   // Ensure all directories exist
   for (const dir of getAllDirectories()) {

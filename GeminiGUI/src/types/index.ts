@@ -7,23 +7,23 @@
 // RE-EXPORTED SHARED TYPES (Knowledge Graph)
 // ============================================================================
 
-// Re-export unified knowledge types from shared location
-// Note: Using relative path to reach the shared types in src/types
+// Re-export unified knowledge types from shared canonical location
+// See shared/types/knowledge.types.ts for the source of truth
 export type {
   KnowledgeNode,
   KnowledgeEdge,
   KnowledgeGraphData,
   KnowledgeNodeType,
   IKnowledgeGraph,
-} from '../../../src/types/knowledge.types';
+} from '@shared/types/knowledge.types';
 
 export {
   createKnowledgeNode,
   createKnowledgeEdge,
-} from '../../../src/types/knowledge.types';
+} from '@shared/types/knowledge.types';
 
 // Alias for backward compatibility - use KnowledgeGraphData for new code
-export type { KnowledgeGraphData as KnowledgeGraph } from '../../../src/types/knowledge.types';
+export type { KnowledgeGraphData as KnowledgeGraph } from '@shared/types/knowledge.types';
 
 // ============================================================================
 // MESSAGE TYPES
@@ -48,6 +48,31 @@ export interface Session {
 }
 
 // ============================================================================
+// MODEL TYPES
+// ============================================================================
+
+export interface GeminiModelCapabilities {
+  vision: boolean;
+  functionCalling: boolean;
+  jsonMode: boolean;
+}
+
+export interface GeminiModelMetadata {
+  isExperimental: boolean;
+  fetchedAt: number;
+}
+
+export interface GeminiModelInfo {
+  id: string;
+  provider: string;
+  name: string;
+  label: string;
+  contextWindow: number;
+  capabilities: GeminiModelCapabilities;
+  metadata: GeminiModelMetadata;
+}
+
+// ============================================================================
 // SETTINGS TYPES
 // ============================================================================
 
@@ -57,9 +82,11 @@ export interface Settings {
   systemPrompt: string;
   geminiApiKey: string;
   defaultProvider: Provider;
+  selectedModel: string;
   useSwarm: boolean;
   llamaModelsDir?: string;
   llamaGpuLayers?: number;
+  ollamaEndpoint?: string;
 }
 
 // ============================================================================
@@ -128,6 +155,10 @@ export interface AppState {
   // Settings
   settings: Settings;
 
+  // Pagination (optional, extended in store)
+  messagesPerPage?: number;
+  currentPage?: number;
+
   // Actions - Counter
   increment: () => void;
   decrement: () => void;
@@ -152,4 +183,8 @@ export interface AppState {
 
   // Actions - Settings
   updateSettings: (settings: Partial<Settings>) => void;
+
+  // Actions - Pagination (optional)
+  setCurrentPage?: (page: number) => void;
+  setMessagesPerPage?: (count: number) => void;
 }

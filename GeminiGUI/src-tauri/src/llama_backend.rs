@@ -4,14 +4,12 @@
 //! Provides model loading, text generation, chat, and embeddings.
 
 use llama_cpp_2::context::params::LlamaContextParams;
-use llama_cpp_2::context::LlamaContext;
 use llama_cpp_2::llama_backend::LlamaBackend as LlamaCppBackend;
 use llama_cpp_2::llama_batch::LlamaBatch;
 use llama_cpp_2::model::params::LlamaModelParams;
 use llama_cpp_2::model::{AddBos, LlamaModel, Special};
-use llama_cpp_2::sampling::params::LlamaSamplerChainParams;
 use llama_cpp_2::sampling::LlamaSampler;
-use llama_cpp_2::token::LlamaToken;
+
 use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
@@ -172,7 +170,7 @@ pub fn load_model(model_path: &str, config: Option<ModelConfig>) -> Result<(), L
     initialize_backend()?;
 
     // Create model params
-    let model_params = LlamaModelParams::default().with_n_gpu_layers(config.gpu_layers);
+    let model_params = LlamaModelParams::default().with_n_gpu_layers(config.gpu_layers as u32);
 
     // Load the model
     let model = LlamaModel::load_from_file(&LLAMA_BACKEND_INSTANCE.read().as_ref().unwrap(), &path, &model_params)
@@ -318,15 +316,16 @@ pub fn get_embeddings(text: &str) -> Result<Vec<f32>, LlamaError> {
         .as_ref()
         .ok_or(LlamaError::ModelNotLoaded)?
         .clone();
-    let config = state.config.clone();
     drop(state);
 
     // Create context for embeddings
     let ctx_params = LlamaContextParams::default()
-        .with_n_ctx(NonZeroU32::new(512).unwrap())
+        .with_n_ctx(Some(NonZeroU32::new(512).unwrap()))
         .with_embeddings(true);
 
-    let ctx = LlamaContext::new_with_model(model.as_ref(), ctx_params).map_err(|e| {
+    let backend_guard = LLAMA_BACKEND_INSTANCE.read();
+    let backend = backend_guard.as_ref().ok_or(LlamaError::BackendNotInitialized)?;
+    let mut ctx = model.new_context(backend, ctx_params).map_err(|e| {
         error!("Failed to create context for embeddings: {:?}", e);
         LlamaError::ContextError(format!("{:?}", e))
     })?;
@@ -366,11 +365,13 @@ fn generate_internal(
 ) -> Result<String, LlamaError> {
     // Create context
     let ctx_params = LlamaContextParams::default()
-        .with_n_ctx(NonZeroU32::new(config.context_size).unwrap())
-        .with_n_batch(config.batch_size)
-        .with_flash_attn(config.flash_attention);
+        .with_n_ctx(Some(NonZeroU32::new(config.context_size).unwrap()))
+        .with_n_batch(config.batch_size);
+    // Note: flash_attention config option is stored but not used (API changed)
 
-    let mut ctx = LlamaContext::new_with_model(model.as_ref(), ctx_params).map_err(|e| {
+    let backend_guard = LLAMA_BACKEND_INSTANCE.read();
+    let backend = backend_guard.as_ref().ok_or(LlamaError::BackendNotInitialized)?;
+    let mut ctx = model.new_context(backend, ctx_params).map_err(|e| {
         error!("Failed to create context: {:?}", e);
         LlamaError::ContextError(format!("{:?}", e))
     })?;
@@ -395,16 +396,13 @@ fn generate_internal(
         LlamaError::GenerationError(format!("Failed to decode batch: {:?}", e))
     })?;
 
-    // Create sampler
-    let sampler_params = LlamaSamplerChainParams::default();
-    let mut sampler = LlamaSampler::new(sampler_params)
-        .map_err(|e| LlamaError::GenerationError(format!("Failed to create sampler: {:?}", e)))?;
-
-    sampler
-        .add_temp(params.temperature)
-        .add_top_k(params.top_k)
-        .add_top_p(params.top_p, 1)
-        .add_dist(42); // seed
+    // Create sampler chain with temperature, top_k, top_p, and distribution
+    let mut sampler = LlamaSampler::chain([
+        LlamaSampler::temp(params.temperature),
+        LlamaSampler::top_k(params.top_k),
+        LlamaSampler::top_p(params.top_p, 1),
+        LlamaSampler::dist(42), // seed
+    ], false);
 
     // Generate tokens
     let mut output = String::new();
@@ -465,11 +463,13 @@ where
 {
     // Create context
     let ctx_params = LlamaContextParams::default()
-        .with_n_ctx(NonZeroU32::new(config.context_size).unwrap())
-        .with_n_batch(config.batch_size)
-        .with_flash_attn(config.flash_attention);
+        .with_n_ctx(Some(NonZeroU32::new(config.context_size).unwrap()))
+        .with_n_batch(config.batch_size);
+    // Note: flash_attention config option is stored but not used (API changed)
 
-    let mut ctx = LlamaContext::new_with_model(model.as_ref(), ctx_params).map_err(|e| {
+    let backend_guard = LLAMA_BACKEND_INSTANCE.read();
+    let backend = backend_guard.as_ref().ok_or(LlamaError::BackendNotInitialized)?;
+    let mut ctx = model.new_context(backend, ctx_params).map_err(|e| {
         error!("Failed to create context: {:?}", e);
         LlamaError::ContextError(format!("{:?}", e))
     })?;
@@ -494,16 +494,13 @@ where
         LlamaError::GenerationError(format!("Failed to decode batch: {:?}", e))
     })?;
 
-    // Create sampler
-    let sampler_params = LlamaSamplerChainParams::default();
-    let mut sampler = LlamaSampler::new(sampler_params)
-        .map_err(|e| LlamaError::GenerationError(format!("Failed to create sampler: {:?}", e)))?;
-
-    sampler
-        .add_temp(params.temperature)
-        .add_top_k(params.top_k)
-        .add_top_p(params.top_p, 1)
-        .add_dist(42);
+    // Create sampler chain with temperature, top_k, top_p, and distribution
+    let mut sampler = LlamaSampler::chain([
+        LlamaSampler::temp(params.temperature),
+        LlamaSampler::top_k(params.top_k),
+        LlamaSampler::top_p(params.top_p, 1),
+        LlamaSampler::dist(42), // seed
+    ], false);
 
     // Generate tokens with streaming
     let mut output = String::new();

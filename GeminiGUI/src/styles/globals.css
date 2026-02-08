@@ -51,27 +51,61 @@
   --glass: 0 255 65;
   color-scheme: dark;
 
+  /* Spacing scale (0.25rem = 4px increments) */
+  --space-1: 0.25rem;  /* 4px */
+  --space-2: 0.5rem;   /* 8px */
+  --space-3: 0.75rem;  /* 12px */
+  --space-4: 1rem;     /* 16px */
+  --space-5: 1.25rem;  /* 20px */
+  --space-6: 1.5rem;   /* 24px */
+  --space-8: 2rem;     /* 32px */
+  --space-10: 2.5rem;  /* 40px */
+  --space-12: 3rem;    /* 48px */
+
+  /* Border radius scale */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  /* Theme colors */
   --matrix-bg-primary: #0a1f0a;
   --matrix-bg-secondary: #001a00;
   --matrix-accent: #00ff41;
-  --matrix-text: #e2e8f0; /* Slate-200 */
-  --matrix-text-dim: #94a3b8; /* Slate-400 */
-  --matrix-glass-bg: rgba(0, 31, 0, 0.4);
-  --matrix-panel-bg: rgba(10, 20, 10, 0.4);
-  --matrix-border: rgba(0, 255, 65, 0.3);
-  --matrix-input-bg: rgba(0, 0, 0, 0.4);
+  --matrix-text: #e2e8f0;
+  --matrix-text-dim: #94a3b8;
+  --matrix-glass-bg: rgba(0, 31, 0, 0.25);
+  --matrix-panel-bg: rgba(10, 20, 10, 0.25);
+  --matrix-border: rgba(0, 255, 65, 0.08);
+  --matrix-input-bg: rgba(0, 0, 0, 0.3);
   --bg-image: url('/background.webp');
-  --bg-overlay: rgba(10, 31, 10, 0.85);
+  --bg-overlay: rgba(10, 31, 10, 0.5);
 
-  --glass-blur: blur(16px) saturate(180%);
-  --glass-radius: 12px;
+  /* Dark mode specific colors (Fix #38) */
+  --matrix-hover-bg: rgba(0, 255, 65, 0.08);
+  --matrix-active-bg: rgba(0, 255, 65, 0.12);
+  --matrix-divider: rgba(0, 255, 65, 0.06);
+  --matrix-overlay: rgba(0, 0, 0, 0.6);
+  --matrix-tooltip-bg: rgba(10, 20, 10, 0.95);
+  --matrix-focus-ring: rgba(0, 255, 65, 0.4);
+  --matrix-code-bg: rgba(0, 0, 0, 0.3);
+  --matrix-badge-bg: rgba(0, 255, 65, 0.15);
+  --matrix-error: #f87171;
+  --matrix-error-bg: rgba(127, 29, 29, 0.2);
+  --matrix-warning: #facc15;
+  --matrix-warning-bg: rgba(113, 63, 18, 0.2);
+  --matrix-success: #4ade80;
+  --matrix-success-bg: rgba(20, 83, 45, 0.2);
+
+  --glass-blur: blur(20px) saturate(200%);
+  --glass-radius: 16px;
 }
 
 /* ============================================
    LIGHT THEME OVERRIDES
    ============================================ */
 [data-theme='light'] {
-  --background: 227 255 235;
+  --background: 245 250 246;
   --foreground: 5 46 22;
   --accent: 0 153 51;
   --glass: 0 153 51;
@@ -79,15 +113,31 @@
 
   --matrix-bg-primary: #f0fdf4;
   --matrix-bg-secondary: #ffffff;
-  --matrix-accent: #059669;
-  --matrix-text: #334155; /* Slate-700 (Gray) */
-  --matrix-text-dim: #64748b; /* Slate-500 (Dim Gray) */
-  --matrix-glass-bg: rgba(255, 255, 255, 0.5);
-  --matrix-panel-bg: rgba(255, 255, 255, 0.4);
-  --matrix-border: rgba(5, 150, 105, 0.2);
-  --matrix-input-bg: rgba(255, 255, 255, 0.5);
+  --matrix-accent: #047857;
+  --matrix-text: #1e293b;
+  --matrix-text-dim: #475569;
+  --matrix-glass-bg: rgba(255, 255, 255, 0.75);
+  --matrix-panel-bg: rgba(255, 255, 255, 0.7);
+  --matrix-border: rgba(5, 150, 105, 0.18);
+  --matrix-input-bg: rgba(255, 255, 255, 0.8);
   --bg-image: url('/backgroundlight.webp');
-  --bg-overlay: rgba(255, 255, 255, 0.6);
+  --bg-overlay: rgba(255, 255, 255, 0.3);
+
+  /* Light mode specific colors (Fix #38) */
+  --matrix-hover-bg: rgba(5, 150, 105, 0.08);
+  --matrix-active-bg: rgba(5, 150, 105, 0.12);
+  --matrix-divider: rgba(5, 150, 105, 0.08);
+  --matrix-overlay: rgba(255, 255, 255, 0.6);
+  --matrix-tooltip-bg: rgba(255, 255, 255, 0.95);
+  --matrix-focus-ring: rgba(5, 120, 87, 0.4);
+  --matrix-code-bg: rgba(0, 0, 0, 0.06);
+  --matrix-badge-bg: rgba(5, 150, 105, 0.12);
+  --matrix-error: #dc2626;
+  --matrix-error-bg: rgba(239, 68, 68, 0.1);
+  --matrix-warning: #b45309;
+  --matrix-warning-bg: rgba(245, 158, 11, 0.1);
+  --matrix-success: #047857;
+  --matrix-success-bg: rgba(16, 185, 129, 0.1);
 }
 
 /* ============================================
@@ -113,8 +163,94 @@ body {
 
 [data-theme='light'] body {
   background-image:
-    radial-gradient(circle at top, rgba(5, 150, 105, 0.1), transparent 45%),
+    radial-gradient(circle at top, rgba(5, 150, 105, 0.08), transparent 45%),
     linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+}
+
+[data-theme='light'] .message-bubble-assistant {
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--matrix-text);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(5, 150, 105, 0.08);
+}
+
+[data-theme='light'] .message-bubble-user {
+  background: var(--matrix-accent);
+  color: #ffffff;
+  box-shadow: 0 4px 20px rgba(5, 150, 105, 0.25);
+}
+
+[data-theme='light'] .message-bubble-system {
+  background: rgba(219, 234, 254, 0.6);
+  color: #1e3a5f;
+}
+
+[data-theme='light'] .markdown-body code {
+  background: rgba(0, 0, 0, 0.07);
+  color: var(--matrix-text);
+}
+
+[data-theme='light'] .markdown-body pre {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--matrix-text);
+}
+
+[data-theme='light'] .markdown-body pre code {
+  color: var(--matrix-text);
+}
+
+[data-theme='light'] .glass-panel {
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(5, 150, 105, 0.1);
+}
+
+[data-theme='light'] .matrix-input {
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--matrix-text);
+}
+
+[data-theme='light'] .glass-button {
+  background: color-mix(in srgb, var(--matrix-accent) 12%, white);
+  color: var(--matrix-accent);
+}
+
+[data-theme='light'] .glass-button:hover {
+  background: color-mix(in srgb, var(--matrix-accent) 20%, white);
+}
+
+/* Status approved light theme handled by CSS variable --matrix-badge-bg */
+
+/* Alert light theme overrides handled by CSS variables --matrix-error-bg etc. */
+
+[data-theme='light'] .data-box,
+[data-theme='light'] .data-box-scroll {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+/* Light theme: footer */
+[data-theme='light'] footer.glass-panel {
+  background: rgba(255, 255, 255, 0.75);
+}
+
+/* Light theme: header */
+[data-theme='light'] header {
+  background: rgba(255, 255, 255, 0.75);
+  border-bottom: 1px solid rgba(5, 150, 105, 0.1);
+}
+
+/* Light theme: sidebar items */
+[data-theme='light'] .sidebar-item {
+  color: var(--matrix-text);
+}
+
+[data-theme='light'] .sidebar-item:hover {
+  background: rgba(5, 150, 105, 0.08);
+}
+
+/* Light theme: scrollbar in markdown */
+[data-theme='light'] .markdown-body strong {
+  color: var(--matrix-accent);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -184,11 +320,6 @@ img, button, header, footer, .sidebar-item, .status-badge, .noselect {
   cursor: text;
 }
 
-/* Helper for selectable areas */
-.select-safe {
-  user-select: text;
-}
-
 /* ============================================
    GLASS MORPHISM COMPONENTS
    ============================================ */
@@ -200,30 +331,10 @@ img, button, header, footer, .sidebar-item, .status-badge, .noselect {
   background: var(--matrix-panel-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--matrix-border);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 255, 65, 0.1) inset;
+  border: none;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
   border-radius: var(--glass-radius);
-  transition: background 0.3s ease, border-color 0.3s ease;
-}
-
-/* ============================================
-   GLOW EFFECTS
-   ============================================ */
-.glow-amber {
-  box-shadow: 0 0 18px rgba(0, 255, 65, 0.3),
-              0 0 36px rgba(0, 255, 65, 0.15);
-}
-
-.glow-blue {
-  box-shadow: 0 0 18px rgba(52, 211, 153, 0.3),
-              0 0 36px rgba(52, 211, 153, 0.15);
-}
-
-/* ============================================
-   TEXT GRADIENT
-   ============================================ */
-.text-gradient {
-  @apply bg-gradient-to-r from-emerald-300 via-emerald-400 to-green-500 bg-clip-text text-transparent;
+  transition: background 0.3s ease;
 }
 
 /* ============================================
@@ -234,20 +345,15 @@ img, button, header, footer, .sidebar-item, .status-badge, .noselect {
          text-emerald-950 font-medium transition-colors cursor-pointer;
 }
 
-.btn-secondary {
-  @apply px-4 py-2 rounded-lg bg-emerald-950/60 hover:bg-emerald-900/70
-         text-emerald-100 font-medium transition-colors cursor-pointer;
-}
-
 .glass-button {
   background: color-mix(in srgb, var(--matrix-accent) 10%, transparent);
-  backdrop-filter: blur(4px);
-  border: 1px solid color-mix(in srgb, var(--matrix-accent) 30%, transparent);
+  backdrop-filter: blur(8px);
+  border: none;
   color: var(--matrix-accent);
   transition: all 0.2s ease;
   cursor: pointer;
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-lg);
   font-family: var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -255,7 +361,7 @@ img, button, header, footer, .sidebar-item, .status-badge, .noselect {
 
 .glass-button:hover {
   background: color-mix(in srgb, var(--matrix-accent) 20%, transparent);
-  box-shadow: 0 0 15px color-mix(in srgb, var(--matrix-accent) 20%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--matrix-accent) 15%, transparent);
 }
 
 .glass-button:disabled {
@@ -267,29 +373,24 @@ img, button, header, footer, .sidebar-item, .status-badge, .noselect {
 /* ============================================
    INPUT STYLES
    ============================================ */
-.input-base {
-  @apply w-full px-4 py-3 rounded-xl bg-emerald-950/60 border border-emerald-400/30
-         text-emerald-50 placeholder:text-emerald-300/60
-         focus:outline-none focus:ring-2 focus:ring-emerald-400/50
-         focus:border-emerald-300/70 transition-all;
-}
-
 .matrix-input {
   background: var(--matrix-input-bg);
-  border: 1px solid color-mix(in srgb, var(--matrix-accent) 30%, transparent);
+  border: none;
+  border-radius: var(--radius-lg);
   color: var(--matrix-text);
+  backdrop-filter: blur(8px);
 }
 
 .matrix-input:focus {
-  border-color: var(--matrix-accent);
   outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--matrix-accent) 30%, transparent);
 }
 
 /* ============================================
    STATUS BADGES
    ============================================ */
 .status-badge {
-  padding: 0.25rem 0.75rem;
+  padding: var(--space-1) var(--space-3);
   border-radius: 9999px;
   font-size: 0.75rem;
   font-weight: bold;
@@ -297,15 +398,15 @@ img, button, header, footer, .sidebar-item, .status-badge, .noselect {
 }
 
 .status-pending {
-  background: rgba(255, 165, 0, 0.2);
-  color: orange;
-  border: 1px solid rgba(255, 165, 0, 0.4);
+  background: var(--matrix-warning-bg);
+  color: var(--matrix-warning);
+  border: none;
 }
 
 .status-approved {
-  background: color-mix(in srgb, var(--matrix-accent) 20%, transparent);
+  background: var(--matrix-badge-bg);
   color: var(--matrix-accent);
-  border: 1px solid color-mix(in srgb, var(--matrix-accent) 40%, transparent);
+  border: none;
 }
 
 /* ============================================
@@ -331,17 +432,17 @@ img, button, header, footer, .sidebar-item, .status-badge, .noselect {
 .markdown-body p { margin-bottom: 0.5em; }
 .markdown-body p:last-child { margin-bottom: 0; }
 .markdown-body pre {
-  background: rgba(0,0,0,0.5);
-  padding: 0.5em;
-  border-radius: 4px;
+  background: var(--matrix-code-bg, rgba(0,0,0,0.3));
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
   overflow-x: auto;
-  border: 1px solid var(--matrix-border);
-  margin: 0.5em 0;
+  border: none;
+  margin: var(--space-2) 0;
 }
 .markdown-body code {
   background: rgba(255,255,255,0.1);
   padding: 0.1em 0.3em;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   font-family: var(--font-mono);
   font-size: 0.9em;
   color: #ffffff;
@@ -360,7 +461,6 @@ img, button, header, footer, .sidebar-item, .status-badge, .noselect {
   margin-top: 0.5em;
   margin-bottom: 0.2em;
   font-weight: bold;
-  border-bottom: 1px solid var(--matrix-border);
 }
 .markdown-body blockquote {
   border-left: 2px solid var(--matrix-accent);
@@ -405,8 +505,7 @@ img, button, header, footer, .sidebar-item, .status-badge, .noselect {
 
 /* Panel Header - common styling for panel headers */
 .panel-header {
-  @apply flex justify-between items-center pb-2 border-b;
-  border-color: var(--matrix-border);
+  @apply flex justify-between items-center pb-2;
   color: var(--matrix-text-dim);
 }
 
@@ -420,32 +519,28 @@ img, button, header, footer, .sidebar-item, .status-badge, .noselect {
 
 /* Error Alert - for error messages in panels */
 .error-alert {
-  @apply text-xs p-2 rounded;
-  background: rgba(127, 29, 29, 0.2);
-  color: #f87171;
-}
-
-.error-alert-bordered {
-  @apply text-xs p-2 rounded border;
-  background: rgba(127, 29, 29, 0.2);
-  color: #f87171;
-  border-color: rgba(248, 113, 113, 0.3);
+  @apply text-xs rounded-xl;
+  padding: var(--space-2);
+  background: var(--matrix-error-bg);
+  color: var(--matrix-error);
 }
 
 /* Warning Alert */
 .warning-alert {
-  @apply text-[10px] px-2 py-1 rounded text-center;
-  background: rgba(113, 63, 18, 0.2);
-  color: #facc15;
-  border: 1px solid rgba(234, 179, 8, 0.3);
+  @apply text-[10px] rounded-xl text-center;
+  padding: var(--space-1) var(--space-2);
+  background: var(--matrix-warning-bg);
+  color: var(--matrix-warning);
+  border: none;
 }
 
 /* Success Alert */
 .success-alert {
-  @apply text-[10px] px-2 py-1 rounded text-center;
-  background: rgba(20, 83, 45, 0.2);
-  color: #4ade80;
-  border: 1px solid rgba(34, 197, 94, 0.3);
+  @apply text-[10px] rounded-xl text-center;
+  padding: var(--space-1) var(--space-2);
+  background: var(--matrix-success-bg);
+  color: var(--matrix-success);
+  border: none;
 }
 
 /* ============================================
@@ -455,8 +550,8 @@ img, button, header, footer, .sidebar-item, .status-badge, .noselect {
 /* Progress Bar Container */
 .progress-bar {
   @apply w-full rounded-full h-2.5 overflow-hidden;
-  background: rgba(0, 0, 0, 0.1);
-  border: 1px solid var(--matrix-border);
+  background: rgba(0, 0, 0, 0.15);
+  border: none;
 }
 
 /* Progress Bar Fill */
@@ -469,37 +564,32 @@ img, button, header, footer, .sidebar-item, .status-badge, .noselect {
    MESSAGE BUBBLE COMPONENTS
    ============================================ */
 
-/* Base message bubble */
-.message-bubble {
-  @apply max-w-[95%] p-3 rounded-lg text-sm overflow-hidden relative shadow-lg;
-}
-
 /* User message bubble */
 .message-bubble-user {
-  @apply max-w-[95%] p-3 rounded-lg text-sm overflow-hidden relative shadow-lg;
+  @apply max-w-[95%] p-3 rounded-xl text-sm overflow-hidden relative;
   @apply font-bold font-sans;
   background: var(--matrix-accent);
   color: black;
-  box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--matrix-accent) 25%, transparent);
 }
 
 /* Assistant message bubble */
 .message-bubble-assistant {
-  @apply max-w-[95%] p-3 rounded-lg text-sm overflow-hidden relative shadow-lg;
-  @apply font-mono backdrop-blur-md;
-  background: rgba(0, 0, 0, 0.6);
+  @apply max-w-[95%] p-3 rounded-xl text-sm overflow-hidden relative;
+  @apply font-mono backdrop-blur-xl;
+  background: rgba(0, 0, 0, 0.35);
   color: var(--matrix-text);
-  border: 1px solid var(--matrix-border);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+  border: none;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
 
 /* System message bubble */
 .message-bubble-system {
-  @apply max-w-[95%] p-3 rounded-lg text-sm overflow-hidden relative shadow-lg;
-  @apply font-mono text-xs backdrop-blur-md;
-  background: rgba(30, 58, 138, 0.4);
+  @apply max-w-[95%] p-3 rounded-xl text-sm overflow-hidden relative;
+  @apply font-mono text-xs backdrop-blur-xl;
+  background: rgba(30, 58, 138, 0.25);
   color: #bfdbfe;
-  border: 1px solid rgba(59, 130, 246, 0.5);
+  border: none;
 }
 
 /* ============================================
@@ -508,21 +598,142 @@ img, button, header, footer, .sidebar-item, .status-badge, .noselect {
 
 /* Data Box - for displaying code/data content */
 .data-box {
-  @apply text-xs font-mono p-2 rounded;
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid var(--matrix-border);
+  @apply text-xs font-mono p-2 rounded-lg;
+  background: rgba(0, 0, 0, 0.15);
+  border: none;
 }
 
 /* Data Box with scroll */
 .data-box-scroll {
-  @apply text-xs font-mono p-2 rounded overflow-auto;
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid var(--matrix-border);
+  @apply text-xs font-mono p-2 rounded-lg overflow-auto;
+  background: rgba(0, 0, 0, 0.15);
+  border: none;
 }
 
-/* Request Card - for pending requests */
-.request-card {
-  @apply p-2 rounded text-xs animate-pulse;
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid var(--matrix-border);
+/* ============================================
+   FOCUS-VISIBLE STATES (Fix #37 - Accessibility)
+   ============================================ */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--matrix-accent);
+  outline-offset: 2px;
 }
+
+.glass-button:focus-visible {
+  outline: 2px solid var(--matrix-accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--matrix-focus-ring);
+}
+
+.btn-primary:focus-visible {
+  outline: 2px solid var(--matrix-accent);
+  outline-offset: 2px;
+}
+
+.matrix-input:focus-visible {
+  outline: 2px solid var(--matrix-accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--matrix-focus-ring);
+}
+
+.sidebar-item:focus-visible {
+  outline: 2px solid var(--matrix-accent);
+  outline-offset: -2px;
+  border-radius: var(--radius-md);
+}
+
+/* ============================================
+   RESPONSIVE BREAKPOINTS (Fix #36)
+   ============================================ */
+
+/* Small screens: phones (max-width: 640px) */
+@media (max-width: 640px) {
+  :root {
+    --glass-radius: 12px;
+  }
+
+  body {
+    font-size: 14px;
+  }
+
+  /* Collapse sidebar on small screens */
+  .sidebar-collapse-sm {
+    display: none;
+  }
+
+  .message-bubble-user,
+  .message-bubble-assistant,
+  .message-bubble-system {
+    max-width: 100%;
+  }
+
+  .glass-button {
+    padding: var(--space-1) var(--space-2);
+    font-size: 0.75rem;
+  }
+
+  .glass-panel {
+    border-radius: var(--radius-lg);
+  }
+
+  .markdown-body pre {
+    padding: var(--space-2);
+    font-size: 0.8em;
+  }
+
+  .status-badge {
+    padding: var(--space-1) var(--space-2);
+    font-size: 0.65rem;
+  }
+}
+
+/* Medium screens: tablets (max-width: 768px) */
+@media (max-width: 768px) {
+  /* Sidebar narrower on tablets */
+  .sidebar-narrow-md {
+    width: 160px;
+  }
+
+  .panel-header-title {
+    font-size: 0.8rem;
+  }
+
+  .markdown-body h1 { font-size: 1.25em; }
+  .markdown-body h2 { font-size: 1.15em; }
+  .markdown-body h3 { font-size: 1.05em; }
+}
+
+/* Large screens: desktops (min-width: 1024px) */
+@media (min-width: 1024px) {
+  .message-bubble-user,
+  .message-bubble-assistant,
+  .message-bubble-system {
+    max-width: 85%;
+  }
+}
+
+/* ============================================
+   SKIP LINK (Accessibility)
+   ============================================ */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  background: var(--matrix-accent);
+  color: var(--matrix-bg-primary);
+  border-radius: var(--radius-md);
+  z-index: 9999;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  top: var(--space-4);
+}
+

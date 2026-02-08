@@ -36,6 +36,34 @@ export interface ExecuteStreamEvent {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export class ExecutionService {
+  private isProcessing = false;
+  private processingPromise: Promise<void> | null = null;
+
+  /**
+   * Safely cleanup a swarm instance, respecting the processing state.
+   * If processing is active, logs a warning and defers cleanup.
+   */
+  private async safeCleanup(swarm: any): Promise<void> {
+    if (!('cleanup' in swarm && typeof swarm.cleanup === 'function')) {
+      return;
+    }
+
+    if (this.isProcessing) {
+      console.warn('[ExecutionService] Cleanup requested during active processing — deferring cleanup.');
+      // Defer cleanup until processing completes
+      if (this.processingPromise) {
+        this.processingPromise.then(() => {
+          swarm.cleanup().catch((err: unknown) => {
+            console.error('[ExecutionService] Deferred cleanup error:', err);
+          });
+        });
+      }
+      return;
+    }
+
+    await swarm.cleanup();
+  }
+
   /**
    * Execute a task (non-streaming)
    */
@@ -50,16 +78,17 @@ export class ExecutionService {
     // Add user message to history
     historyService.addUserMessage(prompt);
 
+    this.isProcessing = true;
+    let resolveProcessing: () => void;
+    this.processingPromise = new Promise<void>((resolve) => {
+      resolveProcessing = resolve;
+    });
+
     try {
       // Create and execute swarm
-      const swarm = await createSwarm({
-        headless: !options.verbose,
-        selfHealing: mode === 'swarm',
-        translation: true,
-      });
+      const swarm = await createSwarm();
 
       const result = await swarm.executeObjective(prompt);
-      await swarm.cleanup();
 
       const duration = Date.now() - startTime;
 
@@ -70,8 +99,18 @@ export class ExecutionService {
         streaming: false,
       });
 
+      // Mark processing as done before cleanup
+      this.isProcessing = false;
+      resolveProcessing!();
+      this.processingPromise = null;
+
+      await this.safeCleanup(swarm);
+
       return { plan, result, duration, mode };
     } catch (error: unknown) {
+      this.isProcessing = false;
+      resolveProcessing!();
+      this.processingPromise = null;
       const errorMessage = error instanceof Error ? error.message : String(error);
       historyService.addErrorMessage(errorMessage);
       throw error;
@@ -96,50 +135,39 @@ export class ExecutionService {
     // Add user message to history
     historyService.addUserMessage(prompt);
 
+    this.isProcessing = true;
+    let resolveProcessing: () => void;
+    this.processingPromise = new Promise<void>((resolve) => {
+      resolveProcessing = resolve;
+    });
+
     try {
       // Create swarm
-      const swarm = await createSwarm({
-        headless: !options.verbose,
-        selfHealing: mode === 'swarm',
-        translation: true,
+      const swarm = await createSwarm();
+
+      // Non-streaming execution (simplified)
+      const result = await swarm.executeObjective(prompt);
+      const duration = Date.now() - startTime;
+
+      yield { type: 'chunk', data: { content: result } };
+      yield { type: 'result', data: { result, duration } };
+
+      historyService.addAssistantMessage(result, plan, {
+        duration,
+        mode,
+        streaming: false,
       });
 
-      // Check if streaming is available
-      if (typeof swarm.executeObjectiveStream === 'function') {
-        // Use streaming execution
-        let fullResult = '';
+      // Mark processing as done before cleanup
+      this.isProcessing = false;
+      resolveProcessing!();
+      this.processingPromise = null;
 
-        for await (const chunk of swarm.executeObjectiveStream(prompt)) {
-          fullResult += chunk;
-          yield { type: 'chunk', data: { content: chunk } };
-        }
-
-        const duration = Date.now() - startTime;
-        yield { type: 'result', data: { result: fullResult, duration } };
-
-        // Add to history
-        historyService.addAssistantMessage(fullResult, plan, {
-          duration,
-          mode,
-          streaming: true,
-        });
-      } else {
-        // Fallback to non-streaming
-        const result = await swarm.executeObjective(prompt);
-        const duration = Date.now() - startTime;
-
-        yield { type: 'chunk', data: { content: result } };
-        yield { type: 'result', data: { result, duration } };
-
-        historyService.addAssistantMessage(result, plan, {
-          duration,
-          mode,
-          streaming: false,
-        });
-      }
-
-      await swarm.cleanup();
+      await this.safeCleanup(swarm);
     } catch (error: unknown) {
+      this.isProcessing = false;
+      resolveProcessing!();
+      this.processingPromise = null;
       const errorMessage = error instanceof Error ? error.message : String(error);
       yield { type: 'error', data: { error: errorMessage } };
       historyService.addErrorMessage(errorMessage);
@@ -151,13 +179,13 @@ export class ExecutionService {
    */
   async checkStatus(): Promise<ExecuteStatusResponse> {
     try {
-      const swarm = await createSwarm({ headless: true });
-      await swarm.cleanup();
+      const swarm = await createSwarm();
+      await this.safeCleanup(swarm);
 
       return {
         available: true,
         modes: ['basic', 'enhanced', 'swarm'],
-        streaming: true,
+        streaming: false,  // Simplified - no streaming support in basic Swarm
       };
     } catch {
       return {

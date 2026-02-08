@@ -27,10 +27,13 @@ export const useEnvLoader = (): UseEnvLoaderReturn => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const geminiApiKey = useAppStore((state) => state.settings.geminiApiKey);
   const updateSettings = useAppStore((state) => state.updateSettings);
 
   useEffect(() => {
+    if (!(window as any).__TAURI_INTERNALS__) {
+      setIsLoaded(true);
+      return;
+    }
     const loadEnv = async () => {
       try {
         const env = await invoke<Record<string, string>>(
@@ -39,16 +42,11 @@ export const useEnvLoader = (): UseEnvLoaderReturn => {
 
         const newSettings: Record<string, string> = {};
 
-        // Load Gemini API key if not already set
-        if (!geminiApiKey && env.GEMINI_API_KEY) {
-          newSettings.geminiApiKey = env.GEMINI_API_KEY;
-          console.log('[useEnvLoader] Loaded GEMINI_API_KEY from .env');
-        }
-
-        // Load Google API key as fallback
-        if (!geminiApiKey && !env.GEMINI_API_KEY && env.GOOGLE_API_KEY) {
-          newSettings.geminiApiKey = env.GOOGLE_API_KEY;
-          console.log('[useEnvLoader] Loaded GOOGLE_API_KEY as fallback');
+        // Always load API key from .env if available (env takes priority)
+        const envKey = env.GEMINI_API_KEY || env.GOOGLE_API_KEY;
+        if (envKey) {
+          newSettings.geminiApiKey = envKey;
+          console.log('[useEnvLoader] Loaded API key from .env');
         }
 
         // Apply loaded settings
@@ -62,12 +60,13 @@ export const useEnvLoader = (): UseEnvLoaderReturn => {
         const errorMessage = e instanceof Error ? e.message : String(e);
         console.warn('[useEnvLoader] Failed to load .env:', errorMessage);
         setError(errorMessage);
-        setIsLoaded(true); // Mark as loaded even on error
+        setIsLoaded(true);
       }
     };
 
     loadEnv();
-  }, [geminiApiKey, updateSettings]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return {
     isLoaded,

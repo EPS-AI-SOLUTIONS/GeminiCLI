@@ -4,14 +4,17 @@ import { useEffect, useRef, memo } from 'react';
 /**
  * WitcherRunes Component
  * Renders a falling "Matrix Rain" effect using Rune-like characters.
- * Sit between background image and glass UI.
+ * Sits between background image and glass UI.
+ * Active in both dark and light modes with adapted colors.
  */
 export const WitcherRunes = memo(({ isDark }: { isDark: boolean }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (!isDark) return; // Only active in dark mode
+        // Fix #39: Respect prefers-reduced-motion
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (prefersReducedMotion) return;
 
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -25,17 +28,19 @@ export const WitcherRunes = memo(({ isDark }: { isDark: boolean }) => {
         let drops: number[] = [];
 
         // Runes Alphabet (Elder Futhark + Math symbols for "magical" look)
-        // ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃᛇᛈᛉᛊᛏᛒᛖᛗᛚᛜᛞᛟ
-        // ∑∏∆∇∈∉∋∌∎∏∐∑−∓∔∕∖∗∘∙√∛∜∝∞∟∠∡∢∣∤∥∦∧∨∩∪∫∬∭∮∯∰∱∲∳∴∵
         const alphabet = "ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃᛇᛈᛉᛊᛏᛒᛖᛗᛚᛜᛞᛟ∑∏∆∇∈∞∫∬∭∮";
-        
+
+        // Theme-aware colors
+        const trailColor = isDark ? 'rgba(0, 10, 0, 0.08)' : 'rgba(240, 253, 244, 0.12)';
+        const textColor = isDark ? '#4ade80' : '#059669';
+        const glowColor = isDark ? '#00ff41' : '#10b981';
+
         const resize = () => {
             if (canvas && containerRef.current) {
                 canvas.width = containerRef.current.offsetWidth;
                 canvas.height = containerRef.current.offsetHeight;
-                
+
                 columns = Math.floor(canvas.width / fontSize);
-                // Reset drops if width changed significantly or init
                 if (drops.length !== columns) {
                    drops = new Array(columns).fill(1);
                 }
@@ -48,54 +53,50 @@ export const WitcherRunes = memo(({ isDark }: { isDark: boolean }) => {
 
         // Drawing Loop
         const draw = () => {
-            // Semi-transparent black to create trails
-            // Use lighter alpha for "clearer" text (less smear)
-            ctx.fillStyle = 'rgba(0, 10, 0, 0.08)'; 
+            ctx.fillStyle = trailColor;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Text settings
-            ctx.fillStyle = '#4ade80'; // Tailwind green-400 (Bright Neon Green/Cyan mix)
+            ctx.fillStyle = textColor;
             ctx.font = `bold ${fontSize}px 'JetBrains Mono', monospace`;
-            ctx.shadowBlur = 4;
-            ctx.shadowColor = '#00ff41'; // Glow effect
+            ctx.shadowBlur = isDark ? 4 : 2;
+            ctx.shadowColor = glowColor;
 
             for (let i = 0; i < drops.length; i++) {
-                // Pick random char
                 const text = alphabet.charAt(Math.floor(Math.random() * alphabet.length));
-                
-                // Draw
-                // x = column index * font size
-                // y = drop value * font size
                 const x = i * fontSize;
                 const y = drops[i] * fontSize;
 
                 ctx.fillText(text, x, y);
 
-                // Sending drop back to top randomly after it has crossed screen
-                // Adding randomness to drop reset to scatter them
                 if (y > canvas.height && Math.random() > 0.975) {
                     drops[i] = 0;
                 }
 
-                // Increment y coordinate
                 drops[i]++;
             }
         };
 
-        // Animation Loop
-        const intervalId = setInterval(draw, 45); // ~20fps for classic feel
+        // Fix #39: Throttle to ~22fps (45ms interval) for background effect — saves CPU
+        const intervalId = setInterval(draw, 45);
+
+        // Fix #39: Apply will-change for GPU compositing
+        canvas.style.willChange = 'transform';
 
         return () => {
             clearInterval(intervalId);
+            canvas.style.willChange = 'auto'; // Clean up will-change
             window.removeEventListener('resize', resize);
         };
     }, [isDark]);
 
-    if (!isDark) return null;
-
     return (
-        <div ref={containerRef} className="absolute inset-0 pointer-events-none overflow-hidden z-0 opacity-25 mix-blend-screen">
-             <canvas ref={canvasRef} className="block w-full h-full" />
+        <div
+            ref={containerRef}
+            className={`absolute inset-0 pointer-events-none overflow-hidden z-0 ${
+                isDark ? 'opacity-25 mix-blend-screen' : 'opacity-[0.12] mix-blend-multiply'
+            }`}
+        >
+            <canvas ref={canvasRef} className="block w-full h-full" />
         </div>
     );
 });

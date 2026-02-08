@@ -8,13 +8,16 @@
  */
 
 import chalk from 'chalk';
+import path from 'path';
 import { MCPTool, MCPToolResult, MCPToolInputSchema } from './MCPTypes.js';
 import { mcpToolRegistry } from './MCPToolRegistry.js';
+import { sanitizeNumericParams } from './MCPAliases.js';
 import {
   NativeSerenaTools,
   createNativeSerenaTools,
   NativeToolDefinition
 } from '../native/NativeSerenaTools.js';
+import { createDocumentToolDefinitions } from '../native/NativeDocumentTools.js';
 
 // ============================================================
 // Constants
@@ -91,6 +94,21 @@ export const NATIVE_TOOL_ALIASES: Record<string, string> = {
   'serena:memwrite': 'native__write_memory',
   'serena:memdel': 'native__delete_memory',
 
+  // === Document Operations ===
+  'doc:word': 'native__create_word_document',
+  'doc:create-word': 'native__create_word_document',
+  'doc:edit-word': 'native__edit_word_document',
+  'doc:txt2word': 'native__convert_txt_to_word',
+  'doc:excel': 'native__create_excel_file',
+  'doc:create-excel': 'native__create_excel_file',
+  'doc:edit-excel': 'native__edit_excel_file',
+  'doc:csv2excel': 'native__convert_csv_to_excel',
+  'doc:pdf': 'native__create_pdf_file',
+  'doc:create-pdf': 'native__create_pdf_file',
+  'word': 'native__create_word_document',
+  'excel': 'native__create_excel_file',
+  'pdf': 'native__create_pdf_file',
+
   // === Native Prefix (new style) ===
   'native:find': 'native__find_symbol',
   'native:search': 'native__search_for_pattern',
@@ -105,6 +123,201 @@ export const NATIVE_TOOL_ALIASES: Record<string, string> = {
   'native:rename': 'native__rename_symbol',
   'native:mem': 'native__list_memories'
 };
+
+// ============================================================
+// Parameter Sanitization Utilities
+// ============================================================
+
+/** Parameter keys that represent filesystem paths */
+const PATH_PARAM_KEYS = new Set([
+  'filepath', 'file_path', 'filePath',
+  'path', 'source_path', 'target_path',
+  'sourcePath', 'targetPath',
+  'directory', 'dir', 'root', 'rootDir',
+  'cwd', 'workingDirectory'
+]);
+
+/** Parameter keys that represent filenames (not full paths) */
+const FILENAME_PARAM_KEYS = new Set([
+  'filename', 'fileName', 'name', 'file',
+  'sheetName', 'sheet_name', 'sheet'
+]);
+
+/** Maximum allowed filename length (prevents filesystem issues) */
+const MAX_FILENAME_LENGTH = 255;
+
+/** Maximum allowed full path length (Windows MAX_PATH) */
+const MAX_PATH_LENGTH = 260;
+
+/**
+ * Get allowed directories for path validation.
+ * Includes the project root and common safe user directories.
+ */
+function getAllowedDirs(rootDir: string): string[] {
+  const os = require('os');
+  return [
+    path.resolve(rootDir),
+    path.join(os.homedir(), 'Documents'),
+    path.join(os.homedir(), 'Desktop'),
+    path.join(os.homedir(), 'Downloads'),
+    os.tmpdir()
+  ];
+}
+
+/**
+ * Sanitize a filesystem path with multiple security layers:
+ * 1. Reject empty/invalid input
+ * 2. Remove null bytes (can bypass C-based path checks in native code)
+ * 3. Remove control characters (can confuse terminal/logging)
+ * 4. Defense-in-depth: reject raw '..' traversal sequences before resolution
+ * 5. Normalize and resolve to absolute path
+ * 6. Enforce maximum path length
+ * 7. Validate resolved path stays within allowed directories
+ */
+function sanitizePath(value: string, rootDir: string): string {
+  if (!value || typeof value !== 'string') {
+    throw new Error('Path security violation: path must be a non-empty string');
+  }
+
+  // Layer 1: Remove null bytes
+  let sanitized = value.replace(/\0/g, '');
+
+  // Layer 2: Remove control characters (keep tabs/newlines but strip others)
+  sanitized = sanitized.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '');
+
+  // Layer 3: Defense-in-depth - reject paths containing '..' traversal sequences
+  const forwardSlashPath = sanitized.replace(/\\/g, '/');
+  if (forwardSlashPath.includes('/../') ||
+      forwardSlashPath.startsWith('../') ||
+      forwardSlashPath.endsWith('/..') ||
+      forwardSlashPath === '..') {
+    throw new Error(
+      `Path security violation: "${value}" contains directory traversal sequences (..)`
+    );
+  }
+
+  // Layer 4: Normalize slashes and resolve to absolute
+  sanitized = path.normalize(sanitized);
+  const resolved = path.resolve(rootDir, sanitized);
+
+  // Layer 5: Enforce maximum path length
+  if (resolved.length > MAX_PATH_LENGTH) {
+    throw new Error(
+      `Path security violation: resolved path exceeds maximum length of ${MAX_PATH_LENGTH} characters`
+    );
+  }
+
+  // Layer 6: Verify the resolved path stays within allowed directories
+  const allowedDirs = getAllowedDirs(rootDir);
+  const isAllowed = allowedDirs.some(baseDir => {
+    const normalizedBase = path.resolve(baseDir) + path.sep;
+    const normalizedResolved = resolved + path.sep;
+    return normalizedResolved.startsWith(normalizedBase) || resolved === path.resolve(baseDir);
+  });
+
+  if (!isAllowed) {
+    throw new Error(
+      `Path security violation: "${value}" resolves to "${resolved}" which is outside allowed directories: ${allowedDirs.join(', ')}`
+    );
+  }
+
+  return resolved;
+}
+
+/**
+ * Sanitize a filename (not a full path) with multiple security layers:
+ * 1. Reject empty/invalid input
+ * 2. Remove null bytes
+ * 3. Remove control characters
+ * 4. Remove Windows-illegal characters
+ * 5. Remove directory traversal sequences
+ * 6. Remove path separator characters (slashes)
+ * 7. Remove leading dots (hidden file creation)
+ * 8. Enforce maximum filename length
+ * 9. Reject empty result after sanitization
+ */
+function sanitizeFilename(value: string): string {
+  if (!value || typeof value !== 'string') {
+    throw new Error('Filename security violation: filename must be a non-empty string');
+  }
+
+  const sanitized = value
+    .replace(/\0/g, '')                    // null bytes
+    .replace(/[\x00-\x1f\x7f]/g, '')      // control characters
+    .replace(/[<>:"|?*]/g, '')             // Windows-illegal characters
+    .replace(/\.\./g, '')                   // directory traversal
+    .replace(/[/\\]/g, '')                  // any slash characters (path separators)
+    .replace(/^\.+/, '')                    // leading dots (hidden files)
+    .trim();
+
+  if (sanitized.length === 0) {
+    throw new Error(`Filename security violation: "${value}" results in empty filename after sanitization`);
+  }
+
+  if (sanitized.length > MAX_FILENAME_LENGTH) {
+    throw new Error(
+      `Filename security violation: filename exceeds maximum length of ${MAX_FILENAME_LENGTH} characters`
+    );
+  }
+
+  return sanitized;
+}
+
+/**
+ * Sanitize path/filename fields in a nested object (one level deep).
+ * Used for operation objects inside arrays (e.g. Excel edit operations).
+ */
+function sanitizeNestedObject(obj: Record<string, any>, rootDir: string): Record<string, any> {
+  const result = { ...obj };
+
+  for (const [key, value] of Object.entries(result)) {
+    if (typeof value !== 'string') continue;
+
+    if (PATH_PARAM_KEYS.has(key)) {
+      result[key] = sanitizePath(value, rootDir);
+    } else if (FILENAME_PARAM_KEYS.has(key)) {
+      result[key] = sanitizeFilename(value);
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Sanitize all parameters in a tool call before they reach the filesystem.
+ * Applies path sanitization, filename sanitization, and numeric range validation.
+ *
+ * Handles:
+ * - Top-level path/filename string parameters
+ * - Numeric parameters (clamped to safe ranges via sanitizeNumericParams)
+ * - Nested objects with path/filename fields inside arrays (one level deep)
+ */
+function sanitizeToolParams(params: Record<string, any>, rootDir: string): Record<string, any> {
+  // First apply numeric range sanitization
+  let sanitized = sanitizeNumericParams(params);
+
+  // Then sanitize path, filename, and nested params
+  for (const [key, value] of Object.entries(sanitized)) {
+    if (typeof value === 'string') {
+      if (PATH_PARAM_KEYS.has(key)) {
+        sanitized[key] = sanitizePath(value, rootDir);
+      } else if (FILENAME_PARAM_KEYS.has(key)) {
+        sanitized[key] = sanitizeFilename(value);
+      }
+    }
+    // Handle nested objects in arrays (e.g. operations arrays with path fields)
+    else if (Array.isArray(value)) {
+      sanitized[key] = value.map(item => {
+        if (typeof item === 'object' && item !== null && !Array.isArray(item)) {
+          return sanitizeNestedObject(item, rootDir);
+        }
+        return item;
+      });
+    }
+  }
+
+  return sanitized;
+}
 
 // ============================================================
 // NativeToolsServer Class
@@ -132,6 +345,12 @@ export class NativeToolsServer {
     // Initialize native tools
     await this.tools.init();
 
+    // Register document tools
+    const docTools = createDocumentToolDefinitions();
+    for (const tool of docTools) {
+      this.tools.registerTool(tool);
+    }
+
     // Register all native tools in MCPToolRegistry
     const allTools = this.tools.getAllTools();
 
@@ -152,26 +371,124 @@ export class NativeToolsServer {
   }
 
   /**
-   * Execute a native tool
+   * Safely parse a value that may be a JSON string into an object.
+   * Returns the parsed object on success, or the original value if parsing
+   * fails or the value is not a string.
    */
-  async callTool(toolName: string, params: Record<string, any>): Promise<MCPToolResult> {
-    if (!this.registered) {
-      await this.init();
+  private safeJsonParse(value: unknown, context: string): unknown {
+    if (typeof value !== 'string') return value;
+    try {
+      return JSON.parse(value);
+    } catch (err: any) {
+      console.warn(chalk.yellow(
+        `[NativeToolsServer] JSON.parse failed for ${context}: ${err.message}. Using raw string value.`
+      ));
+      return value;
+    }
+  }
+
+  /**
+   * Pre-process params: if any known array/object params arrive as JSON strings,
+   * parse them safely before passing to the tool handler.
+   */
+  private preprocessParams(params: Record<string, any>): Record<string, any> {
+    const result = { ...params };
+
+    // Known keys that may arrive as stringified JSON and should be objects/arrays
+    const jsonParamKeys = ['operations', 'data', 'options', 'config', 'metadata', 'properties'];
+
+    for (const key of jsonParamKeys) {
+      if (key in result && typeof result[key] === 'string') {
+        result[key] = this.safeJsonParse(result[key], `param "${key}"`);
+      }
     }
 
-    const result = await this.tools.executeTool(toolName, params);
+    return result;
+  }
 
-    if (result.success) {
-      return {
-        success: true,
-        content: result.data,
-        isError: false
-      };
-    } else {
+  /**
+   * Execute a native tool.
+   *
+   * Wraps the entire execution in a global try/catch so that no error
+   * can crash the process. All failures are returned in MCP protocol
+   * error format: { content: [{ type: "text", text: "Error: ..." }], isError: true }
+   */
+  async callTool(toolName: string, params: Record<string, any>): Promise<MCPToolResult> {
+    // Global try/catch — nothing thrown inside this method can crash the server
+    try {
+      if (!this.registered) {
+        await this.init();
+      }
+
+      // Pre-process params: safely parse any stringified JSON values
+      let processedParams: Record<string, any>;
+      try {
+        processedParams = this.preprocessParams(params);
+      } catch (err: any) {
+        console.error(chalk.red(`[NativeToolsServer] Parameter preprocessing failed for tool "${toolName}": ${err.message}`));
+        return {
+          success: false,
+          content: [{ type: 'text', text: `Error: Parameter preprocessing failed for tool "${toolName}": ${err.message}` }],
+          error: `Parameter preprocessing failed: ${err.message}`,
+          isError: true
+        };
+      }
+
+      // Sanitize all parameters before passing to native tools
+      let sanitizedParams: Record<string, any>;
+      try {
+        sanitizedParams = sanitizeToolParams(processedParams, this.rootDir);
+      } catch (err: any) {
+        console.error(chalk.red(`[NativeToolsServer] Parameter sanitization failed for tool "${toolName}": ${err.message}`));
+        return {
+          success: false,
+          content: [{ type: 'text', text: `Error: Parameter sanitization failed for tool "${toolName}": ${err.message}` }],
+          error: `Parameter sanitization failed: ${err.message}`,
+          isError: true
+        };
+      }
+
+      // Execute the tool
+      let result;
+      try {
+        result = await this.tools.executeTool(toolName, sanitizedParams);
+      } catch (execErr: any) {
+        const execMessage = execErr.message || String(execErr);
+        console.error(chalk.red(`[NativeToolsServer] Tool execution threw for "${toolName}": ${execMessage}`));
+        return {
+          success: false,
+          content: [{ type: 'text', text: `Error: Tool "${toolName}" threw an exception: ${execMessage}` }],
+          error: execMessage,
+          isError: true
+        };
+      }
+
+      if (result.success) {
+        return {
+          success: true,
+          content: result.data,
+          isError: false
+        };
+      } else {
+        return {
+          success: false,
+          content: [{ type: 'text', text: `Error: Tool "${toolName}" failed: ${result.error}` }],
+          error: result.error,
+          isError: true
+        };
+      }
+    } catch (error: any) {
+      // Last-resort catch: this should never be reached if the inner catches work,
+      // but guarantees the server never crashes from a tool call.
+      const errorMessage = error.message || String(error);
+      const paramKeys = Object.keys(params || {}).join(', ');
+      console.error(chalk.red(
+        `[NativeToolsServer] Unhandled error in callTool("${toolName}", {${paramKeys}}): ${errorMessage}`
+      ));
       return {
         success: false,
-        content: null,
-        error: result.error,
+        content: [{ type: 'text', text: `Error: Unexpected failure executing tool "${toolName}": ${errorMessage}` }],
+        error: errorMessage,
         isError: true
       };
     }

@@ -12,6 +12,7 @@ import type {
   HealingEvaluation,
   ChatMessage,
 } from '../types/index.js';
+import { AppError, withRetry, logServiceWarning } from './BaseAgentService.js';
 
 const HEALING_PROMPT = `You are a task failure analyzer. Given the execution results, identify failed tasks and generate repair strategies.
 
@@ -46,6 +47,19 @@ export class HealingService {
   private maxRetries: number;
 
   constructor(provider: LLMProvider, maxRetries: number = 3) {
+    if (!provider) {
+      throw new AppError({
+        code: 'HEALING_INVALID_PROVIDER',
+        message: 'HealingService.constructor: provider is required',
+      });
+    }
+    if (typeof maxRetries !== 'number' || maxRetries < 0) {
+      throw new AppError({
+        code: 'HEALING_INVALID_CONFIG',
+        message: 'HealingService.constructor: maxRetries must be a non-negative number',
+        context: { maxRetries },
+      });
+    }
     this.provider = provider;
     this.maxRetries = maxRetries;
   }
@@ -58,6 +72,28 @@ export class HealingService {
     results: ExecutionResult[],
     currentAttempt: number
   ): Promise<HealingEvaluation> {
+    if (!Array.isArray(tasks)) {
+      throw new AppError({
+        code: 'HEALING_INVALID_ARGS',
+        message: 'HealingService.evaluate: tasks must be an array',
+        context: { method: 'evaluate', field: 'tasks' },
+      });
+    }
+    if (!Array.isArray(results)) {
+      throw new AppError({
+        code: 'HEALING_INVALID_ARGS',
+        message: 'HealingService.evaluate: results must be an array',
+        context: { method: 'evaluate', field: 'results' },
+      });
+    }
+    if (typeof currentAttempt !== 'number' || currentAttempt < 0) {
+      throw new AppError({
+        code: 'HEALING_INVALID_ARGS',
+        message: 'HealingService.evaluate: currentAttempt must be a non-negative number',
+        context: { method: 'evaluate', field: 'currentAttempt', value: currentAttempt },
+      });
+    }
+
     // Find failed tasks
     const failedResults = results.filter(r => !r.success);
 
@@ -89,12 +125,24 @@ export class HealingService {
     ];
 
     try {
-      const response = await this.provider.createChatCompletion({ messages });
+      const response = await withRetry(
+        () => this.provider.createChatCompletion({ messages }),
+        {
+          operationName: 'HealingService.evaluate',
+          maxRetries: 2,
+          baseDelay: 1000,
+        },
+      );
       const content = response.choices[0]?.message?.content || '';
 
       // Parse JSON response
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
+        logServiceWarning('HealingService.evaluate', 'LLM returned non-JSON response, using fallback', {
+          contentLength: content.length,
+          taskCount: tasks.length,
+          failedCount: failedResults.length,
+        });
         return this.createFallbackEvaluation(failedResults, currentAttempt);
       }
 
@@ -106,7 +154,12 @@ export class HealingService {
 
       return evaluation;
     } catch (error) {
-      console.error('Healing evaluation error:', error);
+      logServiceWarning('HealingService.evaluate', 'Evaluation failed, using fallback', {
+        error: error instanceof Error ? error.message : String(error),
+        taskCount: tasks.length,
+        failedCount: failedResults.length,
+        currentAttempt,
+      });
       return this.createFallbackEvaluation(failedResults, currentAttempt);
     }
   }
@@ -119,6 +172,28 @@ export class HealingService {
     error: string,
     previousAttempts: number
   ): Promise<string> {
+    if (!originalTask) {
+      throw new AppError({
+        code: 'HEALING_INVALID_ARGS',
+        message: 'HealingService.generateRepairPrompt: originalTask is required',
+        context: { method: 'generateRepairPrompt', field: 'originalTask' },
+      });
+    }
+    if (typeof error !== 'string') {
+      throw new AppError({
+        code: 'HEALING_INVALID_ARGS',
+        message: 'HealingService.generateRepairPrompt: error must be a string',
+        context: { method: 'generateRepairPrompt', field: 'error' },
+      });
+    }
+    if (typeof previousAttempts !== 'number' || previousAttempts < 0) {
+      throw new AppError({
+        code: 'HEALING_INVALID_ARGS',
+        message: 'HealingService.generateRepairPrompt: previousAttempts must be a non-negative number',
+        context: { method: 'generateRepairPrompt', field: 'previousAttempts', value: previousAttempts },
+      });
+    }
+
     const messages: ChatMessage[] = [
       {
         role: 'system',
@@ -138,9 +213,21 @@ Respond with ONLY the new task prompt, nothing else.`,
     ];
 
     try {
-      const response = await this.provider.createChatCompletion({ messages });
+      const response = await withRetry(
+        () => this.provider.createChatCompletion({ messages }),
+        {
+          operationName: 'HealingService.generateRepairPrompt',
+          maxRetries: 2,
+          baseDelay: 500,
+        },
+      );
       return response.choices[0]?.message?.content || originalTask.task;
-    } catch {
+    } catch (err) {
+      logServiceWarning('HealingService.generateRepairPrompt', 'Repair prompt generation failed, using original task', {
+        error: err instanceof Error ? err.message : String(err),
+        taskId: originalTask.id,
+        previousAttempts,
+      });
       return originalTask.task;
     }
   }
@@ -149,6 +236,13 @@ Respond with ONLY the new task prompt, nothing else.`,
    * Check if a result indicates recoverable failure
    */
   isRecoverable(result: ExecutionResult): boolean {
+    if (!result) {
+      throw new AppError({
+        code: 'HEALING_INVALID_ARGS',
+        message: 'HealingService.isRecoverable: result is required',
+        context: { method: 'isRecoverable', field: 'result' },
+      });
+    }
     if (result.success) return false;
 
     const error = result.error?.toLowerCase() || '';
@@ -178,7 +272,7 @@ Respond with ONLY the new task prompt, nothing else.`,
       if (!result.success) {
         context += `  Error: ${result.error || 'Unknown error'}\n`;
       } else {
-        context += `  Output length: ${result.content.length} chars\n`;
+        context += `  Output length: ${(result.content ?? '').length} chars\n`;
       }
       context += '\n';
     }
@@ -232,6 +326,12 @@ Respond with ONLY the new task prompt, nothing else.`,
 let healingServiceInstance: HealingService | null = null;
 
 export function getHealingService(provider: LLMProvider, maxRetries?: number): HealingService {
+  if (!provider) {
+    throw new AppError({
+      code: 'HEALING_INVALID_PROVIDER',
+      message: 'getHealingService: provider is required',
+    });
+  }
   if (!healingServiceInstance) {
     healingServiceInstance = new HealingService(provider, maxRetries);
   }

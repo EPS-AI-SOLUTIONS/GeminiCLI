@@ -348,7 +348,7 @@ export class FinalQualityGate {
       .map((r, index) => ({
         taskId: r.id ?? index + 1,
         agentId: r.sourceTracking?.agent ?? 'unknown',
-        content: r.logs.join('\n')
+        content: (r.logs ?? []).join('\n')
       }));
 
     // Use CitationEnforcer

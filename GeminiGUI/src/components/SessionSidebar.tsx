@@ -1,6 +1,15 @@
 import { useState, memo } from 'react';
 import { Plus, Search, MessageSquare, Edit2, Trash2 } from 'lucide-react';
-import type { Session, SessionSidebarProps } from '../types';
+import type { Session } from '../types';
+
+interface SessionSidebarProps {
+  sessions: Session[];
+  currentSessionId: string | null;
+  onCreateSession: () => void;
+  onSelectSession: (id: string) => void;
+  onDeleteSession: (id: string) => void;
+  onUpdateTitle: (id: string, title: string) => void;
+}
 
 const SessionSidebarComponent: React.FC<SessionSidebarProps> = ({
   sessions,
@@ -31,9 +40,9 @@ const SessionSidebarComponent: React.FC<SessionSidebarProps> = ({
   };
 
   return (
-    <aside className="hidden md:flex md:col-span-1 glass-panel rounded-lg border-[var(--matrix-border)] flex-col overflow-hidden">
+    <aside className="hidden md:flex md:col-span-1 glass-panel flex-col overflow-hidden">
       {/* Toolbar */}
-      <div className="p-3 border-b border-[var(--matrix-border)] flex flex-col gap-3">
+      <div className="p-3 flex flex-col gap-3">
         <div className="flex justify-between items-center">
           <span className="font-semibold text-[var(--matrix-text-dim)]">Sesje</span>
           <button onClick={onCreateSession} className="glass-button p-1 rounded-full">
@@ -47,7 +56,7 @@ const SessionSidebarComponent: React.FC<SessionSidebarProps> = ({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Szukaj..."
-            className="w-full bg-black/20 border border-[var(--matrix-border)] rounded pl-8 pr-2 py-1 text-xs text-[var(--matrix-text)] focus:outline-none focus:border-[var(--matrix-accent)]"
+            className="w-full bg-black/10 rounded-lg pl-8 pr-2 py-1.5 text-xs text-[var(--matrix-text)] focus:outline-none focus:ring-2 focus:ring-[var(--matrix-accent)]/30"
           />
         </div>
       </div>
@@ -58,10 +67,10 @@ const SessionSidebarComponent: React.FC<SessionSidebarProps> = ({
           <div
             key={session.id}
             onClick={() => onSelectSession(session.id)}
-            className={`p-2 rounded cursor-pointer flex justify-between items-center group transition-colors ${
+            className={`p-2 rounded-lg cursor-pointer flex justify-between items-center group transition-all ${
               session.id === currentSessionId
-                ? 'bg-[var(--matrix-accent)] text-black font-bold'
-                : 'hover:bg-black/10 text-[var(--matrix-text)]'
+                ? 'bg-[var(--matrix-accent)]/90 text-black font-bold shadow-lg'
+                : 'hover:bg-[var(--matrix-accent)]/10 text-[var(--matrix-text)]'
             }`}
           >
             {editingSessionId === session.id ? (

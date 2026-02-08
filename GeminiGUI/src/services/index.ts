@@ -8,8 +8,6 @@
 export {
   TauriService,
   BridgeService,
-  ModelService,
-  PromptService,
   SystemService,
   MemoryService,
   default as TauriServiceDefault,

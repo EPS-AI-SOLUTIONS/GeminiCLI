@@ -92,6 +92,12 @@ interface YoloConfig {
   // Phase B Ollama optimization
   forceOllama?: boolean;                  // Force all Phase B agents to use Ollama
   ollamaModel?: string;                   // Specific Ollama model for Phase B (default: llama3.2:3b)
+  // Timeout/cancellation settings (Fix #12)
+  taskTimeoutMs?: number;                 // Per-task timeout in ms (default: 5 minutes)
+  totalTimeoutMs?: number;                // Total execution timeout in ms (default: 30 minutes)
+  // Results storage limits (Fix #14)
+  maxStoredResults?: number;              // Max results kept in memory (default: 500)
+  resultTtlMs?: number;                   // TTL for stored results in ms (default: 1 hour)
 }
 
 const DEFAULT_CONFIG: YoloConfig = {
@@ -102,18 +108,24 @@ const DEFAULT_CONFIG: YoloConfig = {
   maxConcurrency: 12,     // High concurrency for parallel execution
   enablePhasePreA: true,
   enablePhaseC: true,
-  maxRepairCycles: 1,     // Single repair cycle only (reduced for speed)
+  maxRepairCycles: 3,     // Self-healing repair cycles (3 attempts before giving up)
   forceModel: 'auto',
   enableIntelligenceLayer: true,  // Enable advanced reasoning by default
   enableAdvancedReasoning: true,  // NEW: Enable Tree-of-Thoughts, Meta-Prompting, Semantic Chunking
   // Phase B Ollama optimization - enables maximum parallel agent execution
   forceOllama: true,              // Force Ollama for all Phase B agents
   ollamaModel: 'llama3.2:3b',     // Fast local model for parallel execution
+  // Timeout settings (Fix #12)
+  taskTimeoutMs: 5 * 60 * 1000,   // 5 minutes per task
+  totalTimeoutMs: 30 * 60 * 1000,  // 30 minutes total
+  // Results storage limits (Fix #14)
+  maxStoredResults: 500,           // Max 500 results in memory
+  resultTtlMs: 60 * 60 * 1000,     // 1 hour TTL
   intelligenceConfig: {
     useChainOfThought: true,
     useSelfReflection: true,
     useConfidenceScoring: true,
-    useMultiPerspective: false,   // Only for critical tasks
+    useMultiPerspective: true,    // Multi-perspective analysis for complex tasks
     useSemanticCache: true,
     useKnowledgeGraph: true,
     useQueryDecomposition: true,
@@ -139,6 +151,72 @@ const DEFAULT_CONFIG: YoloConfig = {
 };
 
 /**
+ * Bounded result store with oldest-first eviction and TTL (Fix #14)
+ * Prevents unbounded memory growth from accumulated task results.
+ */
+class BoundedResultStore<T> {
+  private entries: Map<string, { value: T; timestamp: number }> = new Map();
+  private maxSize: number;
+  private ttlMs: number;
+
+  constructor(maxSize: number = 500, ttlMs: number = 60 * 60 * 1000) {
+    this.maxSize = maxSize;
+    this.ttlMs = ttlMs;
+  }
+
+  set(key: string, value: T): void {
+    // Evict expired entries first
+    this.evictExpired();
+
+    // If still at capacity, evict oldest entries
+    while (this.entries.size >= this.maxSize) {
+      const oldestKey = this.entries.keys().next().value;
+      if (oldestKey !== undefined) {
+        this.entries.delete(oldestKey);
+      } else {
+        break;
+      }
+    }
+
+    this.entries.set(key, { value, timestamp: Date.now() });
+  }
+
+  get(key: string): T | undefined {
+    const entry = this.entries.get(key);
+    if (!entry) return undefined;
+
+    // Check TTL
+    if (Date.now() - entry.timestamp > this.ttlMs) {
+      this.entries.delete(key);
+      return undefined;
+    }
+    return entry.value;
+  }
+
+  getAll(): T[] {
+    this.evictExpired();
+    return Array.from(this.entries.values()).map(e => e.value);
+  }
+
+  get size(): number {
+    return this.entries.size;
+  }
+
+  clear(): void {
+    this.entries.clear();
+  }
+
+  private evictExpired(): void {
+    const now = Date.now();
+    for (const [key, entry] of this.entries) {
+      if (now - entry.timestamp > this.ttlMs) {
+        this.entries.delete(key);
+      }
+    }
+  }
+}
+
+/**
  * Swarm - Main orchestration class
  */
 export class Swarm {
@@ -146,11 +224,19 @@ export class Swarm {
   private agentMemory: AgentVectorMemory;
   private config: YoloConfig;
   private graphProcessor: GraphProcessor;
+  private abortController: AbortController | null = null;
+  private resultStore: BoundedResultStore<ExecutionResult>;
 
   constructor(memoryPath: string, config: YoloConfig = {}) {
     this.memory = new VectorStore(memoryPath);
     this.agentMemory = agentVectorMemory;
     this.config = { ...DEFAULT_CONFIG, ...config };
+
+    // Initialize bounded result store (Fix #14)
+    this.resultStore = new BoundedResultStore<ExecutionResult>(
+      this.config.maxStoredResults ?? 500,
+      this.config.resultTtlMs ?? 60 * 60 * 1000
+    );
 
     // Initialize default graph processor (will be recreated per-task with optimal model)
     this.graphProcessor = new GraphProcessor({
@@ -158,6 +244,16 @@ export class Swarm {
       maxConcurrency: this.config.maxConcurrency,
       rootDir: this.config.rootDir  // CRITICAL: Pass project root for path validation
     });
+  }
+
+  /**
+   * Cancel the currently running objective (Fix #12)
+   */
+  cancel(): void {
+    if (this.abortController) {
+      this.abortController.abort();
+      console.log(chalk.yellow('[Swarm] Cancellation requested'));
+    }
   }
 
   /**
@@ -225,6 +321,57 @@ export class Swarm {
     promptAudit.initialize(objective);
 
     const startTime = Date.now();
+
+    // === FIX #12: TIMEOUT / CANCELLATION ===
+    // Create AbortController for this execution - allows cancellation + timeout
+    this.abortController = new AbortController();
+    const signal = this.abortController.signal;
+
+    // Set total execution timeout
+    const totalTimeoutMs = this.config.totalTimeoutMs ?? 30 * 60 * 1000;
+    const totalTimeoutHandle = setTimeout(() => {
+      if (!signal.aborted) {
+        console.log(chalk.red(`[Swarm] TOTAL TIMEOUT reached (${(totalTimeoutMs / 60000).toFixed(0)} min). Aborting execution...`));
+        this.abortController?.abort();
+      }
+    }, totalTimeoutMs);
+
+    // Helper: check if aborted and return partial results
+    const checkAborted = (): boolean => {
+      if (signal.aborted) {
+        console.log(chalk.yellow('[Swarm] Execution was cancelled or timed out'));
+        return true;
+      }
+      return false;
+    };
+
+    // Helper: wrap a promise with per-task timeout (Fix #12)
+    const withTaskTimeout = <T>(
+      promise: Promise<T>,
+      label: string,
+      timeoutMs?: number
+    ): Promise<T> => {
+      const taskTimeoutMs = timeoutMs ?? this.config.taskTimeoutMs ?? 5 * 60 * 1000;
+      return new Promise<T>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          reject(new Error(`Task timeout after ${(taskTimeoutMs / 1000).toFixed(0)}s: ${label}`));
+        }, taskTimeoutMs);
+
+        // Also reject on abort signal
+        const onAbort = () => {
+          clearTimeout(timer);
+          reject(new Error(`Execution cancelled: ${label}`));
+        };
+        signal.addEventListener('abort', onAbort, { once: true });
+
+        promise.then(
+          (val) => { clearTimeout(timer); signal.removeEventListener('abort', onAbort); resolve(val); },
+          (err) => { clearTimeout(timer); signal.removeEventListener('abort', onAbort); reject(err); }
+        );
+      });
+    };
+
+    try {
 
     console.log(chalk.cyan('\n' + '='.repeat(60)));
     console.log(chalk.cyan('  SCHOOL OF THE WOLF: PROTOCOL v14.0 (Node.js Full)'));
@@ -464,8 +611,17 @@ export class Swarm {
 
     let plan: SwarmPlan;
     try {
+      // Check abort before planning
+      if (checkAborted()) {
+        clearTimeout(totalTimeoutHandle);
+        return 'Execution cancelled before planning phase.';
+      }
+
       const planStart = Date.now();
-      const planJsonRaw = await planner.think(planPrompt);
+      const planJsonRaw = await withTaskTimeout(
+        planner.think(planPrompt),
+        'Phase A: Dijkstra Planning'
+      );
       const planTime = Date.now() - planStart;
 
       // Clean and parse JSON
@@ -546,11 +702,59 @@ export class Swarm {
     // =========================================
     // PHASE B: EXECUTION (GraphProcessor with optimal model)
     // =========================================
+
+    // Check abort before execution phase (Fix #12)
+    if (checkAborted()) {
+      clearTimeout(totalTimeoutHandle);
+      return 'Execution cancelled before Phase B.';
+    }
+
     // Create GraphProcessor with model selected by PRE-A classification
     const taskProcessor = this.createGraphProcessor(selectedModel);
-    const executionResults = await taskProcessor.process(plan.tasks);
+
+    let executionResults: ExecutionResult[];
+    try {
+      executionResults = await withTaskTimeout(
+        taskProcessor.process(plan.tasks),
+        'Phase B: Task Execution',
+        this.config.totalTimeoutMs ?? 30 * 60 * 1000  // Use total timeout for the whole phase
+      );
+    } catch (phaseBError: any) {
+      // On timeout/cancel, gather partial results if available
+      if (signal.aborted || phaseBError.message.includes('timeout')) {
+        console.log(chalk.yellow(`[Swarm] Phase B interrupted: ${phaseBError.message}. Gathering partial results...`));
+        // GraphProcessor stores results internally, try to get what's available
+        const partialStatus = taskProcessor.getStatus();
+        executionResults = (partialStatus?.completedResults ?? []) as ExecutionResult[];
+        if (executionResults.length === 0) {
+          // Create a placeholder result indicating timeout
+          executionResults = [{
+            id: 0,
+            success: false,
+            error: `Phase B interrupted: ${phaseBError.message}`,
+            logs: [`Execution was interrupted after ${((Date.now() - startTime) / 1000).toFixed(1)}s`]
+          }];
+        }
+        console.log(chalk.yellow(`[Swarm] Recovered ${executionResults.length} partial results`));
+      } else {
+        throw phaseBError;
+      }
+    }
+
+    // Store results in bounded store (Fix #14)
+    for (const result of executionResults) {
+      this.resultStore.set(`task-${result.id}-${Date.now()}`, result);
+    }
 
     await sessionCache.appendChronicle(`Execution completed: ${executionResults.length} tasks (model: ${selectedModel})`);
+
+    // Check abort before Phase C (Fix #12)
+    if (checkAborted()) {
+      clearTimeout(totalTimeoutHandle);
+      const partialReport = `Execution cancelled during Phase B.\n\nPartial results (${executionResults.length} tasks completed):\n` +
+        executionResults.filter(r => r.success).map(r => `- Task #${r.id}: ${(r.logs?.[0] || '').substring(0, 200)}`).join('\n');
+      return partialReport;
+    }
 
     // =========================================
     // PHASE C: SELF-HEALING EVALUATION
@@ -694,7 +898,7 @@ export class Swarm {
       id: r.id,
       success: r.success,
       // Include up to 6000 chars of actual results (increased from 2000)
-      content: r.logs[0]?.substring(0, 6000) || '',
+      content: (r.logs ?? [])[0]?.substring(0, 6000) || '',
       error: r.error
     }));
 
@@ -846,25 +1050,25 @@ ZASADY:
 
     // =========================================
     // ADVANCED REASONING: Self-Reflection before final report
-    // DISABLED: Self-reflection changes the required Markdown format
+    // RE-ENABLED: Improves report quality via iterative self-reflection
     // =========================================
-    // if (this.config.enableAdvancedReasoning &&
-    //     this.config.intelligenceConfig?.useSelfReflection) {
-    //   logger.spinUpdate('synthesis', 'Self-Reflection: improving final report...');
-    //   try {
-    //     const reflectionResult = await selfReflect(
-    //       refinedObjective,
-    //       report,
-    //       2  // Max 2 iterations
-    //     );
-    //     if (reflectionResult.confidenceImprovement > 15) {
-    //       report = reflectionResult.improvedResponse;
-    //       console.log(chalk.gray(`[Self-Reflect] Improved report by ${reflectionResult.confidenceImprovement}%`));
-    //     }
-    //   } catch (e: any) {
-    //     console.log(chalk.yellow(`[Self-Reflect] Failed: ${e.message}`));
-    //   }
-    // }
+    if (this.config.enableAdvancedReasoning &&
+        this.config.intelligenceConfig?.useSelfReflection) {
+      logger.spinUpdate('synthesis', 'Self-Reflection: improving final report...');
+      try {
+        const reflectionResult = await selfReflect(
+          refinedObjective,
+          report,
+          2  // Max 2 iterations
+        );
+        if (reflectionResult.confidenceImprovement > 15) {
+          report = reflectionResult.improvedResponse;
+          console.log(chalk.gray(`[Self-Reflect] Improved report by ${reflectionResult.confidenceImprovement}%`));
+        }
+      } catch (e: any) {
+        console.log(chalk.yellow(`[Self-Reflect] Skipped: ${e.message}`));
+      }
+    }
 
     // =========================================
     // INTELLIGENCE LAYER ENHANCEMENT
@@ -872,10 +1076,12 @@ ZASADY:
     if (this.config.enableIntelligenceLayer) {
       logger.spinUpdate('synthesis', 'Enhancing with Intelligence Layer...');
 
-      // Enable multi-perspective for critical/complex tasks
+      // Use multi-perspective from config (already enabled by default)
+      // Only override to force-enable for critical/complex if config has it off
       const intelligenceConfig = {
         ...this.config.intelligenceConfig,
-        useMultiPerspective: taskClassification?.difficulty === 'critical' ||
+        useMultiPerspective: this.config.intelligenceConfig?.useMultiPerspective ||
+                             taskClassification?.difficulty === 'critical' ||
                              taskClassification?.difficulty === 'complex',
         // Skip self-reflection here since we did it above
         useSelfReflection: false
@@ -962,6 +1168,12 @@ ZASADY:
     }
 
     return report;
+
+    } finally {
+      // === FIX #12: Cleanup timeout handle ===
+      clearTimeout(totalTimeoutHandle);
+      this.abortController = null;
+    }
   }
 
   /**
@@ -1085,9 +1297,9 @@ To use an MCP tool, include in the task:
     const factsByAgent = new Map<number, Set<string>>();
 
     for (const result of results) {
-      if (!result.success || !result.logs[0]) continue;
+      if (!result.success || !(result.logs ?? [])[0]) continue;
 
-      const content = result.logs[0];
+      const content = (result.logs ?? [])[0];
       const facts = new Set<string>();
 
       // Extract file paths mentioned
@@ -1125,10 +1337,11 @@ To use an MCP tool, include in the task:
     // Detect conflicts (same file, different content claims)
     const fileVersions = new Map<string, Map<number, string>>();
     for (const result of results) {
-      if (!result.success || !result.logs[0]) continue;
+      const firstLog = (result.logs ?? [])[0];
+      if (!result.success || !firstLog) continue;
 
       // Look for file write operations
-      const writeOps = result.logs[0].match(/===ZAPIS===\s*([^\n]+)\n([\s\S]*?)(?====|$)/g) || [];
+      const writeOps = firstLog.match(/===ZAPIS===\s*([^\n]+)\n([\s\S]*?)(?====|$)/g) || [];
       for (const op of writeOps) {
         const match = op.match(/===ZAPIS===\s*([^\n]+)/);
         if (match) {
@@ -1214,12 +1427,29 @@ To use an MCP tool, include in the task:
   }
 
   /**
+   * Get stored results from bounded store (Fix #14)
+   * Returns results with automatic TTL eviction
+   */
+  getStoredResults(): ExecutionResult[] {
+    return this.resultStore.getAll();
+  }
+
+  /**
+   * Clear stored results (Fix #14)
+   */
+  clearStoredResults(): void {
+    this.resultStore.clear();
+  }
+
+  /**
    * Get swarm status
    */
-  getStatus(): { config: YoloConfig; graphStatus: any } {
+  getStatus(): { config: YoloConfig; graphStatus: any; storedResults: number; isRunning: boolean } {
     return {
       config: this.config,
-      graphStatus: this.graphProcessor.getStatus()
+      graphStatus: this.graphProcessor.getStatus(),
+      storedResults: this.resultStore.size,
+      isRunning: this.abortController !== null && !this.abortController.signal.aborted
     };
   }
 }

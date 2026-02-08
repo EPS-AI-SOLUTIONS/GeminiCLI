@@ -5,7 +5,7 @@
  * Sets up listeners for Ollama and Swarm streaming events.
  */
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { TAURI_EVENTS } from '../constants';
 import type { StreamPayload } from '../types';
@@ -16,24 +16,37 @@ interface UseStreamListenersOptions {
   onError?: (error: unknown) => void;
 }
 
+interface UseStreamListenersReturn {
+  cancelStream: () => void;
+}
+
 /**
- * Hook for listening to Tauri streaming events
+ * Hook for listening to Tauri streaming events with AbortController support.
  *
  * @example
  * ```tsx
- * useStreamListeners({
+ * const { cancelStream } = useStreamListeners({
  *   onChunk: (chunk) => updateLastMessage(chunk),
  *   onComplete: () => setIsStreaming(false),
+ *   onError: (err) => console.error(err),
  * });
+ *
+ * // Cancel from UI:
+ * <button onClick={cancelStream}>Stop</button>
  * ```
  */
 export const useStreamListeners = ({
   onChunk,
   onComplete,
   onError,
-}: UseStreamListenersOptions): void => {
+}: UseStreamListenersOptions): UseStreamListenersReturn => {
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   const handleStreamEvent = useCallback(
-    (payload: StreamPayload) => {
+    (payload: StreamPayload, signal: AbortSignal) => {
+      // Ignore events if the stream has been aborted
+      if (signal.aborted) return;
+
       const { chunk, done } = payload;
       if (!done && chunk) {
         onChunk(chunk);
@@ -45,14 +58,39 @@ export const useStreamListeners = ({
   );
 
   useEffect(() => {
-    // Listen to Ollama events
-    const unlistenOllama = listen<StreamPayload>(
-      TAURI_EVENTS.OLLAMA_EVENT,
+    // Guard: skip if Tauri API is not available (web mode)
+    if (typeof window === 'undefined' || !(window as any).__TAURI_INTERNALS__) {
+      return;
+    }
+
+    // Create a new AbortController for this listener lifecycle
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    const { signal } = controller;
+
+    // Listen to Llama/Gemini stream events
+    const unlistenLlama = listen<StreamPayload>(
+      TAURI_EVENTS.LLAMA_STREAM,
       (event) => {
+        if (signal.aborted) return;
         try {
-          handleStreamEvent(event.payload);
+          handleStreamEvent(event.payload, signal);
         } catch (error) {
-          console.error('[StreamListeners] Ollama event error:', error);
+          console.error('[StreamListeners] Llama event error:', error);
+          onError?.(error);
+        }
+      }
+    );
+
+    // Listen to Gemini stream events
+    const unlistenGemini = listen<StreamPayload>(
+      TAURI_EVENTS.GEMINI_STREAM,
+      (event) => {
+        if (signal.aborted) return;
+        try {
+          handleStreamEvent(event.payload, signal);
+        } catch (error) {
+          console.error('[StreamListeners] Gemini event error:', error);
           onError?.(error);
         }
       }
@@ -62,8 +100,9 @@ export const useStreamListeners = ({
     const unlistenSwarm = listen<StreamPayload>(
       TAURI_EVENTS.SWARM_DATA,
       (event) => {
+        if (signal.aborted) return;
         try {
-          handleStreamEvent(event.payload);
+          handleStreamEvent(event.payload, signal);
         } catch (error) {
           console.error('[StreamListeners] Swarm event error:', error);
           onError?.(error);
@@ -71,12 +110,32 @@ export const useStreamListeners = ({
       }
     );
 
-    // Cleanup listeners on unmount
+    // Cleanup listeners on unmount or dependency change
     return () => {
-      unlistenOllama.then((f) => f());
+      controller.abort();
+      abortControllerRef.current = null;
+      unlistenLlama.then((f) => f());
+      unlistenGemini.then((f) => f());
       unlistenSwarm.then((f) => f());
     };
   }, [handleStreamEvent, onError]);
+
+  /**
+   * Cancel the active stream from the UI.
+   * Aborts the current controller, which causes all event handlers
+   * to ignore subsequent payloads, then triggers onComplete to
+   * reset the streaming state.
+   */
+  const cancelStream = useCallback(() => {
+    const controller = abortControllerRef.current;
+    if (controller && !controller.signal.aborted) {
+      console.log('[StreamListeners] Stream cancelled by user.');
+      controller.abort();
+      onComplete();
+    }
+  }, [onComplete]);
+
+  return { cancelStream };
 };
 
 export default useStreamListeners;

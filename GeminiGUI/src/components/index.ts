@@ -8,13 +8,11 @@
 // Main Layout Components
 export { ChatContainer } from './ChatContainer';
 export { SessionSidebar } from './SessionSidebar';
-export { RightSidebar } from './RightSidebar';
 export { SettingsModal } from './SettingsModal';
 export { StatusFooter } from './StatusFooter';
 
 // Feature Components
 export { MemoryPanel } from './MemoryPanel';
-export { BridgePanel } from './BridgePanel';
 
 // Utility Components
 export { CodeBlock } from './CodeBlock';
@@ -25,11 +23,9 @@ export { SuspenseFallback } from './SuspenseFallback';
 export {
   SettingsModalLazy,
   MemoryPanelLazy,
-  BridgePanelLazy,
   ShortcutsModalLazy,
-  ErrorBoundaryLazy,
-  LazyComponentWrapper,
-  WithSuspense,
+  WitcherRunesLazy,
+  SystemContextMenuLazy,
 } from './LazyComponents';
 
 // UI Components

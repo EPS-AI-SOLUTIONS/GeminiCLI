@@ -5,13 +5,25 @@
 
 import { SwarmPlan, SwarmTask } from '../types/index.js';
 import { MAX_TASKS } from '../config/constants.js';
-import { logger } from './Logger.js';
+import { AppError, logServiceWarning } from './BaseAgentService.js';
 
 export class PlanningService {
   /**
    * Parse JSON response from planning agent
    */
   parseResponse(response: string): SwarmPlan | null {
+    if (typeof response !== 'string') {
+      throw new AppError({
+        code: 'PLANNING_INVALID_ARGS',
+        message: 'PlanningService.parseResponse: response must be a string',
+        context: { method: 'parseResponse', field: 'response', type: typeof response },
+      });
+    }
+    if (response.trim() === '') {
+      logServiceWarning('PlanningService.parseResponse', 'Empty response received');
+      return null;
+    }
+
     try {
       // Clean JSON from markdown
       let json = response
@@ -23,6 +35,10 @@ export class PlanningService {
       const start = json.indexOf('{');
       const end = json.lastIndexOf('}');
       if (start === -1 || end === -1) {
+        logServiceWarning('PlanningService.parseResponse', 'No JSON object found in response', {
+          responseLength: response.length,
+          responsePreview: response.substring(0, 200),
+        });
         return null;
       }
 
@@ -30,6 +46,11 @@ export class PlanningService {
       return JSON.parse(json) as SwarmPlan;
 
     } catch (error) {
+      logServiceWarning('PlanningService.parseResponse', 'Failed to parse JSON from response', {
+        error: error instanceof Error ? error.message : String(error),
+        responseLength: response.length,
+        responsePreview: response.substring(0, 200),
+      });
       return null;
     }
   }
@@ -38,12 +59,28 @@ export class PlanningService {
    * Validate and normalize tasks
    */
   validateTasks(tasks: Partial<SwarmTask>[]): SwarmTask[] {
+    if (!Array.isArray(tasks)) {
+      throw new AppError({
+        code: 'PLANNING_INVALID_ARGS',
+        message: 'PlanningService.validateTasks: tasks must be an array',
+        context: { method: 'validateTasks', field: 'tasks', type: typeof tasks },
+      });
+    }
+
+    if (tasks.length > MAX_TASKS) {
+      logServiceWarning('PlanningService.validateTasks', `Truncating task list from ${tasks.length} to ${MAX_TASKS}`, {
+        originalCount: tasks.length,
+        maxTasks: MAX_TASKS,
+      });
+    }
+
     return tasks.slice(0, MAX_TASKS).map((t, i) => ({
       id: t.id || i + 1,
       agent: t.agent || 'geralt',
       task: t.task || '',
       dependencies: t.dependencies || [],
-      status: 'pending' as const
+      status: 'pending' as const,
+      retryCount: t.retryCount ?? 0
     }));
   }
 
@@ -51,7 +88,17 @@ export class PlanningService {
    * Create fallback plan for single task
    */
   createFallbackPlan(objective: string): SwarmPlan {
-    logger.warn('Using fallback single-task plan');
+    if (typeof objective !== 'string' || objective.trim() === '') {
+      throw new AppError({
+        code: 'PLANNING_INVALID_ARGS',
+        message: 'PlanningService.createFallbackPlan: objective is required and must be a non-empty string',
+        context: { method: 'createFallbackPlan', field: 'objective' },
+      });
+    }
+
+    logServiceWarning('PlanningService.createFallbackPlan', 'Using fallback single-task plan', {
+      objectiveLength: objective.length,
+    });
     return {
       objective,
       tasks: [{
@@ -59,7 +106,8 @@ export class PlanningService {
         agent: 'geralt',
         task: objective,
         dependencies: [],
-        status: 'pending'
+        status: 'pending',
+        retryCount: 0
       }]
     };
   }
@@ -68,6 +116,14 @@ export class PlanningService {
    * Build planning prompt
    */
   buildPrompt(objective: string): string {
+    if (typeof objective !== 'string' || objective.trim() === '') {
+      throw new AppError({
+        code: 'PLANNING_INVALID_ARGS',
+        message: 'PlanningService.buildPrompt: objective is required and must be a non-empty string',
+        context: { method: 'buildPrompt', field: 'objective' },
+      });
+    }
+
     return `
 Stwórz plan wykonania zadania. Odpowiedz TYLKO w formacie JSON:
 

@@ -610,8 +610,9 @@ export class GraphProcessor {
       modelOverride = this.config.preferredModel || 'gemini-3-flash-preview';
     }
 
-    const agent = new Agent(task.agent, modelOverride);
-    const persona = AGENT_PERSONAS[task.agent];
+    const agentRole = task.agent as AgentRole;
+    const agent = new Agent(agentRole, modelOverride);
+    const persona = AGENT_PERSONAS[agentRole];
 
     // =========================================
     // ANTI-HALLUCINATION: Solutions 28-29
@@ -1687,7 +1688,7 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
 
     return {
       taskId: task.id,
-      agent: task.agent,
+      agent: task.agent as AgentRole,
       agentDescription: persona?.description || `Agent ${task.agent}`,
 
       taskDescription: task.task,

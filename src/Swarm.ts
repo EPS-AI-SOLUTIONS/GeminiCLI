@@ -122,8 +122,9 @@ ZASADY:
     const successResults = results.filter(r => r.success);
 
     // If single success, return directly
-    if (successResults.length === 1 && successResults[0].content.length > 200) {
-      return successResults[0].content;
+    const firstContent = successResults[0]?.content ?? '';
+    if (successResults.length === 1 && firstContent.length > 200) {
+      return firstContent;
     }
 
     // Otherwise synthesize with Regis
@@ -132,7 +133,7 @@ ZASADY:
 CEL: ${objective}
 
 WYNIKI AGENTÓW:
-${results.map(r => `[#${r.id}] ${r.success ? '✓' : '✗'}: ${r.content.substring(0, 1500)}`).join('\n\n')}
+${results.map(r => `[#${r.id}] ${r.success ? '✓' : '✗'}: ${(r.content ?? '').substring(0, 1500)}`).join('\n\n')}
 
 Napisz KRÓTKIE podsumowanie po polsku:
 1. Czy cel został zrealizowany?

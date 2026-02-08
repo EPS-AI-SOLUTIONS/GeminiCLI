@@ -59,7 +59,7 @@ export interface PhaseCResult {
 
 const DEFAULT_CONFIG: PhaseCConfig = {
   enabled: true,
-  maxRetries: 1,    // Single repair cycle only (reduced for speed)
+  maxRetries: 3,    // Self-healing repair cycles (3 attempts before giving up)
   saveLesson: true
 };
 
@@ -273,7 +273,7 @@ export async function selfHealingLoop(
       id: r.id,
       success: r.success,
       error: r.error || undefined,
-      summary: r.logs[0]?.substring(0, 300) || ''
+      summary: (r.logs ?? [])[0]?.substring(0, 300) || ''
     }));
 
     // Build evaluation prompt with agent list

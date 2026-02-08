@@ -22,7 +22,7 @@ export class KnowledgeGraph implements IKnowledgeGraph {
   /**
    * Add a node to the graph
    */
-  addNode(type: KnowledgeNodeType, content: string, metadata: Record<string, any> = {}): string {
+  addNode(type: KnowledgeNodeType, content: string, metadata: Record<string, unknown> = {}): string {
     const id = crypto.createHash('sha256').update(content).digest('hex').substring(0, 12);
 
     if (this.nodes.has(id)) {

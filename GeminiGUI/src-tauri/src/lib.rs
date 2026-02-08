@@ -9,7 +9,8 @@ use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::process::{Command, Stdio};
-use std::sync::Arc;
+use std::sync::Mutex;
+
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager, Window};
@@ -34,6 +35,10 @@ static MODEL_MANAGER: Lazy<RwLock<Option<ModelManager>>> = Lazy::new(|| RwLock::
 
 /// Global model downloader instance
 static MODEL_DOWNLOADER: Lazy<RwLock<Option<ModelDownloader>>> = Lazy::new(|| RwLock::new(None));
+
+/// Mutex to serialize all memory file (agent_memory.json) read/write operations,
+/// preventing concurrent writes from causing data loss.
+static MEMORY_FILE_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 
 /// Get the base directory for GeminiHydra (portable support)
 fn get_base_dir() -> std::path::PathBuf {
@@ -60,7 +65,7 @@ fn initialize_model_system() {
     {
         let mut manager_guard = MODEL_MANAGER.write();
         if manager_guard.is_none() {
-            let mut manager = ModelManager::new(models_dir.clone());
+            let manager = ModelManager::new(models_dir.clone());
             let _ = manager.ensure_models_dir();
             *manager_guard = Some(manager);
         }
@@ -90,10 +95,15 @@ const ALLOWED_COMMANDS: &[&str] = &[
     "cat",
     "head",
     "tail",
+    "tree",
+    "find",
+    "where",
     "Get-Date",
     "Get-Location",
     "Get-ChildItem",
     "Get-Content",
+    "Test-Path",
+    "Resolve-Path",
     "whoami",
     "hostname",
     "systeminfo",
@@ -102,9 +112,12 @@ const ALLOWED_COMMANDS: &[&str] = &[
     "git branch",
     "git diff",
     "git remote -v",
+    "git show",
     "node --version",
     "npm --version",
     "npm list",
+    "npm run build",
+    "npx tsc",
     "python --version",
     "pip list",
 ];
@@ -116,6 +129,28 @@ fn is_command_allowed(command: &str) -> bool {
         let allowed_lower = allowed.to_lowercase();
         cmd_lower.starts_with(&allowed_lower) || cmd_lower == allowed_lower
     })
+}
+
+/// SECURITY: Check for shell metacharacters that enable command chaining/injection.
+/// Must be called BEFORE the allowlist check to prevent payloads like
+/// `echo safe && rm -rf /` from passing the prefix-based allowlist.
+fn contains_shell_metacharacters(cmd: &str) -> bool {
+    let dangerous_sequences = [
+        "&&", "||", ";", "|", "`", "$(", "${",
+        "\n", "\r", "\0",
+    ];
+    for seq in dangerous_sequences {
+        if cmd.contains(seq) {
+            return true;
+        }
+    }
+    // Check for output redirection operators (>, >>).
+    // These are single-char so we match them separately to avoid
+    // false positives from multi-char sequences like "->".
+    if cmd.contains('>') || cmd.contains('<') {
+        return true;
+    }
+    false
 }
 
 // ============================================================================
@@ -174,8 +209,15 @@ struct GeminiContent {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+struct GeminiSystemInstruction {
+    parts: Vec<GeminiPart>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 struct GeminiRequest {
     contents: Vec<GeminiContent>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    system_instruction: Option<GeminiSystemInstruction>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -439,10 +481,14 @@ async fn llama_download_model(
     repo_id: String,
     filename: String,
 ) -> Result<String, String> {
-    let downloader_guard = MODEL_DOWNLOADER.read();
-    let downloader = downloader_guard
-        .as_ref()
-        .ok_or("Model downloader not initialized")?;
+    // Clone the downloader to release the lock before await
+    let downloader = {
+        let downloader_guard = MODEL_DOWNLOADER.read();
+        downloader_guard
+            .as_ref()
+            .ok_or("Model downloader not initialized")?
+            .clone()
+    };
 
     let window_clone = window.clone();
     let filename_clone = filename.clone();
@@ -521,6 +567,139 @@ fn greet(name: &str) -> String {
 }
 
 // ============================================================================
+// JSON STREAMING PARSER HELPER
+// ============================================================================
+
+/// Extract all `"text": "..."` values from a raw JSON stream chunk.
+/// Handles both `"text": "` and `"text":"` (with/without space after colon).
+/// Handles escaped quotes (`\"`) inside values, escaped backslashes (`\\`),
+/// unicode escapes (`\uXXXX`), and performs bounds checking to avoid panics
+/// on malformed input.  Caps per-value length at 1 MB to bound memory usage.
+/// Returns a Vec of unescaped text strings found in the chunk.
+fn extract_text_values(raw: &str) -> Vec<String> {
+    // Two needle variants: with and without space after the colon.
+    let needles: &[&str] = &["\"text\": \"", "\"text\":\""];
+    let mut results = Vec::new();
+    let bytes = raw.as_bytes();
+    let mut pos = 0;
+
+    // Safety limit: never produce more than 256 values from a single chunk.
+    const MAX_RESULTS: usize = 256;
+    // Safety limit: single value cannot exceed 1 MB of decoded text.
+    const MAX_VALUE_LEN: usize = 1_048_576;
+
+    while pos < bytes.len() && results.len() < MAX_RESULTS {
+        // Find the earliest occurrence of any needle variant
+        let mut best: Option<(usize, usize)> = None; // (offset_in_raw, needle_len)
+        let remaining = &raw[pos..];
+        for needle in needles {
+            if let Some(offset) = remaining.find(needle) {
+                let abs_offset = pos + offset;
+                if best.is_none() || abs_offset < best.unwrap().0 {
+                    best = Some((abs_offset, needle.len()));
+                }
+            }
+        }
+
+        let (match_start, needle_len) = match best {
+            Some(b) => b,
+            None => break,
+        };
+
+        // Move past the needle to the start of the value
+        let value_start = match_start + needle_len;
+        if value_start >= bytes.len() {
+            break;
+        }
+
+        // Walk through the value, respecting escaped characters
+        let mut end = value_start;
+        let mut value = String::new();
+        let mut truncated = false;
+        while end < bytes.len() {
+            if value.len() >= MAX_VALUE_LEN {
+                truncated = true;
+                break;
+            }
+            let ch = bytes[end];
+            if ch == b'\\' {
+                // Escaped character: consume the next byte
+                if end + 1 < bytes.len() {
+                    let next = bytes[end + 1];
+                    match next {
+                        b'n' => value.push('\n'),
+                        b't' => value.push('\t'),
+                        b'r' => value.push('\r'),
+                        b'"' => value.push('"'),
+                        b'\\' => value.push('\\'),
+                        b'/' => value.push('/'),
+                        // Unicode escapes (\uXXXX) - decode if we have 4 hex digits
+                        b'u' => {
+                            if end + 5 < bytes.len() {
+                                let hex = &raw[end + 2..end + 6];
+                                if let Ok(code) = u32::from_str_radix(hex, 16) {
+                                    if let Some(c) = char::from_u32(code) {
+                                        value.push(c);
+                                    } else {
+                                        // Invalid codepoint, emit replacement char
+                                        value.push('\u{FFFD}');
+                                    }
+                                    end += 6;
+                                    continue;
+                                }
+                            }
+                            // Not enough digits or invalid hex, pass through
+                            value.push('\\');
+                            value.push('u');
+                        }
+                        _ => {
+                            // Unknown escape, preserve literally
+                            value.push('\\');
+                            value.push(next as char);
+                        }
+                    }
+                    end += 2;
+                } else {
+                    // Trailing backslash at end of chunk - malformed, stop
+                    break;
+                }
+            } else if ch == b'"' {
+                // Unescaped quote - end of value
+                break;
+            } else {
+                value.push(ch as char);
+                end += 1;
+            }
+        }
+
+        if truncated {
+            // Value exceeded safety limit; skip to find next potential match
+            // Scan forward to find the closing quote so we can continue
+            while end < bytes.len() && bytes[end] != b'"' {
+                if bytes[end] == b'\\' && end + 1 < bytes.len() {
+                    end += 2; // skip escape pair
+                } else {
+                    end += 1;
+                }
+            }
+            // Push the truncated value anyway (it's valid, just long)
+            results.push(value);
+            pos = if end < bytes.len() { end + 1 } else { end };
+        } else if end < bytes.len() && bytes[end] == b'"' {
+            // Successfully found the closing quote
+            results.push(value);
+            pos = end + 1;
+        } else {
+            // Malformed chunk (no closing quote found), skip this occurrence
+            pos = value_start;
+            break;
+        }
+    }
+
+    results
+}
+
+// ============================================================================
 // GEMINI API COMMANDS (kept for compatibility)
 // ============================================================================
 
@@ -550,7 +729,10 @@ async fn prompt_gemini_stream(
         })
         .collect();
 
-    let req = GeminiRequest { contents };
+    let req = GeminiRequest {
+        contents,
+        system_instruction: None,
+    };
     let url = format!(
         "https://generativelanguage.googleapis.com/v1beta/models/{}:streamGenerateContent",
         model
@@ -566,23 +748,24 @@ async fn prompt_gemini_stream(
         .bytes_stream();
 
     while let Some(item) = stream.next().await {
-        let chunk = item.map_err(|e| e.to_string())?;
+        let chunk = match item {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("Gemini stream chunk error: {}", e);
+                continue;
+            }
+        };
         if let Ok(text) = String::from_utf8(chunk.to_vec()) {
-            if let Some(start) = text.find("\"text\": \"") {
-                let rest = &text[start + 9..];
-                if let Some(end) = rest.find("\"") {
-                    let content = &rest[..end];
-                    let unescaped = content.replace("\\n", "\n").replace("\\\"", "\"");
-                    window
-                        .emit(
-                            "llama-stream",
-                            StreamPayload {
-                                chunk: unescaped,
-                                done: false,
-                            },
-                        )
-                        .map_err(|e| e.to_string())?;
-                }
+            for extracted in extract_text_values(&text) {
+                window
+                    .emit(
+                        "llama-stream",
+                        StreamPayload {
+                            chunk: extracted,
+                            done: false,
+                        },
+                    )
+                    .map_err(|e| e.to_string())?;
             }
         }
     }
@@ -671,11 +854,172 @@ async fn get_env_vars() -> Result<std::collections::HashMap<String, String>, Str
 }
 
 // ============================================================================
+// CHAT WITH GEMINI (self-contained — reads API key from .env)
+// ============================================================================
+
+/// Helper: find .env file by searching upward from executable directory
+fn find_env_file() -> Option<std::path::PathBuf> {
+    let base = get_base_dir();
+    // Search in base_dir and up to 5 parent levels (covers dev and prod layouts)
+    let mut dir = base.as_path();
+    for _ in 0..6 {
+        let candidate = dir.join(".env");
+        if candidate.exists() {
+            return Some(candidate);
+        }
+        dir = match dir.parent() {
+            Some(p) => p,
+            None => break,
+        };
+    }
+    None
+}
+
+/// Helper: read a specific key from .env file
+fn read_env_key(keys: &[&str]) -> Result<String, String> {
+    let env_path = find_env_file()
+        .ok_or_else(|| "Nie znaleziono pliku .env — ustaw GEMINI_API_KEY w Ustawieniach lub utwórz plik .env".to_string())?;
+
+    let content = fs::read_to_string(&env_path)
+        .map_err(|e| format!("Nie można odczytać .env: {}", e))?;
+
+    for line in content.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        if let Some((key, value)) = line.split_once('=') {
+            let key = key.trim();
+            let value = value.trim().trim_matches('"').trim_matches('\'');
+            if keys.contains(&key) && !value.is_empty() {
+                return Ok(value.to_string());
+            }
+        }
+    }
+    Err(format!(
+        "Brak klucza API w .env (szukano: {})",
+        keys.join(", ")
+    ))
+}
+
+#[tauri::command]
+async fn chat_with_gemini(
+    window: Window,
+    messages: Vec<GeminiMessage>,
+    model: Option<String>,
+    system_prompt: Option<String>,
+) -> Result<(), String> {
+    // 1. Read API key from .env
+    let api_key = read_env_key(&["GEMINI_API_KEY", "GOOGLE_API_KEY"])?;
+
+    // 2. Choose model (default: gemini-2.5-flash)
+    let model_name = model.unwrap_or_else(|| "gemini-2.5-flash".to_string());
+
+    // 3. Build Gemini request
+    let contents: Vec<GeminiContent> = messages
+        .iter()
+        .map(|m| GeminiContent {
+            role: if m.role == "assistant" {
+                "model".to_string()
+            } else {
+                "user".to_string()
+            },
+            parts: vec![GeminiPart {
+                text: Some(m.content.clone()),
+            }],
+        })
+        .collect();
+
+    let system_instruction = system_prompt
+        .filter(|s| !s.trim().is_empty())
+        .map(|s| GeminiSystemInstruction {
+            parts: vec![GeminiPart { text: Some(s) }],
+        });
+
+    let req = GeminiRequest {
+        contents,
+        system_instruction,
+    };
+    let url = format!(
+        "https://generativelanguage.googleapis.com/v1beta/models/{}:streamGenerateContent",
+        model_name
+    );
+
+    // 4. Create HTTP client and send
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(300))
+        .build()
+        .map_err(|e| format!("HTTP client error: {}", e))?;
+
+    let response = client
+        .post(&url)
+        .header("x-goog-api-key", &api_key)
+        .json(&req)
+        .send()
+        .await
+        .map_err(|e| format!("Gemini request failed: {}", e))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        return Err(format!("Gemini API error {}: {}", status, body));
+    }
+
+    // 5. Stream response chunks
+    let mut stream = response.bytes_stream();
+    while let Some(item) = stream.next().await {
+        let chunk = match item {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("Gemini stream chunk error: {}", e);
+                continue;
+            }
+        };
+        if let Ok(text) = String::from_utf8(chunk.to_vec()) {
+            for extracted in extract_text_values(&text) {
+                window
+                    .emit(
+                        "gemini-stream",
+                        StreamPayload {
+                            chunk: extracted,
+                            done: false,
+                        },
+                    )
+                    .map_err(|e| e.to_string())?;
+            }
+        }
+    }
+
+    // 6. Signal completion
+    window
+        .emit(
+            "gemini-stream",
+            StreamPayload {
+                chunk: String::new(),
+                done: true,
+            },
+        )
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+// ============================================================================
 // SYSTEM COMMANDS
 // ============================================================================
 
 #[tauri::command]
 async fn run_system_command(command: String) -> Result<String, String> {
+    // SECURITY: Step 1 - Block shell metacharacters FIRST to prevent injection
+    // like `echo safe && rm -rf /` from passing the prefix-based allowlist.
+    if contains_shell_metacharacters(&command) {
+        return Err(format!(
+            "SECURITY: Command contains shell metacharacters (chaining/injection blocked): '{}'",
+            command.chars().take(50).collect::<String>()
+        ));
+    }
+
+    // SECURITY: Step 2 - Check the allowlist
     if !is_command_allowed(&command) {
         return Err(format!(
             "SECURITY: Command '{}' is not in the allowlist",
@@ -683,8 +1027,9 @@ async fn run_system_command(command: String) -> Result<String, String> {
         ));
     }
 
+    // SECURITY: Step 3 - Additional dangerous pattern check on the full command
     let dangerous_patterns = [
-        "rm ", "del ", "rmdir", "format", "mkfs", ">", ">>", "|", "||", "&&", "&", ";", "`", "$(",
+        "rm ", "del ", "rmdir", "format", "mkfs", ">", ">>",
         "Remove-Item", "Clear-Content", "Set-Content", "Invoke-Expression", "iex",
         "Start-Process", "curl", "wget", "Invoke-WebRequest",
     ];
@@ -929,7 +1274,9 @@ fn get_memory_path() -> std::path::PathBuf {
     get_base_dir().join("agent_memory.json")
 }
 
-fn read_memory_store() -> MemoryStore {
+/// Read memory store from disk. Caller should hold MEMORY_FILE_LOCK
+/// if the read is part of a read-modify-write cycle.
+fn read_memory_store_unlocked() -> MemoryStore {
     let path = get_memory_path();
     if !path.exists() {
         return MemoryStore::default();
@@ -940,7 +1287,8 @@ fn read_memory_store() -> MemoryStore {
     }
 }
 
-fn write_memory_store(store: &MemoryStore) -> Result<(), String> {
+/// Write memory store to disk. Caller should hold MEMORY_FILE_LOCK.
+fn write_memory_store_unlocked(store: &MemoryStore) -> Result<(), String> {
     let path = get_memory_path();
     let content = serde_json::to_string_pretty(store).map_err(|e| e.to_string())?;
     fs::write(&path, content).map_err(|e| e.to_string())
@@ -948,7 +1296,8 @@ fn write_memory_store(store: &MemoryStore) -> Result<(), String> {
 
 #[tauri::command]
 fn get_agent_memories(agent_name: String, top_k: usize) -> Result<Vec<MemoryEntry>, String> {
-    let store = read_memory_store();
+    let _lock = MEMORY_FILE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let store = read_memory_store_unlocked();
     let mut memories: Vec<MemoryEntry> = store
         .memories
         .into_iter()
@@ -975,7 +1324,8 @@ fn add_agent_memory(agent: String, content: String, importance: f32) -> Result<M
         return Err("Content too long (max 10000 chars)".to_string());
     }
 
-    let mut store = read_memory_store();
+    let _lock = MEMORY_FILE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let mut store = read_memory_store_unlocked();
     let entry = MemoryEntry {
         id: format!(
             "mem_{}",
@@ -1000,13 +1350,14 @@ fn add_agent_memory(agent: String, content: String, importance: f32) -> Result<M
         store.memories.truncate(1000);
     }
 
-    write_memory_store(&store)?;
+    write_memory_store_unlocked(&store)?;
     Ok(entry)
 }
 
 #[tauri::command]
 fn get_knowledge_graph() -> Result<KnowledgeGraph, String> {
-    let store = read_memory_store();
+    let _lock = MEMORY_FILE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let store = read_memory_store_unlocked();
     Ok(store.graph)
 }
 
@@ -1020,7 +1371,8 @@ fn add_knowledge_node(
         return Err("Node ID and label cannot be empty".to_string());
     }
 
-    let mut store = read_memory_store();
+    let _lock = MEMORY_FILE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let mut store = read_memory_store_unlocked();
 
     if store.graph.nodes.iter().any(|n| n.id == node_id) {
         return Err("Node with this ID already exists".to_string());
@@ -1038,7 +1390,7 @@ fn add_knowledge_node(
         store.graph.nodes = store.graph.nodes.into_iter().take(500).collect();
     }
 
-    write_memory_store(&store)?;
+    write_memory_store_unlocked(&store)?;
     Ok(node)
 }
 
@@ -1052,7 +1404,8 @@ fn add_knowledge_edge(
         return Err("Source, target, and label cannot be empty".to_string());
     }
 
-    let mut store = read_memory_store();
+    let _lock = MEMORY_FILE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let mut store = read_memory_store_unlocked();
 
     let source_exists = store.graph.nodes.iter().any(|n| n.id == source);
     let target_exists = store.graph.nodes.iter().any(|n| n.id == target);
@@ -1073,19 +1426,20 @@ fn add_knowledge_edge(
         store.graph.edges = store.graph.edges.into_iter().take(1000).collect();
     }
 
-    write_memory_store(&store)?;
+    write_memory_store_unlocked(&store)?;
     Ok(edge)
 }
 
 #[tauri::command]
 fn clear_agent_memories(agent_name: String) -> Result<usize, String> {
-    let mut store = read_memory_store();
+    let _lock = MEMORY_FILE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let mut store = read_memory_store_unlocked();
     let original_len = store.memories.len();
     store
         .memories
         .retain(|m| m.agent.to_lowercase() != agent_name.to_lowercase());
     let removed = original_len - store.memories.len();
-    write_memory_store(&store)?;
+    write_memory_store_unlocked(&store)?;
     Ok(removed)
 }
 
@@ -1171,9 +1525,10 @@ pub fn run() {
             llama_get_recommended_models,
             llama_download_model,
             llama_cancel_download,
-            // Gemini (kept for compatibility)
+            // Gemini
             prompt_gemini_stream,
             get_gemini_models,
+            chat_with_gemini,
             // System
             run_system_command,
             save_file_content,

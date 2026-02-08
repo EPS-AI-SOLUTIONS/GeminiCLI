@@ -316,13 +316,29 @@ export interface HealingEvaluation {
  */
 export interface ExecutionResult {
   id: number;
-  agent: string;
+  agent?: string;
   success: boolean;
-  content: string;
+  content?: string;
+  data?: unknown;
   error?: string;
   duration?: number;
   tokens?: TokenUsage;
   repairAttempt?: number;
+  logs?: string[];
+
+  // === SOURCE TRACKING ===
+  sourceTracking?: {
+    agent: string;
+    model: string;
+    timestamp: number;
+    taskDescription: string;
+    filesAccessed: string[];
+    filesModified: string[];
+    commandsExecuted: string[];
+    mcpToolsUsed: string[];
+    validationScore: number;
+    validationWarnings: string[];
+  };
 }
 
 /**
@@ -389,6 +405,8 @@ export interface AgentPersona {
   role: string;
   description?: string;
   systemPrompt?: string;
+  model?: string;
+  temperature?: number;
 }
 
 /**

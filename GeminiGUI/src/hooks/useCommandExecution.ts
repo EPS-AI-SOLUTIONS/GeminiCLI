@@ -9,10 +9,11 @@ import { useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { toast } from 'sonner';
 import { STATUS, TAURI_COMMANDS } from '../constants';
+import type { Message } from '../types';
 
 export interface UseCommandExecutionOptions {
   /** Function to add a message to the chat */
-  addMessage: (msg: { role: string; content: string; timestamp: number }) => void;
+  addMessage: (msg: Message) => void;
   /** Function to update the last message content */
   updateLastMessage: (content: string) => void;
   /** Whether running in Tauri environment */

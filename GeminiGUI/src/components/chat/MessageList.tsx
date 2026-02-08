@@ -67,19 +67,19 @@ const MessageItem = memo<MessageItemProps>(
           }
         >
           {/* Copy Button (Now inside bubble, top-right) */}
-          <button 
+          <button
               onClick={handleCopyMessage}
               className={`
                   absolute top-2 right-2
-                  p-2 rounded-full 
-                  bg-neutral-900/90 text-white 
-                  hover:bg-white hover:text-black
-                  opacity-0 group-hover:opacity-100 transition-all duration-200 z-20 
-                  border border-white/20 shadow-md transform hover:scale-110
+                  p-1.5 rounded-lg
+                  bg-black/30 text-white/80
+                  hover:bg-[var(--matrix-accent)] hover:text-black
+                  opacity-0 group-hover:opacity-100 transition-all duration-200 z-20
+                  shadow-sm transform hover:scale-110 backdrop-blur-sm
               `}
               title="Kopiuj wiadomość"
           >
-              {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
+              {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
           </button>
 
           {isSystem && (

@@ -2,7 +2,7 @@
  * GeminiHydra - Agent Personas Configuration
  */
 
-import { AgentRole, AgentPersona } from '../types/index.js';
+import type { AgentRole, AgentPersona } from '../types/index.js';
 
 export const AGENT_PERSONAS: Partial<Record<AgentRole, AgentPersona>> = {
   dijkstra: {

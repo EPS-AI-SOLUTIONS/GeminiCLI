@@ -202,6 +202,19 @@ export const AGENT_SPECS: Record<AgentRole, AgentSpec> = {
       'System interoperability'
     ],
     tier: 'executor'
+  },
+
+  serena: {
+    persona: 'Code Intelligence Agent',
+    focus: 'Code Navigation, Symbol Search, Semantic Analysis',
+    skills: [
+      'Find symbol definitions and references',
+      'Code navigation and go-to-definition',
+      'Semantic code search',
+      'Symbol renaming across project',
+      'LSP-based code intelligence'
+    ],
+    tier: 'executor'
   }
 };
 

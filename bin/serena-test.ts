@@ -59,7 +59,7 @@ Requirements:
     console.log('[2/7] Getting available tools...');
     const tools = await serena.getTools();
     console.log(`Available tools (${tools.length}):`);
-    tools.slice(0, 10).forEach((t) => {
+    tools.slice(0, 10).forEach((t: { name: string; description?: string }) => {
       console.log(`  - ${t.name}: ${t.description?.slice(0, 60) || 'No description'}...`);
     });
     if (tools.length > 10) {

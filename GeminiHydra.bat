@@ -1,10 +1,10 @@
 @echo off
 chcp 65001 >nul
 REM ══════════════════════════════════════════════════════════════
-REM  GeminiHydra v14.0 - Portable Edition
+REM  GeminiHydra v16.0 - Portable Edition
 REM ══════════════════════════════════════════════════════════════
 
-title GeminiHydra v14.0 - Portable Edition
+title GeminiHydra v16.0 - Portable Edition
 color 0D
 
 REM Set working directory to script location (portable)
@@ -12,7 +12,7 @@ cd /d "%~dp0"
 
 echo.
 echo   ╔══════════════════════════════════════════════════════════╗
-echo   ║         GeminiHydra v14.0 - Portable Edition             ║
+echo   ║         GeminiHydra v16.0 - Portable Edition             ║
 echo   ╠══════════════════════════════════════════════════════════╣
 echo   ║  All components self-contained in this directory         ║
 echo   ╚══════════════════════════════════════════════════════════╝
@@ -38,6 +38,7 @@ if not exist "dist\bin\gemini.js" (
     call npx tsc
 )
 
-node dist\bin\gemini.js --interactive
+REM Run with tsx for better TypeScript support
+npx tsx bin/gemini.ts --interactive
 
 pause

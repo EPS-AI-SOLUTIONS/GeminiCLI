@@ -93,15 +93,17 @@ export const ChatContainer = memo<ChatContainerProps>(
 
     return (
       <DragDropZone onImageDrop={handleImageDrop} onTextDrop={handleTextDrop}>
-        <div className="glass-panel flex-1 h-full rounded-lg border-[var(--matrix-border)] flex flex-col min-h-0 relative">
-          {/* Messages List */}
-          <div className="flex-1 min-h-0">
-            <MessageList
-              messages={messages}
-              isStreaming={isStreaming}
-              onExecuteCommand={onExecuteCommand}
-              onContextMenu={handleContextMenu}
-            />
+        <div className="flex-1 h-full flex flex-col min-h-0 relative gap-2">
+          {/* Messages Panel */}
+          <div className="glass-panel flex-1 min-h-0 flex flex-col">
+            <div className="flex-1 min-h-0">
+              <MessageList
+                messages={messages}
+                isStreaming={isStreaming}
+                onExecuteCommand={onExecuteCommand}
+                onContextMenu={handleContextMenu}
+              />
+            </div>
           </div>
 
           {/* Context Menu */}
@@ -112,17 +114,18 @@ export const ChatContainer = memo<ChatContainerProps>(
               isUser={contextMenu.message.role === 'user'}
               onClose={handleCloseContextMenu}
               onCopy={handleCopyMessage}
-              // Add onDelete and onRegenerate when supported by store
             />
           )}
 
-          {/* Input Area */}
-          <ChatInput
-            isStreaming={isStreaming}
-            onSubmit={handleSubmit}
-            pendingImage={pendingImage}
-            onClearImage={handleClearImage}
-          />
+          {/* Input Panel - separate from messages */}
+          <div className="glass-panel shrink-0">
+            <ChatInput
+              isStreaming={isStreaming}
+              onSubmit={handleSubmit}
+              pendingImage={pendingImage}
+              onClearImage={handleClearImage}
+            />
+          </div>
         </div>
       </DragDropZone>
     );

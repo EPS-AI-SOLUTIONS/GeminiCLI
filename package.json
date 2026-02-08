@@ -19,7 +19,10 @@
     "prestart": "npm run build",
     "prepare": "husky",
     "lint:fix": "biome check --write .",
-    "format": "biome format --write ."
+    "format": "biome format --write .",
+    "audit": "npm audit --production",
+    "deps:check": "npx npm-check-updates",
+    "docs": "npx typedoc"
   },
   "keywords": [
     "agent-swarm",
@@ -32,6 +35,7 @@
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.1",
+    "@fastify/cors": "^11.2.0",
     "@google/gemini-cli": "^0.1.1",
     "@google/gemini-cli-core": "^0.25.2",
     "@google/generative-ai": "^0.24.1",
@@ -39,14 +43,20 @@
     "@modelcontextprotocol/sdk": "^1.25.3",
     "chalk": "^5.6.2",
     "commander": "^12.0.0",
+    "docx": "^9.5.1",
     "dotenv": "^17.2.3",
+    "exceljs": "^4.4.0",
     "fast-glob": "^3.3.2",
+    "fastify": "^5.7.4",
     "glob": "^10.3.10",
+    "mammoth": "^1.11.0",
     "micromatch": "^4.0.8",
+    "node-llama-cpp": "^3.15.1",
     "ollama": "^0.5.18",
     "ora": "^9.3.0",
     "p-limit": "^5.0.0",
     "p-queue": "^8.0.1",
+    "pdfkit": "^0.17.2",
     "systeminformation": "^5.22.0",
     "zod": "^4.3.6"
   },
@@ -54,6 +64,7 @@
     "@biomejs/biome": "^2.3.14",
     "@playwright/test": "^1.58.1",
     "@types/node": "^20.11.24",
+    "@types/pdfkit": "^0.17.4",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
     "tsx": "^4.7.1",

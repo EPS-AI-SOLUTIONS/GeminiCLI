@@ -47,6 +47,8 @@ import { FileHandlers } from '../src/files/FileHandlers.js';
 import { DebugLoop } from '../src/debug/DebugLoop.js';
 import { mcpManager, mcpBridge } from '../src/mcp/index.js';
 import { startupLogger } from '../src/utils/startupLogger.js';
+import { getIdentityContext } from '../src/core/PromptSystem.js';
+import { validateEnvVars } from '../src/config/config.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { exec } from 'child_process';
@@ -105,6 +107,9 @@ let swarm: Swarm;
 let projectContext: ProjectContext;
 
 async function initializeSwarm() {
+  // Validate environment variables before proceeding
+  validateEnvVars();
+
   swarm = new Swarm(path.join(ROOT_DIR, '.serena'), YOLO_CONFIG);
   await swarm.initialize();
   await costTracker.load();
@@ -484,7 +489,12 @@ async function handleInput(line: string): Promise<void> {
 
   if (trimmed.startsWith('/cancel ')) {
     const idStr = trimmed.replace('/cancel ', '').trim();
-    const id = parseInt(idStr);
+    const id = parseInt(idStr, 10);
+    if (isNaN(id)) {
+      console.log(chalk.red(`\nNieprawidłowy ID zadania: ${idStr}\n`));
+      promptLoop();
+      return;
+    }
     const task = taskQueue.find(t => t.id === id && t.status === 'pending');
     if (task) {
       taskQueue = taskQueue.filter(t => t.id !== id);
@@ -676,6 +686,15 @@ async function runInteractiveMode() {
   console.log(chalk.gray('  Komendy: /help, /queue, /mcp, @serena, exit'));
   console.log(chalk.gray('  Problemy ze stdin? Użyj /stdin-fix\n'));
 
+  // === HIDDEN SYSTEM INIT MESSAGE ===
+  // Identity context from central source (src/core/PromptSystem.ts)
+  // Automatically injected into session memory at startup (invisible to user)
+  try {
+    await sessionMemory.addMessage('system', getIdentityContext(ROOT_DIR));
+  } catch {
+    // Silently ignore if session memory not ready
+  }
+
   // Start the first prompt (async)
   promptLoop();
 }
@@ -787,8 +806,9 @@ program
     printBanner();
     await initializeSwarm();
 
+    const parsedDebounce = parseInt(options.debounce, 10);
     const watchMode = new WatchMode(swarm, {
-      debounce: parseInt(options.debounce),
+      debounce: isNaN(parsedDebounce) || parsedDebounce < 0 ? 1000 : parsedDebounce,
       agent: options.agent,
     });
 
@@ -826,7 +846,12 @@ program
   .description('Set daily budget limit')
   .action(async (amount) => {
     await costTracker.load();
-    await costTracker.setBudget(parseFloat(amount));
+    const parsedBudget = parseFloat(amount);
+    if (isNaN(parsedBudget) || parsedBudget < 0) {
+      console.error(chalk.red('Invalid budget amount. Must be a non-negative number.'));
+      return;
+    }
+    await costTracker.setBudget(parsedBudget);
   });
 
 // ═══════════════════════════════════════════════════════════════
@@ -1133,8 +1158,9 @@ program
     console.log(chalk.cyan('\n🔧 Debug Loop Mode\n'));
 
     const debugLoop = new DebugLoop();
+    const parsedMax = parseInt(options.max, 10);
     const session = await debugLoop.startDebugLoop(target || process.cwd(), {
-      maxIterations: parseInt(options.max),
+      maxIterations: isNaN(parsedMax) || parsedMax < 1 ? 10 : parsedMax,
       autoFix: options.autoFix,
       screenshotCommand: options.screenshot,
     });

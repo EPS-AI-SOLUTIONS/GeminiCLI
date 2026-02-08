@@ -77,13 +77,23 @@ export interface ValidationStats {
 // =============================================================================
 
 /**
- * Patterns for detecting speculative/uncertain language
+ * Configurable patterns for detecting speculative/uncertain language.
+ *
+ * Each entry has:
+ * - `pattern`: A RegExp (should use `gi` flags for global, case-insensitive matching)
+ * - `severity`: The validation severity level when matched
+ *
+ * Export this so it can be customized per project:
+ * ```ts
+ * import { SPECULATIVE_LANGUAGE_PATTERNS } from './FinalReportValidator.js';
+ * SPECULATIVE_LANGUAGE_PATTERNS.push({ pattern: /\bmaybe\b/gi, severity: 'warning' });
+ * ```
  */
-const SPECULATIVE_PATTERNS = [
-  { pattern: /\b(?:might|may|could|possibly|perhaps|probably)\b/gi, severity: 'warning' as const },
-  { pattern: /\b(?:I think|I believe|I assume|I guess)\b/gi, severity: 'warning' as const },
-  { pattern: /\b(?:myslę|sądzę|zakładam|prawdopodobnie|być może|chyba)\b/gi, severity: 'warning' as const },
-  { pattern: /\b(?:should work|powinno działać|hopefully|mam nadzieję)\b/gi, severity: 'info' as const }
+export const SPECULATIVE_LANGUAGE_PATTERNS: Array<{ pattern: RegExp; severity: ValidationSeverity }> = [
+  { pattern: /\b(?:might|may|could|possibly|perhaps|probably)\b/gi, severity: 'warning' },
+  { pattern: /\b(?:I think|I believe|I assume|I guess)\b/gi, severity: 'warning' },
+  { pattern: /\b(?:myslę|sądzę|zakładam|prawdopodobnie|być może|chyba)\b/gi, severity: 'warning' },
+  { pattern: /\b(?:should work|powinno działać|hopefully|mam nadzieję)\b/gi, severity: 'info' }
 ];
 
 /**
@@ -307,7 +317,7 @@ export class FinalReportValidator {
     // Extract all content from agent results for comparison
     const agentContent = agentResults
       .filter(r => r.success)
-      .map(r => r.logs.join('\n'))
+      .map(r => (r.logs ?? []).join('\n'))
       .join('\n')
       .toLowerCase();
 
@@ -381,12 +391,16 @@ export class FinalReportValidator {
   }
 
   /**
-   * Check for speculative/uncertain language
+   * Check for speculative/uncertain language.
+   * Uses the exported SPECULATIVE_LANGUAGE_PATTERNS array so patterns can be
+   * customized at runtime before validation runs.
    */
   private checkSpeculativeLanguage(report: string): ValidationIssue[] {
     const issues: ValidationIssue[] = [];
 
-    for (const { pattern, severity } of SPECULATIVE_PATTERNS) {
+    for (const { pattern, severity } of SPECULATIVE_LANGUAGE_PATTERNS) {
+      // Reset lastIndex in case the regex is stateful from a previous run
+      pattern.lastIndex = 0;
       const matches = report.match(pattern);
       if (matches && matches.length > 2) {
         issues.push({
@@ -924,5 +938,6 @@ export default {
   FinalReportValidator,
   finalReportValidator,
   validateFinalReport,
-  isReportValid
+  isReportValid,
+  SPECULATIVE_LANGUAGE_PATTERNS
 };

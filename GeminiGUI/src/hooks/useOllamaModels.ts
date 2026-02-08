@@ -40,9 +40,9 @@ export const useOllamaModels = (): UseOllamaModelsReturn => {
   const { models, isLoading, error, refetch } = useModelFetcher({
     provider: 'ollama',
     credential: ollamaEndpoint,
-    fallbackModels: FALLBACK_MODELS.ollama,
-    tauriCommand: TAURI_COMMANDS.GET_OLLAMA_MODELS,
-    queryKey: QUERY_KEYS.OLLAMA_MODELS,
+    fallbackModels: FALLBACK_MODELS.llama,
+    tauriCommand: TAURI_COMMANDS.LLAMA_LIST_MODELS,
+    queryKey: QUERY_KEYS.LLAMA_MODELS,
     credentialParamName: 'endpoint',
     retry: 2, // Ollama uses more retries since server might be starting up
     requireCredential: false, // Ollama doesn't require credential to be set

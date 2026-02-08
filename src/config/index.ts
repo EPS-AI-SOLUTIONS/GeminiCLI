@@ -205,6 +205,17 @@ export {
 } from './temperatures.config.js';
 
 // ============================================================================
+// RUNTIME CONFIGURATION (ConfigManager, env validation)
+// ============================================================================
+
+export {
+  ConfigManager,
+  getConfig,
+  resetConfig,
+  validateEnvVars,
+} from './config.js';
+
+// ============================================================================
 // COMBINED CONFIG OBJECT
 // ============================================================================
 

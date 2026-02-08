@@ -4,6 +4,9 @@ import App from "./App";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "./styles/globals.css";
 
+// Initialize i18n (must be imported before App)
+import "./i18n";
+
 const queryClient = new QueryClient();
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(

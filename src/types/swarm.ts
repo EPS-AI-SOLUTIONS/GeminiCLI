@@ -9,12 +9,26 @@
 export type ModelTier = 'commander' | 'coordinator' | 'executor';
 
 /**
- * Agent roles (12 Witcher agents)
+ * All valid agent role values as a const array for runtime iteration and validation
  */
-export type AgentRole =
-  | 'geralt' | 'yennefer' | 'triss' | 'jaskier'
-  | 'vesemir' | 'ciri' | 'eskel' | 'lambert'
-  | 'zoltan' | 'regis' | 'dijkstra' | 'philippa';
+export const AGENT_ROLES = [
+  'geralt', 'yennefer', 'triss', 'jaskier',
+  'vesemir', 'ciri', 'eskel', 'lambert',
+  'zoltan', 'regis', 'dijkstra', 'philippa',
+  'serena'  // Code Intelligence Agent - uses real Serena MCP
+] as const;
+
+/**
+ * Agent roles (12 Witcher agents + Serena)
+ */
+export type AgentRole = typeof AGENT_ROLES[number];
+
+/**
+ * Type guard: checks if a string is a valid AgentRole at runtime
+ */
+export function isValidAgentRole(role: string): role is AgentRole {
+  return (AGENT_ROLES as readonly string[]).includes(role);
+}
 
 /**
  * Agent specification
@@ -43,7 +57,7 @@ export interface AgentResult {
 /**
  * Task priority
  */
-export type TaskPriority = 'high' | 'medium' | 'low';
+export type TaskPriority = 'critical' | 'high' | 'medium' | 'low' | 'normal' | 'background';
 
 /**
  * Task status

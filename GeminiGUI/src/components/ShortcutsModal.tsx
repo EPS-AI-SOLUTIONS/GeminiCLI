@@ -28,28 +28,28 @@ export const ShortcutsModal = ({ isOpen, onClose }: ShortcutsModalProps) => {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-md">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="w-full max-w-md bg-[var(--matrix-bg)] border border-[var(--matrix-border)] rounded-2xl shadow-2xl overflow-hidden"
+            className="glass-panel w-full max-w-md overflow-hidden"
           >
-            <div className="flex items-center justify-between p-4 border-b border-[var(--matrix-border)] bg-[var(--matrix-accent)]/5">
+            <div className="flex items-center justify-between p-4 bg-[var(--matrix-accent)]/5">
               <div className="flex items-center gap-2 text-[var(--matrix-accent)]">
                 <Keyboard size={20} />
                 <h2 className="font-bold text-lg">Skróty Klawiszowe</h2>
               </div>
-              <button onClick={onClose} className="text-[var(--matrix-text-dim)] hover:text-[var(--matrix-text)]">
+              <button onClick={onClose} className="p-1 rounded-lg text-[var(--matrix-text-dim)] hover:text-[var(--matrix-accent)] hover:bg-[var(--matrix-accent)]/10 transition-all">
                 <X size={20} />
               </button>
             </div>
 
-            <div className="p-4 space-y-2">
+            <div className="p-4 space-y-1">
               {SHORTCUTS.map((s, i) => (
-                <div key={i} className="flex justify-between items-center py-2 border-b border-[var(--matrix-border)]/30 last:border-0">
+                <div key={i} className="flex justify-between items-center py-2.5 px-2 rounded-lg hover:bg-[var(--matrix-accent)]/5 transition-colors">
                   <span className="text-[var(--matrix-text)] text-sm">{s.desc}</span>
-                  <span className="px-2 py-1 rounded-md bg-[var(--matrix-accent)]/10 border border-[var(--matrix-accent)]/30 text-xs font-mono text-[var(--matrix-accent)] font-bold">
+                  <span className="px-2.5 py-1 rounded-lg bg-[var(--matrix-accent)]/10 text-xs font-mono text-[var(--matrix-accent)] font-bold">
                     {s.key}
                   </span>
                 </div>

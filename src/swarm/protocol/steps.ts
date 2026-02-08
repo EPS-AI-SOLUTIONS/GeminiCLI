@@ -23,6 +23,87 @@ import type {
 } from '../../types/swarm.js';
 
 /**
+ * Protocol step validation errors (Fix #28)
+ */
+export class StepValidationError extends Error {
+  constructor(step: string, message: string) {
+    super(`[${step}] Precondition failed: ${message}`);
+    this.name = 'StepValidationError';
+  }
+}
+
+/**
+ * Task claim manager for preventing race conditions (Fix #13)
+ * Uses a Set of claimed task IDs plus a promise-based mutex to prevent
+ * concurrent calls to getNextParallelGroup from returning the same tasks.
+ */
+class TaskClaimManager {
+  private claimedIds: Set<number> = new Set();
+  private lockPromise: Promise<void> = Promise.resolve();
+
+  /**
+   * Acquire exclusive lock for task claiming.
+   * Returns a release function that MUST be called when done.
+   */
+  async acquireLock(): Promise<() => void> {
+    // Wait for any existing lock to release
+    await this.lockPromise;
+
+    // Create new lock
+    let releaseFn!: () => void;
+    this.lockPromise = new Promise<void>((resolve) => {
+      releaseFn = resolve;
+    });
+
+    return releaseFn;
+  }
+
+  /**
+   * Claim a set of task IDs (must be called while holding the lock).
+   * Returns true if ALL ids were successfully claimed, false if any were already claimed.
+   */
+  claim(ids: number[]): boolean {
+    for (const id of ids) {
+      if (this.claimedIds.has(id)) {
+        return false;
+      }
+    }
+    for (const id of ids) {
+      this.claimedIds.add(id);
+    }
+    return true;
+  }
+
+  /**
+   * Check if a task ID has been claimed
+   */
+  isClaimed(id: number): boolean {
+    return this.claimedIds.has(id);
+  }
+
+  /**
+   * Release claimed IDs (e.g., on task failure for retry)
+   */
+  release(ids: number[]): void {
+    for (const id of ids) {
+      this.claimedIds.delete(id);
+    }
+  }
+
+  /**
+   * Reset all claims (e.g., on new plan execution)
+   */
+  reset(): void {
+    this.claimedIds.clear();
+  }
+}
+
+/**
+ * Singleton task claim manager instance (Fix #13)
+ */
+export const taskClaimManager = new TaskClaimManager();
+
+/**
  * Protocol step names
  */
 export type ProtocolStep = 'speculate' | 'plan' | 'execute' | 'synthesize' | 'log' | 'archive';
@@ -87,13 +168,77 @@ export const PROTOCOL_STEPS: Record<ProtocolStep, StepConfig> = {
 };
 
 /**
+ * Precondition validators for each protocol step (Fix #28)
+ * Each validates input state before the step executes.
+ */
+export const STEP_PRECONDITIONS = {
+  speculate: (query: string): void => {
+    if (!query || typeof query !== 'string' || query.trim().length === 0) {
+      throw new StepValidationError('speculate', 'Query must be a non-empty string');
+    }
+  },
+
+  plan: (query: string, speculationContext?: string): void => {
+    if (!query || typeof query !== 'string' || query.trim().length === 0) {
+      throw new StepValidationError('plan', 'Query must be a non-empty string');
+    }
+    if (speculationContext !== undefined && typeof speculationContext !== 'string') {
+      throw new StepValidationError('plan', 'speculationContext must be a string if provided');
+    }
+  },
+
+  execute: (agent: AgentRole, task: string): void => {
+    if (!agent || typeof agent !== 'string') {
+      throw new StepValidationError('execute', 'Agent must be a non-empty string');
+    }
+    if (!task || typeof task !== 'string' || task.trim().length === 0) {
+      throw new StepValidationError('execute', 'Task description must be a non-empty string');
+    }
+    const validAgents: AgentRole[] = [
+      'geralt', 'yennefer', 'triss', 'jaskier', 'vesemir', 'ciri',
+      'eskel', 'lambert', 'zoltan', 'regis', 'dijkstra', 'philippa', 'serena'
+    ];
+    if (!validAgents.includes(agent)) {
+      throw new StepValidationError('execute', `Unknown agent "${agent}". Valid: ${validAgents.join(', ')}`);
+    }
+  },
+
+  synthesize: (query: string, results: AgentResult[]): void => {
+    if (!query || typeof query !== 'string' || query.trim().length === 0) {
+      throw new StepValidationError('synthesize', 'Query must be a non-empty string');
+    }
+    if (!Array.isArray(results)) {
+      throw new StepValidationError('synthesize', 'Results must be an array');
+    }
+    if (results.length === 0) {
+      throw new StepValidationError('synthesize', 'Results array must not be empty - no execution results to synthesize');
+    }
+  },
+
+  log: (query: string, transcript: SwarmTranscript): void => {
+    if (!query || typeof query !== 'string' || query.trim().length === 0) {
+      throw new StepValidationError('log', 'Query must be a non-empty string');
+    }
+    if (!transcript || typeof transcript !== 'object') {
+      throw new StepValidationError('log', 'Transcript must be a valid object');
+    }
+    if (!transcript.sessionId) {
+      throw new StepValidationError('log', 'Transcript must have a sessionId');
+    }
+  }
+};
+
+/**
  * Prompt templates for each step
+ * Each step validates preconditions before generating the prompt (Fix #28)
  */
 export const STEP_PROMPTS = {
   /**
    * STEP 1: SPECULATE (Regis)
    */
-  speculate: (query: string, context?: string) => `
+  speculate: (query: string, context?: string) => {
+    STEP_PRECONDITIONS.speculate(query);
+    return `
 You are Regis, the Sage and Researcher of the Witcher Swarm.
 
 Your task is to gather context and background information for the following query:
@@ -111,12 +256,15 @@ Please provide:
 4. Relevant patterns or best practices
 
 Keep your response concise but informative. Focus on information that will help the planning and execution phases.
-`,
+`;
+  },
 
   /**
    * STEP 2: PLAN (Dijkstra)
    */
-  plan: (query: string, speculationContext?: string) => `
+  plan: (query: string, speculationContext?: string) => {
+    STEP_PRECONDITIONS.plan(query, speculationContext);
+    return `
 You are Dijkstra, the Spymaster and Master Strategist of the Witcher Swarm.
 
 Your task is to create an execution plan for the following query:
@@ -164,12 +312,14 @@ Guidelines:
 - Set priorities for critical path items
 
 Respond ONLY with the JSON plan, no additional text.
-`,
+`;
+  },
 
   /**
    * STEP 3: EXECUTE - prompt for individual executor
    */
   execute: (agent: AgentRole, task: string, context?: string) => {
+    STEP_PRECONDITIONS.execute(agent, task);
     const agentPrompts: Record<AgentRole, string> = {
       geralt: `You are Geralt, the White Wolf and Security Expert. Focus on security, safe practices, and operational concerns.`,
       triss: `You are Triss, the Healer and QA Expert. Focus on testing, quality assurance, and validation.`,
@@ -183,7 +333,9 @@ Respond ONLY with the JSON plan, no additional text.
       regis: `You are Regis, the Sage. Focus on research and analysis.`,
       yennefer: `You are Yennefer, the Sorceress. Focus on synthesis and architecture.`,
       jaskier: `You are Jaskier, the Bard. Focus on documentation and communication.`,
-      dijkstra: `You are Dijkstra, the Spymaster. Focus on strategy and planning.`
+      dijkstra: `You are Dijkstra, the Spymaster. Focus on strategy and planning.`,
+      // Code Intelligence Agent
+      serena: `You are Serena, the Code Intelligence Agent. Focus on code navigation, symbol search, and semantic analysis using LSP.`
     };
 
     return `
@@ -203,6 +355,7 @@ Complete this task according to your expertise. Be thorough but concise.
    * STEP 4: SYNTHESIZE (Yennefer)
    */
   synthesize: (query: string, results: AgentResult[]) => {
+    STEP_PRECONDITIONS.synthesize(query, results);
     const resultsText = results
       .filter(r => r.success && r.response)
       .map(r => `### ${r.agent} (Task ${r.taskId})\n${r.response}`)
@@ -236,6 +389,7 @@ Your synthesis should directly answer the original query while incorporating ins
    * STEP 5: LOG (Jaskier)
    */
   log: (query: string, transcript: SwarmTranscript) => {
+    STEP_PRECONDITIONS.log(query, transcript);
     const stepsSummary = [];
 
     if (transcript.steps.speculate?.response) {
@@ -281,48 +435,178 @@ Keep it brief and informative.
 };
 
 /**
- * Parse plan JSON from Dijkstra's response
+ * Error thrown when plan validation fails
  */
-export function parsePlan(response: string): SwarmPlan | null {
-  try {
-    // Extract JSON from response (may be wrapped in markdown code block)
-    const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/) ||
-                      response.match(/```\s*([\s\S]*?)\s*```/) ||
-                      [null, response];
+export class PlanValidationError extends Error {
+  constructor(message: string, public readonly details: string[]) {
+    super(message);
+    this.name = 'PlanValidationError';
+  }
+}
 
-    const jsonStr = jsonMatch[1] || response;
-    const parsed = JSON.parse(jsonStr.trim());
+/**
+ * Validate the raw parsed JSON has the expected plan structure.
+ * Accepts either a plain array of tasks or an object with a `tasks` array property.
+ * Each task must have at least `id` (string|number) and a description (`task` or `description` string).
+ * Optional fields: `dependencies` (array of string|number), `agent` (string).
+ *
+ * Returns the normalized tasks array and the container object (if any).
+ * Throws PlanValidationError with descriptive messages on failure.
+ */
+function validatePlanStructure(parsed: unknown): {
+  container: Record<string, unknown>;
+  rawTasks: Record<string, unknown>[];
+} {
+  const errors: string[] = [];
 
-    // Validate required fields
-    if (!parsed.objective || !Array.isArray(parsed.tasks)) {
-      return null;
+  // Determine the container and raw tasks array
+  let container: Record<string, unknown> = {};
+  let rawTasks: unknown[];
+
+  if (Array.isArray(parsed)) {
+    rawTasks = parsed;
+  } else if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    container = parsed as Record<string, unknown>;
+    if (Array.isArray(container.tasks)) {
+      rawTasks = container.tasks;
+    } else {
+      errors.push(
+        `Plan must be an array or an object with a "tasks" array property. ` +
+        `Got object with keys: [${Object.keys(container).join(', ')}]`
+      );
+      throw new PlanValidationError('Invalid plan structure', errors);
+    }
+  } else {
+    errors.push(`Plan must be an array or object, got ${typeof parsed}`);
+    throw new PlanValidationError('Invalid plan structure', errors);
+  }
+
+  if (rawTasks.length === 0) {
+    errors.push('Plan tasks array is empty');
+    throw new PlanValidationError('Invalid plan structure', errors);
+  }
+
+  // Validate each task
+  const validatedTasks: Record<string, unknown>[] = [];
+
+  for (let i = 0; i < rawTasks.length; i++) {
+    const task = rawTasks[i];
+    const taskErrors: string[] = [];
+
+    if (task === null || typeof task !== 'object' || Array.isArray(task)) {
+      errors.push(`Task at index ${i} must be an object, got ${typeof task}`);
+      continue;
     }
 
-    // Normalize and validate tasks
-    const tasks: SwarmTask[] = parsed.tasks.map((t: Partial<SwarmTask>, index: number) => ({
-      id: t.id ?? index + 1,
-      agent: t.agent ?? 'geralt',
-      task: t.task ?? '',
-      dependencies: t.dependencies ?? [],
-      status: 'pending' as TaskStatus,
-      priority: (t.priority ?? 'medium') as TaskPriority,
-      context: t.context
-    }));
+    const t = task as Record<string, unknown>;
 
-    // Normalize parallel groups
-    const parallelGroups: number[][] = parsed.parallelGroups ?? [tasks.map(t => t.id)];
+    // id: must be present and be a string or number
+    if (t.id === undefined || t.id === null) {
+      taskErrors.push(`missing "id"`);
+    } else if (typeof t.id !== 'string' && typeof t.id !== 'number') {
+      taskErrors.push(`"id" must be string or number, got ${typeof t.id}`);
+    }
 
-    return {
-      objective: parsed.objective,
-      complexity: (parsed.complexity ?? 'Moderate') as ComplexityLevel,
-      tasks,
-      parallelGroups,
-      estimatedTime: parsed.estimatedTime
-    };
-  } catch (error) {
-    console.error('Failed to parse plan:', error);
+    // description: accept either "task" or "description" field
+    const desc = t.task ?? t.description;
+    if (desc === undefined || desc === null) {
+      taskErrors.push(`missing "task" or "description"`);
+    } else if (typeof desc !== 'string') {
+      taskErrors.push(`"task"/"description" must be a string, got ${typeof desc}`);
+    } else if ((desc as string).trim().length === 0) {
+      taskErrors.push(`"task"/"description" must not be empty`);
+    }
+
+    // dependencies: optional, must be array of strings/numbers if present
+    if (t.dependencies !== undefined && t.dependencies !== null) {
+      if (!Array.isArray(t.dependencies)) {
+        taskErrors.push(`"dependencies" must be an array, got ${typeof t.dependencies}`);
+      } else {
+        for (let j = 0; j < (t.dependencies as unknown[]).length; j++) {
+          const dep = (t.dependencies as unknown[])[j];
+          if (typeof dep !== 'string' && typeof dep !== 'number') {
+            taskErrors.push(`dependencies[${j}] must be string or number, got ${typeof dep}`);
+          }
+        }
+      }
+    }
+
+    // agent: optional, must be string if present
+    if (t.agent !== undefined && t.agent !== null && typeof t.agent !== 'string') {
+      taskErrors.push(`"agent" must be a string, got ${typeof t.agent}`);
+    }
+
+    if (taskErrors.length > 0) {
+      errors.push(`Task at index ${i} (id=${String(t.id ?? '?')}): ${taskErrors.join('; ')}`);
+    } else {
+      validatedTasks.push(t);
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new PlanValidationError(
+      `Plan validation failed with ${errors.length} error(s)`,
+      errors
+    );
+  }
+
+  return { container, rawTasks: validatedTasks };
+}
+
+/**
+ * Parse plan JSON from Dijkstra's response.
+ *
+ * Extracts JSON from markdown code fences (if present), parses it,
+ * validates the structure, and returns a normalized SwarmPlan.
+ *
+ * Throws PlanValidationError if the structure is invalid.
+ * Returns null only if JSON parsing itself fails.
+ */
+export function parsePlan(response: string): SwarmPlan | null {
+  // Extract JSON from response (may be wrapped in markdown code block)
+  const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/) ||
+                    response.match(/```\s*([\s\S]*?)\s*```/) ||
+                    [null, response];
+
+  const jsonStr = (jsonMatch[1] || response).trim();
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(jsonStr);
+  } catch (parseError) {
+    const message = parseError instanceof Error ? parseError.message : String(parseError);
+    console.error(`Failed to parse plan JSON: ${message}`);
     return null;
   }
+
+  // Validate structure (throws PlanValidationError on failure)
+  const { container, rawTasks } = validatePlanStructure(parsed);
+
+  // Normalize and build tasks
+  const tasks: SwarmTask[] = rawTasks.map((t, index) => ({
+    id: typeof t.id === 'number' ? t.id : index + 1,
+    agent: (t.agent as string) ?? 'geralt',
+    task: ((t.task ?? t.description) as string) ?? '',
+    dependencies: Array.isArray(t.dependencies)
+      ? (t.dependencies as (string | number)[]).map(d => typeof d === 'number' ? d : Number(d))
+      : [],
+    status: 'pending' as TaskStatus,
+    priority: (t.priority ?? 'medium') as TaskPriority,
+    context: t.context as string | undefined
+  }));
+
+  // Normalize parallel groups
+  const parallelGroups: number[][] = Array.isArray(container.parallelGroups)
+    ? container.parallelGroups as number[][]
+    : [tasks.map(t => t.id)];
+
+  return {
+    objective: (container.objective as string) ?? tasks[0]?.task ?? 'Unknown objective',
+    complexity: ((container.complexity as string) ?? 'Moderate') as ComplexityLevel,
+    tasks,
+    parallelGroups,
+    estimatedTime: container.estimatedTime as string | undefined
+  };
 }
 
 /**
@@ -350,6 +634,14 @@ export function createSimplePlan(query: string, agent: AgentRole = 'ciri'): Swar
  * Get tasks ready to execute (dependencies met)
  */
 export function getReadyTasks(plan: SwarmPlan, completedIds: number[]): SwarmTask[] {
+  // Precondition check (Fix #28)
+  if (!plan || !Array.isArray(plan.tasks)) {
+    throw new StepValidationError('getReadyTasks', 'Plan must have a valid tasks array');
+  }
+  if (!Array.isArray(completedIds)) {
+    throw new StepValidationError('getReadyTasks', 'completedIds must be an array');
+  }
+
   return plan.tasks.filter(task =>
     task.status === 'pending' &&
     task.dependencies.every(depId => completedIds.includes(depId))
@@ -357,7 +649,9 @@ export function getReadyTasks(plan: SwarmPlan, completedIds: number[]): SwarmTas
 }
 
 /**
- * Get next parallel group to execute
+ * Get next parallel group to execute (DEPRECATED - use getNextParallelGroupSafe)
+ * This synchronous version is kept for backward compatibility but is NOT safe
+ * against race conditions when called concurrently.
  */
 export function getNextParallelGroup(
   plan: SwarmPlan,
@@ -370,15 +664,60 @@ export function getNextParallelGroup(
       const task = plan.tasks.find(t => t.id === taskId);
       if (!task) return false;
       if (completedIds.includes(taskId)) return false; // Already done
+      // Also skip tasks already claimed by another caller (Fix #13)
+      if (taskClaimManager.isClaimed(taskId)) return false;
       return task.dependencies.every(depId => completedIds.includes(depId));
     });
 
-    if (allReady && group.some(id => !completedIds.includes(id))) {
-      return group.filter(id => !completedIds.includes(id));
+    if (allReady && group.some(id => !completedIds.includes(id) && !taskClaimManager.isClaimed(id))) {
+      const unclaimed = group.filter(id => !completedIds.includes(id) && !taskClaimManager.isClaimed(id));
+      if (unclaimed.length > 0) {
+        // Claim synchronously (best-effort for sync callers)
+        taskClaimManager.claim(unclaimed);
+        return unclaimed;
+      }
     }
   }
 
   return null;
+}
+
+/**
+ * Get next parallel group to execute with race-condition protection (Fix #13)
+ * Uses a promise-based mutex to ensure only one caller at a time can claim tasks.
+ * This is the SAFE version that should be preferred over getNextParallelGroup.
+ */
+export async function getNextParallelGroupSafe(
+  plan: SwarmPlan,
+  completedIds: number[]
+): Promise<number[] | null> {
+  if (!plan.parallelGroups) return null;
+
+  const release = await taskClaimManager.acquireLock();
+  try {
+    for (const group of plan.parallelGroups) {
+      // Filter to tasks that are not completed AND not already claimed
+      const candidates = group.filter(taskId => {
+        if (completedIds.includes(taskId)) return false;
+        if (taskClaimManager.isClaimed(taskId)) return false;
+        const task = plan.tasks.find(t => t.id === taskId);
+        if (!task) return false;
+        return task.dependencies.every(depId => completedIds.includes(depId));
+      });
+
+      if (candidates.length > 0) {
+        // All candidates have their dependencies met; claim them atomically
+        const claimed = taskClaimManager.claim(candidates);
+        if (claimed) {
+          return candidates;
+        }
+        // If claim failed (shouldn't happen under lock), try next group
+      }
+    }
+    return null;
+  } finally {
+    release();
+  }
 }
 
 /**
@@ -389,6 +728,22 @@ export function updateTaskStatus(
   taskId: number,
   status: TaskStatus
 ): SwarmPlan {
+  // Precondition checks (Fix #28)
+  if (!plan || !Array.isArray(plan.tasks)) {
+    throw new StepValidationError('updateTaskStatus', 'Plan must have a valid tasks array');
+  }
+  if (typeof taskId !== 'number' || isNaN(taskId)) {
+    throw new StepValidationError('updateTaskStatus', `taskId must be a valid number, got: ${taskId}`);
+  }
+  const validStatuses: TaskStatus[] = ['pending', 'running', 'completed', 'failed'];
+  if (!validStatuses.includes(status)) {
+    throw new StepValidationError('updateTaskStatus', `Invalid status "${status}". Valid: ${validStatuses.join(', ')}`);
+  }
+  const taskExists = plan.tasks.some(t => t.id === taskId);
+  if (!taskExists) {
+    throw new StepValidationError('updateTaskStatus', `Task with id ${taskId} not found in plan`);
+  }
+
   return {
     ...plan,
     tasks: plan.tasks.map(task =>
@@ -401,6 +756,11 @@ export function updateTaskStatus(
  * Check if plan is complete
  */
 export function isPlanComplete(plan: SwarmPlan): boolean {
+  // Precondition check (Fix #28)
+  if (!plan || !Array.isArray(plan.tasks)) {
+    throw new StepValidationError('isPlanComplete', 'Plan must have a valid tasks array');
+  }
+
   return plan.tasks.every(task =>
     task.status === 'completed' || task.status === 'failed'
   );
@@ -414,6 +774,17 @@ export function createTranscript(
   query: string,
   mode: string
 ): SwarmTranscript {
+  // Precondition checks (Fix #28)
+  if (!sessionId || typeof sessionId !== 'string' || sessionId.trim().length === 0) {
+    throw new StepValidationError('createTranscript', 'sessionId must be a non-empty string');
+  }
+  if (!query || typeof query !== 'string' || query.trim().length === 0) {
+    throw new StepValidationError('createTranscript', 'query must be a non-empty string');
+  }
+  if (!mode || typeof mode !== 'string') {
+    throw new StepValidationError('createTranscript', 'mode must be a non-empty string');
+  }
+
   return {
     sessionId,
     query,

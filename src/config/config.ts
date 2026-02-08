@@ -155,11 +155,17 @@ export class ConfigManager {
 
     // Swarm settings
     if (process.env.HYDRA_MAX_TASKS) {
-      this.config.swarm.maxTasks = parseInt(process.env.HYDRA_MAX_TASKS, 10);
+      const parsed = parseInt(process.env.HYDRA_MAX_TASKS, 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        this.config.swarm.maxTasks = parsed;
+      }
     }
 
     if (process.env.HYDRA_TIMEOUT) {
-      this.config.swarm.timeout = parseInt(process.env.HYDRA_TIMEOUT, 10);
+      const parsed = parseInt(process.env.HYDRA_TIMEOUT, 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        this.config.swarm.timeout = parsed;
+      }
     }
   }
 
@@ -219,7 +225,7 @@ export class ConfigManager {
     }
 
     // Check trusted folders
-    return this.config.paths.trustedFolders.some(folder => {
+    return this.config.paths.trustedFolders.some((folder: string) => {
       const trustedPath = resolve(folder);
       return resolved.startsWith(trustedPath);
     });
@@ -229,7 +235,7 @@ export class ConfigManager {
    * Check if path matches ignore patterns
    */
   isIgnored(path: string): boolean {
-    return this.config.paths.ignorePatterns.some(pattern => {
+    return this.config.paths.ignorePatterns.some((pattern: string) => {
       if (pattern.includes('*')) {
         // Simple glob matching
         const regex = new RegExp(
@@ -244,13 +250,57 @@ export class ConfigManager {
   /**
    * Update config at runtime
    */
-  set(key: keyof HydraConfig, value: Partial<HydraConfig[keyof HydraConfig]>): void {
+  set<K extends keyof HydraConfig>(key: K, value: Partial<HydraConfig[K]>): void {
     if (key in this.config) {
-      (this.config as unknown as Record<string, unknown>)[key] = {
-        ...(this.config[key] as object),
-        ...(value as object),
-      };
+      this.config[key] = {
+        ...this.config[key],
+        ...value,
+      } as HydraConfig[K];
     }
+  }
+}
+
+/**
+ * Validate required and optional environment variables at startup.
+ * Throws an error listing ALL missing required vars (not just the first one).
+ * Logs warnings for missing optional vars.
+ */
+export function validateEnvVars(): void {
+  const requiredVars: { name: string; description: string }[] = [
+    { name: 'GEMINI_API_KEY', description: 'Gemini API key for LLM provider' },
+  ];
+
+  const optionalVars: { name: string; description: string; defaultHint: string }[] = [
+    { name: 'HYDRA_MODEL', description: 'Model override', defaultHint: 'gemini-2.0-flash' },
+    { name: 'HYDRA_MAX_TASKS', description: 'Max swarm tasks', defaultHint: '3' },
+    { name: 'HYDRA_TIMEOUT', description: 'Swarm timeout in ms', defaultHint: '60000' },
+    { name: 'HYDRA_HEADLESS', description: 'Headless mode', defaultHint: 'false' },
+    { name: 'HYDRA_VERBOSE', description: 'Verbose logging', defaultHint: 'false' },
+    { name: 'HYDRA_STREAMING', description: 'Enable streaming', defaultHint: 'true' },
+    { name: 'LOCAL_LLM_URL', description: 'Local LLM server URL', defaultHint: 'http://localhost:8000' },
+  ];
+
+  // Check required vars
+  const missing: string[] = [];
+  for (const v of requiredVars) {
+    const value = process.env[v.name];
+    if (!value || value.trim() === '') {
+      missing.push(`  - ${v.name}: ${v.description}`);
+    }
+  }
+
+  // Warn about missing optional vars
+  for (const v of optionalVars) {
+    if (!process.env[v.name]) {
+      console.warn(`[config] Optional env var ${v.name} not set (${v.description}). Using default: ${v.defaultHint}`);
+    }
+  }
+
+  // Throw if any required vars are missing
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing required environment variables:\n${missing.join('\n')}\n\nSet them in your .env file or shell environment.`
+    );
   }
 }
 

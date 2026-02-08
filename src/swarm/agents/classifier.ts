@@ -82,6 +82,13 @@ const AGENT_KEYWORDS: Record<AgentRole, string[]> = {
     'api endpoint', 'external service', 'rest api', 'webhooks for',
     'payment gateway',
     'api', 'endpoint', 'webhook', 'rest', 'graphql', 'integrate with', 'gateway'
+  ],
+
+  // Code Intelligence Agent
+  serena: [
+    'find symbol', 'code navigation', 'code intelligence', 'lsp',
+    'find references', 'go to definition', 'symbol search',
+    'rename symbol', 'code analysis', 'semantic search'
   ]
 };
 

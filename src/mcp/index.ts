@@ -41,6 +41,9 @@ export {
   getAllAliases,
   getAliasesByPrefix,
   findAliasForTool,
+  clampNumber,
+  sanitizeNumericParams,
+  NUMERIC_LIMITS,
   MCP_ALIASES,
   PREDEFINED_ALIASES
 } from './MCPAliases.js';
@@ -116,6 +119,22 @@ export type {
   SerenaSymbol,
   SerenaSearchResult
 } from './SerenaIntegration.js';
+
+// ============================================================
+// Serena Service (High-level wrapper)
+// ============================================================
+
+export {
+  SerenaService,
+  createSerenaService,
+  getSerenaService
+} from './SerenaService.js';
+
+export type {
+  SerenaConfig,
+  SymbolInfo,
+  FileInfo
+} from './SerenaService.js';
 
 // ============================================================
 // Native Tools Server (Virtual MCP server for native tools)

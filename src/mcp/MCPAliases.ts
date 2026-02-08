@@ -182,6 +182,22 @@ const TOOL_ALIASES: Record<string, string> = {
   'browser:shot': 'playwright__browser_take_screenshot',
   'browser:tabs': 'playwright__browser_tabs',
 
+  // ========== Document Operations (doc:*) - NATIVE ==========
+  // Word, Excel, PDF creation and editing via native implementations
+  'doc:word': 'native__create_word_document',
+  'doc:create-word': 'native__create_word_document',
+  'doc:edit-word': 'native__edit_word_document',
+  'doc:txt2word': 'native__convert_txt_to_word',
+  'doc:excel': 'native__create_excel_file',
+  'doc:create-excel': 'native__create_excel_file',
+  'doc:edit-excel': 'native__edit_excel_file',
+  'doc:csv2excel': 'native__convert_csv_to_excel',
+  'doc:pdf': 'native__create_pdf_file',
+  'doc:create-pdf': 'native__create_pdf_file',
+  'word': 'native__create_word_document',
+  'excel': 'native__create_excel_file',
+  'pdf': 'native__create_pdf_file',
+
   // ========== Quick shortcuts - MIGRATED TO NATIVE ==========
   'list': 'native__list_dir',
   'read': 'native__read_file',
@@ -253,6 +269,95 @@ export const NATIVE_ALTERNATIVES: Record<string, string> = {
   'run': '/shell',
   'exec': '/shell'
 };
+
+// ============================================================
+// Numeric Parameter Validation
+// ============================================================
+
+/**
+ * Clamp a numeric value to a safe range.
+ * Use this to validate numeric parameters from LLM input before passing
+ * them to tool execution (e.g. maxResults, temperature, timeout, etc.).
+ *
+ * Handles edge cases from LLM output:
+ * - NaN, Infinity, -Infinity -> defaults to min
+ * - String numbers (e.g. "100") -> coerced to number then clamped
+ * - Non-numeric types -> defaults to min
+ * - Extremely large/small values -> clamped to range
+ *
+ * @param value - The numeric value to clamp (accepts number or string for coercion)
+ * @param min - Minimum allowed value
+ * @param max - Maximum allowed value
+ * @returns The value clamped to [min, max]
+ */
+export function clampNumber(value: number | string | unknown, min: number, max: number): number {
+  // Coerce string numbers from LLM output (e.g. "100", "3.14")
+  let num: number;
+  if (typeof value === 'string') {
+    num = Number(value);
+  } else if (typeof value === 'number') {
+    num = value;
+  } else {
+    return min; // Non-numeric type -> default to minimum
+  }
+
+  // Guard against NaN, Infinity, -Infinity
+  if (!Number.isFinite(num)) {
+    return min;
+  }
+
+  return Math.max(min, Math.min(max, num));
+}
+
+/**
+ * Predefined safe ranges for common numeric parameters from LLM input.
+ * Apply via: clampNumber(value, NUMERIC_LIMITS.maxResults.min, NUMERIC_LIMITS.maxResults.max)
+ */
+export const NUMERIC_LIMITS = {
+  maxResults:   { min: 1,    max: 1000 },
+  temperature:  { min: 0,    max: 2 },
+  topK:         { min: 1,    max: 500 },
+  topP:         { min: 0,    max: 1 },
+  maxTokens:    { min: 1,    max: 100000 },
+  timeout:      { min: 1000, max: 600000 },
+  depth:        { min: 1,    max: 20 },
+  pageSize:     { min: 1,    max: 200 },
+  lineNumber:   { min: 0,    max: 1000000 },
+  contextLines: { min: 0,    max: 50 }
+} as const;
+
+/**
+ * Sanitize all numeric fields in a params object using a limits map.
+ * Only clamps fields that exist in both params and limits.
+ *
+ * Handles LLM output quirks:
+ * - String numbers (e.g. "100") are coerced and clamped
+ * - NaN/Infinity values are replaced with the minimum
+ * - Missing fields are left untouched
+ *
+ * @param params - Parameters object (will not be mutated)
+ * @param limits - Map of field name to {min, max} ranges
+ * @returns A new object with numeric fields clamped to safe ranges
+ */
+export function sanitizeNumericParams(
+  params: Record<string, any>,
+  limits: Record<string, { min: number; max: number }> = NUMERIC_LIMITS
+): Record<string, any> {
+  const result = { ...params };
+
+  for (const [key, range] of Object.entries(limits)) {
+    if (!(key in result)) continue;
+
+    const value = result[key];
+
+    // Handle both number and string-number (LLM may send "100" instead of 100)
+    if (typeof value === 'number' || typeof value === 'string') {
+      result[key] = clampNumber(value, range.min, range.max);
+    }
+  }
+
+  return result;
+}
 
 // ============================================================
 // Alias Resolution

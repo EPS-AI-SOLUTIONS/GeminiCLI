@@ -18,11 +18,9 @@
 export {
   ChatContainer,
   SessionSidebar,
-  RightSidebar,
   SettingsModal,
   StatusFooter,
   MemoryPanel,
-  BridgePanel,
   CodeBlock,
   ErrorBoundary,
   Button,
@@ -76,18 +74,11 @@ export type {
 
 export {
   useAppTheme,
-  useAppThemeDefault,
   useStreamListeners,
-  useStreamListenersDefault,
   useGeminiModels,
-  useGeminiModelsDefault,
   useEnvLoader,
-  useEnvLoaderDefault,
-  useHotkey,
   isHotkeyPressed,
-  useHotkeyDefault,
-  useKeyboardShortcuts,
-  useKeyboardShortcutsDefault,
+  useAppKeyboardShortcuts,
 } from './hooks';
 
 // ============================================================================
@@ -97,8 +88,6 @@ export {
 export {
   TauriService,
   BridgeService,
-  ModelService,
-  PromptService,
   SystemService,
   MemoryService,
   TauriServiceDefault,
@@ -128,24 +117,14 @@ export {
   selectIsApiKeySet,
   selectSettings,
   selectSessionById,
-  selectMessagesBySessionId,
   selectSessionCount,
-  selectSessionHasMessages,
-  selectSessionMetadata,
-  selectChatHistory,
-  selectMessageCount,
-  selectMessageCountBySessionId,
   selectHasMessages,
-  selectLastMessage,
-  selectLastMessageBySessionId,
   selectOllamaEndpoint,
   selectSystemPrompt,
   selectDefaultProvider,
   selectUseSwarm,
   selectGeminiApiKey,
   selectIsAppReady,
-  selectApiConfigStatus,
-  selectRuntimeSettings,
 } from './store';
 
 // ============================================================================
@@ -166,10 +145,6 @@ export type {
   KnowledgeNode as KnowledgeNodeType,
   KnowledgeEdge as KnowledgeEdgeType,
   KnowledgeGraph as KnowledgeGraphType,
-  ChatContainerProps,
-  SessionSidebarProps,
-  StatusFooterProps,
-  SettingsModalProps,
   AppState,
 } from './types';
 

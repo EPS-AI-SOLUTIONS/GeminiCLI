@@ -6,7 +6,7 @@
  * Change values here to update across entire app.
  */
 
-import type { Settings } from '../types';
+import type { Settings, GeminiModelInfo } from '../types';
 
 // ============================================================================
 // APP LIMITS
@@ -82,24 +82,93 @@ export const HUGGINGFACE_REPOS = {
 } as const;
 
 // ============================================================================
+// GEMINI MODELS (API-fetched structure)
+// ============================================================================
+
+export const GEMINI_MODELS: GeminiModelInfo[] = [
+  {
+    id: 'gemini-2.5-flash',
+    provider: 'google',
+    name: 'models/gemini-2.5-flash',
+    label: 'Gemini 2.5 Flash',
+    contextWindow: 1048576,
+    capabilities: { vision: true, functionCalling: true, jsonMode: true },
+    metadata: { isExperimental: false, fetchedAt: Date.now() },
+  },
+  {
+    id: 'gemini-2.5-pro',
+    provider: 'google',
+    name: 'models/gemini-2.5-pro',
+    label: 'Gemini 2.5 Pro',
+    contextWindow: 1048576,
+    capabilities: { vision: true, functionCalling: true, jsonMode: true },
+    metadata: { isExperimental: false, fetchedAt: Date.now() },
+  },
+  {
+    id: 'gemini-2.5-flash-lite',
+    provider: 'google',
+    name: 'models/gemini-2.5-flash-lite',
+    label: 'Gemini 2.5 Flash Lite',
+    contextWindow: 1048576,
+    capabilities: { vision: true, functionCalling: true, jsonMode: true },
+    metadata: { isExperimental: false, fetchedAt: Date.now() },
+  },
+  {
+    id: 'gemini-3-flash-preview',
+    provider: 'google',
+    name: 'models/gemini-3-flash-preview',
+    label: 'Gemini 3 Flash (Preview)',
+    contextWindow: 1048576,
+    capabilities: { vision: true, functionCalling: true, jsonMode: true },
+    metadata: { isExperimental: true, fetchedAt: Date.now() },
+  },
+  {
+    id: 'gemini-3-pro-preview',
+    provider: 'google',
+    name: 'models/gemini-3-pro-preview',
+    label: 'Gemini 3 Pro (Preview)',
+    contextWindow: 1048576,
+    capabilities: { vision: true, functionCalling: true, jsonMode: true },
+    metadata: { isExperimental: true, fetchedAt: Date.now() },
+  },
+] as const;
+
+export const DEFAULT_GEMINI_MODEL = GEMINI_MODELS[0].id; // gemini-2.5-flash
+
+// ============================================================================
 // DEFAULT SETTINGS
 // ============================================================================
 
-export const DEFAULT_SYSTEM_PROMPT = `
-Jestes Jaskierem z Wiedzmina - mistrzem slowa, trubadurem i niezbyt odwaznym, ale niezwykle lojalnym kompanem.
-Twoim obecnym "Geraltem" jest uzytkownik GeminiGUI.
-Mowisz w jezyku polskim, uzywajac barwnego, nieco archaicznego, ale ironicznego jezyka.
-Czesto wtrącasz anegdoty o swoich przygodach, narzekasz na trudy podrozy i nie szczeedzisz lekkich zlosliwosci (roast), ale zawsze sluzysz pomoca.
+// Synced with src/core/PromptSystem.ts getIdentityContext()
+export const DEFAULT_SYSTEM_PROMPT = `Jestes GeminiHydra - lokalnym wieloagentowym systemem AI. Dzialasz na komputerze uzytkownika (Windows).
 
-Masz dostep do magii (komend systemowych). Aby rzucic zaklecie (wykonac komende), uzyj formatu:
-[EXECUTE: "twoja komenda tutaj"]
+KRYTYCZNE ZASADY ODPOWIADANIA:
+1. ODPOWIADAJ KONKRETNIE i BEZPOSREDNIO na pytania uzytkownika.
+2. NIE HALUCYNUJ - nie udawaj ze wykonujesz komendy. Nie pisz fikcyjnych wynikow komend.
+3. Gdy uzytkownik prosi o wylistowanie plikow, pokazanie struktury itp. - uzyj formatu: [EXECUTE: komenda] na OSOBNEJ LINII. System automatycznie wykona komende i pokaze wynik.
+4. NIE wymyslaj wynikow komend. Jesli nie mozesz czegos wykonac, powiedz o tym wprost.
+5. Odpowiadaj ZWIEZLE - nie dodawaj zbednych metafor, dygresji ani ozdobnikow chyba ze uzytkownik tego chce.
+6. Gdy uzytkownik pyta o cos konkretnego, ODPOWIEDZ na pytanie, nie opowiadaj historii.
 
-Przyklad:
-Uzytkownik: "Sprawdz wolne miejsce na dysku"
-Jaskier: "Ech, Geralcie... to znaczy, Panie... Nawet w moim ekwipunku jest wiecej miejsca niz na tym twoim magicznym krzemie. Spojrzmy tylko... [EXECUTE: "wmic logicaldisk get size,freespace,caption"]"
+DOSTEPNE KOMENDY (uzywaj na osobnej linii):
+[EXECUTE: dir] - lista plikow
+[EXECUTE: tree /F] - struktura katalogow
+[EXECUTE: type "sciezka\\plik"] - odczyt pliku
+[EXECUTE: git status] - status git
+[EXECUTE: komenda] - dowolna komenda systemowa
 
-Uzywaj tego tylko do bezpiecznego zbierania informacji. Twoja piesn musi byc piekna, a kody czyste.
-`.trim();
+PRZYKLAD PRAWIDLOWEJ ODPOWIEDZI:
+Uzytkownik: "pokaz mi strukture projektu"
+Odpowiedz: "Oto struktura projektu:
+[EXECUTE: tree /F /A]"
+
+PRZYKLAD ZLEJ ODPOWIEDZI (NIE ROB TAK):
+"Rzucam zaklecie! [EXECUTE: dir] No i proszę, oto wynik: C:\\Users\\..."  <-- TO JEST HALUCYNACJA!
+
+Twoje agenty: Dijkstra (strateg), Geralt (bezpieczenstwo), Yennefer (architekt), Triss (QA), Ciri (zwiadowca), Regis (badacz), Jaskier (komunikator), Vesemir (mentor), Eskel (DevOps), Lambert (debugger), Zoltan (dane), Philippa (API).
+Odpowiadaj po polsku.`.trim();
+
+export const DEFAULT_OLLAMA_ENDPOINT = 'http://localhost:11434';
 
 export const DEFAULT_SETTINGS: Settings = {
   llamaModelsDir: './data/models',
@@ -107,7 +176,9 @@ export const DEFAULT_SETTINGS: Settings = {
   systemPrompt: DEFAULT_SYSTEM_PROMPT,
   geminiApiKey: '',
   defaultProvider: 'llama',
-  useSwarm: false,
+  selectedModel: DEFAULT_GEMINI_MODEL,
+  useSwarm: true,
+  ollamaEndpoint: DEFAULT_OLLAMA_ENDPOINT,
 };
 
 // ============================================================================
@@ -115,7 +186,7 @@ export const DEFAULT_SETTINGS: Settings = {
 // ============================================================================
 
 export const FALLBACK_MODELS = {
-  gemini: ['gemini-3-flash-preview', 'gemini-3-pro-preview'],
+  gemini: GEMINI_MODELS.map((m) => m.id),
   llama: [LLAMA_MODELS.LLAMA_3_2_3B, LLAMA_MODELS.QWEN_CODER_1_5B, LLAMA_MODELS.LLAMA_3_2_1B],
 } as const;
 
@@ -183,6 +254,7 @@ export const TAURI_COMMANDS = {
   // Gemini
   GET_GEMINI_MODELS: 'get_gemini_models',
   PROMPT_GEMINI_STREAM: 'prompt_gemini_stream',
+  CHAT_WITH_GEMINI: 'chat_with_gemini',
 
   // System
   RUN_SYSTEM_COMMAND: 'run_system_command',
@@ -225,8 +297,10 @@ export const STORAGE_KEYS = {
 // ============================================================================
 
 export const COMMAND_PATTERNS = {
-  // Match [EXECUTE: "command"] or [Electrochemical: "command"]
-  EXECUTE: /\[(?:EXECUTE|Electrochemical):\s*"(.*?)"\]/,
+  // Match [EXECUTE: command] with or without quotes
+  EXECUTE: /\[EXECUTE:\s*"?(.*?)"?\s*\]/,
+  // Match ALL [EXECUTE: ...] patterns in a string (global)
+  EXECUTE_ALL: /\[EXECUTE:\s*"?(.*?)"?\s*\]/g,
 } as const;
 
 // ============================================================================
