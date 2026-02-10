@@ -238,3 +238,11 @@ export function getAgentForTask(category: TaskCategory): AgentRole {
 export function getAllAgentRoles(): AgentRole[] {
   return Object.values(AGENT_ROLES);
 }
+
+/**
+ * Resolve agent role from string (case-insensitive, fallback to geralt)
+ */
+export function resolveAgentRole(name: string): AgentRole {
+  const normalized = name.toLowerCase() as AgentRole;
+  return Object.values(AGENT_ROLES).includes(normalized) ? normalized : 'geralt';
+}

@@ -3,7 +3,7 @@
  * Tests for the Swarm orchestrator with mocked providers
  */
 
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 // These tests are designed to run with the actual codebase
 // They test integration between components
@@ -93,10 +93,10 @@ test.describe('Service Module Integration', () => {
 
 test.describe('Config Module Integration', () => {
   test('should import agents config without errors', async () => {
-    const module = await import('../src/config/agents.js');
+    const module = await import('../src/config/agents.config.js');
 
-    expect(module.AGENT_PERSONAS).toBeDefined();
-    expect(module.getAgentPersona).toBeDefined();
+    expect(module.AGENT_ROLES).toBeDefined();
+    expect(module.AGENT_DESCRIPTIONS).toBeDefined();
     expect(module.resolveAgentRole).toBeDefined();
   });
 

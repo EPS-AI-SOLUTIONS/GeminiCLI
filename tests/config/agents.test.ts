@@ -1,116 +1,116 @@
 /**
- * Tests for Agent Personas Configuration
+ * Tests for Agent Configuration
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  AGENT_PERSONAS,
-  getAgentPersona,
+  AGENT_COLORS,
+  AGENT_DESCRIPTIONS,
+  AGENT_FALLBACK_CHAINS,
+  AGENT_ROLES,
+  getAgentColor,
+  getAgentDescription,
+  getAgentFallbackChain,
+  getAgentForTask,
+  getAllAgentRoles,
   resolveAgentRole,
-} from '../../src/config/agents.js';
+  TASK_ROUTING,
+} from '../../src/config/agents.config.js';
 
-describe('AGENT_PERSONAS', () => {
-  it('should define dijkstra persona', () => {
-    expect(AGENT_PERSONAS.dijkstra).toBeDefined();
-    expect(AGENT_PERSONAS.dijkstra?.name).toBe('dijkstra');
-    expect(AGENT_PERSONAS.dijkstra?.role).toBe('Strategist');
+describe('AGENT_ROLES', () => {
+  it('should define all 12 agents', () => {
+    expect(Object.keys(AGENT_ROLES)).toHaveLength(12);
   });
 
-  it('should define regis persona', () => {
-    expect(AGENT_PERSONAS.regis).toBeDefined();
-    expect(AGENT_PERSONAS.regis?.name).toBe('regis');
-    expect(AGENT_PERSONAS.regis?.role).toBe('Synthesizer');
+  it('should have correct role values', () => {
+    expect(AGENT_ROLES.DIJKSTRA).toBe('dijkstra');
+    expect(AGENT_ROLES.GERALT).toBe('geralt');
+    expect(AGENT_ROLES.YENNEFER).toBe('yennefer');
+    expect(AGENT_ROLES.REGIS).toBe('regis');
+  });
+});
+
+describe('AGENT_DESCRIPTIONS', () => {
+  it('should have descriptions for all roles', () => {
+    for (const role of Object.values(AGENT_ROLES)) {
+      expect(AGENT_DESCRIPTIONS[role]).toBeDefined();
+      expect(AGENT_DESCRIPTIONS[role].name).toBeDefined();
+      expect(AGENT_DESCRIPTIONS[role].title).toBeDefined();
+      expect(AGENT_DESCRIPTIONS[role].specialty).toBeDefined();
+      expect(AGENT_DESCRIPTIONS[role].personality).toBeDefined();
+    }
   });
 
-  it('should define geralt persona', () => {
-    expect(AGENT_PERSONAS.geralt).toBeDefined();
-    expect(AGENT_PERSONAS.geralt?.name).toBe('geralt');
-    expect(AGENT_PERSONAS.geralt?.role).toBe('Executor');
+  it('should define dijkstra description', () => {
+    expect(AGENT_DESCRIPTIONS.dijkstra.name).toBe('Dijkstra');
+    expect(AGENT_DESCRIPTIONS.dijkstra.title).toBe('Supreme Coordinator');
   });
 
-  it('should define philippa persona', () => {
-    expect(AGENT_PERSONAS.philippa).toBeDefined();
-    expect(AGENT_PERSONAS.philippa?.name).toBe('philippa');
-    expect(AGENT_PERSONAS.philippa?.role).toBe('API Specialist');
+  it('should define geralt description', () => {
+    expect(AGENT_DESCRIPTIONS.geralt.name).toBe('Geralt');
+    expect(AGENT_DESCRIPTIONS.geralt.title).toBe('Lead Developer');
   });
+});
 
-  it('should define yennefer persona', () => {
-    expect(AGENT_PERSONAS.yennefer).toBeDefined();
-    expect(AGENT_PERSONAS.yennefer?.name).toBe('yennefer');
-    expect(AGENT_PERSONAS.yennefer?.role).toBe('Translator');
-  });
-
-  it('should define triss persona', () => {
-    expect(AGENT_PERSONAS.triss).toBeDefined();
-    expect(AGENT_PERSONAS.triss?.name).toBe('triss');
-    expect(AGENT_PERSONAS.triss?.role).toBe('Researcher');
-  });
-
-  it('should define jaskier persona', () => {
-    expect(AGENT_PERSONAS.jaskier).toBeDefined();
-    expect(AGENT_PERSONAS.jaskier?.name).toBe('jaskier');
-    expect(AGENT_PERSONAS.jaskier?.role).toBe('Writer');
-  });
-
-  it('should define vesemir persona', () => {
-    expect(AGENT_PERSONAS.vesemir).toBeDefined();
-    expect(AGENT_PERSONAS.vesemir?.name).toBe('vesemir');
-    expect(AGENT_PERSONAS.vesemir?.role).toBe('Mentor');
-  });
-
-  it('should define ciri persona', () => {
-    expect(AGENT_PERSONAS.ciri).toBeDefined();
-    expect(AGENT_PERSONAS.ciri?.name).toBe('ciri');
-    expect(AGENT_PERSONAS.ciri?.role).toBe('Navigator');
-  });
-
-  it('should define eskel persona', () => {
-    expect(AGENT_PERSONAS.eskel).toBeDefined();
-    expect(AGENT_PERSONAS.eskel?.name).toBe('eskel');
-    expect(AGENT_PERSONAS.eskel?.role).toBe('Builder');
-  });
-
-  it('should define lambert persona', () => {
-    expect(AGENT_PERSONAS.lambert).toBeDefined();
-    expect(AGENT_PERSONAS.lambert?.name).toBe('lambert');
-    expect(AGENT_PERSONAS.lambert?.role).toBe('Tester');
-  });
-
-  it('should define zoltan persona', () => {
-    expect(AGENT_PERSONAS.zoltan).toBeDefined();
-    expect(AGENT_PERSONAS.zoltan?.name).toBe('zoltan');
-    expect(AGENT_PERSONAS.zoltan?.role).toBe('Analyst');
-  });
-
-  it('all personas should have required fields', () => {
-    for (const [key, persona] of Object.entries(AGENT_PERSONAS)) {
-      expect(persona?.name).toBeDefined();
-      expect(persona?.role).toBeDefined();
-      expect(persona?.description).toBeDefined();
+describe('AGENT_COLORS', () => {
+  it('should have colors for all roles', () => {
+    for (const role of Object.values(AGENT_ROLES)) {
+      expect(AGENT_COLORS[role]).toBeDefined();
+      expect(typeof AGENT_COLORS[role]).toBe('string');
     }
   });
 });
 
-describe('getAgentPersona', () => {
-  it('should return correct persona for valid role', () => {
-    const dijkstra = getAgentPersona('dijkstra');
-    expect(dijkstra.name).toBe('dijkstra');
-    expect(dijkstra.role).toBe('Strategist');
-  });
-
-  it('should return geralt persona for unknown role', () => {
-    const unknown = getAgentPersona('unknown' as any);
-    expect(unknown.name).toBe('geralt');
-  });
-
-  it('should return geralt for all valid roles', () => {
-    const roles = ['dijkstra', 'regis', 'geralt', 'philippa', 'yennefer',
-                   'triss', 'jaskier', 'vesemir', 'ciri', 'eskel', 'lambert', 'zoltan'] as const;
-
-    for (const role of roles) {
-      const persona = getAgentPersona(role);
-      expect(persona.name).toBe(role);
+describe('AGENT_FALLBACK_CHAINS', () => {
+  it('should have fallback chains for all roles', () => {
+    for (const role of Object.values(AGENT_ROLES)) {
+      expect(AGENT_FALLBACK_CHAINS[role]).toBeDefined();
+      expect(Array.isArray(AGENT_FALLBACK_CHAINS[role])).toBe(true);
     }
+  });
+});
+
+describe('TASK_ROUTING', () => {
+  it('should route coding to geralt', () => {
+    expect(TASK_ROUTING.coding).toBe('geralt');
+  });
+
+  it('should route research to regis', () => {
+    expect(TASK_ROUTING.research).toBe('regis');
+  });
+});
+
+describe('getAgentDescription', () => {
+  it('should return correct description', () => {
+    const desc = getAgentDescription('dijkstra');
+    expect(desc.name).toBe('Dijkstra');
+  });
+});
+
+describe('getAgentColor', () => {
+  it('should return color string', () => {
+    expect(typeof getAgentColor('geralt')).toBe('string');
+  });
+});
+
+describe('getAgentFallbackChain', () => {
+  it('should return fallback array', () => {
+    const chain = getAgentFallbackChain('dijkstra');
+    expect(Array.isArray(chain)).toBe(true);
+    expect(chain.length).toBeGreaterThan(0);
+  });
+});
+
+describe('getAgentForTask', () => {
+  it('should return agent for task category', () => {
+    expect(getAgentForTask('coding')).toBe('geralt');
+    expect(getAgentForTask('security')).toBe('lambert');
+  });
+});
+
+describe('getAllAgentRoles', () => {
+  it('should return all 12 roles', () => {
+    expect(getAllAgentRoles()).toHaveLength(12);
   });
 });
 
@@ -134,8 +134,20 @@ describe('resolveAgentRole', () => {
   });
 
   it('should handle all known agents', () => {
-    const agents = ['dijkstra', 'regis', 'geralt', 'philippa', 'yennefer',
-                    'triss', 'jaskier', 'vesemir', 'ciri', 'eskel', 'lambert', 'zoltan'];
+    const agents = [
+      'dijkstra',
+      'regis',
+      'geralt',
+      'philippa',
+      'yennefer',
+      'triss',
+      'jaskier',
+      'vesemir',
+      'ciri',
+      'eskel',
+      'lambert',
+      'zoltan',
+    ];
 
     for (const agent of agents) {
       expect(resolveAgentRole(agent)).toBe(agent);
