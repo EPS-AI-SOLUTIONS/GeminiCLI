@@ -8,33 +8,30 @@
  */
 
 export {
-  KnowledgeBank,
-  knowledgeBank,
-  type KnowledgeType,
-  type KnowledgeSource,
-  type KnowledgeEntry,
-  type SearchResult,
-  type RAGContext
-} from './KnowledgeBank.js';
-
-export {
+  type AgentContext,
+  type AgentResponse,
   KnowledgeAgent,
   knowledgeAgent,
   type LearnedKnowledge,
-  type AgentContext,
-  type AgentResponse,
-  type TrainingConfig as AgentTrainingConfig
+  type TrainingConfig as AgentTrainingConfig,
 } from './KnowledgeAgent.js';
-
 export {
-  ModelTrainer,
-  modelTrainer,
+  KnowledgeBank,
+  type KnowledgeEntry,
+  type KnowledgeSource,
+  type KnowledgeType,
+  knowledgeBank,
+  type RAGContext,
+  type SearchResult,
+} from './KnowledgeBank.js';
+export { knowledgeCommands } from './KnowledgeCommands.js';
+export {
   AVAILABLE_BASE_MODELS,
   DEFAULT_TRAINING_CONFIG,
+  ModelTrainer,
+  modelTrainer,
+  type ProgressCallback,
   type TrainingConfig,
   type TrainingProgress,
   type TrainingResult,
-  type ProgressCallback
 } from './ModelTrainer.js';
-
-export { knowledgeCommands } from './KnowledgeCommands.js';

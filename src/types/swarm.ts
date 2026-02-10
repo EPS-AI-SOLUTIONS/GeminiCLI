@@ -3,7 +3,7 @@
  * Type definitions for the Witcher Swarm system
  */
 
-import type { TaskStatus, TaskPriority, TaskDifficulty } from './task.js';
+import type { TaskDifficulty, TaskPriority, TaskStatus } from './task.js';
 
 /**
  * Model tiers for 3-level hierarchy
@@ -14,22 +14,50 @@ export type ModelTier = 'commander' | 'coordinator' | 'executor';
  * All valid agent role values as a const array for runtime iteration and validation
  */
 export const AGENT_ROLES = [
-  'geralt', 'yennefer', 'triss', 'jaskier',
-  'vesemir', 'ciri', 'eskel', 'lambert',
-  'zoltan', 'regis', 'dijkstra', 'philippa',
-  'serena'  // Code Intelligence Agent - uses real Serena MCP
+  'geralt',
+  'yennefer',
+  'triss',
+  'jaskier',
+  'vesemir',
+  'ciri',
+  'eskel',
+  'lambert',
+  'zoltan',
+  'regis',
+  'dijkstra',
+  'philippa',
+  'serena', // Code Intelligence Agent - uses real Serena MCP
 ] as const;
 
 /**
  * Agent roles (12 Witcher agents + Serena)
  */
-export type AgentRole = typeof AGENT_ROLES[number];
+export type AgentRole = (typeof AGENT_ROLES)[number];
 
 /**
  * Type guard: checks if a string is a valid AgentRole at runtime
+ * TYPE SAFETY FIX (#17): Use this before any `as AgentRole` cast.
  */
 export function isValidAgentRole(role: string): role is AgentRole {
   return (AGENT_ROLES as readonly string[]).includes(role);
+}
+
+/**
+ * Safely resolve a string to AgentRole with fallback.
+ * TYPE SAFETY FIX (#17): Replaces unsafe `as AgentRole` casts with validated resolution.
+ *
+ * @example
+ * ```ts
+ * const agent = resolveAgentRoleSafe(task.agent); // returns validated role or 'geralt'
+ * ```
+ */
+export function resolveAgentRoleSafe(
+  role: string | undefined,
+  fallback: AgentRole = 'geralt',
+): AgentRole {
+  if (!role) return fallback;
+  const normalized = role.toLowerCase().trim();
+  return isValidAgentRole(normalized) ? normalized : fallback;
 }
 
 /**
@@ -176,4 +204,17 @@ export interface ComplexityAnalysis {
   hasMultipleTasks: boolean;
   technicalTerms: number;
   recommendedAgent: AgentRole;
+}
+
+/**
+ * Swarm shared memory entry
+ * ARCHITECTURE FIX (#15): Moved from types/index.ts to canonical location in swarm.ts
+ */
+export interface SwarmMemory {
+  id: string;
+  timestamp: string;
+  agent: AgentRole;
+  type: 'observation' | 'fact' | 'pattern' | 'error';
+  content: string;
+  tags: string[];
 }

@@ -2,21 +2,21 @@
  * Tests for Constants Configuration
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  OBJECTIVE_TRUNCATION,
-  TASK_TRUNCATION,
-  TASK_DISPLAY_TRUNCATION,
   CONTEXT_TRUNCATION,
-  RESULT_PREVIEW_LENGTH,
-  MIN_SINGLE_RESULT_LENGTH,
-  MAX_TASKS,
-  DEFAULT_TIMEOUT,
   DEFAULT_MODEL,
-  PIPELINE_MODELS,
-  PHASES,
+  DEFAULT_TIMEOUT,
   MAX_HEALING_CYCLES,
   MAX_RETRIES_PER_TASK,
+  MAX_TASKS,
+  MIN_SINGLE_RESULT_LENGTH,
+  OBJECTIVE_TRUNCATION,
+  PHASES,
+  PIPELINE_MODELS,
+  RESULT_PREVIEW_LENGTH,
+  TASK_DISPLAY_TRUNCATION,
+  TASK_TRUNCATION,
 } from '../../src/config/constants.js';
 
 describe('Truncation Constants', () => {
@@ -87,8 +87,8 @@ describe('Model Constants', () => {
 
 describe('PHASES', () => {
   it('should define phase A', () => {
-    expect(PHASES['A']).toContain('Dijkstra');
-    expect(PHASES['A']).toContain('Planning');
+    expect(PHASES.A).toContain('Dijkstra');
+    expect(PHASES.A).toContain('Planning');
   });
 
   it('should define phase B-A', () => {
@@ -97,16 +97,16 @@ describe('PHASES', () => {
   });
 
   it('should define phase B', () => {
-    expect(PHASES['B']).toContain('Graph Processor');
-    expect(PHASES['B']).toContain('Execution');
+    expect(PHASES.B).toContain('Graph Processor');
+    expect(PHASES.B).toContain('Execution');
   });
 
   it('should define phase C', () => {
-    expect(PHASES['C']).toContain('Self-Healing');
+    expect(PHASES.C).toContain('Self-Healing');
   });
 
   it('should define phase D', () => {
-    expect(PHASES['D']).toContain('Synthesis');
+    expect(PHASES.D).toContain('Synthesis');
   });
 
   it('should define backwards compatibility aliases', () => {

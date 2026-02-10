@@ -16,56 +16,52 @@
 
 // Main Components
 export {
+  Button,
   ChatContainer,
+  ChatInput,
+  CodeBlock,
+  DragDropZone,
+  ErrorBoundary,
+  MemoryPanel,
+  MessageList,
+  ModelSelector,
   SessionSidebar,
   SettingsModal,
   StatusFooter,
-  MemoryPanel,
-  CodeBlock,
-  ErrorBoundary,
-  Button,
-  MessageList,
-  ChatInput,
-  ModelSelector,
-  DragDropZone,
 } from './components';
-
+export type {
+  ChatInputProps,
+  DragDropZoneProps,
+  MessageListProps,
+  MessageSkeletonProps,
+  ModelSelectorProps,
+} from './components/chat';
 // Chat Components (with defaults)
 export {
-  MessageListDefault,
   ChatInputDefault,
-  ModelSelectorDefault,
   DragDropZoneDefault,
+  MessageListDefault,
   MessageSkeleton,
-  MessageStreamSkeleton,
   MessageSkeletonDefault,
+  MessageStreamSkeleton,
+  ModelSelectorDefault,
 } from './components/chat';
-
 export type {
-  MessageListProps,
-  ChatInputProps,
-  ModelSelectorProps,
-  DragDropZoneProps,
-  MessageSkeletonProps,
-} from './components/chat';
-
+  ButtonProps,
+  SkeletonAvatarProps,
+  SkeletonBaseProps,
+  SkeletonCardProps,
+  SkeletonMessageProps,
+  SkeletonTextProps,
+} from './components/ui';
 // UI Components
 export {
   ButtonDefault,
   Skeleton,
-  SkeletonText,
   SkeletonAvatar,
   SkeletonCard,
   SkeletonMessage,
-} from './components/ui';
-
-export type {
-  ButtonProps,
-  SkeletonBaseProps,
-  SkeletonTextProps,
-  SkeletonAvatarProps,
-  SkeletonCardProps,
-  SkeletonMessageProps,
+  SkeletonText,
 } from './components/ui';
 
 // ============================================================================
@@ -73,32 +69,31 @@ export type {
 // ============================================================================
 
 export {
-  useAppTheme,
-  useStreamListeners,
-  useGeminiModels,
-  useEnvLoader,
   isHotkeyPressed,
   useAppKeyboardShortcuts,
+  useAppTheme,
+  useEnvLoader,
+  useGeminiModels,
+  useStreamListeners,
 } from './hooks';
 
 // ============================================================================
 // SERVICES
 // ============================================================================
 
-export {
-  TauriService,
-  BridgeService,
-  SystemService,
-  MemoryService,
-  TauriServiceDefault,
-} from './services';
-
 export type {
-  EnvVars,
   AgentMemory,
-  KnowledgeNode,
+  EnvVars,
   KnowledgeEdge,
   KnowledgeGraph,
+  KnowledgeNode,
+} from './services';
+export {
+  BridgeService,
+  MemoryService,
+  SystemService,
+  TauriService,
+  TauriServiceDefault,
 } from './services';
 
 // ============================================================================
@@ -106,25 +101,25 @@ export type {
 // ============================================================================
 
 export {
-  useAppStore,
-  selectTheme,
-  selectProvider,
   selectCount,
-  selectCurrentSessionId,
-  selectSessions,
-  selectCurrentSession,
   selectCurrentMessages,
+  selectCurrentSession,
+  selectCurrentSessionId,
+  selectDefaultProvider,
+  selectGeminiApiKey,
+  selectHasMessages,
   selectIsApiKeySet,
-  selectSettings,
+  selectIsAppReady,
+  selectOllamaEndpoint,
+  selectProvider,
   selectSessionById,
   selectSessionCount,
-  selectHasMessages,
-  selectOllamaEndpoint,
+  selectSessions,
+  selectSettings,
   selectSystemPrompt,
-  selectDefaultProvider,
+  selectTheme,
   selectUseSwarm,
-  selectGeminiApiKey,
-  selectIsAppReady,
+  useAppStore,
 } from './store';
 
 // ============================================================================
@@ -132,20 +127,20 @@ export {
 // ============================================================================
 
 export type {
-  MessageRole,
-  Message,
-  Session,
-  Provider,
-  Settings,
-  Theme,
-  StreamPayload,
-  BridgeState,
-  BridgeRequest,
   AgentMemory as AgentMemoryType,
-  KnowledgeNode as KnowledgeNodeType,
+  AppState,
+  BridgeRequest,
+  BridgeState,
   KnowledgeEdge as KnowledgeEdgeType,
   KnowledgeGraph as KnowledgeGraphType,
-  AppState,
+  KnowledgeNode as KnowledgeNodeType,
+  Message,
+  MessageRole,
+  Provider,
+  Session,
+  Settings,
+  StreamPayload,
+  Theme,
 } from './types';
 
 // ============================================================================
@@ -153,20 +148,20 @@ export type {
 // ============================================================================
 
 export {
-  LIMITS,
-  STATUS,
-  DEFAULT_SYSTEM_PROMPT,
-  DEFAULT_SETTINGS,
-  FALLBACK_MODELS,
   AGENTS,
-  TAURI_EVENTS,
-  TAURI_COMMANDS,
-  QUERY_KEYS,
-  STORAGE_KEYS,
   COMMAND_PATTERNS,
-  UI,
+  DEFAULT_SETTINGS,
+  DEFAULT_SYSTEM_PROMPT,
+  FALLBACK_MODELS,
   KEYBOARD_SHORTCUTS,
   KEYBOARD_SHORTCUTS_LABELS,
+  LIMITS,
+  QUERY_KEYS,
+  STATUS,
+  STORAGE_KEYS,
+  TAURI_COMMANDS,
+  TAURI_EVENTS,
+  UI,
 } from './constants';
 
 // ============================================================================
@@ -174,8 +169,8 @@ export {
 // ============================================================================
 
 export {
-  isValidUrl,
   isValidApiKey,
+  isValidUrl,
   sanitizeContent,
   sanitizeTitle,
 } from './utils/validators';

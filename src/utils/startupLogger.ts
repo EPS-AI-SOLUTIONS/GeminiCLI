@@ -46,7 +46,7 @@ class StartupLogger {
       components: [],
       mcpServers: [],
       warnings: [],
-      startTime: this.startTime
+      startTime: this.startTime,
     };
   }
 
@@ -60,14 +60,19 @@ class StartupLogger {
       components: [],
       mcpServers: [],
       warnings: [],
-      startTime: this.startTime
+      startTime: this.startTime,
     };
   }
 
   /**
    * Add component status
    */
-  addComponent(component: string, status: 'ok' | 'warning' | 'error' | 'pending', message?: string, details?: string): void {
+  addComponent(
+    component: string,
+    status: 'ok' | 'warning' | 'error' | 'pending',
+    message?: string,
+    details?: string,
+  ): void {
     this.summary.components.push({ component, status, message, details });
   }
 
@@ -101,10 +106,10 @@ class StartupLogger {
         'Error',
         'WARNING',
         'failed',
-        'Failed'
+        'Failed',
       ];
 
-      if (!importantPatterns.some(p => logLine.includes(p))) {
+      if (!importantPatterns.some((p) => logLine.includes(p))) {
         return null; // Skip this log
       }
     }
@@ -131,9 +136,19 @@ class StartupLogger {
    * Print startup banner (always shown)
    */
   printBanner(): void {
-    console.log(chalk.magenta('\n╔═══════════════════════════════════════════════════════════════╗'));
-    console.log(chalk.magenta('║') + chalk.yellow.bold('      GEMINI HYDRA v14.0 - SCHOOL OF THE WOLF                  ') + chalk.magenta('║'));
-    console.log(chalk.magenta('║') + chalk.gray('   12 Agents | 5-Phase Protocol | Self-Healing | Full Node.js ') + chalk.magenta('║'));
+    console.log(
+      chalk.magenta('\n╔═══════════════════════════════════════════════════════════════╗'),
+    );
+    console.log(
+      chalk.magenta('║') +
+        chalk.yellow.bold('      GEMINI HYDRA v14.0 - SCHOOL OF THE WOLF                  ') +
+        chalk.magenta('║'),
+    );
+    console.log(
+      chalk.magenta('║') +
+        chalk.gray('   12 Agents | 5-Phase Protocol | Self-Healing | Full Node.js ') +
+        chalk.magenta('║'),
+    );
     console.log(chalk.magenta('╚═══════════════════════════════════════════════════════════════╝'));
   }
 
@@ -143,8 +158,12 @@ class StartupLogger {
   printWindowsWarning(): void {
     if (process.platform === 'win32') {
       console.log(chalk.yellow('\n⚠ WINDOWS: Jeśli prompt nie reaguje, wyłącz "Quick Edit Mode"'));
-      console.log(chalk.gray('   PPM na pasek tytułowy CMD → Właściwości → Odznacz "Quick Edit Mode"'));
-      console.log(chalk.gray('   Zalecane: Windows Terminal (wt.exe) lub /stdin-fix w razie problemów'));
+      console.log(
+        chalk.gray('   PPM na pasek tytułowy CMD → Właściwości → Odznacz "Quick Edit Mode"'),
+      );
+      console.log(
+        chalk.gray('   Zalecane: Windows Terminal (wt.exe) lub /stdin-fix w razie problemów'),
+      );
     }
   }
 
@@ -152,8 +171,9 @@ class StartupLogger {
    * Print consolidated startup summary (only in verbose mode or if errors)
    */
   printSummary(): void {
-    const hasErrors = this.summary.components.some(c => c.status === 'error') ||
-                      this.summary.mcpServers.some(s => s.status === 'error');
+    const hasErrors =
+      this.summary.components.some((c) => c.status === 'error') ||
+      this.summary.mcpServers.some((s) => s.status === 'error');
 
     // In quiet mode, only show summary if there are errors
     if (!isVerboseStartup && !hasErrors) {
@@ -162,49 +182,87 @@ class StartupLogger {
 
     const elapsed = Date.now() - this.startTime;
 
-    console.log(chalk.cyan('\n┌─────────────────────────────────────────────────────────────────┐'));
-    console.log(chalk.cyan('│') + chalk.white.bold('  STARTUP SUMMARY                                                ') + chalk.cyan('│'));
+    console.log(
+      chalk.cyan('\n┌─────────────────────────────────────────────────────────────────┐'),
+    );
+    console.log(
+      chalk.cyan('│') +
+        chalk.white.bold('  STARTUP SUMMARY                                                ') +
+        chalk.cyan('│'),
+    );
     console.log(chalk.cyan('├─────────────────────────────────────────────────────────────────┤'));
 
     // Components
     for (const comp of this.summary.components) {
-      const icon = comp.status === 'ok' ? chalk.green('✓') :
-                   comp.status === 'warning' ? chalk.yellow('⚠') :
-                   comp.status === 'error' ? chalk.red('✗') :
-                   chalk.gray('○');
+      const icon =
+        comp.status === 'ok'
+          ? chalk.green('✓')
+          : comp.status === 'warning'
+            ? chalk.yellow('⚠')
+            : comp.status === 'error'
+              ? chalk.red('✗')
+              : chalk.gray('○');
       const name = comp.component.padEnd(20);
       const msg = comp.message || '';
-      console.log(chalk.cyan('│') + `  ${icon} ${chalk.white(name)} ${chalk.gray(msg)}`.padEnd(71) + chalk.cyan('│'));
+      console.log(
+        chalk.cyan('│') +
+          `  ${icon} ${chalk.white(name)} ${chalk.gray(msg)}`.padEnd(71) +
+          chalk.cyan('│'),
+      );
     }
 
     // MCP Servers
     if (this.summary.mcpServers.length > 0) {
-      console.log(chalk.cyan('├─────────────────────────────────────────────────────────────────┤'));
-      console.log(chalk.cyan('│') + chalk.white.bold('  MCP SERVERS                                                    ') + chalk.cyan('│'));
+      console.log(
+        chalk.cyan('├─────────────────────────────────────────────────────────────────┤'),
+      );
+      console.log(
+        chalk.cyan('│') +
+          chalk.white.bold('  MCP SERVERS                                                    ') +
+          chalk.cyan('│'),
+      );
 
       for (const server of this.summary.mcpServers) {
         const icon = server.status === 'connected' ? chalk.green('✓') : chalk.red('✗');
         const name = server.name.padEnd(15);
         const tools = `${server.tools} tools`.padEnd(10);
-        console.log(chalk.cyan('│') + `  ${icon} ${chalk.white(name)} ${chalk.gray(tools)}`.padEnd(71) + chalk.cyan('│'));
+        console.log(
+          chalk.cyan('│') +
+            `  ${icon} ${chalk.white(name)} ${chalk.gray(tools)}`.padEnd(71) +
+            chalk.cyan('│'),
+        );
       }
     }
 
     // Warnings (if any)
     if (this.summary.warnings.length > 0) {
-      console.log(chalk.cyan('├─────────────────────────────────────────────────────────────────┤'));
-      console.log(chalk.cyan('│') + chalk.yellow.bold('  UWAGI                                                          ') + chalk.cyan('│'));
+      console.log(
+        chalk.cyan('├─────────────────────────────────────────────────────────────────┤'),
+      );
+      console.log(
+        chalk.cyan('│') +
+          chalk.yellow.bold('  UWAGI                                                          ') +
+          chalk.cyan('│'),
+      );
 
       for (const warning of this.summary.warnings) {
-        const truncated = warning.length > 60 ? warning.substring(0, 57) + '...' : warning;
-        console.log(chalk.cyan('│') + `  ${chalk.yellow('•')} ${chalk.gray(truncated)}`.padEnd(71) + chalk.cyan('│'));
+        const truncated = warning.length > 60 ? `${warning.substring(0, 57)}...` : warning;
+        console.log(
+          chalk.cyan('│') +
+            `  ${chalk.yellow('•')} ${chalk.gray(truncated)}`.padEnd(71) +
+            chalk.cyan('│'),
+        );
       }
     }
 
     // Footer
     console.log(chalk.cyan('├─────────────────────────────────────────────────────────────────┤'));
-    console.log(chalk.cyan('│') + chalk.gray(`  Startup time: ${elapsed}ms`).padEnd(65) + chalk.cyan('│'));
-    console.log(chalk.cyan('└─────────────────────────────────────────────────────────────────┘\n'));
+    console.log(
+      chalk.cyan('│') + chalk.gray(`  Startup time: ${elapsed}ms`).padEnd(65) + chalk.cyan('│'),
+    );
+    console.log(
+      chalk.cyan('└─────────────────────────────────────────────────────────────────┘\n'),
+    );
   }
 
   /**
@@ -213,9 +271,9 @@ class StartupLogger {
    */
   printQuickStatus(): void {
     const components = this.summary.components;
-    const okCount = components.filter(c => c.status === 'ok').length;
-    const warnCount = components.filter(c => c.status === 'warning').length;
-    const errCount = components.filter(c => c.status === 'error').length;
+    const okCount = components.filter((c) => c.status === 'ok').length;
+    const warnCount = components.filter((c) => c.status === 'warning').length;
+    const errCount = components.filter((c) => c.status === 'error').length;
 
     // In quiet mode, only show if there are errors
     if (!isVerboseStartup && errCount === 0) {
@@ -223,9 +281,13 @@ class StartupLogger {
     }
 
     const mcpTotal = this.summary.mcpServers.reduce((sum, s) => sum + s.tools, 0);
-    const mcpConnected = this.summary.mcpServers.filter(s => s.status === 'connected').length;
+    const mcpConnected = this.summary.mcpServers.filter((s) => s.status === 'connected').length;
 
-    console.log(chalk.gray(`[Startup] Components: ${chalk.green(okCount + ' OK')}${warnCount > 0 ? chalk.yellow(`, ${warnCount} warn`) : ''}${errCount > 0 ? chalk.red(`, ${errCount} err`) : ''} | MCP: ${mcpConnected} servers, ${mcpTotal} tools`));
+    console.log(
+      chalk.gray(
+        `[Startup] Components: ${chalk.green(`${okCount} OK`)}${warnCount > 0 ? chalk.yellow(`, ${warnCount} warn`) : ''}${errCount > 0 ? chalk.red(`, ${errCount} err`) : ''} | MCP: ${mcpConnected} servers, ${mcpTotal} tools`,
+      ),
+    );
   }
 
   /**
@@ -234,26 +296,25 @@ class StartupLogger {
   createLogInterceptor(): () => void {
     const originalLog = console.log;
     const originalError = console.error;
-    const self = this;
 
-    console.log = function(...args: any[]) {
-      const msg = args.map(a => String(a)).join(' ');
+    console.log = (...args: any[]) => {
+      const msg = args.map((a) => String(a)).join(' ');
 
       // Filter Serena verbose logs
       if (msg.includes('INFO') && msg.includes('serena')) {
-        const filtered = self.filterSerenaLog(msg);
+        const filtered = this.filterSerenaLog(msg);
         if (filtered === null) return; // Skip
       }
 
       originalLog.apply(console, args);
     };
 
-    console.error = function(...args: any[]) {
-      const msg = args.map(a => String(a)).join(' ');
+    console.error = (...args: any[]) => {
+      const msg = args.map((a) => String(a)).join(' ');
 
       // Capture warnings
       if (msg.includes('WARNING')) {
-        const filtered = self.filterSerenaLog(msg);
+        const filtered = this.filterSerenaLog(msg);
         if (filtered === null) return;
       }
 
@@ -281,7 +342,7 @@ export const startupLogger = new StartupLogger();
 export function logStartupComponent(
   component: string,
   status: 'ok' | 'warning' | 'error' | 'pending',
-  message?: string
+  message?: string,
 ): void {
   startupLogger.addComponent(component, status, message);
 
@@ -290,10 +351,14 @@ export function logStartupComponent(
     return;
   }
 
-  const icon = status === 'ok' ? chalk.green('✓') :
-               status === 'warning' ? chalk.yellow('⚠') :
-               status === 'error' ? chalk.red('✗') :
-               chalk.gray('○');
+  const icon =
+    status === 'ok'
+      ? chalk.green('✓')
+      : status === 'warning'
+        ? chalk.yellow('⚠')
+        : status === 'error'
+          ? chalk.red('✗')
+          : chalk.gray('○');
 
   console.log(`${icon} ${chalk.white(component)} ${message ? chalk.gray(message) : ''}`);
 }

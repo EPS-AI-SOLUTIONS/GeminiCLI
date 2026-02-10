@@ -3,9 +3,9 @@
  * Feature #4: Token Budget Management
  */
 
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import chalk from 'chalk';
-import fs from 'fs/promises';
-import path from 'path';
 
 import { GEMINIHYDRA_DIR } from '../config/paths.config.js';
 
@@ -18,19 +18,19 @@ export interface TokenUsage {
 }
 
 export interface BudgetConfig {
-  dailyLimit?: number;        // Daily token limit
-  sessionLimit?: number;      // Per-session limit
-  taskLimit?: number;         // Per-task limit
-  warningThreshold?: number;  // Warning at this % of limit
+  dailyLimit?: number; // Daily token limit
+  sessionLimit?: number; // Per-session limit
+  taskLimit?: number; // Per-task limit
+  warningThreshold?: number; // Warning at this % of limit
   onLimitReached?: (type: string, used: number, limit: number) => void;
   onWarning?: (type: string, used: number, limit: number) => void;
 }
 
 const DEFAULT_CONFIG: BudgetConfig = {
-  dailyLimit: 1_000_000,      // 1M tokens/day
-  sessionLimit: 200_000,       // 200K tokens/session
-  taskLimit: 50_000,           // 50K tokens/task
-  warningThreshold: 0.8        // 80%
+  dailyLimit: 1_000_000, // 1M tokens/day
+  sessionLimit: 200_000, // 200K tokens/session
+  taskLimit: 50_000, // 50K tokens/task
+  warningThreshold: 0.8, // 80%
 };
 
 export interface BudgetState {
@@ -47,7 +47,7 @@ export class TokenBudgetManager {
   private state: BudgetState = {
     daily: { used: 0, date: new Date().toISOString().split('T')[0] },
     session: { used: 0, startedAt: new Date().toISOString() },
-    tasks: {}
+    tasks: {},
   };
 
   constructor(config: BudgetConfig = {}) {
@@ -56,12 +56,20 @@ export class TokenBudgetManager {
       sessionLimit: config.sessionLimit ?? DEFAULT_CONFIG.sessionLimit!,
       taskLimit: config.taskLimit ?? DEFAULT_CONFIG.taskLimit!,
       warningThreshold: config.warningThreshold ?? DEFAULT_CONFIG.warningThreshold!,
-      onLimitReached: config.onLimitReached ?? ((type, used, limit) => {
-        console.log(chalk.red(`[Budget] ${type} limit reached: ${used}/${limit} tokens`));
-      }),
-      onWarning: config.onWarning ?? ((type, used, limit) => {
-        console.log(chalk.yellow(`[Budget] ${type} warning: ${used}/${limit} tokens (${((used/limit)*100).toFixed(0)}%)`));
-      })
+      onLimitReached:
+        config.onLimitReached ??
+        ((type, used, limit) => {
+          console.log(chalk.red(`[Budget] ${type} limit reached: ${used}/${limit} tokens`));
+        }),
+      onWarning:
+        config.onWarning ??
+        ((type, used, limit) => {
+          console.log(
+            chalk.yellow(
+              `[Budget] ${type} warning: ${used}/${limit} tokens (${((used / limit) * 100).toFixed(0)}%)`,
+            ),
+          );
+        }),
     };
   }
 
@@ -83,10 +91,9 @@ export class TokenBudgetManager {
       this.state = {
         ...this.state,
         ...saved,
-        session: this.state.session // Keep current session
+        session: this.state.session, // Keep current session
       };
-
-    } catch (error) {
+    } catch (_error) {
       // No saved state, use defaults
     }
   }
@@ -97,9 +104,16 @@ export class TokenBudgetManager {
   async save(): Promise<void> {
     try {
       await fs.mkdir(GEMINIHYDRA_DIR, { recursive: true });
-      await fs.writeFile(BUDGET_FILE, JSON.stringify({
-        daily: this.state.daily
-      }, null, 2));
+      await fs.writeFile(
+        BUDGET_FILE,
+        JSON.stringify(
+          {
+            daily: this.state.daily,
+          },
+          null,
+          2,
+        ),
+      );
     } catch (error: any) {
       console.error(chalk.yellow(`[Budget] Failed to save: ${error.message}`));
     }
@@ -122,7 +136,10 @@ export class TokenBudgetManager {
     // Check task limit
     if (this.state.tasks[taskId].total >= this.config.taskLimit) {
       this.config.onLimitReached('task', this.state.tasks[taskId].total, this.config.taskLimit);
-    } else if (this.state.tasks[taskId].total >= this.config.taskLimit * this.config.warningThreshold) {
+    } else if (
+      this.state.tasks[taskId].total >=
+      this.config.taskLimit * this.config.warningThreshold
+    ) {
       this.config.onWarning('task', this.state.tasks[taskId].total, this.config.taskLimit);
     }
 
@@ -164,7 +181,7 @@ export class TokenBudgetManager {
   getRemaining(): { daily: number; session: number } {
     return {
       daily: Math.max(0, this.config.dailyLimit - this.state.daily.used),
-      session: Math.max(0, this.config.sessionLimit - this.state.session.used)
+      session: Math.max(0, this.config.sessionLimit - this.state.session.used),
     };
   }
 
@@ -179,13 +196,13 @@ export class TokenBudgetManager {
       daily: {
         used: this.state.daily.used,
         limit: this.config.dailyLimit,
-        percentage: (this.state.daily.used / this.config.dailyLimit) * 100
+        percentage: (this.state.daily.used / this.config.dailyLimit) * 100,
       },
       session: {
         used: this.state.session.used,
         limit: this.config.sessionLimit,
-        percentage: (this.state.session.used / this.config.sessionLimit) * 100
-      }
+        percentage: (this.state.session.used / this.config.sessionLimit) * 100,
+      },
     };
   }
 
@@ -195,7 +212,7 @@ export class TokenBudgetManager {
   resetSession(): void {
     this.state.session = {
       used: 0,
-      startedAt: new Date().toISOString()
+      startedAt: new Date().toISOString(),
     };
     this.state.tasks = {};
   }

@@ -24,7 +24,8 @@ const FILE_WRITE_KEYWORDS = ['zapisz', 'write', 'save', 'create file'];
 const FILE_READ_KEYWORDS = ['przeczytaj', 'read', 'load', 'pobierz'];
 
 // Entity extraction pattern
-const ENTITY_PATTERN = /(?:plik(?:i|u|ow)?|file(?:s)?|funkcj[aei]|function|klas[aey]|class|modul|module|komponent|component)\s+["`']?(\w+)["`']?/gi;
+const ENTITY_PATTERN =
+  /(?:plik(?:i|u|ow)?|file(?:s)?|funkcj[aei]|function|klas[aey]|class|modul|module|komponent|component)\s+["`']?(\w+)["`']?/gi;
 
 // =============================================================================
 // DEPENDENCY DETECTION
@@ -37,7 +38,7 @@ const ENTITY_PATTERN = /(?:plik(?:i|u|ow)?|file(?:s)?|funkcj[aei]|function|klas[
  * @returns Map of task IDs to their dependency IDs
  */
 export async function autoDetectDependencies(
-  tasks: Array<{ id: number; task: string }>
+  tasks: Array<{ id: number; task: string }>,
 ): Promise<Map<number, number[]>> {
   console.log(chalk.magenta('[AutoDep] Analyzing task dependencies...'));
 
@@ -75,23 +76,27 @@ export async function autoDetectDependencies(
       const previousLower = previousTask.task.toLowerCase();
 
       // Check entity overlap
-      const overlap = [...currentEntities].filter(e => previousEntities.has(e));
+      const overlap = [...currentEntities].filter((e) => previousEntities.has(e));
 
       // Check if previous task produces something current task needs
-      const previousProduces = OUTPUT_KEYWORDS.some(k => previousLower.includes(k));
-      const currentConsumes = INPUT_KEYWORDS.some(k => currentLower.includes(k));
+      const previousProduces = OUTPUT_KEYWORDS.some((k) => previousLower.includes(k));
+      const currentConsumes = INPUT_KEYWORDS.some((k) => currentLower.includes(k));
 
       // Check file write -> read relationship
-      const previousWrites = FILE_WRITE_KEYWORDS.some(k => previousLower.includes(k));
-      const currentReads = FILE_READ_KEYWORDS.some(k => currentLower.includes(k));
+      const previousWrites = FILE_WRITE_KEYWORDS.some((k) => previousLower.includes(k));
+      const currentReads = FILE_READ_KEYWORDS.some((k) => currentLower.includes(k));
 
       // Add dependency if relationship detected
-      if ((overlap.length > 0 && previousProduces && currentConsumes) ||
-          (previousWrites && currentReads && overlap.length > 0)) {
+      if (
+        (overlap.length > 0 && previousProduces && currentConsumes) ||
+        (previousWrites && currentReads && overlap.length > 0)
+      ) {
         const deps = dependencies.get(currentTask.id)!;
         if (!deps.includes(previousTask.id)) {
           deps.push(previousTask.id);
-          console.log(chalk.gray(`[AutoDep] Task #${currentTask.id} depends on #${previousTask.id}`));
+          console.log(
+            chalk.gray(`[AutoDep] Task #${currentTask.id} depends on #${previousTask.id}`),
+          );
         }
       }
     }
@@ -122,8 +127,10 @@ export function extractEntities(taskDescription: string): Set<string> {
  */
 export function taskProducesOutput(taskDescription: string): boolean {
   const lower = taskDescription.toLowerCase();
-  return OUTPUT_KEYWORDS.some(k => lower.includes(k)) ||
-         FILE_WRITE_KEYWORDS.some(k => lower.includes(k));
+  return (
+    OUTPUT_KEYWORDS.some((k) => lower.includes(k)) ||
+    FILE_WRITE_KEYWORDS.some((k) => lower.includes(k))
+  );
 }
 
 /**
@@ -131,8 +138,10 @@ export function taskProducesOutput(taskDescription: string): boolean {
  */
 export function taskConsumesInput(taskDescription: string): boolean {
   const lower = taskDescription.toLowerCase();
-  return INPUT_KEYWORDS.some(k => lower.includes(k)) ||
-         FILE_READ_KEYWORDS.some(k => lower.includes(k));
+  return (
+    INPUT_KEYWORDS.some((k) => lower.includes(k)) ||
+    FILE_READ_KEYWORDS.some((k) => lower.includes(k))
+  );
 }
 
 /**
@@ -189,13 +198,7 @@ export function getTopologicalOrder(dependencies: Map<number, number[]>): number
 // EXPORTS
 // =============================================================================
 
-export {
-  OUTPUT_KEYWORDS,
-  INPUT_KEYWORDS,
-  FILE_WRITE_KEYWORDS,
-  FILE_READ_KEYWORDS,
-  ENTITY_PATTERN
-};
+export { OUTPUT_KEYWORDS, INPUT_KEYWORDS, FILE_WRITE_KEYWORDS, FILE_READ_KEYWORDS, ENTITY_PATTERN };
 
 export default {
   autoDetectDependencies,
@@ -203,5 +206,5 @@ export default {
   taskProducesOutput,
   taskConsumesInput,
   visualizeDependencies,
-  getTopologicalOrder
+  getTopologicalOrder,
 };

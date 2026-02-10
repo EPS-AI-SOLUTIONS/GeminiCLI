@@ -86,7 +86,7 @@ export const MODEL_PRICING: Record<string, ModelPricing> = {
   },
   [GEMINI_MODELS.FLASH]: {
     input: 0.075,
-    output: 0.30,
+    output: 0.3,
     cachedInput: 0.01875,
   },
   // Qwen3 models (free, local)
@@ -199,7 +199,7 @@ export function calculateCost(
   model: string,
   inputTokens: number,
   outputTokens: number,
-  cachedInputTokens: number = 0
+  cachedInputTokens: number = 0,
 ): number {
   const pricing = MODEL_PRICING[model];
   if (!pricing) return 0;

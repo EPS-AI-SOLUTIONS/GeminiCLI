@@ -2,18 +2,10 @@
  * Agents View - Display and manage Hydra agents
  */
 
-import { motion } from 'framer-motion';
-import {
-  Sword,
-  Eye,
-  Wand2,
-  Heart,
-  Flower2,
-  Shield,
-  Circle,
-} from 'lucide-react';
 import { clsx } from 'clsx';
-import { Card, Badge } from '../components/ui';
+import { motion } from 'framer-motion';
+import { Circle, Eye, Flower2, Heart, Shield, Sword, Wand2 } from 'lucide-react';
+import { Badge, Card } from '../components/ui';
 import { useAppStore } from '../stores/appStore';
 import type { AgentRole } from '../types';
 
@@ -93,9 +85,7 @@ export function AgentsView() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-xl font-semibold text-[var(--matrix-text)]">
-          Agenci Hydry
-        </h2>
+        <h2 className="text-xl font-semibold text-[var(--matrix-text)]">Agenci Hydry</h2>
         <p className="text-sm text-[var(--matrix-text-dim)] mt-1">
           System multi-agentowy inspirowany postaciami z Wiedźmina
         </p>
@@ -115,31 +105,24 @@ export function AgentsView() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
             >
-              <Card
-                variant="glass"
-                interactive
-                className="h-full"
-              >
+              <Card variant="glass" interactive className="h-full">
                 <div className="p-4 space-y-4">
                   {/* Header */}
                   <div className="flex items-start justify-between">
                     <div
                       className="w-12 h-12 rounded-xl flex items-center justify-center"
                       style={{
-                        backgroundColor: meta.color + '20',
+                        backgroundColor: `${meta.color}20`,
                         border: `1px solid ${meta.color}40`,
                       }}
                     >
-                      <Icon
-                        className="w-6 h-6"
-                        style={{ color: meta.color }}
-                      />
+                      <Icon className="w-6 h-6" style={{ color: meta.color }} />
                     </div>
                     <Badge variant={statusVariants[agent.status]}>
                       <Circle
                         className={clsx(
                           'w-2 h-2 mr-1',
-                          agent.status === 'thinking' && 'animate-pulse'
+                          agent.status === 'thinking' && 'animate-pulse',
                         )}
                         fill="currentColor"
                       />
@@ -149,15 +132,10 @@ export function AgentsView() {
 
                   {/* Info */}
                   <div>
-                    <h3
-                      className="text-lg font-semibold"
-                      style={{ color: meta.color }}
-                    >
+                    <h3 className="text-lg font-semibold" style={{ color: meta.color }}>
                       {meta.displayName}
                     </h3>
-                    <p className="text-xs text-[var(--matrix-text-dim)] mt-0.5">
-                      {meta.specialty}
-                    </p>
+                    <p className="text-xs text-[var(--matrix-text-dim)] mt-0.5">{meta.specialty}</p>
                   </div>
 
                   {/* Description */}

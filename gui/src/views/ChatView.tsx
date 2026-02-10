@@ -2,13 +2,13 @@
  * Chat View - Main conversation interface
  */
 
-import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Loader2, Bot, User, Sparkles } from 'lucide-react';
 import { clsx } from 'clsx';
-import { Button, Card, Badge } from '../components/ui';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Bot, Loader2, Send, Sparkles, User } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Badge, Button, Card } from '../components/ui';
 import { useAppStore } from '../stores/appStore';
-import type { Message, AgentRole } from '../types';
+import type { AgentRole, Message } from '../types';
 
 // Agent colors for avatars
 const agentColors: Record<AgentRole, string> = {
@@ -35,11 +35,14 @@ function MessageBubble({ message }: { message: Message }) {
           'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
           isUser
             ? 'bg-[var(--matrix-accent)]'
-            : 'bg-[var(--glass-bg)] border border-[var(--matrix-border)]'
+            : 'bg-[var(--glass-bg)] border border-[var(--matrix-border)]',
         )}
         style={
           message.agent
-            ? { backgroundColor: agentColors[message.agent] + '30', borderColor: agentColors[message.agent] }
+            ? {
+                backgroundColor: `${agentColors[message.agent]}30`,
+                borderColor: agentColors[message.agent],
+              }
             : undefined
         }
       >
@@ -60,9 +63,7 @@ function MessageBubble({ message }: { message: Message }) {
         <div
           className={clsx(
             'p-3 rounded-lg',
-            isUser
-              ? 'bg-[var(--matrix-accent)] text-[var(--matrix-bg-primary)]'
-              : 'glass-panel'
+            isUser ? 'bg-[var(--matrix-accent)] text-[var(--matrix-bg-primary)]' : 'glass-panel',
           )}
         >
           <p className="text-sm whitespace-pre-wrap">{message.content}</p>
@@ -89,15 +90,15 @@ export function ChatView() {
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, []);
 
   // Auto-resize textarea
   useEffect(() => {
     if (inputRef.current) {
       inputRef.current.style.height = 'auto';
-      inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 200) + 'px';
+      inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 200)}px`;
     }
-  }, [input]);
+  }, []);
 
   const handleSubmit = async () => {
     if (!input.trim() || isStreaming) return;
@@ -140,8 +141,8 @@ export function ChatView() {
                 Witaj w GeminiHydra
               </h3>
               <p className="text-sm text-[var(--matrix-text-dim)] max-w-md mt-2">
-                System multi-agentowy oparty na Gemini. Zadaj pytanie lub opisz
-                zadanie, a agenci współpracując znajdą najlepsze rozwiązanie.
+                System multi-agentowy oparty na Gemini. Zadaj pytanie lub opisz zadanie, a agenci
+                współpracując znajdą najlepsze rozwiązanie.
               </p>
             </div>
           ) : (

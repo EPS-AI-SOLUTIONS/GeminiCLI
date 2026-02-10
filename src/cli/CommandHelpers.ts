@@ -4,8 +4,8 @@
  * Common helpers for argument parsing, formatting, and user interaction.
  */
 
+import readline from 'node:readline';
 import chalk from 'chalk';
-import readline from 'readline';
 import { escapeRegex } from '../utils/regex.js';
 
 /**
@@ -27,9 +27,7 @@ export interface ParsedArgs {
  *   positional args
  */
 export function parseArgs(argsInput: string | string[]): ParsedArgs {
-  const args = typeof argsInput === 'string'
-    ? argsInput.split(/\s+/).filter(Boolean)
-    : argsInput;
+  const args = typeof argsInput === 'string' ? argsInput.split(/\s+/).filter(Boolean) : argsInput;
 
   const positional: string[] = [];
   const flags: Record<string, string | boolean> = {};
@@ -120,7 +118,7 @@ export function getNumberFlag(
     const value = flags[name];
     if (typeof value === 'string') {
       const parsed = parseInt(value, 10);
-      if (!isNaN(parsed)) return parsed;
+      if (!Number.isNaN(parsed)) return parsed;
     }
   }
   return defaultValue;
@@ -140,16 +138,13 @@ export interface TableColumn {
 /**
  * Format data as a table
  */
-export function formatTable(
-  columns: TableColumn[],
-  rows: Record<string, unknown>[]
-): string {
+export function formatTable(columns: TableColumn[], rows: Record<string, unknown>[]): string {
   if (rows.length === 0) {
     return chalk.gray('(no data)');
   }
 
   // Calculate column widths
-  const widths = columns.map(col => {
+  const widths = columns.map((col) => {
     if (col.width) return col.width;
 
     const headerLen = col.header.length;
@@ -166,10 +161,10 @@ export function formatTable(
     .map((col, i) => padString(col.header, widths[i], col.align || 'left'))
     .join('  ');
 
-  const separator = widths.map(w => '-'.repeat(w)).join('  ');
+  const separator = widths.map((w) => '-'.repeat(w)).join('  ');
 
   // Build data rows
-  const dataRows = rows.map(row => {
+  const dataRows = rows.map((row) => {
     return columns
       .map((col, i) => {
         const val = String(row[col.key] ?? '');
@@ -179,11 +174,7 @@ export function formatTable(
       .join('  ');
   });
 
-  return [
-    chalk.bold(headerRow),
-    chalk.gray(separator),
-    ...dataRows
-  ].join('\n');
+  return [chalk.bold(headerRow), chalk.gray(separator), ...dataRows].join('\n');
 }
 
 /**
@@ -204,21 +195,15 @@ export function formatSimpleTable(headers: string[], rows: string[][]): string {
   });
 
   // Build output
-  const headerRow = headers
-    .map((h, i) => h.padEnd(widths[i]))
-    .join('  ');
+  const headerRow = headers.map((h, i) => h.padEnd(widths[i])).join('  ');
 
-  const separator = widths.map(w => '-'.repeat(w)).join('  ');
+  const separator = widths.map((w) => '-'.repeat(w)).join('  ');
 
-  const dataRows = rows.map(row =>
-    row.map((cell, i) => (cell || '').padEnd(widths[i])).join('  ')
+  const dataRows = rows.map((row) =>
+    row.map((cell, i) => (cell || '').padEnd(widths[i])).join('  '),
   );
 
-  return [
-    chalk.bold(headerRow),
-    chalk.gray(separator),
-    ...dataRows
-  ].join('\n');
+  return [chalk.bold(headerRow), chalk.gray(separator), ...dataRows].join('\n');
 }
 
 /**
@@ -232,10 +217,11 @@ function padString(str: string, width: number, align: 'left' | 'right' | 'center
   switch (align) {
     case 'right':
       return ' '.repeat(diff) + str;
-    case 'center':
+    case 'center': {
       const left = Math.floor(diff / 2);
       const right = diff - left;
       return ' '.repeat(left) + str + ' '.repeat(right);
+    }
     default:
       return str + ' '.repeat(diff);
   }
@@ -303,7 +289,7 @@ export function formatBytes(bytes: number): string {
 
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
   const exp = Math.floor(Math.log(bytes) / Math.log(1024));
-  const value = bytes / Math.pow(1024, exp);
+  const value = bytes / 1024 ** exp;
 
   return `${value.toFixed(exp > 0 ? 1 : 0)} ${units[exp]}`;
 }
@@ -327,11 +313,11 @@ export function formatPercent(value: number, decimals: number = 1): string {
  */
 export async function confirmAction(
   message: string,
-  defaultValue: boolean = false
+  defaultValue: boolean = false,
 ): Promise<boolean> {
   const rl = readline.createInterface({
     input: process.stdin,
-    output: process.stdout
+    output: process.stdout,
   });
 
   const hint = defaultValue ? '[Y/n]' : '[y/N]';
@@ -353,13 +339,10 @@ export async function confirmAction(
 /**
  * Prompt for user input
  */
-export async function promptInput(
-  message: string,
-  defaultValue?: string
-): Promise<string> {
+export async function promptInput(message: string, defaultValue?: string): Promise<string> {
   const rl = readline.createInterface({
     input: process.stdin,
-    output: process.stdout
+    output: process.stdout,
   });
 
   const hint = defaultValue ? chalk.gray(` (${defaultValue})`) : '';
@@ -377,7 +360,7 @@ export async function promptInput(
  */
 export async function promptSelect<T extends string>(
   message: string,
-  options: { value: T; label: string }[]
+  options: { value: T; label: string }[],
 ): Promise<T | null> {
   console.log(`\n${chalk.cyan('?')} ${message}\n`);
 
@@ -389,7 +372,7 @@ export async function promptSelect<T extends string>(
   const answer = await promptInput('Enter number');
   const index = parseInt(answer, 10);
 
-  if (index === 0 || isNaN(index) || index > options.length) {
+  if (index === 0 || Number.isNaN(index) || index > options.length) {
     return null;
   }
 
@@ -401,7 +384,7 @@ export async function promptSelect<T extends string>(
  */
 export function truncate(str: string, maxLength: number): string {
   if (str.length <= maxLength) return str;
-  return str.slice(0, maxLength - 3) + '...';
+  return `${str.slice(0, maxLength - 3)}...`;
 }
 
 /**
@@ -409,7 +392,10 @@ export function truncate(str: string, maxLength: number): string {
  */
 export function indent(text: string, spaces: number = 2): string {
   const pad = ' '.repeat(spaces);
-  return text.split('\n').map(line => pad + line).join('\n');
+  return text
+    .split('\n')
+    .map((line) => pad + line)
+    .join('\n');
 }
 
 /**
@@ -424,7 +410,7 @@ export function horizontalLine(length: number = 50, char: string = '-'): string 
  */
 export function box(content: string, title?: string): string {
   const lines = content.split('\n');
-  const maxLen = Math.max(...lines.map(l => l.length), title?.length || 0);
+  const maxLen = Math.max(...lines.map((l) => l.length), title?.length || 0);
   const width = maxLen + 2;
 
   const top = title
@@ -433,7 +419,7 @@ export function box(content: string, title?: string): string {
 
   const bottom = `+${'-'.repeat(width)}+`;
 
-  const boxedLines = lines.map(l => `| ${l.padEnd(maxLen)} |`);
+  const boxedLines = lines.map((l) => `| ${l.padEnd(maxLen)} |`);
 
   return [top, ...boxedLines, bottom].join('\n');
 }
@@ -466,7 +452,7 @@ export class Spinner {
       this.interval = undefined;
     }
     process.stdout.write('\x1B[?25h'); // Show cursor
-    process.stdout.write('\r' + ' '.repeat(this.message.length + 5) + '\r');
+    process.stdout.write(`\r${' '.repeat(this.message.length + 5)}\r`);
     if (finalMessage) {
       console.log(finalMessage);
     }
@@ -493,13 +479,20 @@ export function showProgress(current: number, total: number, label?: string): st
 /**
  * Create a colored status indicator
  */
-export function statusIndicator(status: 'success' | 'error' | 'warning' | 'info' | 'pending'): string {
+export function statusIndicator(
+  status: 'success' | 'error' | 'warning' | 'info' | 'pending',
+): string {
   switch (status) {
-    case 'success': return chalk.green('[OK]');
-    case 'error': return chalk.red('[ERROR]');
-    case 'warning': return chalk.yellow('[WARN]');
-    case 'info': return chalk.blue('[INFO]');
-    case 'pending': return chalk.gray('[...]');
+    case 'success':
+      return chalk.green('[OK]');
+    case 'error':
+      return chalk.red('[ERROR]');
+    case 'warning':
+      return chalk.yellow('[WARN]');
+    case 'info':
+      return chalk.blue('[INFO]');
+    case 'pending':
+      return chalk.gray('[...]');
   }
 }
 
@@ -539,5 +532,5 @@ export default {
   showProgress,
   statusIndicator,
   highlightMatch,
-  escapeRegex
+  escapeRegex,
 };

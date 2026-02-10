@@ -4,17 +4,16 @@
  * @module multimodal/utils
  */
 
-import * as path from 'path';
-import * as https from 'https';
-import * as http from 'http';
-
-import type { ContentType } from './types.js';
+import * as http from 'node:http';
+import * as https from 'node:https';
+import * as path from 'node:path';
 import {
-  IMAGE_MIME_TYPES,
   AUDIO_MIME_TYPES,
-  VIDEO_MIME_TYPES,
   DOCUMENT_MIME_TYPES,
+  IMAGE_MIME_TYPES,
+  VIDEO_MIME_TYPES,
 } from './constants.js';
+import type { ContentType } from './types.js';
 
 /**
  * Detect content type from file extension or MIME type
@@ -25,10 +24,13 @@ export function detectContentType(input: string): ContentType | null {
     if (input.startsWith('image/')) return 'image';
     if (input.startsWith('audio/')) return 'audio';
     if (input.startsWith('video/')) return 'video';
-    if (input.startsWith('application/pdf') ||
-        input.includes('document') ||
-        input.includes('spreadsheet') ||
-        input.includes('presentation')) return 'document';
+    if (
+      input.startsWith('application/pdf') ||
+      input.includes('document') ||
+      input.includes('spreadsheet') ||
+      input.includes('presentation')
+    )
+      return 'document';
     if (input.startsWith('text/')) return 'text';
     return null;
   }
@@ -50,11 +52,13 @@ export function detectContentType(input: string): ContentType | null {
  */
 export function getMimeType(filePath: string): string | null {
   const ext = path.extname(filePath).toLowerCase();
-  return IMAGE_MIME_TYPES[ext] ||
-         AUDIO_MIME_TYPES[ext] ||
-         VIDEO_MIME_TYPES[ext] ||
-         DOCUMENT_MIME_TYPES[ext] ||
-         null;
+  return (
+    IMAGE_MIME_TYPES[ext] ||
+    AUDIO_MIME_TYPES[ext] ||
+    VIDEO_MIME_TYPES[ext] ||
+    DOCUMENT_MIME_TYPES[ext] ||
+    null
+  );
 }
 
 /**
@@ -74,24 +78,26 @@ export async function downloadToBuffer(url: string): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const protocol = url.startsWith('https') ? https : http;
 
-    protocol.get(url, (response) => {
-      if (response.statusCode === 301 || response.statusCode === 302) {
-        const redirectUrl = response.headers.location;
-        if (redirectUrl) {
-          downloadToBuffer(redirectUrl).then(resolve).catch(reject);
+    protocol
+      .get(url, (response) => {
+        if (response.statusCode === 301 || response.statusCode === 302) {
+          const redirectUrl = response.headers.location;
+          if (redirectUrl) {
+            downloadToBuffer(redirectUrl).then(resolve).catch(reject);
+            return;
+          }
+        }
+
+        if (response.statusCode !== 200) {
+          reject(new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`));
           return;
         }
-      }
 
-      if (response.statusCode !== 200) {
-        reject(new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`));
-        return;
-      }
-
-      const chunks: Buffer[] = [];
-      response.on('data', (chunk) => chunks.push(chunk));
-      response.on('end', () => resolve(Buffer.concat(chunks)));
-      response.on('error', reject);
-    }).on('error', reject);
+        const chunks: Buffer[] = [];
+        response.on('data', (chunk) => chunks.push(chunk));
+        response.on('end', () => resolve(Buffer.concat(chunks)));
+        response.on('error', reject);
+      })
+      .on('error', reject);
   });
 }

@@ -11,7 +11,12 @@ import { GEMINI_MODELS } from '../config/models.config.js';
 export const GEMINI_MODELS_META = {
   // Gemini 3 (Latest - Primary)
   [GEMINI_MODELS.PRO]: { name: 'Gemini 3 Pro', tier: 'pro', speed: 'medium', quality: 'best' },
-  [GEMINI_MODELS.FLASH]: { name: 'Gemini 3 Flash', tier: 'flash', speed: 'fast', quality: 'excellent' },
+  [GEMINI_MODELS.FLASH]: {
+    name: 'Gemini 3 Flash',
+    tier: 'flash',
+    speed: 'fast',
+    quality: 'excellent',
+  },
 };
 
 // Default model selection (Gemini 3 only)
@@ -25,14 +30,16 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 /**
  * Select the best available model based on task type (Gemini 3 only)
  */
-export function selectModel(taskType: 'planning' | 'coding' | 'analysis' | 'quick' | 'creative'): string {
+export function selectModel(
+  taskType: 'planning' | 'coding' | 'analysis' | 'quick' | 'creative',
+): string {
   switch (taskType) {
     case 'planning':
       return GEMINI_MODELS.FLASH; // Fast strategic planning
     case 'coding':
-      return GEMINI_MODELS.PRO;   // Best for code generation
+      return GEMINI_MODELS.PRO; // Best for code generation
     case 'analysis':
-      return GEMINI_MODELS.PRO;   // Best for deep analysis
+      return GEMINI_MODELS.PRO; // Best for deep analysis
     case 'quick':
       return GEMINI_MODELS.FLASH; // Fast for simple tasks
     case 'creative':
@@ -52,14 +59,9 @@ export async function generate(
     temperature?: number;
     maxTokens?: number;
     systemPrompt?: string;
-  } = {}
+  } = {},
 ): Promise<string> {
-  const {
-    model = DEFAULT_MODEL,
-    temperature = 0.7,
-    maxTokens = 8192,
-    systemPrompt
-  } = options;
+  const { model = DEFAULT_MODEL, temperature = 0.7, maxTokens = 8192, systemPrompt } = options;
 
   const geminiModel = genAI.getGenerativeModel({
     model,
@@ -69,9 +71,7 @@ export async function generate(
     },
   });
 
-  const fullPrompt = systemPrompt
-    ? `${systemPrompt}\n\n${prompt}`
-    : prompt;
+  const fullPrompt = systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt;
 
   const result = await geminiModel.generateContent(fullPrompt);
   return result.response.text();
@@ -86,22 +86,16 @@ export async function* generateStream(
     model?: string;
     temperature?: number;
     systemPrompt?: string;
-  } = {}
+  } = {},
 ): AsyncGenerator<string> {
-  const {
-    model = DEFAULT_MODEL,
-    temperature = 0.7,
-    systemPrompt
-  } = options;
+  const { model = DEFAULT_MODEL, temperature = 0.7, systemPrompt } = options;
 
   const geminiModel = genAI.getGenerativeModel({
     model,
     generationConfig: { temperature },
   });
 
-  const fullPrompt = systemPrompt
-    ? `${systemPrompt}\n\n${prompt}`
-    : prompt;
+  const fullPrompt = systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt;
 
   const result = await geminiModel.generateContentStream(fullPrompt);
 
@@ -123,7 +117,7 @@ export async function listModels(): Promise<Array<{ name: string; displayName: s
   }
 
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+    `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
   );
 
   if (!response.ok) {
@@ -133,7 +127,7 @@ export async function listModels(): Promise<Array<{ name: string; displayName: s
   const data = await response.json();
   return data.models.map((m: any) => ({
     name: m.name.replace('models/', ''),
-    displayName: m.displayName
+    displayName: m.displayName,
   }));
 }
 
@@ -143,7 +137,7 @@ export async function listModels(): Promise<Array<{ name: string; displayName: s
 export async function isModelAvailable(modelName: string): Promise<boolean> {
   try {
     const models = await listModels();
-    return models.some(m => m.name === modelName || m.name === `models/${modelName}`);
+    return models.some((m) => m.name === modelName || m.name === `models/${modelName}`);
   } catch {
     return false;
   }
@@ -153,14 +147,11 @@ export async function isModelAvailable(modelName: string): Promise<boolean> {
  * Get the best available model (checks API) - Gemini 3 only
  */
 export async function getBestAvailableModel(): Promise<string> {
-  const preferredModels = [
-    GEMINI_MODELS.PRO,
-    GEMINI_MODELS.FLASH
-  ];
+  const preferredModels = [GEMINI_MODELS.PRO, GEMINI_MODELS.FLASH];
 
   try {
     const models = await listModels();
-    const availableNames = models.map(m => m.name);
+    const availableNames = models.map((m) => m.name);
 
     for (const model of preferredModels) {
       if (availableNames.includes(model)) {
@@ -218,5 +209,5 @@ export default {
   listModels,
   isModelAvailable,
   getBestAvailableModel,
-  GeminiChat
+  GeminiChat,
 };

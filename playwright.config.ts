@@ -12,10 +12,7 @@ export default defineConfig({
   use: {
     trace: 'on-first-retry',
   },
-  reporter: [
-    ['html', { outputFolder: 'playwright-report' }],
-    ['list'],
-  ],
+  reporter: [['html', { outputFolder: 'playwright-report' }], ['list']],
   projects: [
     {
       name: 'cli',

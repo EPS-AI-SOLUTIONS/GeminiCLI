@@ -5,15 +5,9 @@
  * Unit tests for skeleton loading components.
  */
 
+import { render } from '@testing-library/react';
 import React from 'react';
-import { render, screen } from '@testing-library/react';
-import {
-  Skeleton,
-  SkeletonText,
-  SkeletonAvatar,
-  SkeletonCard,
-  SkeletonMessage,
-} from './Skeleton';
+import { Skeleton, SkeletonAvatar, SkeletonCard, SkeletonMessage, SkeletonText } from './Skeleton';
 
 describe('Skeleton Components', () => {
   // ========================================
@@ -32,9 +26,7 @@ describe('Skeleton Components', () => {
     });
 
     it('should render with custom width and height', () => {
-      const { container } = render(
-        <Skeleton width="200px" height="100px" />
-      );
+      const { container } = render(<Skeleton width="200px" height="100px" />);
       const element = container.querySelector('.skeleton-pulse');
       expect(element).toHaveStyle({
         width: '200px',
@@ -286,9 +278,7 @@ describe('Skeleton Components', () => {
     });
 
     it('should have appropriate data attributes', () => {
-      const { container } = render(
-        <Skeleton data-testid="skeleton-loader" />
-      );
+      const { container } = render(<Skeleton data-testid="skeleton-loader" />);
       const element = container.querySelector('[data-testid="skeleton-loader"]');
       expect(element).toBeInTheDocument();
     });

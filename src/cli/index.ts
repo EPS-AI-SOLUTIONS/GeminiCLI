@@ -5,270 +5,245 @@
 
 // Internal imports for initializeCommands function
 import { registerCodebaseCommands as _registerCodebaseCommands } from './CodebaseCommands.js';
-import { registerSessionCommands as _registerSessionCommands } from './SessionCommands.js';
-import { registerSerenaCommands as _registerSerenaCommands } from './SerenaCommands.js';
-import { registerSerenaAgentCommands as _registerSerenaAgentCommands } from './SerenaAgentCommands.js';
-import { registerMCPCommands as _registerMCPCommands } from './MCPCommands.js';
 import { registerDiagnosticCommands as _registerDiagnosticCommands } from './CommandDiagnostics.js';
-import { registerHelpCommand as _registerHelpCommand } from './help/index.js';
 import { registerDocumentCommands as _registerDocumentCommands } from './DocumentCommands.js';
-
-// Core CLI modes
-export { InteractiveMode, COMPLETIONS, completer } from './InteractiveMode.js';
-export { PipelineMode, pipe } from './PipelineMode.js';
-export { WatchMode } from './WatchMode.js';
-export { ProjectContext } from './ProjectContext.js';
-export { CostTracker, costTracker } from './CostTracker.js';
-
-// Feature #27: Git Integration
-export { GitIntegration, git, gitCommands } from './GitIntegration.js';
-export type { GitStatus, CommitOptions, PROptions } from './GitIntegration.js';
-
-// Features #31-39: CLI Enhancements
-export {
-  ProgressBar,
-  TaskEditor,
-  TemplateManager,
-  templateManager,
-  OutputFormatter,
-  outputFormatter,
-  highlightCode,
-  createCompleter,
-  HistorySearch,
-  historySearch,
-  OutputPaginator,
-  paginator,
-  sendNotification
-} from './CLIEnhancements.js';
-
-export type {
-  ProgressBarOptions,
-  EditableTask,
-  TaskTemplate,
-  OutputFormat,
-  AutocompleteOptions,
-  NotificationOptions
-} from './CLIEnhancements.js';
-
-// Command Registry - Unified command management
-export {
-  CommandRegistry,
-  commandRegistry,
-  success,
-  error,
-  // Re-exported from AsyncUtils
-  CancellationTokenSource,
-  CancellationError,
-  TimeoutError,
-  ProgressReporter,
-  isAsyncFunction,
-  wrapHandler,
-  withCancellation,
-  withProgress,
-  withCancellationAndProgress,
-  executeWithTimeout,
-  executeWithCancellation,
-  executeWithTimeoutAndCancellation,
-  delay,
-  retry,
-  OperationTracker,
-  globalOperationTracker
-} from './CommandRegistry.js';
-
-export type {
-  Command,
-  CommandArg,
-  CommandResult,
-  CommandContext,
-  CommandHandler,
-  // Async types
-  CancellationToken,
-  ProgressInfo,
-  ProgressCallback,
-  SyncCommandHandler,
-  AsyncCommandHandler,
-  AnyCommandHandler,
-  ExtendedCommandContext,
-  ExtendedCommandHandler,
-  ExecuteOptions
-} from './CommandRegistry.js';
+import { registerHelpCommand as _registerHelpCommand } from './help/index.js';
+import { registerMCPCommands as _registerMCPCommands } from './MCPCommands.js';
+import { registerSerenaAgentCommands as _registerSerenaAgentCommands } from './SerenaAgentCommands.js';
+import { registerSerenaCommands as _registerSerenaCommands } from './SerenaCommands.js';
+import { registerSessionCommands as _registerSessionCommands } from './SessionCommands.js';
 
 // AsyncUtils - Direct import for advanced usage
 export * as AsyncUtils from './AsyncUtils.js';
-
-// Subcommand Extension - Full subcommand support
-export {
-  SubcommandRegistry,
-  createFsCommand,
-  createFsReadSubcommand,
-  createFsWriteSubcommand,
-  createFsListSubcommand,
-  registerFsCommandWithSubcommands
-} from './SubcommandExtension.js';
-
 export type {
-  SubcommandInfo,
-  SubcommandOptions,
-  Subcommand,
-  SubcommandContext
-} from './SubcommandExtension.js';
-
-// CWD Manager - Current Working Directory management
+  AutocompleteOptions,
+  EditableTask,
+  NotificationOptions,
+  OutputFormat,
+  ProgressBarOptions,
+  TaskTemplate,
+} from './CLIEnhancements.js';
+// Features #31-39: CLI Enhancements
 export {
-  CwdManager,
-  cwdManager
-} from './CwdManager.js';
-
-export type {
-  CwdHistoryEntry,
-  CwdManagerOptions,
-  CwdChangeEvent,
-  CwdChangeListener,
-  CwdValidationResult
-} from './CwdManager.js';
-
-// Command Helpers - Shared utilities
-export {
-  parseArgs,
-  getStringFlag,
-  getBooleanFlag,
-  getNumberFlag,
-  formatTable,
-  formatSimpleTable,
-  formatDuration,
-  formatRelativeTime,
-  formatBytes,
-  formatNumber,
-  formatPercent,
-  confirmAction,
-  promptInput,
-  promptSelect,
-  truncate,
-  indent,
-  horizontalLine,
-  box,
-  Spinner,
-  showProgress,
-  statusIndicator,
-  highlightMatch,
-  escapeRegex
-} from './CommandHelpers.js';
-
-export type { ParsedArgs, TableColumn } from './CommandHelpers.js';
-
+  createCompleter,
+  HistorySearch,
+  highlightCode,
+  historySearch,
+  OutputFormatter,
+  OutputPaginator,
+  outputFormatter,
+  ProgressBar,
+  paginator,
+  sendNotification,
+  TaskEditor,
+  TemplateManager,
+  templateManager,
+} from './CLIEnhancements.js';
+export type { LegacyCommandContext as CodebaseCommandContext } from './CodebaseCommands.js';
 // Codebase Commands
 export {
-  codebaseCommands,
   analyzeCommand,
-  memoryCommand,
-  contextCommand,
   autoEnrichPrompt,
+  codebaseCommands,
+  contextCommand,
   initCodebaseForCwd,
-  registerCodebaseCommands
+  memoryCommand,
+  registerCodebaseCommands,
 } from './CodebaseCommands.js';
-
-export type { LegacyCommandContext as CodebaseCommandContext } from './CodebaseCommands.js';
-
-// Session Commands
-export {
-  sessionCommands,
-  sessionsCommand,
-  historyCommand,
-  resumeCommand,
-  initSessionSystem,
-  recordMessage,
-  getPromptContext,
-  buildFullContext,
-  saveAndClose,
-  registerSessionCommands
-} from './SessionCommands.js';
-
-export type { LegacyCommandContext as SessionCommandContext } from './SessionCommands.js';
-
-// Serena Commands (Code Intelligence - NativeCodeIntelligence)
-export {
-  serenaCommands,
-  registerSerenaCommands
-} from './SerenaCommands.js';
-
-// Serena Agent Commands (Real Serena MCP Server)
-export {
-  serenaAgentCommands,
-  registerSerenaAgentCommands,
-  handleSerenaAgentCommand
-} from './SerenaAgentCommands.js';
-
-// MCP Integration Commands
-export {
-  mcpCommands,
-  registerMCPCommands
-} from './MCPCommands.js';
-
-// Prompt Memory Commands
-export { PromptCommands, promptCommands } from './PromptCommands.js';
-export type { PromptCommandResult } from './PromptCommands.js';
-
+export type {
+  CategoryInfo,
+  CommandStats,
+  DuplicateInfo,
+  ExtendedCommandInfo,
+  RegistryStatus,
+  ValidationIssue,
+} from './CommandDiagnostics.js';
 // Command Diagnostics
 export {
   CommandDiagnostics,
   commandDiagnostics,
-  registerDiagnosticCommands
+  registerDiagnosticCommands,
 } from './CommandDiagnostics.js';
-
-export type {
-  RegistryStatus,
-  CategoryInfo,
-  ValidationIssue,
-  CommandStats,
-  DuplicateInfo,
-  ExtendedCommandInfo
-} from './CommandDiagnostics.js';
-
-// Native Tools Commands
+export type { ParsedArgs, TableColumn } from './CommandHelpers.js';
+// Command Helpers - Shared utilities
 export {
-  nativeCommands,
-  fsCommands,
-  shellCommands,
-  searchCommands,
-  memoryCommands,
-  registerNativeCommands
-} from './nativecommands/index.js';
-
+  box,
+  confirmAction,
+  escapeRegex,
+  formatBytes,
+  formatDuration,
+  formatNumber,
+  formatPercent,
+  formatRelativeTime,
+  formatSimpleTable,
+  formatTable,
+  getBooleanFlag,
+  getNumberFlag,
+  getStringFlag,
+  highlightMatch,
+  horizontalLine,
+  indent,
+  parseArgs,
+  promptInput,
+  promptSelect,
+  Spinner,
+  showProgress,
+  statusIndicator,
+  truncate,
+} from './CommandHelpers.js';
+export type {
+  AnyCommandHandler,
+  AsyncCommandHandler,
+  // Async types
+  CancellationToken,
+  Command,
+  CommandArg,
+  CommandContext,
+  CommandHandler,
+  CommandResult,
+  ExecuteOptions,
+  ExtendedCommandContext,
+  ExtendedCommandHandler,
+  ProgressCallback,
+  ProgressInfo,
+  SyncCommandHandler,
+} from './CommandRegistry.js';
+// Command Registry - Unified command management
+export {
+  CancellationError,
+  // Re-exported from AsyncUtils
+  CancellationTokenSource,
+  CommandRegistry,
+  commandRegistry,
+  delay,
+  error,
+  executeWithCancellation,
+  executeWithTimeout,
+  executeWithTimeoutAndCancellation,
+  globalOperationTracker,
+  isAsyncFunction,
+  OperationTracker,
+  ProgressReporter,
+  retry,
+  success,
+  TimeoutError,
+  withCancellation,
+  withCancellationAndProgress,
+  withProgress,
+  wrapHandler,
+} from './CommandRegistry.js';
+export { CostTracker, costTracker } from './CostTracker.js';
+export type {
+  CwdChangeEvent,
+  CwdChangeListener,
+  CwdHistoryEntry,
+  CwdManagerOptions,
+  CwdValidationResult,
+} from './CwdManager.js';
+// CWD Manager - Current Working Directory management
+export {
+  CwdManager,
+  cwdManager,
+} from './CwdManager.js';
 // Document Commands (Word, Excel, PDF)
 export {
   documentCommands,
-  registerDocumentCommands
+  registerDocumentCommands,
 } from './DocumentCommands.js';
-
+export type { CommitOptions, GitStatus, PROptions } from './GitIntegration.js';
+// Feature #27: Git Integration
+export { GitIntegration, git, gitCommands } from './GitIntegration.js';
+export type {
+  CategoryConfig,
+  CommandExample,
+  CommandHelpMeta,
+  ExportFormat,
+} from './help/index.js';
 // Help System - Advanced help for commands
 export {
-  registerHelpCommand,
-  helpMetaRegistry,
-  categoryConfig,
-  generateOverview,
-  generateCommandHelp,
-  generateFullReference,
-  generateCategoryHelp,
-  searchHelp,
-  exportToMarkdown,
-  exportToJSON,
-  runInteractiveHelp,
-  getCategoryDisplay,
-  formatSignature,
-  formatArg,
   // Helper functions for adding metadata
   addCommandExamples,
   addCommandNotes,
+  categoryConfig,
+  deprecateCommand,
+  exportToJSON,
+  exportToMarkdown,
+  formatArg,
+  formatSignature,
+  generateCategoryHelp,
+  generateCommandHelp,
+  generateFullReference,
+  generateOverview,
+  getCategoryDisplay,
+  helpMetaRegistry,
+  registerHelpCommand,
+  runInteractiveHelp,
+  searchHelp,
   setCommandSeeAlso,
-  deprecateCommand
 } from './help/index.js';
+// Core CLI modes
+export { COMPLETIONS, completer, InteractiveMode } from './InteractiveMode.js';
+// MCP Integration Commands
+export {
+  mcpCommands,
+  registerMCPCommands,
+} from './MCPCommands.js';
+// Native Tools Commands
+export {
+  fsCommands,
+  memoryCommands,
+  nativeCommands,
+  registerNativeCommands,
+  searchCommands,
+  shellCommands,
+} from './nativecommands/index.js';
+export { PipelineMode, pipe } from './PipelineMode.js';
+export { ProjectContext } from './ProjectContext.js';
+export type { PromptCommandResult } from './PromptCommands.js';
 
+// Prompt Memory Commands
+export { PromptCommands, promptCommands } from './PromptCommands.js';
+// Serena Agent Commands (Real Serena MCP Server)
+export {
+  handleSerenaAgentCommand,
+  registerSerenaAgentCommands,
+  serenaAgentCommands,
+} from './SerenaAgentCommands.js';
+// Serena Commands (Code Intelligence - NativeCodeIntelligence)
+export {
+  registerSerenaCommands,
+  serenaCommands,
+} from './SerenaCommands.js';
+export type { LegacyCommandContext as SessionCommandContext } from './SessionCommands.js';
+// Session Commands
+export {
+  buildFullContext,
+  getPromptContext,
+  historyCommand,
+  initSessionSystem,
+  recordMessage,
+  registerSessionCommands,
+  resumeCommand,
+  saveAndClose,
+  sessionCommands,
+  sessionsCommand,
+} from './SessionCommands.js';
 export type {
-  CommandExample,
-  CommandHelpMeta,
-  CategoryConfig,
-  ExportFormat
-} from './help/index.js';
+  Subcommand,
+  SubcommandContext,
+  SubcommandInfo,
+  SubcommandOptions,
+} from './SubcommandExtension.js';
+// Subcommand Extension - Full subcommand support
+export {
+  createFsCommand,
+  createFsListSubcommand,
+  createFsReadSubcommand,
+  createFsWriteSubcommand,
+  registerFsCommandWithSubcommands,
+  SubcommandRegistry,
+} from './SubcommandExtension.js';
+export { WatchMode } from './WatchMode.js';
 
 // Internal import for initialization
 import { registerNativeCommands as _registerNativeCommands } from './nativecommands/index.js';
@@ -284,7 +259,7 @@ export function initializeCommands(): void {
   _registerCodebaseCommands();
   _registerSessionCommands();
   _registerSerenaCommands();
-  _registerSerenaAgentCommands();  // @serena - Real Serena MCP
+  _registerSerenaAgentCommands(); // @serena - Real Serena MCP
   _registerMCPCommands();
   _registerNativeCommands();
   _registerDocumentCommands();

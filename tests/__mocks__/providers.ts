@@ -5,13 +5,10 @@
 
 import { vi } from 'vitest';
 import type {
-  LLMProvider,
-  ExtendedLLMProvider,
+  ChatCompletionChunk,
   ChatCompletionRequest,
   ChatCompletionResponse,
-  ChatCompletionChunk,
-  ProviderResult,
-  HealthCheckResult,
+  ExtendedLLMProvider,
 } from '../../src/types/provider.js';
 
 /**
@@ -27,16 +24,18 @@ export class MockLLMProvider implements ExtendedLLMProvider {
   private _shouldFail: boolean;
   private _failureMessage: string;
 
-  constructor(options: {
-    name?: string;
-    model?: string;
-    available?: boolean;
-    healthy?: boolean;
-    latency?: number;
-    response?: string;
-    shouldFail?: boolean;
-    failureMessage?: string;
-  } = {}) {
+  constructor(
+    options: {
+      name?: string;
+      model?: string;
+      available?: boolean;
+      healthy?: boolean;
+      latency?: number;
+      response?: string;
+      shouldFail?: boolean;
+      failureMessage?: string;
+    } = {},
+  ) {
     this.name = options.name ?? 'mock-provider';
     this.model = options.model ?? 'mock-model';
     this._available = options.available ?? true;
@@ -51,7 +50,7 @@ export class MockLLMProvider implements ExtendedLLMProvider {
     return this._available;
   }
 
-  async createChatCompletion(request: ChatCompletionRequest): Promise<ChatCompletionResponse> {
+  async createChatCompletion(_request: ChatCompletionRequest): Promise<ChatCompletionResponse> {
     if (this._shouldFail) {
       throw new Error(this._failureMessage);
     }
@@ -63,14 +62,16 @@ export class MockLLMProvider implements ExtendedLLMProvider {
       object: 'chat.completion',
       created: Math.floor(Date.now() / 1000),
       model: this.model,
-      choices: [{
-        index: 0,
-        message: {
-          role: 'assistant',
-          content: this._response,
+      choices: [
+        {
+          index: 0,
+          message: {
+            role: 'assistant',
+            content: this._response,
+          },
+          finish_reason: 'stop',
         },
-        finish_reason: 'stop',
-      }],
+      ],
       usage: {
         promptTokens: 10,
         completionTokens: 20,
@@ -79,7 +80,9 @@ export class MockLLMProvider implements ExtendedLLMProvider {
     };
   }
 
-  async *createChatCompletionStream(request: ChatCompletionRequest): AsyncIterable<ChatCompletionChunk> {
+  async *createChatCompletionStream(
+    _request: ChatCompletionRequest,
+  ): AsyncIterable<ChatCompletionChunk> {
     if (this._shouldFail) {
       throw new Error(this._failureMessage);
     }
@@ -91,11 +94,13 @@ export class MockLLMProvider implements ExtendedLLMProvider {
         object: 'chat.completion.chunk',
         created: Math.floor(Date.now() / 1000),
         model: this.model,
-        choices: [{
-          index: 0,
-          delta: { content: word + ' ' },
-          finish_reason: null,
-        }],
+        choices: [
+          {
+            index: 0,
+            delta: { content: `${word} ` },
+            finish_reason: null,
+          },
+        ],
       };
     }
 
@@ -104,29 +109,35 @@ export class MockLLMProvider implements ExtendedLLMProvider {
       object: 'chat.completion.chunk',
       created: Math.floor(Date.now() / 1000),
       model: this.model,
-      choices: [{
-        index: 0,
-        delta: {},
-        finish_reason: 'stop',
-      }],
+      choices: [
+        {
+          index: 0,
+          delta: {},
+          finish_reason: 'stop',
+        },
+      ],
     };
   }
 
-  async generateJson<T>(prompt: string, schema: object): Promise<T> {
+  async generateJson<T>(_prompt: string, _schema: object): Promise<T> {
     if (this._shouldFail) {
       throw new Error(this._failureMessage);
     }
     return { result: 'mock-json' } as T;
   }
 
-  async analyzeText(text: string, task: string, options?: Record<string, unknown>): Promise<unknown> {
+  async analyzeText(
+    _text: string,
+    task: string,
+    _options?: Record<string, unknown>,
+  ): Promise<unknown> {
     if (this._shouldFail) {
       throw new Error(this._failureMessage);
     }
     return { analysis: 'mock-analysis', task };
   }
 
-  async analyzeCode(task: string, codeOrDescription: string, language?: string): Promise<string> {
+  async analyzeCode(task: string, _codeOrDescription: string, _language?: string): Promise<string> {
     if (this._shouldFail) {
       throw new Error(this._failureMessage);
     }
@@ -163,7 +174,7 @@ export class MockLLMProvider implements ExtendedLLMProvider {
 
   private async simulateLatency(): Promise<void> {
     if (this._latency > 0) {
-      await new Promise(resolve => setTimeout(resolve, this._latency));
+      await new Promise((resolve) => setTimeout(resolve, this._latency));
     }
   }
 }
@@ -193,11 +204,13 @@ export function createSpyProvider(baseProvider?: MockLLMProvider): MockLLMProvid
  * Create multiple mock providers for testing selection strategies
  */
 export function createMockProviderSet(count: number = 3): MockLLMProvider[] {
-  return Array.from({ length: count }, (_, i) =>
-    new MockLLMProvider({
-      name: `provider-${i}`,
-      model: `model-${i}`,
-      latency: 100 * (i + 1),
-    })
+  return Array.from(
+    { length: count },
+    (_, i) =>
+      new MockLLMProvider({
+        name: `provider-${i}`,
+        model: `model-${i}`,
+        latency: 100 * (i + 1),
+      }),
   );
 }

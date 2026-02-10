@@ -5,8 +5,8 @@
  * Unified button component with variants.
  */
 
-import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
+import { type ButtonHTMLAttributes, forwardRef, type ReactNode } from 'react';
 
 // ============================================================================
 // BUTTON VARIANTS
@@ -24,10 +24,8 @@ const buttonVariants = cva(
           'bg-black/30 text-[var(--matrix-text)] border border-[var(--matrix-border)] hover:bg-black/50 hover:border-[var(--matrix-accent)] focus:ring-[var(--matrix-border)]',
         ghost:
           'text-[var(--matrix-text-dim)] hover:text-[var(--matrix-accent)] hover:bg-[var(--matrix-border)]/20 focus:ring-[var(--matrix-border)]',
-        danger:
-          'bg-red-500/80 text-white hover:bg-red-600 focus:ring-red-500',
-        icon:
-          'p-2 rounded-full hover:bg-[var(--matrix-border)] text-[var(--matrix-accent)]',
+        danger: 'bg-red-500/80 text-white hover:bg-red-600 focus:ring-red-500',
+        icon: 'p-2 rounded-full hover:bg-[var(--matrix-border)] text-[var(--matrix-accent)]',
       },
       size: {
         sm: 'text-xs px-2 py-1',
@@ -40,7 +38,7 @@ const buttonVariants = cva(
       variant: 'primary',
       size: 'md',
     },
-  }
+  },
 );
 
 // ============================================================================
@@ -78,7 +76,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       children,
       ...props
     },
-    ref
+    ref,
   ) => {
     return (
       <button
@@ -96,7 +94,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {rightIcon}
       </button>
     );
-  }
+  },
 );
 
 Button.displayName = 'Button';

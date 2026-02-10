@@ -3,8 +3,8 @@
  * Handles result synthesis and summarization
  */
 
-import { ExecutionResult } from '../types/index.js';
 import { MIN_SINGLE_RESULT_LENGTH, RESULT_PREVIEW_LENGTH } from '../config/constants.js';
+import type { ExecutionResult } from '../types/index.js';
 import { AppError } from './BaseAgentService.js';
 
 export class SynthesisService {
@@ -20,12 +20,11 @@ export class SynthesisService {
       });
     }
 
-    const successResults = results.filter(r => r.success);
+    const successResults = results.filter((r) => r.success);
 
     // Single successful result with sufficient content - no synthesis needed
     const firstContent = successResults[0]?.content ?? '';
-    if (successResults.length === 1 &&
-        firstContent.length > MIN_SINGLE_RESULT_LENGTH) {
+    if (successResults.length === 1 && firstContent.length > MIN_SINGLE_RESULT_LENGTH) {
       return false;
     }
 
@@ -44,11 +43,14 @@ export class SynthesisService {
       });
     }
 
-    const successResults = results.filter(r => r.success);
+    const successResults = results.filter((r) => r.success);
 
     const firstContent = successResults[0]?.content;
-    if (successResults.length === 1 &&
-        firstContent && firstContent.length > MIN_SINGLE_RESULT_LENGTH) {
+    if (
+      successResults.length === 1 &&
+      firstContent &&
+      firstContent.length > MIN_SINGLE_RESULT_LENGTH
+    ) {
       return firstContent;
     }
 
@@ -62,7 +64,8 @@ export class SynthesisService {
     if (typeof objective !== 'string' || objective.trim() === '') {
       throw new AppError({
         code: 'SYNTHESIS_INVALID_ARGS',
-        message: 'SynthesisService.buildPrompt: objective is required and must be a non-empty string',
+        message:
+          'SynthesisService.buildPrompt: objective is required and must be a non-empty string',
         context: { method: 'buildPrompt', field: 'objective' },
       });
     }
@@ -75,7 +78,10 @@ export class SynthesisService {
     }
 
     const resultsSummary = results
-      .map(r => `[#${r.id}] ${r.success ? '✓' : '✗'}: ${(r.content ?? '').substring(0, RESULT_PREVIEW_LENGTH)}`)
+      .map(
+        (r) =>
+          `[#${r.id}] ${r.success ? '✓' : '✗'}: ${(r.content ?? '').substring(0, RESULT_PREVIEW_LENGTH)}`,
+      )
       .join('\n\n');
 
     return `

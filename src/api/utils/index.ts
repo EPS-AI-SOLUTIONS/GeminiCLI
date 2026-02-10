@@ -3,76 +3,73 @@
  * Re-exports all utilities
  */
 
-// SSE Streaming
-export { SSEWriter, createKeepAlive } from './sse.js';
-
-// Validation Helpers
+// Event Builders
 export {
-  requireString,
-  optionalString,
-  requireNumber,
-  optionalNumber,
-  requireBoolean,
-  optionalBoolean,
-  requireEnum,
-  optionalEnum,
-  requireObject,
-  requireArray,
-} from './validation.js';
+  arrayToEventStream,
+  type ChunkEventData,
+  chunksToEvents,
+  createChunkEvent,
+  createErrorEvent,
+  createPlanEvent,
+  createResultEvent,
+  createStatusEvent,
+  type ErrorEventData,
+  isChunkEvent,
+  isErrorEvent,
+  isPlanEvent,
+  isResultEvent,
+  mergeEventStreams,
+  type PlanEventData,
+  type ResultEventData,
+  type SSEEvent,
+  type StatusEventData,
+  serializeComment,
+  serializeDone,
+  serializeEvent,
+} from './eventBuilders.js';
+// Message Filters
+export {
+  applyFilters,
+  countByRole,
+  filterByAgent,
+  filterByDateRange,
+  filterByRole,
+  filterBySearch,
+  getFirstN,
+  getLastN,
+  getUniqueAgents,
+  groupByAgent,
+  groupByDate,
+  type MessageFilter,
+  type MessageGroup,
+  sortByTimestamp,
+} from './messageFilters.js';
 
 // Route Helpers
 export {
-  wrapRoute,
-  wrapExecutionRoute,
-  getErrorMessage,
   createErrorResult,
-  getErrorStatusCode,
-  successResponse,
+  type ErrorResult,
   errorResponse,
+  getErrorMessage,
+  getErrorStatusCode,
   isErrorResult,
   type RouteHandler,
-  type ErrorResult,
+  successResponse,
+  wrapExecutionRoute,
+  wrapRoute,
 } from './routeWrapper.js';
-
-// Message Filters
+// SSE Streaming
+export { createKeepAlive, SSEWriter } from './sse.js';
+// Validation Helpers
 export {
-  filterByRole,
-  filterByAgent,
-  filterBySearch,
-  filterByDateRange,
-  applyFilters,
-  groupByDate,
-  groupByAgent,
-  getLastN,
-  getFirstN,
-  sortByTimestamp,
-  getUniqueAgents,
-  countByRole,
-  type MessageFilter,
-  type MessageGroup,
-} from './messageFilters.js';
-
-// Event Builders
-export {
-  createPlanEvent,
-  createChunkEvent,
-  createResultEvent,
-  createErrorEvent,
-  createStatusEvent,
-  serializeEvent,
-  serializeComment,
-  serializeDone,
-  arrayToEventStream,
-  chunksToEvents,
-  mergeEventStreams,
-  isPlanEvent,
-  isChunkEvent,
-  isResultEvent,
-  isErrorEvent,
-  type SSEEvent,
-  type PlanEventData,
-  type ChunkEventData,
-  type ResultEventData,
-  type ErrorEventData,
-  type StatusEventData,
-} from './eventBuilders.js';
+  optionalBoolean,
+  optionalEnum,
+  optionalNumber,
+  optionalString,
+  requireArray,
+  requireBoolean,
+  requireEnum,
+  requireNumber,
+  requireObject,
+  requireString,
+} from './validation.js';

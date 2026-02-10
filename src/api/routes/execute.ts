@@ -3,16 +3,16 @@
  * Task execution with Swarm integration
  */
 
-import { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync } from 'fastify';
 import { executionService } from '../services/index.js';
-import { validateExecuteRequest } from '../validators/index.js';
-import { SSEWriter, createKeepAlive } from '../utils/index.js';
+import type { ExecuteRequestType } from '../types/fastify.js';
 import type {
-  ExecuteResponse,
   ExecuteErrorResponse,
+  ExecuteResponse,
   ExecuteStatusResponse,
 } from '../types/index.js';
-import type { ExecuteRequestType } from '../types/fastify.js';
+import { createKeepAlive, SSEWriter } from '../utils/index.js';
+import { validateExecuteRequest } from '../validators/index.js';
 
 export const executeRoutes: FastifyPluginAsync = async (fastify) => {
   /**
@@ -31,7 +31,7 @@ export const executeRoutes: FastifyPluginAsync = async (fastify) => {
         reply.status(500);
         return { error: errorMessage };
       }
-    }
+    },
   );
 
   /**

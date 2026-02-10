@@ -9,20 +9,20 @@
  * 5. Odpowiadanie na pytania z bazy wiedzy
  */
 
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import chalk from 'chalk';
 import ollama from 'ollama';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { knowledgeBank, KnowledgeType, KnowledgeEntry, RAGContext } from './KnowledgeBank.js';
+import { KNOWLEDGE_DIR } from '../config/paths.config.js';
 import { codebaseMemory } from '../memory/CodebaseMemory.js';
 import { sessionMemory } from '../memory/SessionMemory.js';
-import fs from 'fs/promises';
-import path from 'path';
-import { KNOWLEDGE_DIR } from '../config/paths.config.js';
+import { type KnowledgeEntry, type KnowledgeType, knowledgeBank } from './KnowledgeBank.js';
 
 // Initialize Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
-const TRAINING_DIR = path.join(KNOWLEDGE_DIR, 'training');
+const _TRAINING_DIR = path.join(KNOWLEDGE_DIR, 'training');
 const MODELS_DIR = path.join(KNOWLEDGE_DIR, 'models');
 
 // ============================================================
@@ -63,8 +63,6 @@ export class KnowledgeAgent {
   private agentModel = 'gemini-3-pro-preview';
   private localModel = 'geminihydra-knowledge'; // Our custom model name
 
-  constructor() {}
-
   /**
    * Initialize agent
    */
@@ -97,14 +95,21 @@ export class KnowledgeAgent {
     const learned: LearnedKnowledge = { extracted: 0, types: {} };
 
     // Extract architecture knowledge
-    await knowledgeBank.add('architecture', `${analysis.projectName} Architecture`, analysis.summary, {
-      source: 'codebase',
-      projectPath,
-      importance: 0.8,
-      tags: ['architecture', analysis.structure.type, analysis.structure.framework || ''].filter(Boolean)
-    });
+    await knowledgeBank.add(
+      'architecture',
+      `${analysis.projectName} Architecture`,
+      analysis.summary,
+      {
+        source: 'codebase',
+        projectPath,
+        importance: 0.8,
+        tags: ['architecture', analysis.structure.type, analysis.structure.framework || ''].filter(
+          Boolean,
+        ),
+      },
+    );
     learned.extracted++;
-    learned.types['architecture'] = 1;
+    learned.types.architecture = 1;
 
     // Extract patterns from key files
     for (const file of analysis.files.slice(0, 30)) {
@@ -113,22 +118,27 @@ export class KnowledgeAgent {
         const extension = file.extension ?? '.ts';
         const title = `${path.basename(relativePath)} - ${file.classes?.join(', ') || file.exports?.slice(0, 3).join(', ')}`;
 
-        await knowledgeBank.add('code_pattern', title, `
+        await knowledgeBank.add(
+          'code_pattern',
+          title,
+          `
 File: ${relativePath}
 Classes: ${file.classes?.join(', ') || 'none'}
 Exports: ${file.exports?.join(', ') || 'none'}
 Functions: ${file.functions?.join(', ') || 'none'}
 Lines: ${file.lines ?? 0}
-        `.trim(), {
-          source: 'codebase',
-          filePath: relativePath,
-          language: extension.replace('.', ''),
-          importance: 0.6,
-          projectPath
-        });
+        `.trim(),
+          {
+            source: 'codebase',
+            filePath: relativePath,
+            language: extension.replace('.', ''),
+            importance: 0.6,
+            projectPath,
+          },
+        );
 
         learned.extracted++;
-        learned.types['code_pattern'] = (learned.types['code_pattern'] || 0) + 1;
+        learned.types.code_pattern = (learned.types.code_pattern || 0) + 1;
       }
     }
 
@@ -165,7 +175,10 @@ Lines: ${file.lines ?? 0}
           // Only learn from substantial exchanges
           if (userMsg.content.length > 20 && assistantMsg.content.length > 100) {
             // Use AI to determine if this is worth learning
-            const shouldLearn = await this.evaluateForLearning(userMsg.content, assistantMsg.content);
+            const shouldLearn = await this.evaluateForLearning(
+              userMsg.content,
+              assistantMsg.content,
+            );
 
             if (shouldLearn.learn) {
               await knowledgeBank.add(
@@ -175,8 +188,8 @@ Lines: ${file.lines ?? 0}
                 {
                   source: 'session',
                   importance: shouldLearn.importance,
-                  tags: shouldLearn.tags
-                }
+                  tags: shouldLearn.tags,
+                },
               );
 
               learned.extracted++;
@@ -194,7 +207,10 @@ Lines: ${file.lines ?? 0}
   /**
    * Evaluate if content is worth learning
    */
-  private async evaluateForLearning(question: string, answer: string): Promise<{
+  private async evaluateForLearning(
+    question: string,
+    answer: string,
+  ): Promise<{
     learn: boolean;
     type: string;
     importance: number;
@@ -203,7 +219,7 @@ Lines: ${file.lines ?? 0}
     try {
       const model = genAI.getGenerativeModel({
         model: 'gemini-3-pro-preview',
-        generationConfig: { temperature: 0.8, maxOutputTokens: 512 }
+        generationConfig: { temperature: 0.8, maxOutputTokens: 512 },
       });
 
       const prompt = `Analyze this Q&A exchange for learning value. Return JSON only.
@@ -237,10 +253,12 @@ Return JSON:
    * Generate title from question
    */
   private generateTitle(question: string): string {
-    return question
-      .replace(/[?!.]+/g, '')
-      .slice(0, 60)
-      .trim() + (question.length > 60 ? '...' : '');
+    return (
+      question
+        .replace(/[?!.]+/g, '')
+        .slice(0, 60)
+        .trim() + (question.length > 60 ? '...' : '')
+    );
   }
 
   // ============================================================
@@ -256,7 +274,7 @@ Return JSON:
       useLocalModel?: boolean;
       maxKnowledge?: number;
       includeProjectContext?: boolean;
-    } = {}
+    } = {},
   ): Promise<AgentResponse> {
     await this.init();
 
@@ -265,21 +283,21 @@ Return JSON:
     // Get relevant knowledge
     const ragContext = await knowledgeBank.getRAGContext(question, {
       maxEntries: maxKnowledge,
-      maxTokens: 3000
+      maxTokens: 3000,
     });
 
     // Build context
     let context = '';
 
     if (ragContext.relevantKnowledge.length > 0) {
-      context += '## Relevant Knowledge\n' + ragContext.contextText + '\n\n';
+      context += `## Relevant Knowledge\n${ragContext.contextText}\n\n`;
     }
 
     if (includeProjectContext) {
       await codebaseMemory.init();
       const project = codebaseMemory.getCurrentProject();
       if (project) {
-        context += '## Project Context\n' + project.summary + '\n\n';
+        context += `## Project Context\n${project.summary}\n\n`;
       }
     }
 
@@ -287,7 +305,7 @@ Return JSON:
     let answer: string;
     let confidence: number;
 
-    if (useLocalModel && await this.isLocalModelAvailable()) {
+    if (useLocalModel && (await this.isLocalModelAvailable())) {
       const result = await this.queryLocalModel(question, context);
       answer = result.answer;
       confidence = result.confidence;
@@ -300,17 +318,20 @@ Return JSON:
     return {
       answer,
       sources: ragContext.relevantKnowledge,
-      confidence
+      confidence,
     };
   }
 
   /**
    * Query using Gemini
    */
-  private async queryGemini(question: string, context: string): Promise<{ answer: string; confidence: number }> {
+  private async queryGemini(
+    question: string,
+    context: string,
+  ): Promise<{ answer: string; confidence: number }> {
     const model = genAI.getGenerativeModel({
       model: this.agentModel,
-      generationConfig: { temperature: 1.0, maxOutputTokens: 4096 }
+      generationConfig: { temperature: 1.0, maxOutputTokens: 4096 },
     });
 
     const prompt = `You are a knowledgeable assistant. Use the provided context to answer the question accurately.
@@ -337,11 +358,14 @@ Instructions:
   /**
    * Query using local Ollama model
    */
-  private async queryLocalModel(question: string, context: string): Promise<{ answer: string; confidence: number }> {
+  private async queryLocalModel(
+    question: string,
+    context: string,
+  ): Promise<{ answer: string; confidence: number }> {
     const response = await ollama.generate({
       model: this.localModel,
       prompt: `Context:\n${context}\n\nQuestion: ${question}\n\nAnswer:`,
-      options: { temperature: 0.3 }
+      options: { temperature: 0.3 },
     });
 
     return { answer: response.response, confidence: 0.7 };
@@ -353,7 +377,7 @@ Instructions:
   private async isLocalModelAvailable(): Promise<boolean> {
     try {
       const models = await ollama.list();
-      return models.models.some(m => m.name.includes(this.localModel));
+      return models.models.some((m) => m.name.includes(this.localModel));
     } catch {
       return false;
     }
@@ -376,7 +400,7 @@ Instructions:
     // Get relevant knowledge
     const ragContext = await knowledgeBank.getRAGContext(query, {
       maxEntries: 3,
-      maxTokens: 2000
+      maxTokens: 2000,
     });
 
     if (ragContext.relevantKnowledge.length > 0) {
@@ -409,7 +433,7 @@ Instructions:
     agentName: string,
     task: string,
     result: string,
-    success: boolean
+    success: boolean,
   ): Promise<void> {
     await this.init();
 
@@ -426,8 +450,8 @@ Instructions:
         source: 'agent',
         createdBy: agentName,
         importance: success ? 0.6 : 0.7, // Failures are often more valuable
-        tags: [agentName.toLowerCase(), success ? 'success' : 'failure']
-      }
+        tags: [agentName.toLowerCase(), success ? 'success' : 'failure'],
+      },
     );
   }
 
@@ -446,23 +470,21 @@ Instructions:
   /**
    * Create custom Ollama model from knowledge
    */
-  async createCustomModel(config: {
-    baseModel?: string;
-    modelName?: string;
-    systemPrompt?: string;
-  } = {}): Promise<string> {
+  async createCustomModel(
+    config: { baseModel?: string; modelName?: string; systemPrompt?: string } = {},
+  ): Promise<string> {
     await this.init();
 
     const {
       baseModel = 'qwen3:4b',
       modelName = 'geminihydra-knowledge',
-      systemPrompt = 'You are a knowledgeable assistant trained on GeminiHydra project knowledge. Answer questions accurately based on your training.'
+      systemPrompt = 'You are a knowledgeable assistant trained on GeminiHydra project knowledge. Answer questions accurately based on your training.',
     } = config;
 
     console.log(chalk.cyan(`[KnowledgeAgent] Creating custom model: ${modelName}`));
 
     // Export training data
-    const trainingPath = await this.prepareTrainingData();
+    const _trainingPath = await this.prepareTrainingData();
 
     // Create Modelfile
     const modelfilePath = path.join(MODELS_DIR, 'Modelfile');
@@ -494,7 +516,7 @@ PARAMETER num_ctx 4096
       await ollama.create({
         model: modelName,
         from: baseModel,
-        template: systemPrompt
+        template: systemPrompt,
       });
 
       this.localModel = modelName;
@@ -516,7 +538,8 @@ PARAMETER num_ctx 4096
 
     const trainingPath = await this.prepareTrainingData();
 
-    console.log(chalk.yellow(`
+    console.log(
+      chalk.yellow(`
 [KnowledgeAgent] Fine-tuning Instructions:
 
 1. Training data exported to: ${trainingPath}
@@ -531,7 +554,8 @@ PARAMETER num_ctx 4096
 
 4. Current knowledge base stats:
    ${JSON.stringify(knowledgeBank.getStats(), null, 2)}
-`));
+`),
+    );
   }
 
   // ============================================================
@@ -553,7 +577,7 @@ PARAMETER num_ctx 4096
       knowledgeEntries: kbStats.totalEntries,
       byType: kbStats.byType,
       bySource: kbStats.bySource,
-      hasLocalModel: false // Will be updated async
+      hasLocalModel: false, // Will be updated async
     };
   }
 }

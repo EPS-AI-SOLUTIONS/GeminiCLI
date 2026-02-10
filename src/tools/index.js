@@ -7,6 +7,7 @@
  */
 
 import { BaseTool, ToolResult } from './base-tool.js';
+
 export { BaseTool, ToolResult } from './base-tool.js';
 export * from './errors.js';
 
@@ -69,7 +70,7 @@ export function getAllTools() {
  * @returns {Object[]}
  */
 export function getToolDefinitions() {
-  return getAllTools().map(tool => tool.getDefinition());
+  return getAllTools().map((tool) => tool.getDefinition());
 }
 
 /**
@@ -149,5 +150,5 @@ export default {
   getToolCount,
   createSimpleTool,
   BaseTool,
-  ToolResult
+  ToolResult,
 };

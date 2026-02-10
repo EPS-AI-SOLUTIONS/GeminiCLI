@@ -5,12 +5,12 @@
  * Useful for debugging file access issues, permission problems, and path validation.
  */
 
-import fs from 'fs/promises';
-import fsSync from 'fs';
-import path from 'path';
-import os from 'os';
+import fsSync from 'node:fs';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import chalk from 'chalk';
-import { FileAttributes } from './types.js';
+import type { FileAttributes } from './types.js';
 
 // ============================================================
 // Types
@@ -271,7 +271,7 @@ export class FileSystemDiagnostics {
       pathValidation,
       permissions,
       errors,
-      warnings
+      warnings,
     };
 
     // Check existence
@@ -343,7 +343,6 @@ export class FileSystemDiagnostics {
       if (result.isFile && result.readable) {
         result.encoding = await this.detectEncoding(resolvedPath);
       }
-
     } catch (e: any) {
       errors.push(`Error getting file stats: ${e.message}`);
     }
@@ -366,7 +365,7 @@ export class FileSystemDiagnostics {
       path: resolvedPath,
       readable: false,
       writable: false,
-      executable: false
+      executable: false,
     };
 
     try {
@@ -430,9 +429,7 @@ export class FileSystemDiagnostics {
     const isAbsolute = path.isAbsolute(targetPath);
 
     // Check for invalid characters
-    const invalidCharsPattern = isWindows
-      ? /[<>:"|?*\x00-\x1f]/g
-      : /[\x00]/g;
+    const invalidCharsPattern = isWindows ? /[<>:"|?*\x00-\x1f]/g : /[\x00]/g;
 
     const invalidChars: string[] = [];
     const matches = targetPath.match(invalidCharsPattern);
@@ -467,9 +464,28 @@ export class FileSystemDiagnostics {
     if (isWindows) {
       // Check for reserved names
       const reservedNames = [
-        'CON', 'PRN', 'AUX', 'NUL',
-        'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9',
-        'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'
+        'CON',
+        'PRN',
+        'AUX',
+        'NUL',
+        'COM1',
+        'COM2',
+        'COM3',
+        'COM4',
+        'COM5',
+        'COM6',
+        'COM7',
+        'COM8',
+        'COM9',
+        'LPT1',
+        'LPT2',
+        'LPT3',
+        'LPT4',
+        'LPT5',
+        'LPT6',
+        'LPT7',
+        'LPT8',
+        'LPT9',
       ];
 
       const baseName = path.basename(targetPath, path.extname(targetPath)).toUpperCase();
@@ -493,7 +509,7 @@ export class FileSystemDiagnostics {
       pathTooLong,
       maxPathLength,
       hasTraversal,
-      issues
+      issues,
     };
   }
 
@@ -516,17 +532,19 @@ export class FileSystemDiagnostics {
         uid: isWindows ? undefined : os.userInfo().uid,
         gid: isWindows ? undefined : os.userInfo().gid,
         homeDir: os.homedir(),
-        cwd: process.cwd()
+        cwd: process.cwd(),
       },
       limits: {
         maxPathLength: isWindows ? 260 : 4096,
         maxFilenameLength: 255,
-        caseSensitive: !isWindows && process.platform !== 'darwin'
+        caseSensitive: !isWindows && process.platform !== 'darwin',
       },
       env: {
         tempDir: os.tmpdir(),
-        pathVar: (process.env.PATH || '').slice(0, 200) + (process.env.PATH && process.env.PATH.length > 200 ? '...' : '')
-      }
+        pathVar:
+          (process.env.PATH || '').slice(0, 200) +
+          (process.env.PATH && process.env.PATH.length > 200 ? '...' : ''),
+      },
     };
   }
 
@@ -565,19 +583,19 @@ export class FileSystemDiagnostics {
     parts.push(isDirectory ? 'd' : '-');
 
     // Owner permissions
-    parts.push((mode & 0o400) ? 'r' : '-');
-    parts.push((mode & 0o200) ? 'w' : '-');
-    parts.push((mode & 0o100) ? 'x' : '-');
+    parts.push(mode & 0o400 ? 'r' : '-');
+    parts.push(mode & 0o200 ? 'w' : '-');
+    parts.push(mode & 0o100 ? 'x' : '-');
 
     // Group permissions
-    parts.push((mode & 0o040) ? 'r' : '-');
-    parts.push((mode & 0o020) ? 'w' : '-');
-    parts.push((mode & 0o010) ? 'x' : '-');
+    parts.push(mode & 0o040 ? 'r' : '-');
+    parts.push(mode & 0o020 ? 'w' : '-');
+    parts.push(mode & 0o010 ? 'x' : '-');
 
     // Other permissions
-    parts.push((mode & 0o004) ? 'r' : '-');
-    parts.push((mode & 0o002) ? 'w' : '-');
-    parts.push((mode & 0o001) ? 'x' : '-');
+    parts.push(mode & 0o004 ? 'r' : '-');
+    parts.push(mode & 0o002 ? 'w' : '-');
+    parts.push(mode & 0o001 ? 'x' : '-');
 
     return parts.join('');
   }
@@ -596,14 +614,14 @@ export class FileSystemDiagnostics {
         readonly: !(stats.mode & 0o200),
         hidden: basename.startsWith('.'),
         system: false,
-        archive: false
+        archive: false,
       };
     } else {
       // Unix fallback
       return {
         readonly: !(stats.mode & 0o200),
         hidden: basename.startsWith('.'),
-        system: false
+        system: false,
       };
     }
   }
@@ -622,19 +640,19 @@ export class FileSystemDiagnostics {
       }
 
       // Check for BOM markers
-      if (buffer[0] === 0xEF && buffer[1] === 0xBB && buffer[2] === 0xBF) {
+      if (buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf) {
         return 'utf-8-bom';
       }
-      if (buffer[0] === 0xFE && buffer[1] === 0xFF) {
+      if (buffer[0] === 0xfe && buffer[1] === 0xff) {
         return 'utf-16-be';
       }
-      if (buffer[0] === 0xFF && buffer[1] === 0xFE) {
+      if (buffer[0] === 0xff && buffer[1] === 0xfe) {
         if (buffer[2] === 0x00 && buffer[3] === 0x00) {
           return 'utf-32-le';
         }
         return 'utf-16-le';
       }
-      if (buffer[0] === 0x00 && buffer[1] === 0x00 && buffer[2] === 0xFE && buffer[3] === 0xFF) {
+      if (buffer[0] === 0x00 && buffer[1] === 0x00 && buffer[2] === 0xfe && buffer[3] === 0xff) {
         return 'utf-32-be';
       }
 
@@ -666,7 +684,7 @@ export class FileSystemDiagnostics {
     console.log(chalk.white('Time: ') + chalk.gray(result.timestamp.toISOString()));
 
     // Status indicators
-    console.log('\n' + chalk.cyan('--- Status ---'));
+    console.log(`\n${chalk.cyan('--- Status ---')}`);
     console.log(this.statusLine('Exists', result.exists));
     console.log(this.statusLine('Readable', result.readable));
     console.log(this.statusLine('Writable', result.writable));
@@ -677,7 +695,7 @@ export class FileSystemDiagnostics {
 
     // Properties
     if (result.exists) {
-      console.log('\n' + chalk.cyan('--- Properties ---'));
+      console.log(`\n${chalk.cyan('--- Properties ---')}`);
       if (result.size !== undefined) {
         console.log(chalk.white('Size: ') + this.formatBytes(result.size));
       }
@@ -693,30 +711,33 @@ export class FileSystemDiagnostics {
     }
 
     // Permissions
-    console.log('\n' + chalk.cyan('--- Permissions ---'));
+    console.log(`\n${chalk.cyan('--- Permissions ---')}`);
     if (result.permissions.modeString) {
       console.log(chalk.white('Mode: ') + chalk.yellow(result.permissions.modeString));
     }
     if (result.permissions.owner) {
-      console.log(chalk.white('Owner: ') + chalk.gray(`uid=${result.permissions.owner}, gid=${result.permissions.group}`));
+      console.log(
+        chalk.white('Owner: ') +
+          chalk.gray(`uid=${result.permissions.owner}, gid=${result.permissions.group}`),
+      );
     }
 
     // Symlink
     if (result.isSymlink) {
-      console.log('\n' + chalk.cyan('--- Symlink ---'));
+      console.log(`\n${chalk.cyan('--- Symlink ---')}`);
       console.log(chalk.white('Target: ') + chalk.yellow(result.symlinkTarget || 'unknown'));
       console.log(this.statusLine('Target Exists', result.symlinkTargetExists || false));
     }
 
     // Blocked reason
     if (result.blockedReason) {
-      console.log('\n' + chalk.cyan('--- Blocking ---'));
+      console.log(`\n${chalk.cyan('--- Blocking ---')}`);
       console.log(chalk.red('Reason: ') + result.blockedReason);
     }
 
     // Path validation
     if (!result.pathValidation.valid) {
-      console.log('\n' + chalk.cyan('--- Path Validation Issues ---'));
+      console.log(`\n${chalk.cyan('--- Path Validation Issues ---')}`);
       for (const issue of result.pathValidation.issues) {
         console.log(chalk.red('  - ') + issue);
       }
@@ -724,7 +745,7 @@ export class FileSystemDiagnostics {
 
     // Errors
     if (result.errors.length > 0) {
-      console.log('\n' + chalk.red('--- Errors ---'));
+      console.log(`\n${chalk.red('--- Errors ---')}`);
       for (const error of result.errors) {
         console.log(chalk.red('  - ') + error);
       }
@@ -732,7 +753,7 @@ export class FileSystemDiagnostics {
 
     // Warnings
     if (result.warnings.length > 0) {
-      console.log('\n' + chalk.yellow('--- Warnings ---'));
+      console.log(`\n${chalk.yellow('--- Warnings ---')}`);
       for (const warning of result.warnings) {
         console.log(chalk.yellow('  - ') + warning);
       }
@@ -753,7 +774,7 @@ export class FileSystemDiagnostics {
     console.log(chalk.white('Release: ') + chalk.gray(info.release));
     console.log(chalk.white('Arch: ') + chalk.gray(info.arch));
 
-    console.log('\n' + chalk.cyan('--- User ---'));
+    console.log(`\n${chalk.cyan('--- User ---')}`);
     console.log(chalk.white('Username: ') + chalk.yellow(info.user.username));
     if (info.user.uid !== undefined) {
       console.log(chalk.white('UID/GID: ') + chalk.gray(`${info.user.uid}/${info.user.gid}`));
@@ -761,12 +782,14 @@ export class FileSystemDiagnostics {
     console.log(chalk.white('Home: ') + chalk.gray(info.user.homeDir));
     console.log(chalk.white('CWD: ') + chalk.gray(info.user.cwd));
 
-    console.log('\n' + chalk.cyan('--- Limits ---'));
+    console.log(`\n${chalk.cyan('--- Limits ---')}`);
     console.log(chalk.white('Max Path Length: ') + chalk.gray(String(info.limits.maxPathLength)));
     console.log(chalk.white('Max Filename: ') + chalk.gray(String(info.limits.maxFilenameLength)));
-    console.log(chalk.white('Case Sensitive: ') + chalk.gray(info.limits.caseSensitive ? 'Yes' : 'No'));
+    console.log(
+      chalk.white('Case Sensitive: ') + chalk.gray(info.limits.caseSensitive ? 'Yes' : 'No'),
+    );
 
-    console.log('\n' + chalk.cyan('--- Environment ---'));
+    console.log(`\n${chalk.cyan('--- Environment ---')}`);
     console.log(chalk.white('Temp Dir: ') + chalk.gray(info.env.tempDir));
 
     console.log(chalk.cyan('\n========================================\n'));
@@ -783,7 +806,7 @@ export class FileSystemDiagnostics {
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    return `${parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
   }
 }
 
@@ -793,7 +816,7 @@ export class FileSystemDiagnostics {
 
 export function createDiagnostics(options?: {
   rootDir?: string;
-  blockedPaths?: string[]
+  blockedPaths?: string[];
 }): FileSystemDiagnostics {
   return new FileSystemDiagnostics(options);
 }

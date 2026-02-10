@@ -2,8 +2,8 @@
  * Sidebar Component Tests
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Sidebar } from '../../../src/components/layout/Sidebar';
 import { createMockAppState } from '../../mocks/store';
 
@@ -91,7 +91,7 @@ describe('Sidebar', () => {
 
       // Find the toggle button (contains ChevronLeft icon)
       const buttons = screen.getAllByRole('button');
-      const toggleButton = buttons.find(btn => btn.querySelector('svg.lucide-chevron-left'));
+      const toggleButton = buttons.find((btn) => btn.querySelector('svg.lucide-chevron-left'));
 
       if (toggleButton) {
         fireEvent.click(toggleButton);

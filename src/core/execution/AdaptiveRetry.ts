@@ -32,46 +32,46 @@ export interface RetryConfig {
 const DEFAULT_RETRY_CONFIGS: Record<ErrorType, RetryConfig> = {
   rate_limit: {
     maxRetries: 5,
-    baseDelay: 5000,      // 5s for rate limits
-    maxDelay: 60000,      // Max 1 minute
+    baseDelay: 5000, // 5s for rate limits
+    maxDelay: 60000, // Max 1 minute
     backoffMultiplier: 2,
-    jitterFactor: 0.3
+    jitterFactor: 0.3,
   },
   network: {
     maxRetries: 4,
     baseDelay: 2000,
     maxDelay: 30000,
     backoffMultiplier: 1.5,
-    jitterFactor: 0.2
+    jitterFactor: 0.2,
   },
   timeout: {
     maxRetries: 3,
     baseDelay: 3000,
     maxDelay: 20000,
     backoffMultiplier: 1.5,
-    jitterFactor: 0.1
+    jitterFactor: 0.1,
   },
   logic: {
-    maxRetries: 2,        // Logic errors rarely fix with retry
+    maxRetries: 2, // Logic errors rarely fix with retry
     baseDelay: 1000,
     maxDelay: 5000,
     backoffMultiplier: 1,
-    jitterFactor: 0
+    jitterFactor: 0,
   },
   validation: {
     maxRetries: 2,
     baseDelay: 500,
     maxDelay: 2000,
     backoffMultiplier: 1,
-    jitterFactor: 0
+    jitterFactor: 0,
   },
   unknown: {
     maxRetries: 3,
     baseDelay: 2000,
     maxDelay: 15000,
     backoffMultiplier: 1.5,
-    jitterFactor: 0.2
-  }
+    jitterFactor: 0.2,
+  },
 };
 
 // =============================================================================
@@ -85,19 +85,42 @@ export function classifyError(error: Error | string): ErrorType {
   const message = typeof error === 'string' ? error : error.message;
   const lowerMsg = message.toLowerCase();
 
-  if (lowerMsg.includes('rate') || lowerMsg.includes('quota') || lowerMsg.includes('429') || lowerMsg.includes('too many')) {
+  if (
+    lowerMsg.includes('rate') ||
+    lowerMsg.includes('quota') ||
+    lowerMsg.includes('429') ||
+    lowerMsg.includes('too many')
+  ) {
     return 'rate_limit';
   }
-  if (lowerMsg.includes('network') || lowerMsg.includes('econnrefused') || lowerMsg.includes('enotfound') || lowerMsg.includes('socket')) {
+  if (
+    lowerMsg.includes('network') ||
+    lowerMsg.includes('econnrefused') ||
+    lowerMsg.includes('enotfound') ||
+    lowerMsg.includes('socket')
+  ) {
     return 'network';
   }
-  if (lowerMsg.includes('timeout') || lowerMsg.includes('timed out') || lowerMsg.includes('deadline')) {
+  if (
+    lowerMsg.includes('timeout') ||
+    lowerMsg.includes('timed out') ||
+    lowerMsg.includes('deadline')
+  ) {
     return 'timeout';
   }
-  if (lowerMsg.includes('invalid') || lowerMsg.includes('validation') || lowerMsg.includes('schema') || lowerMsg.includes('parse')) {
+  if (
+    lowerMsg.includes('invalid') ||
+    lowerMsg.includes('validation') ||
+    lowerMsg.includes('schema') ||
+    lowerMsg.includes('parse')
+  ) {
     return 'validation';
   }
-  if (lowerMsg.includes('logic') || lowerMsg.includes('assertion') || lowerMsg.includes('expected')) {
+  if (
+    lowerMsg.includes('logic') ||
+    lowerMsg.includes('assertion') ||
+    lowerMsg.includes('expected')
+  ) {
     return 'logic';
   }
 
@@ -112,7 +135,7 @@ export function classifyError(error: Error | string): ErrorType {
  * Calculate delay with jitter
  */
 function calculateDelay(config: RetryConfig, attempt: number): number {
-  const exponentialDelay = config.baseDelay * Math.pow(config.backoffMultiplier, attempt);
+  const exponentialDelay = config.baseDelay * config.backoffMultiplier ** attempt;
   const cappedDelay = Math.min(exponentialDelay, config.maxDelay);
   const jitter = cappedDelay * config.jitterFactor * (Math.random() * 2 - 1);
   return Math.max(0, Math.round(cappedDelay + jitter));
@@ -130,7 +153,7 @@ export async function adaptiveRetry<T>(
   options: {
     onRetry?: (attempt: number, error: Error, errorType: ErrorType, delay: number) => void;
     customConfigs?: Partial<Record<ErrorType, Partial<RetryConfig>>>;
-  } = {}
+  } = {},
 ): Promise<T> {
   let lastError: Error | null = null;
   let lastErrorType: ErrorType = 'unknown';
@@ -159,22 +182,28 @@ export async function adaptiveRetry<T>(
       const attemptForType = totalAttempts % currentConfig.maxRetries;
 
       if (attemptForType >= currentConfig.maxRetries - 1) {
-        console.log(chalk.red(`[AdaptiveRetry] Max retries (${currentConfig.maxRetries}) reached for ${lastErrorType}`));
+        console.log(
+          chalk.red(
+            `[AdaptiveRetry] Max retries (${currentConfig.maxRetries}) reached for ${lastErrorType}`,
+          ),
+        );
         break;
       }
 
       const delay = calculateDelay(currentConfig, attemptForType);
       totalAttempts++;
 
-      console.log(chalk.yellow(
-        `[AdaptiveRetry] ${lastErrorType} error (attempt ${totalAttempts}), waiting ${delay}ms`
-      ));
+      console.log(
+        chalk.yellow(
+          `[AdaptiveRetry] ${lastErrorType} error (attempt ${totalAttempts}), waiting ${delay}ms`,
+        ),
+      );
 
       if (options.onRetry) {
         options.onRetry(totalAttempts, error, lastErrorType, delay);
       }
 
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
 
@@ -190,5 +219,5 @@ export { DEFAULT_RETRY_CONFIGS };
 export default {
   adaptiveRetry,
   classifyError,
-  DEFAULT_RETRY_CONFIGS
+  DEFAULT_RETRY_CONFIGS,
 };

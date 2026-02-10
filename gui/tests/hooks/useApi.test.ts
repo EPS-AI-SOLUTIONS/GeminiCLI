@@ -2,19 +2,19 @@
  * useApi Hooks Tests
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
-import { QueryWrapper } from '../mocks/query';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  useHealthCheck,
-  useAgents,
-  useSettings,
-  useExecute,
-  useHistory,
-  useClearHistory,
-  useUpdateSettings,
   executeStream,
+  useAgents,
+  useClearHistory,
+  useExecute,
+  useHealthCheck,
+  useHistory,
+  useSettings,
+  useUpdateSettings,
 } from '../../src/hooks/useApi';
+import { QueryWrapper } from '../mocks/query';
 
 describe('useApi hooks', () => {
   beforeEach(() => {
@@ -45,10 +45,13 @@ describe('useApi hooks', () => {
 
       const { result } = renderHook(() => useHealthCheck(), { wrapper: QueryWrapper });
 
-      await waitFor(() => {
-        // Query will eventually fail after retries exhausted
-        expect(result.current.isError || result.current.failureCount > 0).toBe(true);
-      }, { timeout: 5000 });
+      await waitFor(
+        () => {
+          // Query will eventually fail after retries exhausted
+          expect(result.current.isError || result.current.failureCount > 0).toBe(true);
+        },
+        { timeout: 5000 },
+      );
     });
   });
 
@@ -112,7 +115,7 @@ describe('useApi hooks', () => {
           expect.objectContaining({
             method: 'PATCH',
             body: JSON.stringify({ streaming: false }),
-          })
+          }),
         );
       });
     });
@@ -135,7 +138,7 @@ describe('useApi hooks', () => {
           expect.objectContaining({
             method: 'POST',
             body: JSON.stringify({ objective: 'Test task' }),
-          })
+          }),
         );
       });
     });
@@ -151,10 +154,7 @@ describe('useApi hooks', () => {
       renderHook(() => useHistory(), { wrapper: QueryWrapper });
 
       await waitFor(() => {
-        expect(global.fetch).toHaveBeenCalledWith(
-          '/api/history?limit=50',
-          expect.any(Object)
-        );
+        expect(global.fetch).toHaveBeenCalledWith('/api/history?limit=50', expect.any(Object));
       });
     });
 
@@ -167,10 +167,7 @@ describe('useApi hooks', () => {
       renderHook(() => useHistory(100), { wrapper: QueryWrapper });
 
       await waitFor(() => {
-        expect(global.fetch).toHaveBeenCalledWith(
-          '/api/history?limit=100',
-          expect.any(Object)
-        );
+        expect(global.fetch).toHaveBeenCalledWith('/api/history?limit=100', expect.any(Object));
       });
     });
   });
@@ -189,7 +186,7 @@ describe('useApi hooks', () => {
       await waitFor(() => {
         expect(global.fetch).toHaveBeenCalledWith(
           '/api/history',
-          expect.objectContaining({ method: 'DELETE' })
+          expect.objectContaining({ method: 'DELETE' }),
         );
       });
     });
@@ -198,7 +195,8 @@ describe('useApi hooks', () => {
   describe('executeStream', () => {
     it('yields parsed SSE data', async () => {
       const mockReader = {
-        read: vi.fn()
+        read: vi
+          .fn()
           .mockResolvedValueOnce({
             done: false,
             value: new TextEncoder().encode('data: {"type":"chunk","content":"Hello"}\n'),
@@ -257,7 +255,8 @@ describe('useApi hooks', () => {
 
     it('skips invalid JSON chunks', async () => {
       const mockReader = {
-        read: vi.fn()
+        read: vi
+          .fn()
           .mockResolvedValueOnce({
             done: false,
             value: new TextEncoder().encode('data: invalid json\ndata: {"valid":true}\n'),

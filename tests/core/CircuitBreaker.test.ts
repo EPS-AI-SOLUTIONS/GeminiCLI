@@ -3,12 +3,11 @@
  * Testy wzorca Circuit Breaker: stany, przelaczanie, rejestr
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   CircuitBreaker,
   CircuitBreakerRegistry,
   type CircuitState,
-  type CircuitBreakerOptions,
 } from '../../src/core/CircuitBreaker.js';
 
 // Mock chalk
@@ -70,7 +69,9 @@ describe('CircuitBreaker', () => {
       // 2 bledy
       for (let i = 0; i < 2; i++) {
         try {
-          await breaker.execute(async () => { throw new Error('fail'); });
+          await breaker.execute(async () => {
+            throw new Error('fail');
+          });
         } catch {}
       }
       expect(breaker.getStats().failures).toBe(2);
@@ -85,7 +86,9 @@ describe('CircuitBreaker', () => {
     it('powinien otworzyc obwod po przekroczeniu progu bledow', async () => {
       for (let i = 0; i < 3; i++) {
         try {
-          await breaker.execute(async () => { throw new Error(`fail ${i}`); });
+          await breaker.execute(async () => {
+            throw new Error(`fail ${i}`);
+          });
         } catch {}
       }
 
@@ -97,19 +100,23 @@ describe('CircuitBreaker', () => {
       // Otworz obwod
       for (let i = 0; i < 3; i++) {
         try {
-          await breaker.execute(async () => { throw new Error('fail'); });
+          await breaker.execute(async () => {
+            throw new Error('fail');
+          });
         } catch {}
       }
 
       // Nastepne wywolanie powinno byc odrzucone
-      await expect(
-        breaker.execute(async () => 'should not run')
-      ).rejects.toThrow('Circuit breaker test-breaker is OPEN');
+      await expect(breaker.execute(async () => 'should not run')).rejects.toThrow(
+        'Circuit breaker is OPEN',
+      );
     });
 
     it('powinien rzucic oryginalny blad (nie circuit breaker error) podczas zbierania bledow', async () => {
       try {
-        await breaker.execute(async () => { throw new Error('original error'); });
+        await breaker.execute(async () => {
+          throw new Error('original error');
+        });
       } catch (e: any) {
         expect(e.message).toBe('original error');
       }
@@ -121,7 +128,9 @@ describe('CircuitBreaker', () => {
       // Otworz obwod
       for (let i = 0; i < 3; i++) {
         try {
-          await breaker.execute(async () => { throw new Error('fail'); });
+          await breaker.execute(async () => {
+            throw new Error('fail');
+          });
         } catch {}
       }
       expect(breaker.getState()).toBe('OPEN');
@@ -142,7 +151,9 @@ describe('CircuitBreaker', () => {
       // Otworz obwod
       for (let i = 0; i < 3; i++) {
         try {
-          await breaker.execute(async () => { throw new Error('fail'); });
+          await breaker.execute(async () => {
+            throw new Error('fail');
+          });
         } catch {}
       }
 
@@ -166,7 +177,9 @@ describe('CircuitBreaker', () => {
       // Otworz obwod
       for (let i = 0; i < 3; i++) {
         try {
-          await breaker.execute(async () => { throw new Error('fail'); });
+          await breaker.execute(async () => {
+            throw new Error('fail');
+          });
         } catch {}
       }
 
@@ -175,7 +188,9 @@ describe('CircuitBreaker', () => {
 
       // Blad w HALF_OPEN
       try {
-        await breaker.execute(async () => { throw new Error('still failing'); });
+        await breaker.execute(async () => {
+          throw new Error('still failing');
+        });
       } catch {}
 
       expect(breaker.getState()).toBe('OPEN');
@@ -189,7 +204,9 @@ describe('CircuitBreaker', () => {
       // Otworz obwod
       for (let i = 0; i < 3; i++) {
         try {
-          await breaker.execute(async () => { throw new Error('fail'); });
+          await breaker.execute(async () => {
+            throw new Error('fail');
+          });
         } catch {}
       }
       expect(breaker.getState()).toBe('OPEN');
@@ -209,7 +226,9 @@ describe('CircuitBreaker', () => {
   describe('getStats - statystyki', () => {
     it('powinien sledzic liczbe bledow', async () => {
       try {
-        await breaker.execute(async () => { throw new Error('fail'); });
+        await breaker.execute(async () => {
+          throw new Error('fail');
+        });
       } catch {}
 
       const stats = breaker.getStats();
@@ -219,7 +238,9 @@ describe('CircuitBreaker', () => {
     it('powinien poprawnie raportowac stan', async () => {
       for (let i = 0; i < 3; i++) {
         try {
-          await breaker.execute(async () => { throw new Error('fail'); });
+          await breaker.execute(async () => {
+            throw new Error('fail');
+          });
         } catch {}
       }
 
@@ -233,7 +254,9 @@ describe('CircuitBreaker', () => {
     it('powinien wywolac callback przy zmianie stanu', async () => {
       for (let i = 0; i < 3; i++) {
         try {
-          await breaker.execute(async () => { throw new Error('fail'); });
+          await breaker.execute(async () => {
+            throw new Error('fail');
+          });
         } catch {}
       }
 
@@ -253,7 +276,7 @@ describe('CircuitBreaker', () => {
       await expect(
         breaker.execute(async () => {
           throw new TypeError('type error');
-        })
+        }),
       ).rejects.toThrow('type error');
     });
   });
@@ -317,7 +340,9 @@ describe('CircuitBreakerRegistry', () => {
       });
 
       try {
-        await breaker.execute(async () => { throw new Error('fail'); });
+        await breaker.execute(async () => {
+          throw new Error('fail');
+        });
       } catch {}
 
       expect(breaker.getState()).toBe('OPEN');

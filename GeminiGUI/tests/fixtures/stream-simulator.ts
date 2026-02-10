@@ -32,7 +32,7 @@ export class StreamSimulator {
   async emitChunk(
     chunk: string,
     done: boolean = false,
-    eventType: 'ollama-event' | 'swarm-data' | 'gemini-stream' = 'swarm-data'
+    eventType: 'ollama-event' | 'swarm-data' | 'gemini-stream' = 'swarm-data',
   ): Promise<void> {
     await emitTauriEvent(this.page, eventType, { chunk, done });
   }
@@ -42,7 +42,7 @@ export class StreamSimulator {
    */
   async emitError(
     error: string,
-    eventType: 'ollama-event' | 'swarm-data' | 'gemini-stream' = 'swarm-data'
+    eventType: 'ollama-event' | 'swarm-data' | 'gemini-stream' = 'swarm-data',
   ): Promise<void> {
     await emitTauriEvent(this.page, eventType, { chunk: '', done: true, error });
   }
@@ -72,7 +72,10 @@ export class StreamSimulator {
   /**
    * Simulate a full response instantly (for faster tests)
    */
-  async simulateInstantResponse(text: string, eventType: StreamOptions['eventType'] = 'swarm-data'): Promise<void> {
+  async simulateInstantResponse(
+    text: string,
+    eventType: StreamOptions['eventType'] = 'swarm-data',
+  ): Promise<void> {
     await this.emitChunk(text, false, eventType);
     await this.emitChunk('', true, eventType);
   }
@@ -106,14 +109,20 @@ export class StreamSimulator {
   /**
    * Simulate Ollama-style response
    */
-  async simulateOllamaResponse(text: string, options: Omit<StreamOptions, 'eventType'> = {}): Promise<void> {
+  async simulateOllamaResponse(
+    text: string,
+    options: Omit<StreamOptions, 'eventType'> = {},
+  ): Promise<void> {
     await this.simulateTypingResponse(text, { ...options, eventType: 'ollama-event' });
   }
 
   /**
    * Simulate Gemini-style response
    */
-  async simulateGeminiResponse(text: string, options: Omit<StreamOptions, 'eventType'> = {}): Promise<void> {
+  async simulateGeminiResponse(
+    text: string,
+    options: Omit<StreamOptions, 'eventType'> = {},
+  ): Promise<void> {
     await this.simulateTypingResponse(text, { ...options, eventType: 'gemini-stream' });
   }
 

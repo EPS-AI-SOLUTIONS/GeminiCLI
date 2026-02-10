@@ -3,8 +3,8 @@
  * Centralized management for multiple AI providers
  */
 
-import { BaseProvider, type ProviderStatus } from './base-provider.js';
 import type { HealthCheckResult } from '../types/provider.js';
+import { BaseProvider, type ProviderStatus } from './base-provider.js';
 
 /**
  * Health check results map
@@ -20,8 +20,8 @@ export type SelectionStrategy =
   | 'random'
   | 'fastest'
   | 'healthiest'
-  | 'first-available'   // Alias for healthiest
-  | 'lowest-latency';   // Alias for fastest
+  | 'first-available' // Alias for healthiest
+  | 'lowest-latency'; // Alias for fastest
 
 /**
  * Provider Registry - Manages multiple AI providers
@@ -140,20 +140,18 @@ export class ProviderRegistry {
   async healthCheckAll(): Promise<HealthCheckResults> {
     const results: HealthCheckResults = new Map();
 
-    const checks = Array.from(this.providers.entries()).map(
-      async ([name, provider]) => {
-        try {
-          const result = await provider.healthCheck();
-          results.set(name, result);
-        } catch (error) {
-          results.set(name, {
-            healthy: false,
-            available: false,
-            error: error instanceof Error ? error.message : 'Unknown error'
-          });
-        }
+    const checks = Array.from(this.providers.entries()).map(async ([name, provider]) => {
+      try {
+        const result = await provider.healthCheck();
+        results.set(name, result);
+      } catch (error) {
+        results.set(name, {
+          healthy: false,
+          available: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
       }
-    );
+    });
 
     await Promise.all(checks);
     return results;
@@ -272,26 +270,6 @@ export class ProviderRegistry {
   }
 
   /**
-   * Select fastest provider based on latency stats
-   */
-  private selectFastest(): BaseProvider | null {
-    let fastestName: string | null = null;
-    let fastestLatency = Infinity;
-
-    for (const [name, latencies] of this.latencyStats) {
-      if (latencies.length === 0) continue;
-
-      const avgLatency = latencies.reduce((a, b) => a + b, 0) / latencies.length;
-      if (avgLatency < fastestLatency) {
-        fastestLatency = avgLatency;
-        fastestName = name;
-      }
-    }
-
-    return fastestName ? this.providers.get(fastestName) ?? null : this.getDefault();
-  }
-
-  /**
    * Select provider with lowest latency from health checks
    */
   private async selectLowestLatency(): Promise<BaseProvider | null> {
@@ -309,7 +287,7 @@ export class ProviderRegistry {
       }
     }
 
-    return fastestName ? this.providers.get(fastestName) ?? null : null;
+    return fastestName ? (this.providers.get(fastestName) ?? null) : null;
   }
 
   /**
@@ -384,7 +362,9 @@ export class ProviderRegistry {
   /**
    * ForEach iteration
    */
-  forEach(callback: (provider: BaseProvider, name: string, registry: ProviderRegistry) => void): void {
+  forEach(
+    callback: (provider: BaseProvider, name: string, registry: ProviderRegistry) => void,
+  ): void {
     for (const [name, provider] of this.providers) {
       callback(provider, name, this);
     }

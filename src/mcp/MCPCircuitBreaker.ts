@@ -6,7 +6,7 @@
  */
 
 import chalk from 'chalk';
-import { CircuitBreaker, CircuitBreakerOptions } from '../core/CircuitBreaker.js';
+import { CircuitBreaker, type CircuitBreakerOptions } from '../core/CircuitBreaker.js';
 import { logError } from '../utils/errorHandling.js';
 
 // ============================================================
@@ -19,9 +19,7 @@ export interface MCPCircuitBreakerConfig {
   timeout?: number;
 }
 
-export interface ReconnectionHandler {
-  (serverName: string): Promise<void>;
-}
+export type ReconnectionHandler = (serverName: string) => Promise<void>;
 
 // ============================================================
 // Default Configuration
@@ -97,7 +95,7 @@ export class MCPCircuitBreakerManager {
             logError(`MCP:${name}`, 'Reconnection failed', error);
           }
         }
-      }
+      },
     };
 
     return new CircuitBreaker(serverName, options);
@@ -124,7 +122,7 @@ export class MCPCircuitBreakerManager {
   async executeWithRetry<T>(
     serverName: string,
     operation: () => Promise<T>,
-    options: { maxRetries?: number; retryDelay?: number } = {}
+    options: { maxRetries?: number; retryDelay?: number } = {},
   ): Promise<T> {
     const { maxRetries = 3, retryDelay = 1000 } = options;
     const breaker = this.getBreaker(serverName);
@@ -137,10 +135,14 @@ export class MCPCircuitBreakerManager {
           return await operation();
         } catch (error: any) {
           lastError = error;
-          console.log(chalk.yellow(`[MCP:${serverName}] Attempt ${attempt}/${maxRetries} failed: ${error.message}`));
+          console.log(
+            chalk.yellow(
+              `[MCP:${serverName}] Attempt ${attempt}/${maxRetries} failed: ${error.message}`,
+            ),
+          );
 
           if (attempt < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, retryDelay * attempt));
+            await new Promise((resolve) => setTimeout(resolve, retryDelay * attempt));
           }
         }
       }
@@ -217,7 +219,7 @@ export class MCPCircuitBreakerManager {
    * Reset all circuit breakers
    */
   resetAll(): void {
-    for (const [name, breaker] of this.breakers) {
+    for (const [_name, breaker] of this.breakers) {
       breaker.reset();
     }
     console.log(chalk.green(`[MCP] All circuit breakers reset`));

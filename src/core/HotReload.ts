@@ -3,19 +3,19 @@
  * Feature #5: Hot Reload Config
  */
 
-import fs from 'fs';
-import path from 'path';
+import { EventEmitter } from 'node:events';
+import fs from 'node:fs';
+import path from 'node:path';
 import chalk from 'chalk';
-import { EventEmitter } from 'events';
 
 export interface HotReloadOptions {
-  debounce?: number;       // Debounce time in ms
+  debounce?: number; // Debounce time in ms
   onReload?: (config: any) => void;
   onError?: (error: Error) => void;
 }
 
 const DEFAULT_OPTIONS: HotReloadOptions = {
-  debounce: 500
+  debounce: 500,
 };
 
 /**
@@ -32,7 +32,7 @@ export class HotReloadManager extends EventEmitter {
     this.options = {
       debounce: options.debounce ?? DEFAULT_OPTIONS.debounce!,
       onReload: options.onReload ?? (() => {}),
-      onError: options.onError ?? ((e) => console.error(chalk.red(e.message)))
+      onError: options.onError ?? ((e) => console.error(chalk.red(e.message))),
     };
   }
 
@@ -68,7 +68,6 @@ export class HotReloadManager extends EventEmitter {
 
       this.watchers.set(absolutePath, watcher);
       console.log(chalk.gray(`[HotReload] Watching: ${path.basename(absolutePath)}`));
-
     } catch (error: any) {
       this.options.onError(error);
     }
@@ -96,7 +95,6 @@ export class HotReloadManager extends EventEmitter {
 
       this.configs.set(filePath, config);
       return config;
-
     } catch (error: any) {
       this.options.onError(error);
       return null;

@@ -12,8 +12,8 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import chalk from 'chalk';
-import { geminiSemaphore } from '../TrafficControl.js';
 import { GEMINI_MODELS } from '../../config/models.config.js';
+import { geminiSemaphore } from '../TrafficControl.js';
 
 // Initialize Gemini client
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
@@ -27,16 +27,16 @@ const INTELLIGENCE_MODEL = GEMINI_MODELS.FLASH;
  * Types of semantic boundaries in text
  */
 export type BoundaryType =
-  | 'section'      // Major section/chapter break (##, ---, ===)
-  | 'paragraph'    // Paragraph break (double newline)
-  | 'sentence'     // Sentence end (. ! ?)
-  | 'clause'       // Clause separator (, ; :)
-  | 'code_block'   // Code block boundary (```)
-  | 'function'     // Function/method boundary
-  | 'class'        // Class/interface boundary
-  | 'import'       // Import/module boundary
-  | 'list_item'    // List item boundary
-  | 'none';        // No natural boundary
+  | 'section' // Major section/chapter break (##, ---, ===)
+  | 'paragraph' // Paragraph break (double newline)
+  | 'sentence' // Sentence end (. ! ?)
+  | 'clause' // Clause separator (, ; :)
+  | 'code_block' // Code block boundary (```)
+  | 'function' // Function/method boundary
+  | 'class' // Class/interface boundary
+  | 'import' // Import/module boundary
+  | 'list_item' // List item boundary
+  | 'none'; // No natural boundary
 
 /**
  * Represents a detected boundary in text
@@ -44,8 +44,8 @@ export type BoundaryType =
 export interface ChunkBoundary {
   position: number;
   type: BoundaryType;
-  strength: number;    // 0-1, higher = stronger boundary
-  context: string;     // Surrounding text for debugging
+  strength: number; // 0-1, higher = stronger boundary
+  context: string; // Surrounding text for debugging
 }
 
 /**
@@ -72,9 +72,26 @@ export type ChunkType =
  * Supported programming languages for code-aware chunking
  */
 export type ProgrammingLanguage =
-  | 'typescript' | 'javascript' | 'python' | 'java' | 'csharp' | 'cpp'
-  | 'go' | 'rust' | 'ruby' | 'php' | 'swift' | 'kotlin' | 'scala'
-  | 'html' | 'css' | 'sql' | 'shell' | 'powershell' | 'markdown' | 'unknown';
+  | 'typescript'
+  | 'javascript'
+  | 'python'
+  | 'java'
+  | 'csharp'
+  | 'cpp'
+  | 'go'
+  | 'rust'
+  | 'ruby'
+  | 'php'
+  | 'swift'
+  | 'kotlin'
+  | 'scala'
+  | 'html'
+  | 'css'
+  | 'sql'
+  | 'shell'
+  | 'powershell'
+  | 'markdown'
+  | 'unknown';
 
 /**
  * A semantic chunk with metadata
@@ -84,17 +101,17 @@ export interface SemanticChunk {
   content: string;
   summary: string;
   keywords: string[];
-  importance: number;      // 0-1
+  importance: number; // 0-1
   type: ChunkType;
   hierarchyLevel: HierarchyLevel;
   startPosition: number;
   endPosition: number;
-  overlapBefore?: string;  // Context from previous chunk
-  overlapAfter?: string;   // Context for next chunk
-  parentId?: string;       // Parent chunk ID for hierarchy
-  childIds?: string[];     // Child chunk IDs
+  overlapBefore?: string; // Context from previous chunk
+  overlapAfter?: string; // Context for next chunk
+  parentId?: string; // Parent chunk ID for hierarchy
+  childIds?: string[]; // Child chunk IDs
   codeLanguage?: ProgrammingLanguage;
-  codeSymbol?: string;     // Function/class name if code
+  codeSymbol?: string; // Function/class name if code
 }
 
 /**
@@ -105,7 +122,7 @@ export interface ChunkingResult {
   chunks: SemanticChunk[];
   totalChunks: number;
   avgChunkSize: number;
-  semanticMap: Map<string, string[]>;  // keyword -> chunk IDs
+  semanticMap: Map<string, string[]>; // keyword -> chunk IDs
   hierarchy: ChunkHierarchy;
   boundaries: ChunkBoundary[];
 }
@@ -166,9 +183,9 @@ export function detectSemanticBoundaries(text: string): ChunkBoundary[] {
 
   // Section boundaries (headers, separators)
   const sectionPatterns = [
-    { regex: /\n#{1,6}\s+[^\n]+/g, strength: 1.0 },           // Markdown headers
-    { regex: /\n[-=]{3,}\n/g, strength: 0.95 },               // Horizontal rules
-    { regex: /\n\*{3,}\n/g, strength: 0.9 },                  // Asterisk separators
+    { regex: /\n#{1,6}\s+[^\n]+/g, strength: 1.0 }, // Markdown headers
+    { regex: /\n[-=]{3,}\n/g, strength: 0.95 }, // Horizontal rules
+    { regex: /\n\*{3,}\n/g, strength: 0.9 }, // Asterisk separators
     { regex: /\n(?=Chapter|Section|Part)\s+/gi, strength: 0.95 }, // Named sections
     { regex: /\n(?=Rozdzia[l\u0142]|Sekcja|Cz[e\u0119][s\u015b][c\u0107])\s+/gi, strength: 0.95 }, // Polish sections
   ];
@@ -180,7 +197,7 @@ export function detectSemanticBoundaries(text: string): ChunkBoundary[] {
         position: match.index,
         type: 'section',
         strength,
-        context: text.substring(Math.max(0, match.index - 20), match.index + 50)
+        context: text.substring(Math.max(0, match.index - 20), match.index + 50),
       });
     }
   }
@@ -193,7 +210,7 @@ export function detectSemanticBoundaries(text: string): ChunkBoundary[] {
       position: match.index,
       type: 'paragraph',
       strength: 0.7,
-      context: text.substring(Math.max(0, match.index - 20), match.index + 30)
+      context: text.substring(Math.max(0, match.index - 20), match.index + 30),
     });
   }
 
@@ -204,7 +221,7 @@ export function detectSemanticBoundaries(text: string): ChunkBoundary[] {
       position: match.index + match[0].length,
       type: 'sentence',
       strength: 0.5,
-      context: text.substring(Math.max(0, match.index - 10), match.index + 30)
+      context: text.substring(Math.max(0, match.index - 10), match.index + 30),
     });
   }
 
@@ -215,13 +232,16 @@ export function detectSemanticBoundaries(text: string): ChunkBoundary[] {
       position: match.index,
       type: 'code_block',
       strength: 0.85,
-      context: text.substring(match.index, Math.min(text.length, match.index + 50))
+      context: text.substring(match.index, Math.min(text.length, match.index + 50)),
     });
     boundaries.push({
       position: match.index + match[0].length,
       type: 'code_block',
       strength: 0.85,
-      context: text.substring(Math.max(0, match.index + match[0].length - 20), match.index + match[0].length + 20)
+      context: text.substring(
+        Math.max(0, match.index + match[0].length - 20),
+        match.index + match[0].length + 20,
+      ),
     });
   }
 
@@ -232,7 +252,7 @@ export function detectSemanticBoundaries(text: string): ChunkBoundary[] {
       position: match.index,
       type: 'list_item',
       strength: 0.4,
-      context: text.substring(match.index, Math.min(text.length, match.index + 40))
+      context: text.substring(match.index, Math.min(text.length, match.index + 40)),
     });
   }
 
@@ -242,7 +262,7 @@ export function detectSemanticBoundaries(text: string): ChunkBoundary[] {
   // Remove duplicates (same position, keep highest strength)
   const deduped: ChunkBoundary[] = [];
   for (const boundary of boundaries) {
-    const existing = deduped.find(b => Math.abs(b.position - boundary.position) < 5);
+    const existing = deduped.find((b) => Math.abs(b.position - boundary.position) < 5);
     if (existing) {
       if (boundary.strength > existing.strength) {
         existing.type = boundary.type;
@@ -262,18 +282,16 @@ export function detectSemanticBoundaries(text: string): ChunkBoundary[] {
 function findBestBoundary(
   boundaries: ChunkBoundary[],
   targetPosition: number,
-  searchRange: number = 200
+  searchRange: number = 200,
 ): ChunkBoundary | null {
-  const candidates = boundaries.filter(
-    b => Math.abs(b.position - targetPosition) <= searchRange
-  );
+  const candidates = boundaries.filter((b) => Math.abs(b.position - targetPosition) <= searchRange);
 
   if (candidates.length === 0) return null;
 
   // Score candidates by: strength * proximity
-  const scored = candidates.map(b => ({
+  const scored = candidates.map((b) => ({
     boundary: b,
-    score: b.strength * (1 - Math.abs(b.position - targetPosition) / searchRange)
+    score: b.strength * (1 - Math.abs(b.position - targetPosition) / searchRange),
   }));
 
   scored.sort((a, b) => b.score - a.score);
@@ -328,38 +346,40 @@ function extractCodeSymbols(code: string, language: ProgrammingLanguage): CodeSy
 
   const patterns: Record<string, { functions: RegExp; classes: RegExp; interfaces?: RegExp }> = {
     typescript: {
-      functions: /^(?:export\s+)?(?:async\s+)?function\s+(\w+)|^(?:export\s+)?const\s+(\w+)\s*=\s*(?:async\s+)?\(/,
+      functions:
+        /^(?:export\s+)?(?:async\s+)?function\s+(\w+)|^(?:export\s+)?const\s+(\w+)\s*=\s*(?:async\s+)?\(/,
       classes: /^(?:export\s+)?(?:abstract\s+)?class\s+(\w+)/,
-      interfaces: /^(?:export\s+)?interface\s+(\w+)/
+      interfaces: /^(?:export\s+)?interface\s+(\w+)/,
     },
     javascript: {
       functions: /^(?:async\s+)?function\s+(\w+)|^(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?\(/,
-      classes: /^class\s+(\w+)/
+      classes: /^class\s+(\w+)/,
     },
     python: {
       functions: /^def\s+(\w+)\s*\(/,
-      classes: /^class\s+(\w+)/
+      classes: /^class\s+(\w+)/,
     },
     java: {
       functions: /^(?:public|private|protected)?\s*(?:static\s+)?(?:\w+\s+)+(\w+)\s*\(/,
       classes: /^(?:public|private)?\s*(?:abstract\s+)?class\s+(\w+)/,
-      interfaces: /^(?:public\s+)?interface\s+(\w+)/
+      interfaces: /^(?:public\s+)?interface\s+(\w+)/,
     },
     csharp: {
-      functions: /^(?:public|private|protected|internal)?\s*(?:static\s+)?(?:async\s+)?(?:\w+\s+)+(\w+)\s*\(/,
+      functions:
+        /^(?:public|private|protected|internal)?\s*(?:static\s+)?(?:async\s+)?(?:\w+\s+)+(\w+)\s*\(/,
       classes: /^(?:public|private|internal)?\s*(?:abstract|sealed)?\s*class\s+(\w+)/,
-      interfaces: /^(?:public\s+)?interface\s+(\w+)/
+      interfaces: /^(?:public\s+)?interface\s+(\w+)/,
     },
     go: {
       functions: /^func\s+(?:\(\w+\s+\*?\w+\)\s+)?(\w+)\s*\(/,
       classes: /^type\s+(\w+)\s+struct/,
-      interfaces: /^type\s+(\w+)\s+interface/
+      interfaces: /^type\s+(\w+)\s+interface/,
     },
     rust: {
       functions: /^(?:pub\s+)?(?:async\s+)?fn\s+(\w+)/,
       classes: /^(?:pub\s+)?struct\s+(\w+)/,
-      interfaces: /^(?:pub\s+)?trait\s+(\w+)/
-    }
+      interfaces: /^(?:pub\s+)?trait\s+(\w+)/,
+    },
   };
 
   const langPatterns = patterns[language] || patterns.typescript;
@@ -385,20 +405,20 @@ function extractCodeSymbols(code: string, language: ProgrammingLanguage): CodeSy
 
     // Check for class start
     const classMatch = line.match(langPatterns.classes);
-    if (classMatch && classMatch[1]) {
+    if (classMatch?.[1]) {
       currentClass = { name: classMatch[1], startLine: i, braceCount: openBraces - closeBraces };
     }
 
     // Check for interface start
     if (langPatterns.interfaces) {
       const ifaceMatch = line.match(langPatterns.interfaces);
-      if (ifaceMatch && ifaceMatch[1]) {
+      if (ifaceMatch?.[1]) {
         symbols.push({
           name: ifaceMatch[1],
           type: 'interface',
           startLine: i,
           endLine: i, // Will be updated when we track end
-          content: line
+          content: line,
         });
       }
     }
@@ -412,7 +432,7 @@ function extractCodeSymbols(code: string, language: ProgrammingLanguage): CodeSy
           type: 'function',
           startLine: currentFunction.startLine,
           endLine: i,
-          content: lines.slice(currentFunction.startLine, i + 1).join('\n')
+          content: lines.slice(currentFunction.startLine, i + 1).join('\n'),
         });
         currentFunction = null;
       }
@@ -426,7 +446,7 @@ function extractCodeSymbols(code: string, language: ProgrammingLanguage): CodeSy
           type: 'class',
           startLine: currentClass.startLine,
           endLine: i,
-          content: lines.slice(currentClass.startLine, i + 1).join('\n')
+          content: lines.slice(currentClass.startLine, i + 1).join('\n'),
         });
         currentClass = null;
       }
@@ -440,7 +460,7 @@ function extractCodeSymbols(code: string, language: ProgrammingLanguage): CodeSy
       type: 'function',
       startLine: currentFunction.startLine,
       endLine: lines.length - 1,
-      content: lines.slice(currentFunction.startLine).join('\n')
+      content: lines.slice(currentFunction.startLine).join('\n'),
     });
   }
 
@@ -450,7 +470,7 @@ function extractCodeSymbols(code: string, language: ProgrammingLanguage): CodeSy
       type: 'class',
       startLine: currentClass.startLine,
       endLine: lines.length - 1,
-      content: lines.slice(currentClass.startLine).join('\n')
+      content: lines.slice(currentClass.startLine).join('\n'),
     });
   }
 
@@ -463,20 +483,20 @@ function extractCodeSymbols(code: string, language: ProgrammingLanguage): CodeSy
 export function createCodeAwareChunks(
   code: string,
   language?: ProgrammingLanguage,
-  options: ChunkingOptions = {}
+  options: ChunkingOptions = {},
 ): SemanticChunk[] {
-  const {
-    maxChunkSize = 3000,
-    minChunkSize = 100,
-    overlapSize = 50
-  } = options;
+  const { maxChunkSize = 3000, minChunkSize = 100, overlapSize = 50 } = options;
 
   const detectedLang = language || detectLanguage(code);
   const symbols = extractCodeSymbols(code, detectedLang);
   const chunks: SemanticChunk[] = [];
   const lines = code.split('\n');
 
-  console.log(chalk.magenta(`[SemanticChunk] Code-aware chunking (${detectedLang}), found ${symbols.length} symbols`));
+  console.log(
+    chalk.magenta(
+      `[SemanticChunk] Code-aware chunking (${detectedLang}), found ${symbols.length} symbols`,
+    ),
+  );
 
   // If no symbols found, fall back to line-based chunking
   if (symbols.length === 0) {
@@ -498,7 +518,7 @@ export function createCodeAwareChunks(
     if (header.length >= minChunkSize) {
       chunks.push(createCodeChunk(header, chunkId++, 0, detectedLang, 'imports'));
     } else {
-      currentChunkContent = header + '\n';
+      currentChunkContent = `${header}\n`;
       currentChunkStart = 0;
     }
   }
@@ -508,15 +528,19 @@ export function createCodeAwareChunks(
     const symbolContent = symbol.content;
 
     // If adding this symbol would exceed max size, finalize current chunk
-    if (currentChunkContent.length + symbolContent.length > maxChunkSize &&
-        currentChunkContent.length >= minChunkSize) {
-      chunks.push(createCodeChunk(
-        currentChunkContent.trim(),
-        chunkId++,
-        currentChunkStart,
-        detectedLang,
-        currentSymbols.join(', ')
-      ));
+    if (
+      currentChunkContent.length + symbolContent.length > maxChunkSize &&
+      currentChunkContent.length >= minChunkSize
+    ) {
+      chunks.push(
+        createCodeChunk(
+          currentChunkContent.trim(),
+          chunkId++,
+          currentChunkStart,
+          detectedLang,
+          currentSymbols.join(', '),
+        ),
+      );
 
       // Keep overlap
       const overlapContent = currentChunkContent.slice(-overlapSize);
@@ -525,19 +549,21 @@ export function createCodeAwareChunks(
       currentSymbols = [];
     }
 
-    currentChunkContent += symbolContent + '\n\n';
+    currentChunkContent += `${symbolContent}\n\n`;
     currentSymbols.push(`${symbol.type}:${symbol.name}`);
   }
 
   // Don't forget last chunk
   if (currentChunkContent.trim().length >= minChunkSize) {
-    chunks.push(createCodeChunk(
-      currentChunkContent.trim(),
-      chunkId++,
-      currentChunkStart,
-      detectedLang,
-      currentSymbols.join(', ')
-    ));
+    chunks.push(
+      createCodeChunk(
+        currentChunkContent.trim(),
+        chunkId++,
+        currentChunkStart,
+        detectedLang,
+        currentSymbols.join(', '),
+      ),
+    );
   }
 
   // Add overlaps between chunks
@@ -557,7 +583,7 @@ function createLineBasedChunks(
   maxChunkSize: number,
   minChunkSize: number,
   overlapSize: number,
-  language: ProgrammingLanguage
+  language: ProgrammingLanguage,
 ): SemanticChunk[] {
   const chunks: SemanticChunk[] = [];
   const lines = code.split('\n');
@@ -566,7 +592,10 @@ function createLineBasedChunks(
   let startPosition = 0;
 
   for (const line of lines) {
-    if (currentChunk.length + line.length + 1 > maxChunkSize && currentChunk.length >= minChunkSize) {
+    if (
+      currentChunk.length + line.length + 1 > maxChunkSize &&
+      currentChunk.length >= minChunkSize
+    ) {
       chunks.push(createCodeChunk(currentChunk.trim(), chunkId++, startPosition, language));
 
       // Keep overlap
@@ -574,7 +603,7 @@ function createLineBasedChunks(
       startPosition += currentChunk.length - overlapSize;
       currentChunk = overlap;
     }
-    currentChunk += line + '\n';
+    currentChunk += `${line}\n`;
   }
 
   if (currentChunk.trim().length >= minChunkSize) {
@@ -592,7 +621,7 @@ function createCodeChunk(
   index: number,
   startPosition: number,
   language: ProgrammingLanguage,
-  symbolName?: string
+  symbolName?: string,
 ): SemanticChunk {
   const keywords = extractKeywords(content);
 
@@ -601,7 +630,7 @@ function createCodeChunk(
     content,
     summary: symbolName
       ? `Code: ${symbolName}`
-      : content.substring(0, 80).replace(/\n/g, ' ') + '...',
+      : `${content.substring(0, 80).replace(/\n/g, ' ')}...`,
     keywords,
     importance: 0.85, // Code is generally important
     type: 'code',
@@ -609,7 +638,7 @@ function createCodeChunk(
     startPosition,
     endPosition: startPosition + content.length,
     codeLanguage: language,
-    codeSymbol: symbolName
+    codeSymbol: symbolName,
   };
 }
 
@@ -622,35 +651,36 @@ function createCodeChunk(
  */
 export function createHierarchicalChunks(
   text: string,
-  options: ChunkingOptions = {}
+  options: ChunkingOptions = {},
 ): ChunkHierarchy {
-  const {
-    maxChunkSize = 2000,
-    minChunkSize = 100
-  } = options;
+  const { maxChunkSize = 2000, minChunkSize = 100 } = options;
 
   console.log(chalk.magenta('[SemanticChunk] Creating hierarchical chunks...'));
 
   const boundaries = detectSemanticBoundaries(text);
 
   // Level 1: Sections
-  const sectionBoundaries = boundaries.filter(b => b.type === 'section');
+  const sectionBoundaries = boundaries.filter((b) => b.type === 'section');
   const sections = splitByBoundaries(text, sectionBoundaries, 'section', maxChunkSize * 3);
 
   // Level 2: Paragraphs (within sections or standalone)
-  const paragraphBoundaries = boundaries.filter(b => b.type === 'paragraph' || b.type === 'code_block');
+  const paragraphBoundaries = boundaries.filter(
+    (b) => b.type === 'paragraph' || b.type === 'code_block',
+  );
   const paragraphs = splitByBoundaries(text, paragraphBoundaries, 'paragraph', maxChunkSize);
 
   // Level 3: Sentences
-  const sentenceBoundaries = boundaries.filter(b => b.type === 'sentence');
+  const sentenceBoundaries = boundaries.filter((b) => b.type === 'sentence');
   const sentences = splitByBoundaries(text, sentenceBoundaries, 'sentence', minChunkSize * 3);
 
   // Establish parent-child relationships
   linkHierarchy(sections, paragraphs, sentences);
 
-  console.log(chalk.green(
-    `[SemanticChunk] Hierarchy: ${sections.length} sections, ${paragraphs.length} paragraphs, ${sentences.length} sentences`
-  ));
+  console.log(
+    chalk.green(
+      `[SemanticChunk] Hierarchy: ${sections.length} sections, ${paragraphs.length} paragraphs, ${sentences.length} sentences`,
+    ),
+  );
 
   return { sections, paragraphs, sentences };
 }
@@ -662,7 +692,7 @@ function splitByBoundaries(
   text: string,
   boundaries: ChunkBoundary[],
   level: HierarchyLevel,
-  maxSize: number
+  maxSize: number,
 ): SemanticChunk[] {
   const chunks: SemanticChunk[] = [];
   let chunkId = 0;
@@ -701,7 +731,7 @@ function splitLargeContent(
   maxSize: number,
   level: HierarchyLevel,
   startId: number,
-  startPosition: number
+  startPosition: number,
 ): SemanticChunk[] {
   if (content.length <= maxSize) {
     return [createTextChunk(content, `${level}-${startId}`, startPosition, level)];
@@ -749,12 +779,12 @@ function splitLargeContent(
 function linkHierarchy(
   sections: SemanticChunk[],
   paragraphs: SemanticChunk[],
-  sentences: SemanticChunk[]
+  sentences: SemanticChunk[],
 ): void {
   // Link paragraphs to sections
   for (const paragraph of paragraphs) {
     const parent = sections.find(
-      s => paragraph.startPosition >= s.startPosition && paragraph.endPosition <= s.endPosition
+      (s) => paragraph.startPosition >= s.startPosition && paragraph.endPosition <= s.endPosition,
     );
     if (parent) {
       paragraph.parentId = parent.id;
@@ -766,7 +796,7 @@ function linkHierarchy(
   // Link sentences to paragraphs
   for (const sentence of sentences) {
     const parent = paragraphs.find(
-      p => sentence.startPosition >= p.startPosition && sentence.endPosition <= p.endPosition
+      (p) => sentence.startPosition >= p.startPosition && sentence.endPosition <= p.endPosition,
     );
     if (parent) {
       sentence.parentId = parent.id;
@@ -783,16 +813,13 @@ function linkHierarchy(
 /**
  * Main function to create semantic chunks with all features
  */
-export function createSemanticChunks(
-  text: string,
-  options: ChunkingOptions = {}
-): ChunkingResult {
+export function createSemanticChunks(text: string, options: ChunkingOptions = {}): ChunkingResult {
   const {
     maxChunkSize = 2000,
     minChunkSize = 200,
     overlapSize = 100,
     preserveCodeBlocks = true,
-    hierarchical = true
+    hierarchical = true,
   } = options;
 
   console.log(chalk.magenta('[SemanticChunk] Starting semantic chunking...'));
@@ -836,7 +863,7 @@ export function createSemanticChunks(
     avgChunkSize: chunks.reduce((sum, c) => sum + c.content.length, 0) / Math.max(chunks.length, 1),
     semanticMap,
     hierarchy,
-    boundaries
+    boundaries,
   };
 }
 
@@ -846,7 +873,7 @@ export function createSemanticChunks(
 function createMixedContentChunks(
   text: string,
   boundaries: ChunkBoundary[],
-  options: ChunkingOptions
+  options: ChunkingOptions,
 ): SemanticChunk[] {
   const chunks: SemanticChunk[] = [];
   let chunkId = 0;
@@ -857,18 +884,18 @@ function createMixedContentChunks(
   let match: RegExpExecArray | null;
 
   while ((match = codeBlockRegex.exec(text)) !== null) {
-    const currentMatch = match;  // Capture for closure
+    const currentMatch = match; // Capture for closure
     // Process text before code block
     if (currentMatch.index > lastEnd) {
       const textContent = text.substring(lastEnd, currentMatch.index);
       const textChunks = createSimpleChunks(
         textContent,
-        boundaries.filter(b => b.position >= lastEnd && b.position < currentMatch.index),
+        boundaries.filter((b) => b.position >= lastEnd && b.position < currentMatch.index),
         options.maxChunkSize || 2000,
         options.minChunkSize || 200,
         options.overlapSize || 100,
         chunkId,
-        lastEnd
+        lastEnd,
       );
       chunks.push(...textChunks);
       chunkId += textChunks.length;
@@ -895,12 +922,12 @@ function createMixedContentChunks(
     const textContent = text.substring(lastEnd);
     const textChunks = createSimpleChunks(
       textContent,
-      boundaries.filter(b => b.position >= lastEnd),
+      boundaries.filter((b) => b.position >= lastEnd),
       options.maxChunkSize || 2000,
       options.minChunkSize || 200,
       options.overlapSize || 100,
       chunkId,
-      lastEnd
+      lastEnd,
     );
     chunks.push(...textChunks);
   }
@@ -918,7 +945,7 @@ function createSimpleChunks(
   minChunkSize: number,
   overlapSize: number,
   startId: number = 0,
-  startOffset: number = 0
+  startOffset: number = 0,
 ): SemanticChunk[] {
   const chunks: SemanticChunk[] = [];
   let currentChunk = '';
@@ -928,7 +955,7 @@ function createSimpleChunks(
   // Split by highest-strength boundaries first
   const sortedBoundaries = [...boundaries].sort((a, b) => b.strength - a.strength);
 
-  let position = 0;
+  const _position = 0;
   for (let i = 0; i < text.length; i++) {
     currentChunk += text[i];
 
@@ -938,7 +965,7 @@ function createSimpleChunks(
       const nearbyBoundary = findBestBoundary(
         sortedBoundaries,
         chunkStart + currentChunk.length,
-        Math.min(200, currentChunk.length / 4)
+        Math.min(200, currentChunk.length / 4),
       );
 
       let splitPoint = currentChunk.length;
@@ -990,7 +1017,7 @@ function createTextChunk(
   content: string,
   id: string,
   startPosition: number,
-  level: HierarchyLevel
+  level: HierarchyLevel,
 ): SemanticChunk {
   const type = detectChunkType(content);
   const keywords = extractKeywords(content);
@@ -1000,7 +1027,7 @@ function createTextChunk(
   const firstSentence = content.match(/^[^.!?]*[.!?]/);
   const summary = firstSentence
     ? firstSentence[0].substring(0, 100)
-    : content.substring(0, 100) + '...';
+    : `${content.substring(0, 100)}...`;
 
   return {
     id,
@@ -1011,7 +1038,7 @@ function createTextChunk(
     type,
     hierarchyLevel: level,
     startPosition,
-    endPosition: startPosition + content.length
+    endPosition: startPosition + content.length,
   };
 }
 
@@ -1025,11 +1052,15 @@ function createTextChunk(
 export function mergeChunksWithOverlap(
   chunks: SemanticChunk[],
   overlapSize: number = 100,
-  addSummaryOverlaps: boolean = true
+  addSummaryOverlaps: boolean = true,
 ): SemanticChunk[] {
   if (chunks.length <= 1) return chunks;
 
-  console.log(chalk.magenta(`[SemanticChunk] Merging ${chunks.length} chunks with ${overlapSize} char overlap...`));
+  console.log(
+    chalk.magenta(
+      `[SemanticChunk] Merging ${chunks.length} chunks with ${overlapSize} char overlap...`,
+    ),
+  );
 
   const merged: SemanticChunk[] = [];
 
@@ -1073,7 +1104,7 @@ export function mergeChunksWithOverlap(
 export function prioritizeChunks(
   chunks: SemanticChunk[],
   query: string,
-  topK: number = 5
+  topK: number = 5,
 ): SemanticChunk[] {
   if (chunks.length === 0) return [];
 
@@ -1081,12 +1112,12 @@ export function prioritizeChunks(
   const queryLower = query.toLowerCase();
 
   // Score each chunk
-  const scored = chunks.map(chunk => {
+  const scored = chunks.map((chunk) => {
     let score = 0;
 
     // 1. Keyword overlap (40%)
-    const keywordMatches = chunk.keywords.filter(k =>
-      queryKeywords.includes(k) || queryLower.includes(k)
+    const keywordMatches = chunk.keywords.filter(
+      (k) => queryKeywords.includes(k) || queryLower.includes(k),
     ).length;
     score += (keywordMatches / Math.max(queryKeywords.length, 1)) * 0.4;
 
@@ -1112,7 +1143,7 @@ export function prioritizeChunks(
       list: 0.03,
       table: 0.03,
       header: 0.02,
-      general: 0
+      general: 0,
     };
     score += typeBonus[chunk.type] || 0;
 
@@ -1122,11 +1153,16 @@ export function prioritizeChunks(
   // Sort by score descending
   scored.sort((a, b) => b.score - a.score);
 
-  console.log(chalk.magenta(`[SemanticChunk] Prioritized chunks for query, top scores: ${
-    scored.slice(0, 3).map(s => s.score.toFixed(2)).join(', ')
-  }`));
+  console.log(
+    chalk.magenta(
+      `[SemanticChunk] Prioritized chunks for query, top scores: ${scored
+        .slice(0, 3)
+        .map((s) => s.score.toFixed(2))
+        .join(', ')}`,
+    ),
+  );
 
-  return scored.slice(0, topK).map(s => s.chunk);
+  return scored.slice(0, topK).map((s) => s.chunk);
 }
 
 /**
@@ -1135,7 +1171,7 @@ export function prioritizeChunks(
 export function findRelevantChunks(
   query: string,
   result: ChunkingResult,
-  maxChunks: number = 3
+  maxChunks: number = 3,
 ): SemanticChunk[] {
   return prioritizeChunks(result.chunks, query, maxChunks);
 }
@@ -1155,19 +1191,23 @@ function detectChunkType(content: string): ChunkType {
   if (/^#{1,6}\s+/.test(trimmedContent)) return 'header';
 
   // Introduction patterns
-  if (/^(wstep|wprowadzenie|na poczatek|overview|introduction)/i.test(trimmedContent)) return 'introduction';
+  if (/^(wstep|wprowadzenie|na poczatek|overview|introduction)/i.test(trimmedContent))
+    return 'introduction';
 
   // Definition patterns
   if (/^(definicja|czym jest|co to|definition|what is)/i.test(trimmedContent)) return 'definition';
 
   // Example patterns
-  if (/^(przyklad|na przyklad|np\.|example|for example|e\.g\.)/i.test(trimmedContent)) return 'example';
+  if (/^(przyklad|na przyklad|np\.|example|for example|e\.g\.)/i.test(trimmedContent))
+    return 'example';
 
   // Conclusion patterns
-  if (/^(podsumowanie|wnioski|zakonczenie|summary|conclusion)/i.test(trimmedContent)) return 'conclusion';
+  if (/^(podsumowanie|wnioski|zakonczenie|summary|conclusion)/i.test(trimmedContent))
+    return 'conclusion';
 
   // Code patterns
-  if (/```|function\s|class\s|const\s|let\s|var\s|import\s|export\s|def\s|async\s/i.test(content)) return 'code';
+  if (/```|function\s|class\s|const\s|let\s|var\s|import\s|export\s|def\s|async\s/i.test(content))
+    return 'code';
 
   // List patterns
   if (/^(\d+\.|[-*+]|\s*-\s)/m.test(content) && content.split('\n').length > 3) return 'list';
@@ -1176,7 +1216,8 @@ function detectChunkType(content: string): ChunkType {
   if (/\|.*\|.*\|/m.test(content)) return 'table';
 
   // Explanation patterns
-  if (/dlaczego|jak\s|w jaki sposob|poniewaz|because|how|why|therefore/i.test(contentLower)) return 'explanation';
+  if (/dlaczego|jak\s|w jaki sposob|poniewaz|because|how|why|therefore/i.test(contentLower))
+    return 'explanation';
 
   return 'general';
 }
@@ -1187,22 +1228,103 @@ function detectChunkType(content: string): ChunkType {
 function extractKeywords(text: string, maxKeywords: number = 5): string[] {
   const stopWords = new Set([
     // Polish
-    'i', 'a', 'o', 'w', 'z', 'do', 'na', 'to', 'jest', 'sa', 'ze', 'sie',
-    'nie', 'jak', 'co', 'ale', 'czy', 'tak', 'lub', 'oraz', 'gdy', 'by',
-    'tego', 'tej', 'ten', 'ta', 'te', 'tym', 'dla', 'po', 'przy', 'pod',
+    'i',
+    'a',
+    'o',
+    'w',
+    'z',
+    'do',
+    'na',
+    'to',
+    'jest',
+    'sa',
+    'ze',
+    'sie',
+    'nie',
+    'jak',
+    'co',
+    'ale',
+    'czy',
+    'tak',
+    'lub',
+    'oraz',
+    'gdy',
+    'by',
+    'tego',
+    'tej',
+    'ten',
+    'ta',
+    'te',
+    'tym',
+    'dla',
+    'po',
+    'przy',
+    'pod',
     // English
-    'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
-    'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should',
-    'can', 'may', 'might', 'must', 'shall', 'of', 'to', 'in', 'for', 'on',
-    'with', 'at', 'by', 'from', 'as', 'into', 'through', 'during', 'before',
-    'after', 'above', 'below', 'between', 'under', 'again', 'further', 'then',
-    'this', 'that', 'these', 'those', 'it', 'its', 'and', 'or', 'but', 'if'
+    'the',
+    'a',
+    'an',
+    'is',
+    'are',
+    'was',
+    'were',
+    'be',
+    'been',
+    'being',
+    'have',
+    'has',
+    'had',
+    'do',
+    'does',
+    'did',
+    'will',
+    'would',
+    'could',
+    'should',
+    'can',
+    'may',
+    'might',
+    'must',
+    'shall',
+    'of',
+    'to',
+    'in',
+    'for',
+    'on',
+    'with',
+    'at',
+    'by',
+    'from',
+    'as',
+    'into',
+    'through',
+    'during',
+    'before',
+    'after',
+    'above',
+    'below',
+    'between',
+    'under',
+    'again',
+    'further',
+    'then',
+    'this',
+    'that',
+    'these',
+    'those',
+    'it',
+    'its',
+    'and',
+    'or',
+    'but',
+    'if',
   ]);
 
-  const words = text.toLowerCase()
+  const words = text
+    .toLowerCase()
     .replace(/[^a-zA-Z0-9\u0080-\u024F\s]/g, ' ')
     .split(/\s+/)
-    .filter(word => word.length > 3 && !stopWords.has(word));
+    .filter((word) => word.length > 3 && !stopWords.has(word));
 
   // Count word frequency
   const wordCount = new Map<string, number>();
@@ -1234,7 +1356,7 @@ function calculateImportance(content: string, type: ChunkType): number {
     explanation: 0.7,
     list: 0.5,
     table: 0.6,
-    general: 0.4
+    general: 0.4,
   };
   score = typeScores[type];
 
@@ -1269,7 +1391,7 @@ function buildSemanticMap(chunks: SemanticChunk[]): Map<string, string[]> {
       if (!semanticMap.has(keyword)) {
         semanticMap.set(keyword, []);
       }
-      semanticMap.get(keyword)!.push(chunk.id);
+      semanticMap.get(keyword)?.push(chunk.id);
     }
   }
 
@@ -1283,14 +1405,12 @@ function buildSemanticMap(chunks: SemanticChunk[]): Map<string, string[]> {
 /**
  * AI-powered semantic summarization of chunks
  */
-export async function summarizeChunks(
-  chunks: SemanticChunk[]
-): Promise<string> {
+export async function summarizeChunks(chunks: SemanticChunk[]): Promise<string> {
   if (chunks.length === 0) return '';
 
   console.log(chalk.magenta(`[SemanticChunk] AI-summarizing ${chunks.length} chunks...`));
 
-  const content = chunks.map(c => c.content).join('\n---\n');
+  const content = chunks.map((c) => c.content).join('\n---\n');
 
   const prompt = `Podsumuj zwiezle nastepujacy tekst (max 200 slow):
 
@@ -1302,17 +1422,16 @@ Odpowiadaj PO POLSKU. Podaj tylko podsumowanie.`;
     const response = await geminiSemaphore.withPermit(async () => {
       const model = genAI.getGenerativeModel({
         model: INTELLIGENCE_MODEL,
-        generationConfig: { temperature: 0.2, maxOutputTokens: 500 }
+        generationConfig: { temperature: 0.2, maxOutputTokens: 500 },
       });
       const result = await model.generateContent(prompt);
       return result.response.text();
     });
 
     return response.trim();
-
   } catch (error: any) {
     console.log(chalk.yellow(`[SemanticChunk] AI summarization failed: ${error.message}`));
-    return chunks.map(c => c.summary).join(' ');
+    return chunks.map((c) => c.summary).join(' ');
   }
 }
 
@@ -1358,12 +1477,12 @@ export function semanticChunk(
     maxChunkSize?: number;
     minChunkSize?: number;
     overlapSize?: number;
-  } = {}
+  } = {},
 ): ChunkingResult {
   return createSemanticChunks(text, {
     ...options,
     hierarchical: true,
-    preserveCodeBlocks: true
+    preserveCodeBlocks: true,
   });
 }
 
@@ -1371,7 +1490,7 @@ export function semanticChunk(
 // CONTEXT MANAGER INTEGRATION
 // =============================================================================
 
-import { contextManager, type ContextChunk } from './ContextManager.js';
+import { type ContextChunk, contextManager } from './ContextManager.js';
 
 /**
  * Add semantically chunked content to context manager
@@ -1380,12 +1499,12 @@ export function addToContextWithChunking(
   content: string,
   type: ContextChunk['type'],
   baseImportance: number = 0.5,
-  query?: string
+  query?: string,
 ): void {
   const result = createSemanticChunks(content, {
     maxChunkSize: 1500,
     minChunkSize: 100,
-    overlapSize: 50
+    overlapSize: 50,
   });
 
   let chunks = result.chunks;
@@ -1401,7 +1520,9 @@ export function addToContextWithChunking(
     contextManager.add(chunk.content, type, adjustedImportance);
   }
 
-  console.log(chalk.green(`[SemanticChunk] Added ${Math.min(chunks.length, 5)} chunks to context manager`));
+  console.log(
+    chalk.green(`[SemanticChunk] Added ${Math.min(chunks.length, 5)} chunks to context manager`),
+  );
 }
 
 /**
@@ -1420,7 +1541,7 @@ export function getSemanticContext(query: string, maxTokens: number = 8000): str
     type: detectChunkType(chunk.content),
     hierarchyLevel: 'paragraph' as HierarchyLevel,
     startPosition: 0,
-    endPosition: chunk.content.length
+    endPosition: chunk.content.length,
   }));
 
   // Prioritize by query

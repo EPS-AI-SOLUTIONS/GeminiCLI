@@ -14,7 +14,7 @@ export const DEFAULT_POOL_CONFIG: Required<PoolConfig> = {
   maxQueueSize: 100,
   acquireTimeout: 30000,
   idleTimeout: 60000,
-  fifo: true
+  fifo: true,
 };
 
 /**
@@ -24,7 +24,7 @@ export const DEFAULT_RATE_LIMIT_CONFIG: Required<RateLimitConfig> = {
   enabled: true,
   tokensPerInterval: 10,
   interval: 1000,
-  maxBurst: 20
+  maxBurst: 20,
 };
 
 /**
@@ -79,7 +79,7 @@ export class ConnectionPool {
     averageWaitTime: 0,
     averageExecutionTime: 0,
     peakConcurrent: 0,
-    peakQueueSize: 0
+    peakQueueSize: 0,
   };
   private totalWaitTime = 0;
   private totalExecutionTime = 0;
@@ -101,7 +101,7 @@ export class ConnectionPool {
     if (this.queue.length >= this.config.maxQueueSize) {
       throw new PoolExhaustedError(
         `Pool queue full (${this.queue.length}/${this.config.maxQueueSize})`,
-        this.queue.length
+        this.queue.length,
       );
     }
 
@@ -113,8 +113,7 @@ export class ConnectionPool {
    * Check if pool has capacity
    */
   hasCapacity(): boolean {
-    return this.active < this.config.maxConcurrent ||
-           this.queue.length < this.config.maxQueueSize;
+    return this.active < this.config.maxConcurrent || this.queue.length < this.config.maxQueueSize;
   }
 
   /**
@@ -129,7 +128,7 @@ export class ConnectionPool {
       maxConcurrent: this.config.maxConcurrent,
       maxQueueSize: this.config.maxQueueSize,
       totalExecuted: this.stats.totalExecuted,
-      totalFailed: this.stats.totalFailed
+      totalFailed: this.stats.totalFailed,
     };
   }
 
@@ -139,12 +138,10 @@ export class ConnectionPool {
   getStats(): PoolStats {
     return {
       ...this.stats,
-      averageWaitTime: this.stats.totalExecuted > 0
-        ? this.totalWaitTime / this.stats.totalExecuted
-        : 0,
-      averageExecutionTime: this.stats.totalExecuted > 0
-        ? this.totalExecutionTime / this.stats.totalExecuted
-        : 0
+      averageWaitTime:
+        this.stats.totalExecuted > 0 ? this.totalWaitTime / this.stats.totalExecuted : 0,
+      averageExecutionTime:
+        this.stats.totalExecuted > 0 ? this.totalExecutionTime / this.stats.totalExecuted : 0,
     };
   }
 
@@ -159,7 +156,7 @@ export class ConnectionPool {
       averageWaitTime: 0,
       averageExecutionTime: 0,
       peakConcurrent: 0,
-      peakQueueSize: 0
+      peakQueueSize: 0,
     };
     this.totalWaitTime = 0;
     this.totalExecutionTime = 0;
@@ -212,7 +209,7 @@ export class ConnectionPool {
         execute: fn,
         resolve,
         reject,
-        enqueuedAt: Date.now()
+        enqueuedAt: Date.now(),
       };
 
       // Set timeout
@@ -222,10 +219,12 @@ export class ConnectionPool {
           if (index !== -1) {
             this.queue.splice(index, 1);
             this.stats.totalTimeout++;
-            reject(new TimeoutError(
-              `Pool acquire timeout (${this.config.acquireTimeout}ms)`,
-              this.config.acquireTimeout
-            ));
+            reject(
+              new TimeoutError(
+                `Pool acquire timeout (${this.config.acquireTimeout}ms)`,
+                this.config.acquireTimeout,
+              ),
+            );
           }
         }, this.config.acquireTimeout);
       }
@@ -255,9 +254,7 @@ export class ConnectionPool {
     const waitTime = Date.now() - request.enqueuedAt;
     this.totalWaitTime += waitTime;
 
-    this.executeImmediate(request.execute)
-      .then(request.resolve)
-      .catch(request.reject);
+    this.executeImmediate(request.execute).then(request.resolve).catch(request.reject);
   }
 
   private updatePeakConcurrent(): void {
@@ -315,9 +312,7 @@ export class RateLimiter {
 
     while (!this.tryAcquire()) {
       // Wait for next refill
-      const waitTime = Math.ceil(
-        this.config.interval / this.config.tokensPerInterval
-      );
+      const waitTime = Math.ceil(this.config.interval / this.config.tokensPerInterval);
       await this.sleep(waitTime);
     }
   }
@@ -345,7 +340,7 @@ export class RateLimiter {
     return {
       tokens: this.getTokens(),
       maxBurst: this.config.maxBurst,
-      enabled: this.config.enabled
+      enabled: this.config.enabled,
     };
   }
 
@@ -357,7 +352,7 @@ export class RateLimiter {
     const now = Date.now();
     const elapsed = now - this.lastRefill;
     const tokensToAdd = Math.floor(
-      (elapsed / this.config.interval) * this.config.tokensPerInterval
+      (elapsed / this.config.interval) * this.config.tokensPerInterval,
     );
 
     if (tokensToAdd > 0) {
@@ -367,7 +362,7 @@ export class RateLimiter {
   }
 
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 
@@ -403,7 +398,7 @@ export class ManagedPool {
   } {
     return {
       pool: this.pool.getStatus(),
-      rateLimit: this.rateLimiter.getStatus()
+      rateLimit: this.rateLimiter.getStatus(),
     };
   }
 

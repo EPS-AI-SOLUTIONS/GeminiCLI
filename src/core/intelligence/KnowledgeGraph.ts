@@ -3,16 +3,20 @@
  * Graph-based knowledge representation for context building
  */
 
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 import type {
-  KnowledgeNode,
-  KnowledgeEdge,
-  KnowledgeNodeType,
   IKnowledgeGraph,
+  KnowledgeEdge,
+  KnowledgeNode,
+  KnowledgeNodeType,
 } from '../../types/knowledge.types.js';
 
 // Re-export types for backward compatibility
-export type { KnowledgeNode, KnowledgeEdge, KnowledgeNodeType } from '../../types/knowledge.types.js';
+export type {
+  KnowledgeEdge,
+  KnowledgeNode,
+  KnowledgeNodeType,
+} from '../../types/knowledge.types.js';
 
 export class KnowledgeGraph implements IKnowledgeGraph {
   private nodes: Map<string, KnowledgeNode> = new Map();
@@ -22,7 +26,11 @@ export class KnowledgeGraph implements IKnowledgeGraph {
   /**
    * Add a node to the graph
    */
-  addNode(type: KnowledgeNodeType, content: string, metadata: Record<string, unknown> = {}): string {
+  addNode(
+    type: KnowledgeNodeType,
+    content: string,
+    metadata: Record<string, unknown> = {},
+  ): string {
     const id = crypto.createHash('sha256').update(content).digest('hex').substring(0, 12);
 
     if (this.nodes.has(id)) {
@@ -31,15 +39,14 @@ export class KnowledgeGraph implements IKnowledgeGraph {
 
     // Evict oldest if at capacity
     if (this.nodes.size >= this.maxNodes) {
-      const oldest = [...this.nodes.entries()]
-        .sort((a, b) => {
-          const aTime = a[1].createdAt?.getTime() ?? 0;
-          const bTime = b[1].createdAt?.getTime() ?? 0;
-          return aTime - bTime;
-        })[0];
+      const oldest = [...this.nodes.entries()].sort((a, b) => {
+        const aTime = a[1].createdAt?.getTime() ?? 0;
+        const bTime = b[1].createdAt?.getTime() ?? 0;
+        return aTime - bTime;
+      })[0];
       if (oldest) {
         this.nodes.delete(oldest[0]);
-        this.edges = this.edges.filter(e => e.source !== oldest[0] && e.target !== oldest[0]);
+        this.edges = this.edges.filter((e) => e.source !== oldest[0] && e.target !== oldest[0]);
       }
     }
 
@@ -49,7 +56,7 @@ export class KnowledgeGraph implements IKnowledgeGraph {
       content,
       label: content.substring(0, 50),
       metadata,
-      createdAt: new Date()
+      createdAt: new Date(),
     });
 
     return id;
@@ -63,7 +70,7 @@ export class KnowledgeGraph implements IKnowledgeGraph {
 
     // Check if edge already exists
     const existing = this.edges.find(
-      e => e.source === sourceId && e.target === targetId && e.relation === relation
+      (e) => e.source === sourceId && e.target === targetId && e.relation === relation,
     );
 
     if (existing) {
@@ -74,7 +81,7 @@ export class KnowledgeGraph implements IKnowledgeGraph {
         target: targetId,
         relation,
         label: relation,
-        weight
+        weight,
       });
     }
   }
@@ -86,19 +93,19 @@ export class KnowledgeGraph implements IKnowledgeGraph {
     const queryLower = query.toLowerCase();
     const queryWords = new Set(queryLower.split(/\s+/));
 
-    const scored = [...this.nodes.values()].map(node => {
+    const scored = [...this.nodes.values()].map((node) => {
       const nodeContent = node.content ?? node.label ?? '';
       const nodeWords = new Set(nodeContent.toLowerCase().split(/\s+/));
-      const intersection = [...queryWords].filter(w => nodeWords.has(w));
+      const intersection = [...queryWords].filter((w) => nodeWords.has(w));
       const score = intersection.length / Math.max(queryWords.size, nodeWords.size);
       return { node, score };
     });
 
     return scored
-      .filter(s => s.score > 0.1)
+      .filter((s) => s.score > 0.1)
       .sort((a, b) => b.score - a.score)
       .slice(0, limit)
-      .map(s => s.node);
+      .map((s) => s.node);
   }
 
   /**
@@ -113,7 +120,7 @@ export class KnowledgeGraph implements IKnowledgeGraph {
     }
 
     return [...neighborIds]
-      .map(id => this.nodes.get(id))
+      .map((id) => this.nodes.get(id))
       .filter((n): n is KnowledgeNode => n !== undefined);
   }
 

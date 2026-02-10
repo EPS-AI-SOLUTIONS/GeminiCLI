@@ -14,11 +14,12 @@
 
 import chalk from 'chalk';
 import {
-  AgentRole,
   AGENT_DESCRIPTIONS,
+  type AgentRole,
   TASK_ROUTING,
-  TaskCategory,
+  type TaskCategory,
 } from '../config/agents.config.js';
+import { resolveAgentRoleSafe } from '../types/index.js';
 
 // =============================================================================
 // TYPES
@@ -72,8 +73,8 @@ export interface ValidationIssue {
 export interface DecompositionValidation {
   valid: boolean;
   issues: ValidationIssue[];
-  coverage: number;       // 0-1, how much of original task is covered
-  redundancy: number;     // 0-1, how much overlap between tasks
+  coverage: number; // 0-1, how much of original task is covered
+  redundancy: number; // 0-1, how much overlap between tasks
   suggestions: string[];
   metrics: {
     totalSubtasks: number;
@@ -92,11 +93,41 @@ export interface DecompositionValidation {
  * Keywords for task category detection
  */
 const CATEGORY_KEYWORDS: Record<TaskCategory, string[]> = {
-  coding: ['implement', 'code', 'write', 'create', 'function', 'class', 'module', 'napisz', 'zaimplementuj', 'fix', 'bug', 'debug'],
-  architecture: ['design', 'architect', 'structure', 'pattern', 'diagram', 'projektuj', 'architektura', 'system'],
+  coding: [
+    'implement',
+    'code',
+    'write',
+    'create',
+    'function',
+    'class',
+    'module',
+    'napisz',
+    'zaimplementuj',
+    'fix',
+    'bug',
+    'debug',
+  ],
+  architecture: [
+    'design',
+    'architect',
+    'structure',
+    'pattern',
+    'diagram',
+    'projektuj',
+    'architektura',
+    'system',
+  ],
   data: ['data', 'database', 'query', 'transform', 'etl', 'dane', 'baza', 'sql', 'json', 'csv'],
   testing: ['test', 'spec', 'coverage', 'unit', 'integration', 'e2e', 'testuj', 'testy', 'qa'],
-  security: ['security', 'auth', 'encrypt', 'permission', 'vulnerability', 'bezpieczenstwo', 'szyfruj'],
+  security: [
+    'security',
+    'auth',
+    'encrypt',
+    'permission',
+    'vulnerability',
+    'bezpieczenstwo',
+    'szyfruj',
+  ],
   docs: ['document', 'readme', 'comment', 'jsdoc', 'dokumentacja', 'opisz', 'explain'],
   devops: ['deploy', 'ci', 'cd', 'docker', 'kubernetes', 'pipeline', 'infrastructure', 'wdrozenie'],
   research: ['research', 'analyze', 'investigate', 'explore', 'zbadaj', 'analiza', 'przeanalizuj'],
@@ -110,17 +141,35 @@ const CATEGORY_KEYWORDS: Record<TaskCategory, string[]> = {
  * Keywords indicating scope creep
  */
 const SCOPE_CREEP_INDICATORS = [
-  'also', 'additionally', 'extra', 'bonus', 'nice to have',
-  'takze', 'dodatkowo', 'ekstra', 'bonusowo',
-  'while we\'re at it', 'might as well', 'przy okazji'
+  'also',
+  'additionally',
+  'extra',
+  'bonus',
+  'nice to have',
+  'takze',
+  'dodatkowo',
+  'ekstra',
+  'bonusowo',
+  "while we're at it",
+  'might as well',
+  'przy okazji',
 ];
 
 /**
  * Keywords indicating task is too vague
  */
 const VAGUE_KEYWORDS = [
-  'something', 'stuff', 'things', 'etc', 'whatever', 'somehow',
-  'cos', 'rzeczy', 'jakos', 'itd', 'cokolwiek'
+  'something',
+  'stuff',
+  'things',
+  'etc',
+  'whatever',
+  'somehow',
+  'cos',
+  'rzeczy',
+  'jakos',
+  'itd',
+  'cokolwiek',
 ];
 
 /**
@@ -150,10 +199,7 @@ export class TaskDecompositionValidator {
   /**
    * Main validation method - validates entire decomposition
    */
-  validateDecomposition(
-    originalTask: string,
-    subtasks: SubTask[]
-  ): DecompositionValidation {
+  validateDecomposition(originalTask: string, subtasks: SubTask[]): DecompositionValidation {
     if (this.verbose) {
       console.log(chalk.cyan('[Validator] Starting decomposition validation...'));
     }
@@ -183,7 +229,7 @@ export class TaskDecompositionValidator {
         type: 'coverage_gap',
         severity: 'warning',
         message: `Task coverage is only ${(coverage * 100).toFixed(0)}%. Some aspects of the original task may not be addressed.`,
-        suggestion: 'Consider adding subtasks for uncovered aspects of the original task.'
+        suggestion: 'Consider adding subtasks for uncovered aspects of the original task.',
       });
       suggestions.push('Review original task requirements and ensure all aspects are covered.');
     }
@@ -194,21 +240,25 @@ export class TaskDecompositionValidator {
         type: 'redundancy',
         severity: 'warning',
         message: `High redundancy detected: ${(redundancy * 100).toFixed(0)}%. Some tasks may overlap.`,
-        suggestion: 'Consider merging similar tasks or clarifying task boundaries.'
+        suggestion: 'Consider merging similar tasks or clarifying task boundaries.',
       });
       suggestions.push('Merge overlapping tasks to improve efficiency.');
     }
 
     // Generate final suggestions
     if (metrics.maxDependencyDepth > 5) {
-      suggestions.push('Consider flattening dependency chain - current depth is ' + metrics.maxDependencyDepth);
+      suggestions.push(
+        `Consider flattening dependency chain - current depth is ${metrics.maxDependencyDepth}`,
+      );
     }
 
     if (metrics.parallelizationPotential < 0.3) {
-      suggestions.push('Low parallelization potential - consider restructuring dependencies to allow more parallel execution.');
+      suggestions.push(
+        'Low parallelization potential - consider restructuring dependencies to allow more parallel execution.',
+      );
     }
 
-    const valid = !issues.some(i => i.severity === 'error');
+    const valid = !issues.some((i) => i.severity === 'error');
 
     if (this.verbose) {
       this.printValidationReport({ valid, issues, coverage, redundancy, suggestions, metrics });
@@ -220,7 +270,7 @@ export class TaskDecompositionValidator {
       coverage,
       redundancy,
       suggestions,
-      metrics
+      metrics,
     };
   }
 
@@ -239,7 +289,7 @@ export class TaskDecompositionValidator {
           severity: 'error',
           taskId: task.id,
           message: `Task #${task.id} has empty description.`,
-          suggestion: 'Provide a clear description of what this task should accomplish.'
+          suggestion: 'Provide a clear description of what this task should accomplish.',
         });
       } else if (task.task.trim().length < MIN_TASK_LENGTH) {
         issues.push({
@@ -247,7 +297,7 @@ export class TaskDecompositionValidator {
           severity: 'warning',
           taskId: task.id,
           message: `Task #${task.id} has very short description (${task.task.length} chars).`,
-          suggestion: 'Expand the task description to be more specific.'
+          suggestion: 'Expand the task description to be more specific.',
         });
       }
     }
@@ -268,7 +318,7 @@ export class TaskDecompositionValidator {
           severity: 'warning',
           taskId: task.id,
           message: `Task #${task.id} appears to be duplicate of Task #${seenTasks.get(normalized)}.`,
-          suggestion: 'Consider removing duplicate task or differentiating their scope.'
+          suggestion: 'Consider removing duplicate task or differentiating their scope.',
         });
       } else {
         seenTasks.set(normalized, task.id);
@@ -280,7 +330,7 @@ export class TaskDecompositionValidator {
    * Check that all dependency references are valid
    */
   private checkDependencyValidity(subtasks: SubTask[], issues: ValidationIssue[]): void {
-    const taskIds = new Set(subtasks.map(t => t.id));
+    const taskIds = new Set(subtasks.map((t) => t.id));
 
     for (const task of subtasks) {
       for (const depId of task.dependencies) {
@@ -290,7 +340,7 @@ export class TaskDecompositionValidator {
             severity: 'error',
             taskId: task.id,
             message: `Task #${task.id} depends on non-existent Task #${depId}.`,
-            suggestion: 'Remove invalid dependency or create the missing task.'
+            suggestion: 'Remove invalid dependency or create the missing task.',
           });
         }
 
@@ -300,7 +350,7 @@ export class TaskDecompositionValidator {
             severity: 'error',
             taskId: task.id,
             message: `Task #${task.id} depends on itself.`,
-            suggestion: 'Remove self-dependency.'
+            suggestion: 'Remove self-dependency.',
           });
         }
       }
@@ -311,7 +361,7 @@ export class TaskDecompositionValidator {
    * Check for circular dependencies using DFS
    */
   private checkCircularDependencies(subtasks: SubTask[], issues: ValidationIssue[]): void {
-    const taskMap = new Map(subtasks.map(t => [t.id, t]));
+    const taskMap = new Map(subtasks.map((t) => [t.id, t]));
     const visited = new Set<number>();
     const inStack = new Set<number>();
 
@@ -352,7 +402,7 @@ export class TaskDecompositionValidator {
             severity: 'error',
             taskId: task.id,
             message: `Circular dependency detected: ${cycleLoop.join(' -> ')}.`,
-            suggestion: 'Break the cycle by removing one of the dependencies.'
+            suggestion: 'Break the cycle by removing one of the dependencies.',
           });
           break; // Only report first cycle
         }
@@ -383,7 +433,7 @@ export class TaskDecompositionValidator {
           severity: 'info',
           taskId: task.id,
           message: `Task #${task.id} is isolated (no dependencies and nothing depends on it).`,
-          suggestion: 'Verify this task is truly independent or add appropriate dependencies.'
+          suggestion: 'Verify this task is truly independent or add appropriate dependencies.',
         });
       }
     }
@@ -395,19 +445,16 @@ export class TaskDecompositionValidator {
   private checkAgentMatching(
     subtasks: SubTask[],
     issues: ValidationIssue[],
-    suggestions: string[]
+    _suggestions: string[],
   ): void {
     for (const task of subtasks) {
       const detectedCategory = this.detectTaskCategory(task.task);
       const recommendedAgent = TASK_ROUTING[detectedCategory];
-      const assignedAgent = task.agent.toLowerCase() as AgentRole;
+      const assignedAgent = resolveAgentRoleSafe(task.agent);
 
       if (recommendedAgent && assignedAgent !== recommendedAgent) {
         // Check if assigned agent is in fallback chain
-        const isReasonableChoice = this.isReasonableAgentChoice(
-          assignedAgent,
-          detectedCategory
-        );
+        const isReasonableChoice = this.isReasonableAgentChoice(assignedAgent, detectedCategory);
 
         if (!isReasonableChoice) {
           const agentDesc = AGENT_DESCRIPTIONS[recommendedAgent];
@@ -416,7 +463,7 @@ export class TaskDecompositionValidator {
             severity: 'warning',
             taskId: task.id,
             message: `Task #${task.id} assigned to '${task.agent}' but appears to be a ${detectedCategory} task.`,
-            suggestion: `Consider assigning to '${recommendedAgent}' (${agentDesc?.title || 'specialist'}).`
+            suggestion: `Consider assigning to '${recommendedAgent}' (${agentDesc?.title || 'specialist'}).`,
           });
         }
       }
@@ -429,7 +476,7 @@ export class TaskDecompositionValidator {
   private checkTaskComplexity(
     subtasks: SubTask[],
     issues: ValidationIssue[],
-    suggestions: string[]
+    _suggestions: string[],
   ): void {
     for (const task of subtasks) {
       const complexity = this.estimateTaskComplexity(task.task);
@@ -440,7 +487,7 @@ export class TaskDecompositionValidator {
           severity: 'warning',
           taskId: task.id,
           message: `Task #${task.id} appears too complex (score: ${complexity}). Consider breaking it down.`,
-          suggestion: 'Split this task into smaller, more focused subtasks.'
+          suggestion: 'Split this task into smaller, more focused subtasks.',
         });
       }
     }
@@ -452,11 +499,11 @@ export class TaskDecompositionValidator {
   private checkVagueTasks(
     subtasks: SubTask[],
     issues: ValidationIssue[],
-    suggestions: string[]
+    _suggestions: string[],
   ): void {
     for (const task of subtasks) {
       const lower = task.task.toLowerCase();
-      const vagueMatches = VAGUE_KEYWORDS.filter(k => lower.includes(k));
+      const vagueMatches = VAGUE_KEYWORDS.filter((k) => lower.includes(k));
 
       if (vagueMatches.length > 0) {
         issues.push({
@@ -464,7 +511,7 @@ export class TaskDecompositionValidator {
           severity: 'warning',
           taskId: task.id,
           message: `Task #${task.id} contains vague language: "${vagueMatches.join('", "')}".`,
-          suggestion: 'Be more specific about what needs to be done.'
+          suggestion: 'Be more specific about what needs to be done.',
         });
       }
     }
@@ -477,7 +524,7 @@ export class TaskDecompositionValidator {
     originalTask: string,
     subtasks: SubTask[],
     issues: ValidationIssue[],
-    suggestions: string[]
+    _suggestions: string[],
   ): void {
     const originalKeywords = this.extractKeywords(originalTask);
 
@@ -485,20 +532,20 @@ export class TaskDecompositionValidator {
       const lower = task.task.toLowerCase();
 
       // Check for scope creep indicators
-      const creepIndicators = SCOPE_CREEP_INDICATORS.filter(k => lower.includes(k));
+      const creepIndicators = SCOPE_CREEP_INDICATORS.filter((k) => lower.includes(k));
       if (creepIndicators.length > 0) {
         issues.push({
           type: 'scope_creep',
           severity: 'info',
           taskId: task.id,
           message: `Task #${task.id} may include scope creep: "${creepIndicators.join('", "')}".`,
-          suggestion: 'Verify this additional work is necessary for the original task.'
+          suggestion: 'Verify this additional work is necessary for the original task.',
         });
       }
 
       // Check if task keywords relate to original
       const taskKeywords = this.extractKeywords(task.task);
-      const overlap = [...taskKeywords].filter(k => originalKeywords.has(k)).length;
+      const overlap = [...taskKeywords].filter((k) => originalKeywords.has(k)).length;
       const overlapRatio = taskKeywords.size > 0 ? overlap / taskKeywords.size : 0;
 
       if (overlapRatio < 0.1 && taskKeywords.size > 3) {
@@ -507,7 +554,7 @@ export class TaskDecompositionValidator {
           severity: 'warning',
           taskId: task.id,
           message: `Task #${task.id} has low relevance to original task (${(overlapRatio * 100).toFixed(0)}% keyword overlap).`,
-          suggestion: 'Verify this task is necessary for completing the original objective.'
+          suggestion: 'Verify this task is necessary for completing the original objective.',
         });
       }
     }
@@ -572,10 +619,9 @@ export class TaskDecompositionValidator {
     }
 
     // Average complexity
-    const complexities = subtasks.map(t => this.estimateTaskComplexity(t.task));
-    const avgTaskComplexity = complexities.length > 0
-      ? complexities.reduce((a, b) => a + b, 0) / complexities.length
-      : 0;
+    const complexities = subtasks.map((t) => this.estimateTaskComplexity(t.task));
+    const avgTaskComplexity =
+      complexities.length > 0 ? complexities.reduce((a, b) => a + b, 0) / complexities.length : 0;
 
     // Dependency depth
     const maxDependencyDepth = this.calculateMaxDependencyDepth(subtasks);
@@ -588,7 +634,7 @@ export class TaskDecompositionValidator {
       avgTaskComplexity,
       maxDependencyDepth,
       parallelizationPotential,
-      agentDistribution
+      agentDistribution,
     };
   }
 
@@ -596,7 +642,7 @@ export class TaskDecompositionValidator {
    * Calculate maximum dependency depth
    */
   private calculateMaxDependencyDepth(subtasks: SubTask[]): number {
-    const taskMap = new Map(subtasks.map(t => [t.id, t]));
+    const taskMap = new Map(subtasks.map((t) => [t.id, t]));
     const depthCache = new Map<number, number>();
 
     const getDepth = (taskId: number): number => {
@@ -610,7 +656,7 @@ export class TaskDecompositionValidator {
         return 0;
       }
 
-      const maxChildDepth = Math.max(...task.dependencies.map(d => getDepth(d)));
+      const maxChildDepth = Math.max(...task.dependencies.map((d) => getDepth(d)));
       const depth = maxChildDepth + 1;
       depthCache.set(taskId, depth);
       return depth;
@@ -631,11 +677,11 @@ export class TaskDecompositionValidator {
     if (subtasks.length <= 1) return 1;
 
     // Count tasks that can potentially run in parallel at each level
-    const taskMap = new Map(subtasks.map(t => [t.id, t]));
+    const taskMap = new Map(subtasks.map((t) => [t.id, t]));
     const levels: number[][] = [];
 
     // Topological sort with levels
-    const visited = new Set<number>();
+    const _visited = new Set<number>();
     const taskLevels = new Map<number, number>();
 
     const getLevel = (taskId: number): number => {
@@ -649,7 +695,7 @@ export class TaskDecompositionValidator {
         return 0;
       }
 
-      const maxDepLevel = Math.max(...task.dependencies.map(d => getLevel(d)));
+      const maxDepLevel = Math.max(...task.dependencies.map((d) => getLevel(d)));
       const level = maxDepLevel + 1;
       taskLevels.set(taskId, level);
       return level;
@@ -665,7 +711,7 @@ export class TaskDecompositionValidator {
 
     // Calculate average tasks per level (higher = better parallelization)
     const totalParallel = levels.reduce((sum, level) => sum + level.length, 0);
-    return totalParallel / (levels.length * subtasks.length) * levels.length;
+    return (totalParallel / (levels.length * subtasks.length)) * levels.length;
   }
 
   // ===========================================================================
@@ -677,21 +723,97 @@ export class TaskDecompositionValidator {
    */
   private extractKeywords(text: string): Set<string> {
     const stopWords = new Set([
-      'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
-      'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'been',
-      'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
-      'should', 'may', 'might', 'must', 'shall', 'can', 'need', 'this', 'that',
-      'these', 'those', 'it', 'its', 'i', 'we', 'you', 'they', 'he', 'she',
+      'the',
+      'a',
+      'an',
+      'and',
+      'or',
+      'but',
+      'in',
+      'on',
+      'at',
+      'to',
+      'for',
+      'of',
+      'with',
+      'by',
+      'from',
+      'as',
+      'is',
+      'was',
+      'are',
+      'were',
+      'been',
+      'be',
+      'have',
+      'has',
+      'had',
+      'do',
+      'does',
+      'did',
+      'will',
+      'would',
+      'could',
+      'should',
+      'may',
+      'might',
+      'must',
+      'shall',
+      'can',
+      'need',
+      'this',
+      'that',
+      'these',
+      'those',
+      'it',
+      'its',
+      'i',
+      'we',
+      'you',
+      'they',
+      'he',
+      'she',
       // Polish stop words
-      'i', 'w', 'na', 'z', 'do', 'od', 'dla', 'po', 'przy', 'przez', 'przed',
-      'za', 'o', 'u', 'ze', 'nad', 'pod', 'bez', 'jest', 'sa', 'byl', 'byla',
-      'bedzie', 'to', 'ten', 'ta', 'te', 'ci', 'ja', 'my', 'wy', 'oni', 'one'
+      'i',
+      'w',
+      'na',
+      'z',
+      'do',
+      'od',
+      'dla',
+      'po',
+      'przy',
+      'przez',
+      'przed',
+      'za',
+      'o',
+      'u',
+      'ze',
+      'nad',
+      'pod',
+      'bez',
+      'jest',
+      'sa',
+      'byl',
+      'byla',
+      'bedzie',
+      'to',
+      'ten',
+      'ta',
+      'te',
+      'ci',
+      'ja',
+      'my',
+      'wy',
+      'oni',
+      'one',
     ]);
 
-    const words = text.toLowerCase()
+    const words = text
+      .toLowerCase()
       .replace(/[^a-z0-9\u0080-\uFFFF\s]/g, ' ')
       .split(/\s+/)
-      .filter(w => w.length > 2 && !stopWords.has(w));
+      .filter((w) => w.length > 2 && !stopWords.has(w));
 
     return new Set(words);
   }
@@ -700,7 +822,8 @@ export class TaskDecompositionValidator {
    * Normalize task text for comparison
    */
   private normalizeTaskText(text: string): string {
-    return text.toLowerCase()
+    return text
+      .toLowerCase()
       .replace(/[^a-z0-9\u0080-\uFFFF]/g, '')
       .substring(0, 50);
   }
@@ -711,7 +834,7 @@ export class TaskDecompositionValidator {
   private calculateKeywordOverlap(set1: Set<string>, set2: Set<string>): number {
     if (set1.size === 0 || set2.size === 0) return 0;
 
-    const intersection = [...set1].filter(k => set2.has(k)).length;
+    const intersection = [...set1].filter((k) => set2.has(k)).length;
     const union = new Set([...set1, ...set2]).size;
 
     return intersection / union; // Jaccard similarity
@@ -726,7 +849,7 @@ export class TaskDecompositionValidator {
     let bestScore = 0;
 
     for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-      const score = keywords.filter(k => lower.includes(k)).length;
+      const score = keywords.filter((k) => lower.includes(k)).length;
       if (score > bestScore) {
         bestScore = score;
         bestMatch = category as TaskCategory;
@@ -757,7 +880,7 @@ export class TaskDecompositionValidator {
     };
 
     const related = relatedCategories[category] || [];
-    return related.some(c => TASK_ROUTING[c] === agent);
+    return related.some((c) => TASK_ROUTING[c] === agent);
   }
 
   /**
@@ -770,10 +893,27 @@ export class TaskDecompositionValidator {
     score += Math.min(taskDescription.length / 50, 10);
 
     // Number of action words
-    const actionWords = ['implement', 'create', 'write', 'build', 'design', 'analyze',
-      'test', 'deploy', 'configure', 'integrate', 'refactor', 'optimize',
-      'zaimplementuj', 'stworz', 'napisz', 'zbuduj', 'zaprojektuj', 'przeanalizuj'];
-    const actions = actionWords.filter(w => taskDescription.toLowerCase().includes(w));
+    const actionWords = [
+      'implement',
+      'create',
+      'write',
+      'build',
+      'design',
+      'analyze',
+      'test',
+      'deploy',
+      'configure',
+      'integrate',
+      'refactor',
+      'optimize',
+      'zaimplementuj',
+      'stworz',
+      'napisz',
+      'zbuduj',
+      'zaprojektuj',
+      'przeanalizuj',
+    ];
+    const actions = actionWords.filter((w) => taskDescription.toLowerCase().includes(w));
     score += actions.length * 5;
 
     // Multiple entities mentioned
@@ -783,7 +923,7 @@ export class TaskDecompositionValidator {
 
     // Conditional language
     const conditionals = ['if', 'when', 'unless', 'either', 'or', 'both', 'jezeli', 'gdy', 'lub'];
-    const condCount = conditionals.filter(c => taskDescription.toLowerCase().includes(c)).length;
+    const condCount = conditionals.filter((c) => taskDescription.toLowerCase().includes(c)).length;
     score += condCount * 4;
 
     return Math.round(score);
@@ -809,7 +949,9 @@ export class TaskDecompositionValidator {
     console.log(`  Total Subtasks: ${validation.metrics.totalSubtasks}`);
     console.log(`  Avg Complexity: ${validation.metrics.avgTaskComplexity.toFixed(1)}`);
     console.log(`  Max Dep Depth: ${validation.metrics.maxDependencyDepth}`);
-    console.log(`  Parallelization: ${(validation.metrics.parallelizationPotential * 100).toFixed(0)}%`);
+    console.log(
+      `  Parallelization: ${(validation.metrics.parallelizationPotential * 100).toFixed(0)}%`,
+    );
 
     // Agent distribution
     console.log(chalk.gray('\nAgent Distribution:'));
@@ -821,9 +963,12 @@ export class TaskDecompositionValidator {
     if (validation.issues.length > 0) {
       console.log(chalk.gray('\nIssues:'));
       for (const issue of validation.issues) {
-        const color = issue.severity === 'error' ? chalk.red
-          : issue.severity === 'warning' ? chalk.yellow
-          : chalk.gray;
+        const color =
+          issue.severity === 'error'
+            ? chalk.red
+            : issue.severity === 'warning'
+              ? chalk.yellow
+              : chalk.gray;
         console.log(color(`  [${issue.severity.toUpperCase()}] ${issue.message}`));
         if (issue.suggestion) {
           console.log(chalk.gray(`    -> ${issue.suggestion}`));
@@ -859,7 +1004,7 @@ export function createValidator(options?: { verbose?: boolean }): TaskDecomposit
  */
 export function validateDecomposition(
   originalTask: string,
-  subtasks: SubTask[]
+  subtasks: SubTask[],
 ): DecompositionValidation {
   const validator = new TaskDecompositionValidator();
   return validator.validateDecomposition(originalTask, subtasks);
@@ -873,5 +1018,5 @@ export function validateDecomposition(
 export default {
   TaskDecompositionValidator,
   createValidator,
-  validateDecomposition
+  validateDecomposition,
 };

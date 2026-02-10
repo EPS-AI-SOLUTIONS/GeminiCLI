@@ -10,9 +10,9 @@
  * - Persistence to disk
  */
 
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import chalk from 'chalk';
-import fs from 'fs/promises';
-import path from 'path';
 
 // ============================================================
 // Types
@@ -21,8 +21,8 @@ import path from 'path';
 export interface EnvironmentConfig {
   name: string;
   variables: Record<string, string>;
-  secrets: string[];  // Variable names that are secrets
-  inherit?: string;   // Parent environment to inherit from
+  secrets: string[]; // Variable names that are secrets
+  inherit?: string; // Parent environment to inherit from
   description?: string;
 }
 
@@ -78,9 +78,9 @@ export class EnvManager {
         NODE_ENV: 'development',
         LOG_LEVEL: 'debug',
         API_URL: 'http://localhost:3000',
-        DEBUG: 'true'
+        DEBUG: 'true',
       },
-      secrets: ['API_KEY', 'DATABASE_URL']
+      secrets: ['API_KEY', 'DATABASE_URL'],
     });
 
     this.environments.set('staging', {
@@ -90,10 +90,10 @@ export class EnvManager {
         NODE_ENV: 'staging',
         LOG_LEVEL: 'info',
         API_URL: 'https://staging.example.com',
-        DEBUG: 'false'
+        DEBUG: 'false',
       },
       secrets: ['API_KEY', 'DATABASE_URL'],
-      inherit: 'development'
+      inherit: 'development',
     });
 
     this.environments.set('production', {
@@ -103,9 +103,9 @@ export class EnvManager {
         NODE_ENV: 'production',
         LOG_LEVEL: 'warn',
         API_URL: 'https://api.example.com',
-        DEBUG: 'false'
+        DEBUG: 'false',
       },
-      secrets: ['API_KEY', 'DATABASE_URL', 'ENCRYPTION_KEY']
+      secrets: ['API_KEY', 'DATABASE_URL', 'ENCRYPTION_KEY'],
     });
 
     console.log(chalk.gray('[EnvManager] Created default environments'));
@@ -123,7 +123,7 @@ export class EnvManager {
       variables: config.variables || {},
       secrets: config.secrets || [],
       inherit: config.inherit,
-      description: config.description
+      description: config.description,
     };
     this.environments.set(name, env);
     console.log(chalk.cyan(`[EnvManager] Created environment: ${name}`));
@@ -148,7 +148,7 @@ export class EnvManager {
       ...updates,
       name, // Preserve name
       variables: { ...env.variables, ...updates.variables },
-      secrets: updates.secrets || env.secrets
+      secrets: updates.secrets || env.secrets,
     };
 
     this.environments.set(name, updated);
@@ -266,7 +266,7 @@ export class EnvManager {
     if (!env) return;
 
     delete env.variables[key];
-    env.secrets = env.secrets.filter(s => s !== key);
+    env.secrets = env.secrets.filter((s) => s !== key);
     console.log(chalk.gray(`[EnvManager] Removed ${key} from ${name}`));
   }
 
@@ -294,9 +294,8 @@ export class EnvManager {
         lines.push(`${key}=<REDACTED>`);
       } else {
         // Escape special characters in values
-        const escapedValue = value.includes(' ') || value.includes('"')
-          ? `"${value.replace(/"/g, '\\"')}"`
-          : value;
+        const escapedValue =
+          value.includes(' ') || value.includes('"') ? `"${value.replace(/"/g, '\\"')}"` : value;
         lines.push(`${key}=${escapedValue}`);
       }
     }
@@ -314,8 +313,8 @@ export class EnvManager {
     const variables = this.getVariables(envName);
     const varKeys = Object.keys(variables);
 
-    const missingVariables = requiredVars.filter(v => !varKeys.includes(v));
-    const extraVariables = varKeys.filter(v => !requiredVars.includes(v));
+    const missingVariables = requiredVars.filter((v) => !varKeys.includes(v));
+    const extraVariables = varKeys.filter((v) => !requiredVars.includes(v));
     const warnings: string[] = [];
 
     // Check for empty values
@@ -329,7 +328,7 @@ export class EnvManager {
       isValid: missingVariables.length === 0,
       missingVariables,
       extraVariables,
-      warnings
+      warnings,
     };
   }
 
@@ -339,7 +338,10 @@ export class EnvManager {
    * @param env2 - Second environment name
    * @returns Comparison result
    */
-  compareEnvironments(env1: string, env2: string): {
+  compareEnvironments(
+    env1: string,
+    env2: string,
+  ): {
     common: string[];
     onlyInFirst: string[];
     onlyInSecond: string[];
@@ -350,10 +352,10 @@ export class EnvManager {
     const keys1 = Object.keys(vars1);
     const keys2 = Object.keys(vars2);
 
-    const common = keys1.filter(k => keys2.includes(k));
-    const onlyInFirst = keys1.filter(k => !keys2.includes(k));
-    const onlyInSecond = keys2.filter(k => !keys1.includes(k));
-    const different = common.filter(k => vars1[k] !== vars2[k]);
+    const common = keys1.filter((k) => keys2.includes(k));
+    const onlyInFirst = keys1.filter((k) => !keys2.includes(k));
+    const onlyInSecond = keys2.filter((k) => !keys1.includes(k));
+    const different = common.filter((k) => vars1[k] !== vars2[k]);
 
     return { common, onlyInFirst, onlyInSecond, different };
   }
@@ -377,7 +379,7 @@ export class EnvManager {
       const data = {
         environments: Object.fromEntries(this.environments),
         current: this.current,
-        lastSaved: Date.now()
+        lastSaved: Date.now(),
       };
       await fs.writeFile(this.persistPath, JSON.stringify(data, null, 2));
       console.log(chalk.gray('[EnvManager] Environments saved'));
@@ -401,7 +403,7 @@ export class EnvManager {
       name: env.name,
       description: env.description,
       variables: {},
-      inherit: env.inherit
+      inherit: env.inherit,
     };
 
     const variables = this.getVariables(name);
@@ -472,5 +474,5 @@ export const envManager = new EnvManager();
 export default {
   EnvManager,
   envManager,
-  formatEnvironments
+  formatEnvironments,
 };

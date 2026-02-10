@@ -10,10 +10,10 @@
  */
 
 import chalk from 'chalk';
-import { NativeGlob, createGlob, GlobOptions, GlobResult } from './NativeGlob.js';
-import { NativeGrep, createGrep, GrepOptions, GrepMatch } from './NativeGrep.js';
-import { nativeCodeIntelligence, NativeCodeIntelligence } from './NativeCodeIntelligence.js';
-import { MCPToolInputSchema } from '../mcp/MCPTypes.js';
+import type { MCPToolInputSchema } from '../mcp/MCPTypes.js';
+import { type NativeCodeIntelligence, nativeCodeIntelligence } from './NativeCodeIntelligence.js';
+import { createGlob, type GlobOptions, type NativeGlob } from './NativeGlob.js';
+import { createGrep, type GrepOptions, type NativeGrep } from './NativeGrep.js';
 
 // ============================================================
 // Types
@@ -48,7 +48,7 @@ export interface NativeSerenaToolsConfig {
 function createToolDefinitions(
   nativeGlob: NativeGlob,
   nativeGrep: NativeGrep,
-  nativeCode: NativeCodeIntelligence
+  nativeCode: NativeCodeIntelligence,
 ): NativeToolDefinition[] {
   return [
     // ========================================================
@@ -56,24 +56,26 @@ function createToolDefinitions(
     // ========================================================
     {
       name: 'find_symbol',
-      description: 'Find symbol by name across workspace using LSP or regex fallback. Returns symbol locations, types, and signatures.',
+      description:
+        'Find symbol by name across workspace using LSP or regex fallback. Returns symbol locations, types, and signatures.',
       inputSchema: {
         type: 'object',
         properties: {
           pattern: {
             type: 'string',
-            description: 'Symbol name or pattern to search for'
+            description: 'Symbol name or pattern to search for',
           },
           kind: {
             type: 'string',
-            description: 'Filter by symbol kind: function, class, interface, type, variable, method'
+            description:
+              'Filter by symbol kind: function, class, interface, type, variable, method',
           },
           maxResults: {
             type: 'number',
-            description: 'Maximum number of results to return (default: 50)'
-          }
+            description: 'Maximum number of results to return (default: 50)',
+          },
         },
-        required: ['pattern']
+        required: ['pattern'],
       },
       handler: async (params) => {
         const symbols = await nativeCode.findSymbol(params.pattern);
@@ -82,7 +84,7 @@ function createToolDefinitions(
         let filtered = symbols;
         if (params.kind) {
           const kindLower = params.kind.toLowerCase();
-          filtered = symbols.filter(s => {
+          filtered = symbols.filter((s) => {
             const symbolKind = getSymbolKindName(s.kind).toLowerCase();
             return symbolKind.includes(kindLower);
           });
@@ -91,57 +93,59 @@ function createToolDefinitions(
         // Limit results
         const maxResults = params.maxResults || 50;
         return filtered.slice(0, maxResults);
-      }
+      },
     },
 
     {
       name: 'get_symbols_overview',
-      description: 'Get an overview of all symbols (classes, functions, variables) defined in file(s). Useful for understanding code structure.',
+      description:
+        'Get an overview of all symbols (classes, functions, variables) defined in file(s). Useful for understanding code structure.',
       inputSchema: {
         type: 'object',
         properties: {
           patterns: {
             type: 'array',
-            description: 'File glob patterns to analyze (e.g., ["**/*.ts", "src/**/*.js"])'
+            description: 'File glob patterns to analyze (e.g., ["**/*.ts", "src/**/*.js"])',
           },
           depth: {
             type: 'number',
-            description: 'Depth of nested symbols to include (0 = top-level only)'
-          }
-        }
+            description: 'Depth of nested symbols to include (0 = top-level only)',
+          },
+        },
       },
       handler: async (params) => {
         const patterns = params.patterns || ['**/*.{ts,tsx,js,jsx}'];
         return nativeCode.getSymbolsOverview(patterns);
-      }
+      },
     },
 
     {
       name: 'find_referencing_symbols',
-      description: 'Find all references to a symbol at a specific location. Returns symbols that reference the target.',
+      description:
+        'Find all references to a symbol at a specific location. Returns symbols that reference the target.',
       inputSchema: {
         type: 'object',
         properties: {
           filePath: {
             type: 'string',
-            description: 'File containing the symbol (relative to project root)'
+            description: 'File containing the symbol (relative to project root)',
           },
           line: {
             type: 'number',
-            description: 'Line number (1-indexed)'
+            description: 'Line number (1-indexed)',
           },
           character: {
             type: 'number',
-            description: 'Column position (0-indexed)'
-          }
+            description: 'Column position (0-indexed)',
+          },
         },
-        required: ['filePath', 'line', 'character']
+        required: ['filePath', 'line', 'character'],
       },
       handler: async (params) => {
         // Convert to 0-indexed for LSP
         const line = params.line - 1;
         return nativeCode.findReferences(params.filePath, line, params.character);
-      }
+      },
     },
 
     // ========================================================
@@ -149,32 +153,33 @@ function createToolDefinitions(
     // ========================================================
     {
       name: 'find_file',
-      description: 'Find files matching glob pattern. Supports patterns like "**/*.ts", "{src,lib}/**/*.{js,jsx}", "!**/node_modules/**"',
+      description:
+        'Find files matching glob pattern. Supports patterns like "**/*.ts", "{src,lib}/**/*.{js,jsx}", "!**/node_modules/**"',
       inputSchema: {
         type: 'object',
         properties: {
           pattern: {
             type: 'string',
-            description: 'Glob pattern to match files'
+            description: 'Glob pattern to match files',
           },
           ignore: {
             type: 'array',
-            description: 'Patterns to ignore (e.g., ["**/node_modules/**"])'
+            description: 'Patterns to ignore (e.g., ["**/node_modules/**"])',
           },
           maxDepth: {
             type: 'number',
-            description: 'Maximum directory depth to search'
+            description: 'Maximum directory depth to search',
           },
           sortByMtime: {
             type: 'boolean',
-            description: 'Sort results by modification time (newest first)'
+            description: 'Sort results by modification time (newest first)',
           },
           limit: {
             type: 'number',
-            description: 'Maximum number of results'
-          }
+            description: 'Maximum number of results',
+          },
         },
-        required: ['pattern']
+        required: ['pattern'],
       },
       handler: async (params) => {
         const options: GlobOptions = {
@@ -182,16 +187,16 @@ function createToolDefinitions(
           ignore: params.ignore,
           maxDepth: params.maxDepth,
           sortByMtime: params.sortByMtime !== false,
-          limit: params.limit
+          limit: params.limit,
         };
 
         const results = await nativeGlob.glob(options);
-        return results.map(r => ({
+        return results.map((r) => ({
           path: r.relativePath,
           mtime: r.mtime?.toISOString(),
-          size: r.size
+          size: r.size,
         }));
-      }
+      },
     },
 
     {
@@ -202,17 +207,17 @@ function createToolDefinitions(
         properties: {
           relative_path: {
             type: 'string',
-            description: 'Directory path relative to project root (use "." for root)'
+            description: 'Directory path relative to project root (use "." for root)',
           },
           recursive: {
             type: 'boolean',
-            description: 'Whether to list recursively'
+            description: 'Whether to list recursively',
           },
           file_mask: {
             type: 'string',
-            description: 'File pattern filter (e.g., "*.ts")'
-          }
-        }
+            description: 'File pattern filter (e.g., "*.ts")',
+          },
+        },
       },
       handler: async (params) => {
         const dirPath = params.relative_path || '.';
@@ -223,34 +228,35 @@ function createToolDefinitions(
           const pattern = params.file_mask.replace(/\*/g, '.*').replace(/\?/g, '.');
           const regex = new RegExp(`^${pattern}$`, 'i');
           return {
-            entries: entries.filter(e => e.type === 'directory' || regex.test(e.name))
+            entries: entries.filter((e) => e.type === 'directory' || regex.test(e.name)),
           };
         }
 
         return { entries };
-      }
+      },
     },
 
     {
       name: 'read_file',
-      description: 'Read file contents. For code files, symbolic operations like find_symbol are preferred.',
+      description:
+        'Read file contents. For code files, symbolic operations like find_symbol are preferred.',
       inputSchema: {
         type: 'object',
         properties: {
           relative_path: {
             type: 'string',
-            description: 'File path relative to project root'
+            description: 'File path relative to project root',
           },
           start_line: {
             type: 'number',
-            description: 'Start line (0-indexed, optional)'
+            description: 'Start line (0-indexed, optional)',
           },
           end_line: {
             type: 'number',
-            description: 'End line (0-indexed, inclusive, optional)'
-          }
+            description: 'End line (0-indexed, inclusive, optional)',
+          },
         },
-        required: ['relative_path']
+        required: ['relative_path'],
       },
       handler: async (params) => {
         // BUG-008 FIX: Handle multiple param names for path
@@ -270,7 +276,7 @@ function createToolDefinitions(
         }
 
         return content;
-      }
+      },
     },
 
     {
@@ -281,19 +287,19 @@ function createToolDefinitions(
         properties: {
           relative_path: {
             type: 'string',
-            description: 'File path relative to project root'
+            description: 'File path relative to project root',
           },
           content: {
             type: 'string',
-            description: 'Content to write'
-          }
+            description: 'Content to write',
+          },
         },
-        required: ['relative_path', 'content']
+        required: ['relative_path', 'content'],
       },
       handler: async (params) => {
         await nativeCode.createFile(params.relative_path, params.content);
         return { success: true, path: params.relative_path };
-      }
+      },
     },
 
     // ========================================================
@@ -301,51 +307,54 @@ function createToolDefinitions(
     // ========================================================
     {
       name: 'search_for_pattern',
-      description: 'Search for regex pattern in files (grep-like). Supports context lines, case insensitivity, and file type filtering.',
+      description:
+        'Search for regex pattern in files (grep-like). Supports context lines, case insensitivity, and file type filtering.',
       inputSchema: {
         type: 'object',
         properties: {
           pattern: {
             type: 'string',
-            description: 'Regex pattern to search for'
+            description: 'Regex pattern to search for',
           },
           glob: {
             type: 'string',
-            description: 'File glob pattern filter (e.g., "**/*.ts")'
+            description: 'File glob pattern filter (e.g., "**/*.ts")',
           },
           type: {
             type: 'string',
-            description: 'File type: js, ts, py, rust, go, java, etc.'
+            description: 'File type: js, ts, py, rust, go, java, etc.',
           },
           ignoreCase: {
             type: 'boolean',
-            description: 'Case insensitive search'
+            description: 'Case insensitive search',
           },
           multiline: {
             type: 'boolean',
-            description: 'Enable multiline matching (pattern can span lines)'
+            description: 'Enable multiline matching (pattern can span lines)',
           },
           context: {
             type: 'number',
-            description: 'Number of context lines before and after match'
+            description: 'Number of context lines before and after match',
           },
           outputMode: {
             type: 'string',
-            description: 'Output mode: content (default), files_with_matches, count'
+            description: 'Output mode: content (default), files_with_matches, count',
           },
           maxResults: {
             type: 'number',
-            description: 'Maximum number of results'
-          }
+            description: 'Maximum number of results',
+          },
         },
-        required: ['pattern']
+        required: ['pattern'],
       },
       handler: async (params) => {
         // BUG-007 FIX: Accept both 'pattern' and 'substring_pattern' (Serena MCP compatibility)
         const searchPattern = params.pattern || params.substring_pattern || params.query || '';
 
         if (!searchPattern) {
-          throw new Error(`search_for_pattern requires a pattern. Received params: ${JSON.stringify(params)}`);
+          throw new Error(
+            `search_for_pattern requires a pattern. Received params: ${JSON.stringify(params)}`,
+          );
         }
 
         const options: GrepOptions = {
@@ -356,11 +365,11 @@ function createToolDefinitions(
           multiline: params.multiline,
           context: params.context,
           outputMode: params.outputMode || 'content',
-          maxResults: params.maxResults || 100
+          maxResults: params.maxResults || 100,
         };
 
         return nativeGrep.grep(options);
-      }
+      },
     },
 
     // ========================================================
@@ -374,26 +383,26 @@ function createToolDefinitions(
         properties: {
           relative_path: {
             type: 'string',
-            description: 'File path relative to project root'
+            description: 'File path relative to project root',
           },
           needle: {
             type: 'string',
-            description: 'String or regex pattern to search for'
+            description: 'String or regex pattern to search for',
           },
           replacement: {
             type: 'string',
-            description: 'Replacement text'
+            description: 'Replacement text',
           },
           mode: {
             type: 'string',
-            description: 'Search mode: literal or regex (default: literal)'
+            description: 'Search mode: literal or regex (default: literal)',
           },
           replaceAll: {
             type: 'boolean',
-            description: 'Replace all occurrences (default: false)'
-          }
+            description: 'Replace all occurrences (default: false)',
+          },
         },
-        required: ['relative_path', 'needle', 'replacement']
+        required: ['relative_path', 'needle', 'replacement'],
       },
       handler: async (params) => {
         const result = await nativeCode.replaceContent(
@@ -402,11 +411,11 @@ function createToolDefinitions(
           params.replacement,
           {
             isRegex: params.mode === 'regex',
-            replaceAll: params.replaceAll || false
-          }
+            replaceAll: params.replaceAll || false,
+          },
         );
         return result;
-      }
+      },
     },
 
     {
@@ -417,26 +426,26 @@ function createToolDefinitions(
         properties: {
           relative_path: {
             type: 'string',
-            description: 'File path containing the symbol'
+            description: 'File path containing the symbol',
           },
           symbol_name: {
             type: 'string',
-            description: 'Name of the symbol to replace'
+            description: 'Name of the symbol to replace',
           },
           new_body: {
             type: 'string',
-            description: 'New symbol body (including signature)'
-          }
+            description: 'New symbol body (including signature)',
+          },
         },
-        required: ['relative_path', 'symbol_name', 'new_body']
+        required: ['relative_path', 'symbol_name', 'new_body'],
       },
       handler: async (params) => {
         return nativeCode.replaceSymbolBody(
           params.relative_path,
           params.symbol_name,
-          params.new_body
+          params.new_body,
         );
-      }
+      },
     },
 
     {
@@ -447,26 +456,26 @@ function createToolDefinitions(
         properties: {
           relative_path: {
             type: 'string',
-            description: 'File path containing the symbol'
+            description: 'File path containing the symbol',
           },
           symbol_name: {
             type: 'string',
-            description: 'Name of the symbol'
+            description: 'Name of the symbol',
           },
           content: {
             type: 'string',
-            description: 'Content to insert'
-          }
+            description: 'Content to insert',
+          },
         },
-        required: ['relative_path', 'symbol_name', 'content']
+        required: ['relative_path', 'symbol_name', 'content'],
       },
       handler: async (params) => {
         return nativeCode.insertBeforeSymbol(
           params.relative_path,
           params.symbol_name,
-          params.content
+          params.content,
         );
-      }
+      },
     },
 
     {
@@ -477,26 +486,26 @@ function createToolDefinitions(
         properties: {
           relative_path: {
             type: 'string',
-            description: 'File path containing the symbol'
+            description: 'File path containing the symbol',
           },
           symbol_name: {
             type: 'string',
-            description: 'Name of the symbol'
+            description: 'Name of the symbol',
           },
           content: {
             type: 'string',
-            description: 'Content to insert'
-          }
+            description: 'Content to insert',
+          },
         },
-        required: ['relative_path', 'symbol_name', 'content']
+        required: ['relative_path', 'symbol_name', 'content'],
       },
       handler: async (params) => {
         return nativeCode.insertAfterSymbol(
           params.relative_path,
           params.symbol_name,
-          params.content
+          params.content,
         );
-      }
+      },
     },
 
     // ========================================================
@@ -507,11 +516,11 @@ function createToolDefinitions(
       description: 'List all project memories/notes.',
       inputSchema: {
         type: 'object',
-        properties: {}
+        properties: {},
       },
       handler: async () => {
         return nativeCode.listMemories();
-      }
+      },
     },
 
     {
@@ -522,15 +531,15 @@ function createToolDefinitions(
         properties: {
           key: {
             type: 'string',
-            description: 'Memory key to read'
-          }
+            description: 'Memory key to read',
+          },
         },
-        required: ['key']
+        required: ['key'],
       },
       handler: async (params) => {
         const value = await nativeCode.readMemory(params.key);
         return value !== null ? { key: params.key, value } : { error: 'Memory not found' };
-      }
+      },
     },
 
     {
@@ -541,19 +550,19 @@ function createToolDefinitions(
         properties: {
           key: {
             type: 'string',
-            description: 'Memory key'
+            description: 'Memory key',
           },
           value: {
             type: 'string',
-            description: 'Memory value/content'
-          }
+            description: 'Memory value/content',
+          },
         },
-        required: ['key', 'value']
+        required: ['key', 'value'],
       },
       handler: async (params) => {
         await nativeCode.writeMemory(params.key, params.value);
         return { success: true, key: params.key };
-      }
+      },
     },
 
     {
@@ -564,15 +573,15 @@ function createToolDefinitions(
         properties: {
           key: {
             type: 'string',
-            description: 'Memory key to delete'
-          }
+            description: 'Memory key to delete',
+          },
         },
-        required: ['key']
+        required: ['key'],
       },
       handler: async (params) => {
         const deleted = await nativeCode.deleteMemory(params.key);
         return { success: deleted, key: params.key };
-      }
+      },
     },
 
     // ========================================================
@@ -586,23 +595,23 @@ function createToolDefinitions(
         properties: {
           filePath: {
             type: 'string',
-            description: 'File path'
+            description: 'File path',
           },
           line: {
             type: 'number',
-            description: 'Line number (1-indexed)'
+            description: 'Line number (1-indexed)',
           },
           character: {
             type: 'number',
-            description: 'Column (0-indexed)'
-          }
+            description: 'Column (0-indexed)',
+          },
         },
-        required: ['filePath', 'line', 'character']
+        required: ['filePath', 'line', 'character'],
       },
       handler: async (params) => {
         const line = params.line - 1; // Convert to 0-indexed
         return nativeCode.goToDefinition(params.filePath, line, params.character);
-      }
+      },
     },
 
     {
@@ -613,28 +622,28 @@ function createToolDefinitions(
         properties: {
           filePath: {
             type: 'string',
-            description: 'File containing the symbol'
+            description: 'File containing the symbol',
           },
           line: {
             type: 'number',
-            description: 'Line number (1-indexed)'
+            description: 'Line number (1-indexed)',
           },
           character: {
             type: 'number',
-            description: 'Column (0-indexed)'
+            description: 'Column (0-indexed)',
           },
           newName: {
             type: 'string',
-            description: 'New name for the symbol'
-          }
+            description: 'New name for the symbol',
+          },
         },
-        required: ['filePath', 'line', 'character', 'newName']
+        required: ['filePath', 'line', 'character', 'newName'],
       },
       handler: async (params) => {
         const line = params.line - 1; // Convert to 0-indexed
         return nativeCode.renameSymbol(params.filePath, line, params.character, params.newName);
-      }
-    }
+      },
+    },
   ];
 }
 
@@ -669,7 +678,7 @@ function getSymbolKindName(kind: number): string {
     23: 'Struct',
     24: 'Event',
     25: 'Operator',
-    26: 'TypeParameter'
+    26: 'TypeParameter',
   };
   return names[kind] || 'Unknown';
 }
@@ -703,11 +712,7 @@ export class NativeSerenaTools {
     await this.nativeCode.init(this.rootDir);
 
     // Register all tools
-    const toolDefs = createToolDefinitions(
-      this.nativeGlob,
-      this.nativeGrep,
-      this.nativeCode
-    );
+    const toolDefs = createToolDefinitions(this.nativeGlob, this.nativeGrep, this.nativeCode);
 
     for (const tool of toolDefs) {
       this.tools.set(tool.name, tool);
@@ -747,7 +752,7 @@ export class NativeSerenaTools {
     if (!tool) {
       return {
         success: false,
-        error: `Tool not found: ${name}`
+        error: `Tool not found: ${name}`,
       };
     }
 
@@ -755,12 +760,12 @@ export class NativeSerenaTools {
       const data = await tool.handler(params);
       return {
         success: true,
-        data
+        data,
       };
     } catch (error: any) {
       return {
         success: false,
-        error: error.message || String(error)
+        error: error.message || String(error),
       };
     }
   }

@@ -10,9 +10,9 @@
  */
 
 import chalk from 'chalk';
-import { commandRegistry, CommandResult, success, error } from './CommandRegistry.js';
-import { mcpManager } from '../mcp/index.js';
 import { ollamaManager } from '../core/OllamaManager.js';
+import { mcpManager } from '../mcp/index.js';
+import { type CommandResult, commandRegistry, error, success } from './CommandRegistry.js';
 
 // ============================================================
 // MCP Status Command
@@ -22,7 +22,9 @@ async function handleMCPStatus(): Promise<CommandResult> {
   mcpManager.printStatus();
 
   console.log(chalk.cyan('\n=== Native Replacements ===\n'));
-  console.log(chalk.gray('  The following MCP servers have been replaced with native implementations:'));
+  console.log(
+    chalk.gray('  The following MCP servers have been replaced with native implementations:'),
+  );
   console.log(chalk.gray('  - filesystem → /fs commands (NativeFileSystem)'));
   console.log(chalk.gray('  - memory → /mem commands (NativeMemory)'));
   console.log(chalk.gray('  - desktop-commander → /shell commands (NativeShell)'));
@@ -54,17 +56,25 @@ async function handleOllamaStatus(): Promise<CommandResult> {
 
   // Monitor status
   console.log(chalk.white('\n  Monitor:'));
-  console.log(`    Active: ${stats.isMonitoring ? chalk.green('✓ Running') : chalk.gray('○ Stopped')}`);
-  console.log(`    Last check: ${stats.lastHealthCheck ? chalk.gray(stats.lastHealthCheck.toLocaleTimeString()) : chalk.gray('Never')}`);
-  console.log(`    Failures: ${stats.consecutiveFailures > 0 ? chalk.yellow(stats.consecutiveFailures) : chalk.green('0')}`);
-  console.log(`    Restarts: ${stats.totalRestarts > 0 ? chalk.yellow(stats.totalRestarts) : chalk.green('0')}`);
+  console.log(
+    `    Active: ${stats.isMonitoring ? chalk.green('✓ Running') : chalk.gray('○ Stopped')}`,
+  );
+  console.log(
+    `    Last check: ${stats.lastHealthCheck ? chalk.gray(stats.lastHealthCheck.toLocaleTimeString()) : chalk.gray('Never')}`,
+  );
+  console.log(
+    `    Failures: ${stats.consecutiveFailures > 0 ? chalk.yellow(stats.consecutiveFailures) : chalk.green('0')}`,
+  );
+  console.log(
+    `    Restarts: ${stats.totalRestarts > 0 ? chalk.yellow(stats.totalRestarts) : chalk.green('0')}`,
+  );
   console.log(`    Restarting: ${stats.isRestarting ? chalk.yellow('⟳ Yes') : chalk.gray('No')}`);
 
   // Available models
   console.log(chalk.white('\n  Models:'));
   const models = await ollamaManager.listModels();
   if (models.length > 0) {
-    models.forEach(m => console.log(`    ${chalk.green('•')} ${m}`));
+    models.forEach((m) => console.log(`    ${chalk.green('•')} ${m}`));
   } else {
     console.log(chalk.gray('    No models loaded'));
   }
@@ -115,7 +125,7 @@ export function registerMCPCommands(): void {
     description: 'Show MCP servers status',
     usage: '/mcpstatus',
     category: 'mcp',
-    handler: async () => handleMCPStatus()
+    handler: async () => handleMCPStatus(),
   });
 
   // Ollama commands
@@ -125,7 +135,7 @@ export function registerMCPCommands(): void {
     description: 'Show Ollama server status and monitoring info',
     usage: '/ollama',
     category: 'ai',
-    handler: async () => handleOllamaStatus()
+    handler: async () => handleOllamaStatus(),
   });
 
   commandRegistry.register({
@@ -134,7 +144,7 @@ export function registerMCPCommands(): void {
     description: 'Force restart Ollama server',
     usage: '/ollama-restart',
     category: 'ai',
-    handler: async () => handleOllamaRestart()
+    handler: async () => handleOllamaRestart(),
   });
 
   commandRegistry.register({
@@ -143,7 +153,8 @@ export function registerMCPCommands(): void {
     description: 'Start/stop Ollama health monitoring',
     usage: '/ollama-monitor [start|stop]',
     category: 'ai',
-    handler: async (args) => handleOllamaMonitor(Array.isArray(args) ? args.join(' ') : String(args || ''))
+    handler: async (args) =>
+      handleOllamaMonitor(Array.isArray(args) ? args.join(' ') : String(args || '')),
   });
 
   console.log(chalk.gray('[CLI] MCP & Ollama commands registered'));
@@ -157,5 +168,5 @@ export const mcpCommands = {
   status: handleMCPStatus,
   ollamaStatus: handleOllamaStatus,
   ollamaRestart: handleOllamaRestart,
-  ollamaMonitor: handleOllamaMonitor
+  ollamaMonitor: handleOllamaMonitor,
 };

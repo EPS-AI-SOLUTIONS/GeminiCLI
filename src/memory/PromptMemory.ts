@@ -10,29 +10,29 @@
  * - Szablony z parametrami {{variable}}
  */
 
-import fs from 'fs/promises';
-import path from 'path';
-import os from 'os';
+import crypto from 'node:crypto';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import chalk from 'chalk';
-import crypto from 'crypto';
 
 // ============================================================
 // Types
 // ============================================================
 
 export type PromptCategory =
-  | 'coding'      // Programowanie
-  | 'analysis'    // Analiza kodu/danych
+  | 'coding' // Programowanie
+  | 'analysis' // Analiza kodu/danych
   | 'refactoring' // Refaktoryzacja
-  | 'debugging'   // Debugowanie
-  | 'testing'     // Testy
-  | 'docs'        // Dokumentacja
-  | 'git'         // Operacje git
-  | 'architecture'// Architektura
-  | 'review'      // Code review
-  | 'explain'     // Wyjaśnienia
-  | 'translate'   // Tłumaczenia (język/kod)
-  | 'custom';     // Własne
+  | 'debugging' // Debugowanie
+  | 'testing' // Testy
+  | 'docs' // Dokumentacja
+  | 'git' // Operacje git
+  | 'architecture' // Architektura
+  | 'review' // Code review
+  | 'explain' // Wyjaśnienia
+  | 'translate' // Tłumaczenia (język/kod)
+  | 'custom'; // Własne
 
 export interface PromptVariable {
   name: string;
@@ -111,7 +111,7 @@ export class PromptMemory {
   private data: PromptMemoryData = {
     prompts: [],
     history: [],
-    favorites: []
+    favorites: [],
   };
 
   private initialized = false;
@@ -151,14 +151,14 @@ export class PromptMemory {
           ...p,
           createdAt: new Date(p.createdAt),
           updatedAt: new Date(p.updatedAt),
-          lastUsedAt: p.lastUsedAt ? new Date(p.lastUsedAt) : undefined
+          lastUsedAt: p.lastUsedAt ? new Date(p.lastUsedAt) : undefined,
         })),
         history: (parsed.history || []).map((h: any) => ({
           ...h,
-          usedAt: new Date(h.usedAt)
+          usedAt: new Date(h.usedAt),
         })),
         favorites: parsed.favorites || [],
-        lastSyncAt: parsed.lastSyncAt ? new Date(parsed.lastSyncAt) : undefined
+        lastSyncAt: parsed.lastSyncAt ? new Date(parsed.lastSyncAt) : undefined,
       };
     } catch {
       // File doesn't exist or is invalid - use defaults
@@ -232,7 +232,7 @@ export class PromptMemory {
       notes: options.notes,
       rating: options.rating,
       embedding: this.generateEmbedding(options.content),
-      source: 'user'
+      source: 'user',
     };
 
     this.data.prompts.push(prompt);
@@ -244,17 +244,20 @@ export class PromptMemory {
   /**
    * Aktualizuj istniejący prompt
    */
-  async updatePrompt(id: string, updates: Partial<Omit<SavedPrompt, 'id' | 'createdAt'>>): Promise<SavedPrompt | null> {
+  async updatePrompt(
+    id: string,
+    updates: Partial<Omit<SavedPrompt, 'id' | 'createdAt'>>,
+  ): Promise<SavedPrompt | null> {
     await this.init();
 
-    const index = this.data.prompts.findIndex(p => p.id === id);
+    const index = this.data.prompts.findIndex((p) => p.id === id);
     if (index === -1) return null;
 
     const prompt = this.data.prompts[index];
 
     // Apply updates
     Object.assign(prompt, updates, {
-      updatedAt: new Date()
+      updatedAt: new Date(),
     });
 
     // Regenerate embedding if content changed
@@ -272,11 +275,11 @@ export class PromptMemory {
   async deletePrompt(id: string): Promise<boolean> {
     await this.init();
 
-    const index = this.data.prompts.findIndex(p => p.id === id);
+    const index = this.data.prompts.findIndex((p) => p.id === id);
     if (index === -1) return false;
 
     this.data.prompts.splice(index, 1);
-    this.data.favorites = this.data.favorites.filter(f => f !== id);
+    this.data.favorites = this.data.favorites.filter((f) => f !== id);
 
     await this.save();
     return true;
@@ -287,7 +290,7 @@ export class PromptMemory {
    */
   async getPrompt(id: string): Promise<SavedPrompt | null> {
     await this.init();
-    return this.data.prompts.find(p => p.id === id) || null;
+    return this.data.prompts.find((p) => p.id === id) || null;
   }
 
   /**
@@ -312,24 +315,24 @@ export class PromptMemory {
 
     // Filter by favorites
     if (options.onlyFavorites) {
-      results = results.filter(p => this.data.favorites.includes(p.id));
+      results = results.filter((p) => this.data.favorites.includes(p.id));
     }
 
     // Filter by category
     if (options.category) {
-      results = results.filter(p => p.category === options.category);
+      results = results.filter((p) => p.category === options.category);
     }
 
     // Filter by tags
     if (options.tags && options.tags.length > 0) {
-      results = results.filter(p =>
-        options.tags!.some(tag => p.tags.includes(tag.toLowerCase()))
+      results = results.filter((p) =>
+        options.tags?.some((tag) => p.tags.includes(tag.toLowerCase())),
       );
     }
 
     // Filter by minimum rating
     if (options.minRating) {
-      results = results.filter(p => (p.rating || 0) >= options.minRating!);
+      results = results.filter((p) => (p.rating || 0) >= options.minRating!);
     }
 
     // Search by query (semantic + text)
@@ -337,13 +340,14 @@ export class PromptMemory {
       const queryLower = options.query.toLowerCase();
       const queryEmbedding = this.generateEmbedding(options.query);
 
-      results = results.map(p => ({
-        prompt: p,
-        score: this.calculateRelevance(p, queryLower, queryEmbedding)
-      }))
-      .filter(r => r.score > 0.1)
-      .sort((a, b) => b.score - a.score)
-      .map(r => r.prompt);
+      results = results
+        .map((p) => ({
+          prompt: p,
+          score: this.calculateRelevance(p, queryLower, queryEmbedding),
+        }))
+        .filter((r) => r.score > 0.1)
+        .sort((a, b) => b.score - a.score)
+        .map((r) => r.prompt);
     }
 
     // Sort
@@ -383,35 +387,40 @@ export class PromptMemory {
     const contextLower = context.toLowerCase();
     const contextEmbedding = this.generateEmbedding(context);
 
-    const suggestions: PromptSuggestion[] = this.data.prompts.map(prompt => {
-      const score = this.calculateRelevance(prompt, contextLower, contextEmbedding);
+    const suggestions: PromptSuggestion[] = this.data.prompts
+      .map((prompt) => {
+        const score = this.calculateRelevance(prompt, contextLower, contextEmbedding);
 
-      // Boost by usage frequency
-      const usageBoost = Math.min(prompt.usageCount / 10, 0.2);
+        // Boost by usage frequency
+        const usageBoost = Math.min(prompt.usageCount / 10, 0.2);
 
-      // Boost by rating
-      const ratingBoost = (prompt.rating || 3) / 5 * 0.1;
+        // Boost by rating
+        const ratingBoost = ((prompt.rating || 3) / 5) * 0.1;
 
-      // Boost by recency
-      const recencyBoost = prompt.lastUsedAt
-        ? Math.max(0, 0.1 - (Date.now() - prompt.lastUsedAt.getTime()) / (30 * 24 * 60 * 60 * 1000))
-        : 0;
+        // Boost by recency
+        const recencyBoost = prompt.lastUsedAt
+          ? Math.max(
+              0,
+              0.1 - (Date.now() - prompt.lastUsedAt.getTime()) / (30 * 24 * 60 * 60 * 1000),
+            )
+          : 0;
 
-      // Boost favorites
-      const favoriteBoost = this.data.favorites.includes(prompt.id) ? 0.15 : 0;
+        // Boost favorites
+        const favoriteBoost = this.data.favorites.includes(prompt.id) ? 0.15 : 0;
 
-      const finalScore = score + usageBoost + ratingBoost + recencyBoost + favoriteBoost;
+        const finalScore = score + usageBoost + ratingBoost + recencyBoost + favoriteBoost;
 
-      let reason = 'podobna treść';
-      if (favoriteBoost > 0) reason = 'ulubiony prompt';
-      else if (usageBoost > 0.1) reason = 'często używany';
-      else if (prompt.tags.some(t => contextLower.includes(t))) reason = `pasujący tag: ${prompt.tags.find(t => contextLower.includes(t))}`;
+        let reason = 'podobna treść';
+        if (favoriteBoost > 0) reason = 'ulubiony prompt';
+        else if (usageBoost > 0.1) reason = 'często używany';
+        else if (prompt.tags.some((t) => contextLower.includes(t)))
+          reason = `pasujący tag: ${prompt.tags.find((t) => contextLower.includes(t))}`;
 
-      return { prompt, score: finalScore, reason };
-    })
-    .filter(s => s.score > 0.2)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
+        return { prompt, score: finalScore, reason };
+      })
+      .filter((s) => s.score > 0.2)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit);
 
     return suggestions;
   }
@@ -423,15 +432,18 @@ export class PromptMemory {
   /**
    * Zapisz użycie prompta
    */
-  async recordUsage(promptId: string, options?: {
-    context?: string;
-    variables?: Record<string, string>;
-    success?: boolean;
-  }): Promise<void> {
+  async recordUsage(
+    promptId: string,
+    options?: {
+      context?: string;
+      variables?: Record<string, string>;
+      success?: boolean;
+    },
+  ): Promise<void> {
     await this.init();
 
     // Update prompt stats
-    const prompt = this.data.prompts.find(p => p.id === promptId);
+    const prompt = this.data.prompts.find((p) => p.id === promptId);
     if (prompt) {
       prompt.usageCount++;
       prompt.lastUsedAt = new Date();
@@ -443,7 +455,7 @@ export class PromptMemory {
       usedAt: new Date(),
       context: options?.context,
       variables: options?.variables,
-      success: options?.success
+      success: options?.success,
     };
 
     this.data.history.unshift(entry);
@@ -462,7 +474,7 @@ export class PromptMemory {
   async ratePrompt(id: string, rating: number): Promise<void> {
     await this.init();
 
-    const prompt = this.data.prompts.find(p => p.id === id);
+    const prompt = this.data.prompts.find((p) => p.id === id);
     if (prompt) {
       prompt.rating = Math.max(1, Math.min(5, rating));
       await this.save();
@@ -495,7 +507,7 @@ export class PromptMemory {
 
   async getFavorites(): Promise<SavedPrompt[]> {
     await this.init();
-    return this.data.prompts.filter(p => this.data.favorites.includes(p.id));
+    return this.data.prompts.filter((p) => this.data.favorites.includes(p.id));
   }
 
   // ============================================================
@@ -542,7 +554,7 @@ export class PromptMemory {
         seen.add(name);
         variables.push({
           name,
-          required: true
+          required: true,
         });
       }
     }
@@ -567,21 +579,21 @@ export class PromptMemory {
     let prompts = [...this.data.prompts];
 
     if (options?.ids) {
-      prompts = prompts.filter(p => options.ids!.includes(p.id));
+      prompts = prompts.filter((p) => options.ids?.includes(p.id));
     }
 
     if (options?.category) {
-      prompts = prompts.filter(p => p.category === options.category);
+      prompts = prompts.filter((p) => p.category === options.category);
     }
 
     const exportData = {
       version: '1.0',
       exportedAt: new Date().toISOString(),
-      prompts: prompts.map(p => ({
+      prompts: prompts.map((p) => ({
         ...p,
-        embedding: undefined // Don't export embeddings
+        embedding: undefined, // Don't export embeddings
       })),
-      history: options?.includeHistory ? this.data.history : undefined
+      history: options?.includeHistory ? this.data.history : undefined,
     };
 
     return JSON.stringify(exportData, null, 2);
@@ -590,10 +602,13 @@ export class PromptMemory {
   /**
    * Importuj prompty z JSON
    */
-  async importPrompts(jsonData: string, options?: {
-    overwrite?: boolean;
-    addTags?: string[];
-  }): Promise<{ imported: number; skipped: number; errors: string[] }> {
+  async importPrompts(
+    jsonData: string,
+    options?: {
+      overwrite?: boolean;
+      addTags?: string[];
+    },
+  ): Promise<{ imported: number; skipped: number; errors: string[] }> {
     await this.init();
 
     const result = { imported: 0, skipped: 0, errors: [] as string[] };
@@ -606,7 +621,7 @@ export class PromptMemory {
         try {
           // Check for duplicate
           const existing = this.data.prompts.find(
-            existing => existing.title === p.title && existing.content === p.content
+            (existing) => existing.title === p.title && existing.content === p.content,
           );
 
           if (existing && !options?.overwrite) {
@@ -620,7 +635,7 @@ export class PromptMemory {
               ...p,
               id: existing.id,
               updatedAt: new Date(),
-              embedding: this.generateEmbedding(p.content)
+              embedding: this.generateEmbedding(p.content),
             });
           } else {
             // Create new
@@ -632,7 +647,7 @@ export class PromptMemory {
               usageCount: 0,
               tags: [...(p.tags || []), ...(options?.addTags || [])],
               embedding: this.generateEmbedding(p.content),
-              source: 'import'
+              source: 'import',
             };
             this.data.prompts.push(newPrompt);
           }
@@ -666,9 +681,18 @@ export class PromptMemory {
     await this.init();
 
     const byCategory: Record<PromptCategory, number> = {
-      coding: 0, analysis: 0, refactoring: 0, debugging: 0,
-      testing: 0, docs: 0, git: 0, architecture: 0,
-      review: 0, explain: 0, translate: 0, custom: 0
+      coding: 0,
+      analysis: 0,
+      refactoring: 0,
+      debugging: 0,
+      testing: 0,
+      docs: 0,
+      git: 0,
+      architecture: 0,
+      review: 0,
+      explain: 0,
+      translate: 0,
+      custom: 0,
     };
 
     const tagCounts: Record<string, number> = {};
@@ -695,7 +719,7 @@ export class PromptMemory {
     const topPrompts = [...this.data.prompts]
       .sort((a, b) => b.usageCount - a.usageCount)
       .slice(0, 10)
-      .map(p => ({ title: p.title, usageCount: p.usageCount }));
+      .map((p) => ({ title: p.title, usageCount: p.usageCount }));
 
     return {
       totalPrompts: this.data.prompts.length,
@@ -703,7 +727,7 @@ export class PromptMemory {
       byCategory,
       topTags,
       topPrompts,
-      recentlyUsed
+      recentlyUsed,
     };
   }
 
@@ -746,10 +770,11 @@ export class PromptMemory {
 
   private generateEmbedding(text: string): number[] {
     // Simple bag-of-words embedding (nie ML, ale działa dla podobieństwa)
-    const words = text.toLowerCase()
+    const words = text
+      .toLowerCase()
       .replace(/[^\w\s]/g, ' ')
       .split(/\s+/)
-      .filter(w => w.length > 2);
+      .filter((w) => w.length > 2);
 
     const embedding = new Array(this.EMBEDDING_DIM).fill(0);
 
@@ -757,7 +782,7 @@ export class PromptMemory {
       // Hash word to index
       let hash = 0;
       for (let i = 0; i < word.length; i++) {
-        hash = ((hash << 5) - hash) + word.charCodeAt(i);
+        hash = (hash << 5) - hash + word.charCodeAt(i);
         hash = hash & hash;
       }
       const index = Math.abs(hash) % this.EMBEDDING_DIM;
@@ -792,7 +817,11 @@ export class PromptMemory {
     return magnitude > 0 ? dotProduct / magnitude : 0;
   }
 
-  private calculateRelevance(prompt: SavedPrompt, queryLower: string, queryEmbedding: number[]): number {
+  private calculateRelevance(
+    prompt: SavedPrompt,
+    queryLower: string,
+    queryEmbedding: number[],
+  ): number {
     let score = 0;
 
     // Exact title match
@@ -823,7 +852,7 @@ export class PromptMemory {
   }
 
   private detectCategory(content: string, tags: string[]): PromptCategory {
-    const lower = content.toLowerCase() + ' ' + tags.join(' ').toLowerCase();
+    const lower = `${content.toLowerCase()} ${tags.join(' ').toLowerCase()}`;
 
     if (/test|spec|assert|expect|mock|stub/.test(lower)) return 'testing';
     if (/debug|error|fix|bug|issue|problem/.test(lower)) return 'debugging';

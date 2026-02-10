@@ -8,17 +8,15 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-
-import type { Message, Session, Settings, View } from '../types';
-import { STORAGE_KEYS, DEFAULT_SETTINGS, LIMITS, GEMINI_MODELS, DEFAULT_GEMINI_MODEL } from '../constants';
-
 import {
-  isValidUrl,
-  isValidApiKey,
-  sanitizeContent,
-  sanitizeTitle,
-} from '../utils/validators';
-import type { AppState } from '../types';
+  DEFAULT_GEMINI_MODEL,
+  DEFAULT_SETTINGS,
+  GEMINI_MODELS,
+  LIMITS,
+  STORAGE_KEYS,
+} from '../constants';
+import type { AppState, Message, Session, Settings, View } from '../types';
+import { isValidApiKey, isValidUrl, sanitizeContent, sanitizeTitle } from '../utils/validators';
 
 // Extended AppState with pagination
 interface PaginationState {
@@ -52,10 +50,11 @@ export const useAppStore = create<AppStateWithPagination>()(
       currentPage: 0,
 
       setCurrentPage: (page) => set({ currentPage: Math.max(0, page) }),
-      setMessagesPerPage: (count) => set({
-        messagesPerPage: Math.max(10, Math.min(count, 200)),
-        currentPage: 0 // Reset to first page when changing page size
-      }),
+      setMessagesPerPage: (count) =>
+        set({
+          messagesPerPage: Math.max(10, Math.min(count, 200)),
+          currentPage: 0, // Reset to first page when changing page size
+        }),
 
       setCurrentView: (view: View) => set({ currentView: view }),
 
@@ -149,7 +148,7 @@ export const useAppStore = create<AppStateWithPagination>()(
 
           return {
             sessions: state.sessions.map((s) =>
-              s.id === id ? { ...s, title: sanitizedTitle } : s
+              s.id === id ? { ...s, title: sanitizedTitle } : s,
             ),
           };
         }),
@@ -179,10 +178,10 @@ export const useAppStore = create<AppStateWithPagination>()(
           if (msg.role === 'user' && currentMessages.length === 0) {
             const title = sanitizeTitle(
               msg.content.substring(0, 30) + (msg.content.length > 30 ? '...' : ''),
-              LIMITS.MAX_TITLE_LENGTH
+              LIMITS.MAX_TITLE_LENGTH,
             );
             updatedSessions = state.sessions.map((s) =>
-              s.id === state.currentSessionId ? { ...s, title } : s
+              s.id === state.currentSessionId ? { ...s, title } : s,
             );
           }
 
@@ -204,10 +203,7 @@ export const useAppStore = create<AppStateWithPagination>()(
           const newMessages = [...messages];
           const lastMsg = newMessages[newMessages.length - 1];
 
-          const newContent = sanitizeContent(
-            lastMsg.content + content,
-            LIMITS.MAX_CONTENT_LENGTH
-          );
+          const newContent = sanitizeContent(lastMsg.content + content, LIMITS.MAX_CONTENT_LENGTH);
 
           newMessages[newMessages.length - 1] = {
             ...lastMsg,
@@ -268,7 +264,7 @@ export const useAppStore = create<AppStateWithPagination>()(
           if (newSettings.systemPrompt !== undefined) {
             validated.systemPrompt = sanitizeContent(
               newSettings.systemPrompt,
-              LIMITS.MAX_SYSTEM_PROMPT_LENGTH
+              LIMITS.MAX_SYSTEM_PROMPT_LENGTH,
             );
           }
 
@@ -313,7 +309,7 @@ export const useAppStore = create<AppStateWithPagination>()(
 
           // Migrate invalid model names to correct ones
           const selectedModel = merged.settings.selectedModel;
-          const validModelIds = GEMINI_MODELS.map(m => m.id);
+          const validModelIds = GEMINI_MODELS.map((m) => m.id);
 
           // Fix common incorrect model names
           if (selectedModel === 'gemini-3.0-flash') {
@@ -332,7 +328,7 @@ export const useAppStore = create<AppStateWithPagination>()(
           for (const [sessionId, messages] of Object.entries(p.chatHistory)) {
             if (Array.isArray(messages)) {
               cleanedHistory[sessionId] = messages.filter(
-                (m) => m.content.trim().length > 0 && !m.content.startsWith('[CONTEXT]')
+                (m) => m.content.trim().length > 0 && !m.content.startsWith('[CONTEXT]'),
               );
             }
           }
@@ -341,7 +337,7 @@ export const useAppStore = create<AppStateWithPagination>()(
         // Reset session titles that start with [CONTEXT]
         if (merged.sessions && Array.isArray(merged.sessions)) {
           merged.sessions = merged.sessions.map((s: Session) =>
-            s.title.startsWith('[CONTEXT]') ? { ...s, title: 'New Chat' } : s
+            s.title.startsWith('[CONTEXT]') ? { ...s, title: 'New Chat' } : s,
           );
         }
         if (merged.settings?.systemPrompt?.includes('Jaskier')) {
@@ -349,17 +345,16 @@ export const useAppStore = create<AppStateWithPagination>()(
         }
 
         // Restore API key from sessionStorage (not persisted in localStorage)
-        const sessionApiKey = typeof window !== 'undefined'
-          ? sessionStorage.getItem('gemini-api-key') ?? ''
-          : '';
+        const sessionApiKey =
+          typeof window !== 'undefined' ? (sessionStorage.getItem('gemini-api-key') ?? '') : '';
         if (sessionApiKey && merged.settings) {
           merged.settings.geminiApiKey = sessionApiKey;
         }
 
         return merged;
       },
-    }
-  )
+    },
+  ),
 );
 
 // =============================================================================
@@ -379,44 +374,44 @@ export const useAppStore = create<AppStateWithPagination>()(
 // Primitive selectors (string, number, boolean) do NOT need useShallow.
 
 export {
-  // Basic state
-  selectTheme,
-  selectProvider,
+  selectApiConfigStatus,
+  // Messages
+  selectChatHistory,
   selectCount,
+  selectCurrentMessages,
+  selectCurrentSession,
   selectCurrentSessionId,
   selectCurrentView,
-  // Settings
-  selectSettings,
-  selectIsApiKeySet,
-  selectOllamaEndpoint,
-  selectSystemPrompt,
   selectDefaultProvider,
-  selectUseSwarm,
   selectGeminiApiKey,
-  // Sessions
-  selectSessions,
+  selectHasMessages,
+  selectIsApiKeySet,
+  // Composite
+  selectIsAppReady,
+  selectLastMessage,
+  selectLastMessageBySessionId,
+  selectMessageCount,
+  selectMessageCountBySessionId,
+  selectMessagesBySessionId,
+  selectOllamaEndpoint,
+  // Pagination
+  selectPaginatedMessages,
+  selectPaginationInfo,
+  selectProvider,
+  selectRuntimeSettings,
   selectSessionById,
-  selectCurrentSession,
   selectSessionCount,
   selectSessionHasMessages,
   selectSessionMetadata,
-  // Messages
-  selectChatHistory,
-  selectCurrentMessages,
-  selectMessagesBySessionId,
-  selectMessageCount,
-  selectMessageCountBySessionId,
-  selectHasMessages,
-  selectLastMessage,
-  selectLastMessageBySessionId,
-  // Composite
-  selectIsAppReady,
-  selectApiConfigStatus,
-  selectRuntimeSettings,
-  // Pagination
-  selectPaginatedMessages,
+  // Sessions
+  selectSessions,
+  // Settings
+  selectSettings,
+  selectSystemPrompt,
+  // Basic state
+  selectTheme,
   selectTotalPages,
-  selectPaginationInfo,
+  selectUseSwarm,
 } from './selectors';
 
 export default useAppStore;

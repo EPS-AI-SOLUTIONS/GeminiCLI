@@ -4,10 +4,10 @@
  * Handles interactions with the main chat interface.
  */
 
-import { Page, Locator, expect } from '@playwright/test';
-import { BasePage } from './BasePage';
+import { expect, type Locator, type Page } from '@playwright/test';
 import { StreamSimulator } from '../fixtures/stream-simulator';
 import { SELECTORS, TIMEOUTS } from '../fixtures/test-data';
+import { BasePage } from './BasePage';
 
 interface Message {
   role: 'user' | 'assistant' | 'system';
@@ -102,11 +102,9 @@ export class ChatPage extends BasePage {
       // Determine role based on parent element styling
       const parent = element.locator('..');
       const isUser = await parent.evaluate((el) =>
-        el.className.includes('bg-[var(--matrix-accent)]')
+        el.className.includes('bg-[var(--matrix-accent)]'),
       );
-      const isSystem = await parent.evaluate((el) =>
-        el.className.includes('bg-blue-900')
-      );
+      const isSystem = await parent.evaluate((el) => el.className.includes('bg-blue-900'));
 
       let role: 'user' | 'assistant' | 'system' = 'assistant';
       if (isUser) role = 'user';

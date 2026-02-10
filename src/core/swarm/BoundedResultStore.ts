@@ -52,7 +52,7 @@ export class BoundedResultStore<T> {
 
   getAll(): T[] {
     this.evictExpired();
-    return Array.from(this.entries.values()).map(e => e.value);
+    return Array.from(this.entries.values()).map((e) => e.value);
   }
 
   get size(): number {

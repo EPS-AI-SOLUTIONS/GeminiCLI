@@ -9,9 +9,9 @@ import type { AgentRole, AgentSpec, ModelTier } from '../../types/swarm.js';
  * Model tiers for 3-level hierarchy
  */
 export const MODEL_TIERS: Record<ModelTier, string> = {
-  commander: 'gemini-3-pro-preview',     // Planning, assigning
-  coordinator: 'gemini-3-pro-preview',  // Synthesis, analysis, summary
-  executor: 'llama.cpp'                  // Local execution
+  commander: 'gemini-3-pro-preview', // Planning, assigning
+  coordinator: 'gemini-3-pro-preview', // Synthesis, analysis, summary
+  executor: 'llama.cpp', // Local execution
 };
 
 /**
@@ -48,9 +48,9 @@ export const AGENT_SPECS: Record<AgentRole, AgentSpec> = {
       'Assigning agents based on expertise',
       'Identifying dependencies and parallelization opportunities',
       'Creating execution plans with priorities',
-      'Risk assessment and contingency planning'
+      'Risk assessment and contingency planning',
     ],
-    tier: 'commander'
+    tier: 'commander',
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -65,9 +65,9 @@ export const AGENT_SPECS: Record<AgentRole, AgentSpec> = {
       'Context analysis and summarization',
       'Pattern recognition across data',
       'Historical analysis and trends',
-      'Expert knowledge synthesis'
+      'Expert knowledge synthesis',
     ],
-    tier: 'coordinator'
+    tier: 'coordinator',
   },
 
   yennefer: {
@@ -78,9 +78,9 @@ export const AGENT_SPECS: Record<AgentRole, AgentSpec> = {
       'System architecture and design patterns',
       'Cross-cutting concern analysis',
       'Quality assessment of solutions',
-      'Final answer formulation'
+      'Final answer formulation',
     ],
-    tier: 'coordinator'
+    tier: 'coordinator',
   },
 
   jaskier: {
@@ -91,9 +91,9 @@ export const AGENT_SPECS: Record<AgentRole, AgentSpec> = {
       'Technical writing and documentation',
       'Session logging and transcription',
       'User-friendly explanations',
-      'Narrative structure and flow'
+      'Narrative structure and flow',
     ],
-    tier: 'coordinator'
+    tier: 'coordinator',
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -108,9 +108,9 @@ export const AGENT_SPECS: Record<AgentRole, AgentSpec> = {
       'Safe code practices and hardening',
       'Operational procedures and monitoring',
       'Incident response and mitigation',
-      'Authentication and authorization'
+      'Authentication and authorization',
     ],
-    tier: 'executor'
+    tier: 'executor',
   },
 
   triss: {
@@ -121,9 +121,9 @@ export const AGENT_SPECS: Record<AgentRole, AgentSpec> = {
       'Quality assurance processes',
       'Bug detection and reporting',
       'Code coverage analysis',
-      'Regression testing strategies'
+      'Regression testing strategies',
     ],
-    tier: 'executor'
+    tier: 'executor',
   },
 
   vesemir: {
@@ -134,9 +134,9 @@ export const AGENT_SPECS: Record<AgentRole, AgentSpec> = {
       'Best practices enforcement',
       'Teaching and explanations',
       'Legacy code understanding',
-      'Technical debt assessment'
+      'Technical debt assessment',
     ],
-    tier: 'executor'
+    tier: 'executor',
   },
 
   ciri: {
@@ -147,9 +147,9 @@ export const AGENT_SPECS: Record<AgentRole, AgentSpec> = {
       'Quick prototyping and POCs',
       'Simple implementations',
       'Rapid iteration',
-      'Time-critical operations'
+      'Time-critical operations',
     ],
-    tier: 'executor'
+    tier: 'executor',
   },
 
   eskel: {
@@ -160,9 +160,9 @@ export const AGENT_SPECS: Record<AgentRole, AgentSpec> = {
       'CI/CD pipeline design',
       'Container orchestration',
       'Cloud platform management',
-      'Deployment automation'
+      'Deployment automation',
     ],
-    tier: 'executor'
+    tier: 'executor',
   },
 
   lambert: {
@@ -173,9 +173,9 @@ export const AGENT_SPECS: Record<AgentRole, AgentSpec> = {
       'Performance profiling',
       'Memory leak detection',
       'Stack trace analysis',
-      'Cynical code review'
+      'Cynical code review',
     ],
-    tier: 'executor'
+    tier: 'executor',
   },
 
   zoltan: {
@@ -186,9 +186,9 @@ export const AGENT_SPECS: Record<AgentRole, AgentSpec> = {
       'SQL and NoSQL expertise',
       'Data migration and ETL',
       'Data modeling',
-      'Query optimization'
+      'Query optimization',
     ],
-    tier: 'executor'
+    tier: 'executor',
   },
 
   philippa: {
@@ -199,9 +199,9 @@ export const AGENT_SPECS: Record<AgentRole, AgentSpec> = {
       'Third-party service integration',
       'MCP server connections',
       'Protocol implementation',
-      'System interoperability'
+      'System interoperability',
     ],
-    tier: 'executor'
+    tier: 'executor',
   },
 
   serena: {
@@ -212,10 +212,10 @@ export const AGENT_SPECS: Record<AgentRole, AgentSpec> = {
       'Code navigation and go-to-definition',
       'Semantic code search',
       'Symbol renaming across project',
-      'LSP-based code intelligence'
+      'LSP-based code intelligence',
     ],
-    tier: 'executor'
-  }
+    tier: 'executor',
+  },
 };
 
 /**
@@ -229,7 +229,7 @@ export function getAgentRoles(): AgentRole[] {
  * Get agents by tier
  */
 export function getAgentsByTier(tier: ModelTier): AgentRole[] {
-  return getAgentRoles().filter(role => AGENT_SPECS[role].tier === tier);
+  return getAgentRoles().filter((role) => AGENT_SPECS[role].tier === tier);
 }
 
 /**
@@ -290,7 +290,7 @@ export function getAgentPromptPrefix(role: AgentRole): string {
   return `You are ${role.charAt(0).toUpperCase() + role.slice(1)}, the ${spec.persona}.
 Your focus area is: ${spec.focus}.
 Your key skills are:
-${spec.skills.map(s => `- ${s}`).join('\n')}
+${spec.skills.map((s) => `- ${s}`).join('\n')}
 
 Respond in character, leveraging your expertise.`;
 }
@@ -310,12 +310,12 @@ export interface AgentSummary {
  * Get all agent summaries
  */
 export function getAgentSummaries(): AgentSummary[] {
-  return getAgentRoles().map(role => ({
+  return getAgentRoles().map((role) => ({
     role,
     persona: AGENT_SPECS[role].persona,
     focus: AGENT_SPECS[role].focus,
     tier: AGENT_SPECS[role].tier,
-    model: MODEL_TIERS[AGENT_SPECS[role].tier]
+    model: MODEL_TIERS[AGENT_SPECS[role].tier],
   }));
 }
 

@@ -3,9 +3,9 @@
  * Configuration for file and directory paths
  */
 
-import * as path from 'path';
-import * as os from 'os';
-import { fileURLToPath } from 'url';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 // ============================================================================
 // BASE DIRECTORIES

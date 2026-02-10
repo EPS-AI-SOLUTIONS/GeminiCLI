@@ -5,12 +5,12 @@
 
 import {
   detectPathTraversal,
-  sanitizePath,
-  validateSecurePath,
-  PathTraversalError,
-  securityAuditLogger,
   hasTraversalPatterns,
-  isPathSafe
+  isPathSafe,
+  PathTraversalError,
+  sanitizePath,
+  securityAuditLogger,
+  validateSecurePath,
 } from '../src/native/PathTraversalProtection.js';
 
 // Disable logging during tests
@@ -209,7 +209,7 @@ describe('PathTraversalProtection', () => {
     test('allows sanitization when option enabled', () => {
       const result = validateSecurePath('../../../etc/passwd', rootDir, {
         throwOnDetection: false,
-        allowSanitization: true
+        allowSanitization: true,
       });
       expect(result).not.toContain('..');
     });

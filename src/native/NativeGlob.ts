@@ -9,10 +9,10 @@
  * - Caching for repeated queries
  */
 
-import { glob, GlobOptions as NodeGlobOptions } from 'glob';
-import fs from 'fs/promises';
-import path from 'path';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import chalk from 'chalk';
+import { glob, type GlobOptions as NodeGlobOptions } from 'glob';
 
 // ============================================================
 // Types
@@ -108,7 +108,7 @@ export class NativeGlob {
       '**/build/**',
       '**/__pycache__/**',
       '**/.venv/**',
-      '**/venv/**'
+      '**/venv/**',
     ];
     this.enableCache = config.enableCache ?? true;
     this.cacheTTL = config.cacheTTL ?? 30000; // 30 seconds
@@ -129,7 +129,7 @@ export class NativeGlob {
     const cacheKey = this.getCacheKey(options);
     if (this.enableCache) {
       const cached = this.cache.get(cacheKey);
-      if (cached && (Date.now() - cached.timestamp) < this.cacheTTL) {
+      if (cached && Date.now() - cached.timestamp < this.cacheTTL) {
         this.lastStats = { ...cached.stats, cacheHit: true };
         return cached.results;
       }
@@ -147,12 +147,10 @@ export class NativeGlob {
       followSymlinks = false,
       caseSensitive,
       limit,
-      stats: includeStats = false
+      stats: includeStats = false,
     } = options;
 
-    const cwd = path.isAbsolute(basePath)
-      ? basePath
-      : path.join(this.rootDir, basePath);
+    const cwd = path.isAbsolute(basePath) ? basePath : path.join(this.rootDir, basePath);
 
     // Build ignore list
     const ignorePatterns = [...this.defaultIgnore, ...ignore];
@@ -166,7 +164,7 @@ export class NativeGlob {
       follow: followSymlinks,
       absolute: true, // Always get absolute for consistent processing
       maxDepth,
-      nocase: caseSensitive === false
+      nocase: caseSensitive === false,
     };
 
     // Run glob for all patterns
@@ -179,7 +177,7 @@ export class NativeGlob {
           // Ensure we have string paths (glob may return Path objects)
           allMatches.add(String(match));
         }
-      } catch (error) {
+      } catch (_error) {
         // Skip invalid patterns
         console.error(chalk.yellow(`[NativeGlob] Invalid pattern: ${pattern}`));
       }
@@ -211,7 +209,7 @@ export class NativeGlob {
 
       const result: GlobResult = {
         path: absolute ? absolutePath : relativePath,
-        relativePath
+        relativePath,
       };
 
       if (sortByMtime || includeStats) {
@@ -248,11 +246,11 @@ export class NativeGlob {
     // Build stats
     const elapsedMs = Date.now() - startTime;
     const stats: GlobStats = {
-      totalFiles: finalResults.filter(r => r.isFile !== false && !r.isDirectory).length,
-      totalDirs: finalResults.filter(r => r.isDirectory === true).length,
+      totalFiles: finalResults.filter((r) => r.isFile !== false && !r.isDirectory).length,
+      totalDirs: finalResults.filter((r) => r.isDirectory === true).length,
       elapsedMs,
       patternsUsed: patterns,
-      cacheHit: false
+      cacheHit: false,
     };
 
     this.lastStats = stats;
@@ -262,7 +260,7 @@ export class NativeGlob {
       this.cache.set(cacheKey, {
         results: finalResults,
         timestamp: Date.now(),
-        stats
+        stats,
       });
     }
 
@@ -281,9 +279,9 @@ export class NativeGlob {
       pattern,
       ignore,
       onlyFiles: true,
-      sortByMtime: true
+      sortByMtime: true,
     });
-    return results.map(r => r.relativePath);
+    return results.map((r) => r.relativePath);
   }
 
   /**
@@ -293,19 +291,20 @@ export class NativeGlob {
     const results = await this.glob({
       pattern,
       onlyDirectories: true,
-      onlyFiles: false
+      onlyFiles: false,
     });
-    return results.map(r => r.relativePath);
+    return results.map((r) => r.relativePath);
   }
 
   /**
    * Find files by extension
    */
-  async findByExtension(ext: string | string[], basePath?: string): Promise<string[]> {
+  async findByExtension(ext: string | string[], _basePath?: string): Promise<string[]> {
     const extensions = Array.isArray(ext) ? ext : [ext];
-    const pattern = extensions.length === 1
-      ? `**/*${extensions[0].startsWith('.') ? extensions[0] : '.' + extensions[0]}`
-      : `**/*.{${extensions.map(e => e.replace(/^\./, '')).join(',')}}`;
+    const pattern =
+      extensions.length === 1
+        ? `**/*${extensions[0].startsWith('.') ? extensions[0] : `.${extensions[0]}`}`
+        : `**/*.{${extensions.map((e) => e.replace(/^\./, '')).join(',')}}`;
 
     return this.findFiles(pattern);
   }
@@ -316,7 +315,7 @@ export class NativeGlob {
   async hasMatches(pattern: string): Promise<boolean> {
     const results = await this.glob({
       pattern,
-      limit: 1
+      limit: 1,
     });
     return results.length > 0;
   }
@@ -327,7 +326,7 @@ export class NativeGlob {
   async countMatches(pattern: string): Promise<number> {
     const results = await this.glob({
       pattern,
-      sortByMtime: false
+      sortByMtime: false,
     });
     return results.length;
   }
@@ -456,7 +455,7 @@ export class NativeGlob {
       includeHidden: options.includeHidden,
       onlyFiles: options.onlyFiles,
       onlyDirectories: options.onlyDirectories,
-      caseSensitive: options.caseSensitive
+      caseSensitive: options.caseSensitive,
     });
   }
 }

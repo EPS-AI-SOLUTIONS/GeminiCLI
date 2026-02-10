@@ -8,21 +8,22 @@
  */
 
 import {
-  chalk,
-  success, error,
   type CommandResult,
-  getTools,
-  parseFlags,
-  formatBytes,
-  truncate,
-  highlightMatch,
-  createFailedMessage,
+  chalk,
   createDiagnostics,
+  createFailedMessage,
   detectFileEncoding,
-  getFileAttributes,
-  setFileAttributes,
   dynamicAllowedPaths,
-  dynamicBlockedPaths
+  dynamicBlockedPaths,
+  error,
+  formatBytes,
+  getFileAttributes,
+  getTools,
+  highlightMatch,
+  parseFlags,
+  setFileAttributes,
+  success,
+  truncate,
 } from './helpers.js';
 
 // ============================================================
@@ -39,7 +40,9 @@ export const fsCommands = {
     const filePath = positional[0];
 
     if (!filePath) {
-      return error('Usage: /fs read <path> [--encoding utf-8|ascii|latin1|utf16le]\n\nRead file contents with optional encoding');
+      return error(
+        'Usage: /fs read <path> [--encoding utf-8|ascii|latin1|utf16le]\n\nRead file contents with optional encoding',
+      );
     }
 
     try {
@@ -47,21 +50,30 @@ export const fsCommands = {
       const encoding = (flags.encoding as BufferEncoding) || 'utf-8';
       const content = await tools.fs.readFile(filePath, { encoding });
 
-      return success({
-        content: truncate(content, 5000),
-        size: formatBytes(content.length),
-        encoding
-      }, `File: ${filePath}`);
+      return success(
+        {
+          content: truncate(content, 5000),
+          size: formatBytes(content.length),
+          encoding,
+        },
+        `File: ${filePath}`,
+      );
     } catch (err: any) {
       // Provide more helpful error messages
       if (err.code === 'ENOENT') {
-        return error(`File not found: ${filePath}\n${chalk.gray('Use /fs diagnose to check path issues')}`);
+        return error(
+          `File not found: ${filePath}\n${chalk.gray('Use /fs diagnose to check path issues')}`,
+        );
       }
       if (err.code === 'EACCES') {
-        return error(`Permission denied: ${filePath}\n${chalk.gray('Use /fs perms to check permissions')}`);
+        return error(
+          `Permission denied: ${filePath}\n${chalk.gray('Use /fs perms to check permissions')}`,
+        );
       }
       if (err.message?.includes('blocked')) {
-        return error(`Path is blocked: ${filePath}\n${chalk.gray('Use /fs unblock to temporarily allow access')}`);
+        return error(
+          `Path is blocked: ${filePath}\n${chalk.gray('Use /fs unblock to temporarily allow access')}`,
+        );
       }
       return error(createFailedMessage('read file', err));
     }
@@ -77,13 +89,16 @@ export const fsCommands = {
     try {
       const tools = getTools();
       const fileInfos = await tools.fs.listDirectory(dirPath, { recursive });
-      const files = fileInfos.map(f => f.path);
+      const files = fileInfos.map((f) => f.path);
 
-      return success({
-        files: files.slice(0, 100),
-        total: files.length,
-        showing: Math.min(100, files.length)
-      }, `Directory: ${dirPath}`);
+      return success(
+        {
+          files: files.slice(0, 100),
+          total: files.length,
+          showing: Math.min(100, files.length),
+        },
+        `Directory: ${dirPath}`,
+      );
     } catch (err) {
       return error(createFailedMessage('list directory', err));
     }
@@ -101,7 +116,9 @@ export const fsCommands = {
     const content = positional.slice(1).join(' ');
 
     if (!filePath || !content) {
-      return error('Usage: /fs write <path> <content> [--encoding utf-8] [--force]\n\n--force: Remove readonly attribute before writing\n--encoding: Specify file encoding');
+      return error(
+        'Usage: /fs write <path> <content> [--encoding utf-8] [--force]\n\n--force: Remove readonly attribute before writing\n--encoding: Specify file encoding',
+      );
     }
 
     try {
@@ -125,21 +142,30 @@ export const fsCommands = {
 
       await tools.fs.writeFile(filePath, content, { encoding });
 
-      return success({
-        bytes: content.length,
-        encoding,
-        forced: !!flags.force
-      }, `Written to: ${filePath}`);
+      return success(
+        {
+          bytes: content.length,
+          encoding,
+          forced: !!flags.force,
+        },
+        `Written to: ${filePath}`,
+      );
     } catch (err: any) {
       // Provide more helpful error messages
       if (err.code === 'EACCES' || err.code === 'EPERM') {
-        return error(`Permission denied: ${filePath}\n${chalk.gray('Try using --force to remove readonly attribute')}`);
+        return error(
+          `Permission denied: ${filePath}\n${chalk.gray('Try using --force to remove readonly attribute')}`,
+        );
       }
       if (err.code === 'ENOENT') {
-        return error(`Directory not found for: ${filePath}\n${chalk.gray('Parent directory must exist')}`);
+        return error(
+          `Directory not found for: ${filePath}\n${chalk.gray('Parent directory must exist')}`,
+        );
       }
       if (err.message?.includes('blocked')) {
-        return error(`Path is blocked: ${filePath}\n${chalk.gray('Use /fs unblock to temporarily allow access')}`);
+        return error(
+          `Path is blocked: ${filePath}\n${chalk.gray('Use /fs unblock to temporarily allow access')}`,
+        );
       }
       return error(createFailedMessage('write file', err));
     }
@@ -157,13 +183,16 @@ export const fsCommands = {
       const tools = getTools();
       const info = await tools.fs.getFileInfo(args[0]);
 
-      return success({
-        size: formatBytes(info.size ?? 0),
-        modified: info.modified?.toISOString() ?? 'unknown',
-        created: info.created?.toISOString(),
-        isDirectory: info.isDirectory,
-        isFile: info.isFile
-      }, `File Info: ${args[0]}`);
+      return success(
+        {
+          size: formatBytes(info.size ?? 0),
+          modified: info.modified?.toISOString() ?? 'unknown',
+          created: info.created?.toISOString(),
+          isDirectory: info.isDirectory,
+          isFile: info.isFile,
+        },
+        `File Info: ${args[0]}`,
+      );
     } catch (err) {
       return error(createFailedMessage('get info', err));
     }
@@ -184,16 +213,19 @@ export const fsCommands = {
       const tools = getTools();
       const matches = await tools.fs.searchContent(pattern, { glob });
 
-      const results = matches.slice(0, 20).map(m => ({
+      const results = matches.slice(0, 20).map((m) => ({
         file: m.file,
         line: m.line,
-        match: highlightMatch(truncate(m.content, 80), pattern)
+        match: highlightMatch(truncate(m.content, 80), pattern),
       }));
 
-      return success({
-        results,
-        showing: Math.min(20, matches.length)
-      }, `Found ${matches.length} matches for "${pattern}"`);
+      return success(
+        {
+          results,
+          showing: Math.min(20, matches.length),
+        },
+        `Found ${matches.length} matches for "${pattern}"`,
+      );
     } catch (err) {
       return error(createFailedMessage('search', err));
     }
@@ -213,7 +245,7 @@ export const fsCommands = {
 
     try {
       const diagnostics = createDiagnostics({
-        rootDir: process.cwd()
+        rootDir: process.cwd(),
       });
 
       const result = await diagnostics.diagnose(targetPath);
@@ -228,31 +260,34 @@ export const fsCommands = {
       }
 
       // Return structured data
-      return success({
-        path: result.path,
-        exists: result.exists,
-        readable: result.readable,
-        writable: result.writable,
-        isDirectory: result.isDirectory,
-        isFile: result.isFile,
-        isSymlink: result.isSymlink,
-        isBlocked: result.isBlocked,
-        size: result.size,
-        encoding: result.encoding,
-        blockedReason: result.blockedReason,
-        permissions: {
-          mode: result.permissions.modeString,
-          readable: result.permissions.readable,
-          writable: result.permissions.writable,
-          executable: result.permissions.executable
+      return success(
+        {
+          path: result.path,
+          exists: result.exists,
+          readable: result.readable,
+          writable: result.writable,
+          isDirectory: result.isDirectory,
+          isFile: result.isFile,
+          isSymlink: result.isSymlink,
+          isBlocked: result.isBlocked,
+          size: result.size,
+          encoding: result.encoding,
+          blockedReason: result.blockedReason,
+          permissions: {
+            mode: result.permissions.modeString,
+            readable: result.permissions.readable,
+            writable: result.permissions.writable,
+            executable: result.permissions.executable,
+          },
+          pathValidation: {
+            valid: result.pathValidation.valid,
+            issues: result.pathValidation.issues,
+          },
+          errors: result.errors,
+          warnings: result.warnings,
         },
-        pathValidation: {
-          valid: result.pathValidation.valid,
-          issues: result.pathValidation.issues
-        },
-        errors: result.errors,
-        warnings: result.warnings
-      }, `Diagnostics for: ${targetPath}`);
+        `Diagnostics for: ${targetPath}`,
+      );
     } catch (err) {
       return error(createFailedMessage('diagnose path', err));
     }
@@ -268,16 +303,19 @@ export const fsCommands = {
 
       diagnostics.printSystemInfo(info);
 
-      return success({
-        platform: info.platform,
-        release: info.release,
-        arch: info.arch,
-        user: info.user.username,
-        homeDir: info.user.homeDir,
-        cwd: info.user.cwd,
-        limits: info.limits,
-        tempDir: info.env.tempDir
-      }, 'System Filesystem Info');
+      return success(
+        {
+          platform: info.platform,
+          release: info.release,
+          arch: info.arch,
+          user: info.user.username,
+          homeDir: info.user.homeDir,
+          cwd: info.user.cwd,
+          limits: info.limits,
+          tempDir: info.env.tempDir,
+        },
+        'System Filesystem Info',
+      );
     } catch (err) {
       return error(createFailedMessage('get system info', err));
     }
@@ -369,11 +407,14 @@ export const fsCommands = {
       // Add to dynamic allowed paths (overrides blocked)
       dynamicAllowedPaths.add(targetPath);
 
-      return success({
-        path: targetPath,
-        action: 'unblocked',
-        allowedPaths: Array.from(dynamicAllowedPaths)
-      }, `Path unblocked: ${targetPath}\n${chalk.gray('Note: This is a session-only change.')}`);
+      return success(
+        {
+          path: targetPath,
+          action: 'unblocked',
+          allowedPaths: Array.from(dynamicAllowedPaths),
+        },
+        `Path unblocked: ${targetPath}\n${chalk.gray('Note: This is a session-only change.')}`,
+      );
     } catch (err) {
       return error(createFailedMessage('unblock path', err));
     }
@@ -392,11 +433,14 @@ export const fsCommands = {
     try {
       dynamicAllowedPaths.add(targetPath);
 
-      return success({
-        path: targetPath,
-        action: 'allowed',
-        allowedPaths: Array.from(dynamicAllowedPaths)
-      }, `Path allowed: ${targetPath}\n${chalk.gray('Note: This is a session-only change.')}`);
+      return success(
+        {
+          path: targetPath,
+          action: 'allowed',
+          allowedPaths: Array.from(dynamicAllowedPaths),
+        },
+        `Path allowed: ${targetPath}\n${chalk.gray('Note: This is a session-only change.')}`,
+      );
     } catch (err) {
       return error(createFailedMessage('allow path', err));
     }
@@ -407,7 +451,9 @@ export const fsCommands = {
    */
   async attrs(args: string[]): Promise<CommandResult> {
     if (!args[0]) {
-      return error('Usage: /fs attrs <path> [--set readonly|hidden] [--unset readonly|hidden]\n\nShow or modify file attributes');
+      return error(
+        'Usage: /fs attrs <path> [--set readonly|hidden] [--unset readonly|hidden]\n\nShow or modify file attributes',
+      );
     }
 
     const { flags, positional } = parseFlags(args);
@@ -434,11 +480,14 @@ export const fsCommands = {
         }
 
         const newAttrs = await getFileAttributes(filePath);
-        return success({
-          path: filePath,
-          action: 'modified',
-          attributes: newAttrs
-        }, `Attributes updated for: ${filePath}`);
+        return success(
+          {
+            path: filePath,
+            action: 'modified',
+            attributes: newAttrs,
+          },
+          `Attributes updated for: ${filePath}`,
+        );
       }
 
       // Just show attributes
@@ -451,7 +500,7 @@ export const fsCommands = {
         `  Readonly: ${attrs.readonly ? chalk.yellow('Yes') : 'No'}`,
         `  Hidden: ${attrs.hidden ? chalk.yellow('Yes') : 'No'}`,
         `  System: ${attrs.system ? chalk.yellow('Yes') : 'No'}`,
-        `  Archive: ${attrs.archive ? 'Yes' : 'No'}`
+        `  Archive: ${attrs.archive ? 'Yes' : 'No'}`,
       ];
 
       if (attrs.raw) {
@@ -469,28 +518,30 @@ export const fsCommands = {
    */
   async encoding(args: string[]): Promise<CommandResult> {
     if (!args[0]) {
-      return error('Usage: /fs encoding <path>\n\nDetects file encoding (UTF-8, ASCII, UTF-16, binary, etc.)');
+      return error(
+        'Usage: /fs encoding <path>\n\nDetects file encoding (UTF-8, ASCII, UTF-16, binary, etc.)',
+      );
     }
 
     try {
       const enc = await detectFileEncoding(args[0]);
 
-      const confidenceColor = enc.confidence >= 90 ? chalk.green :
-        enc.confidence >= 70 ? chalk.yellow : chalk.red;
+      const confidenceColor =
+        enc.confidence >= 90 ? chalk.green : enc.confidence >= 70 ? chalk.yellow : chalk.red;
 
       const output = [
         chalk.cyan('\n=== File Encoding ===\n'),
         chalk.white(`Path: ${args[0]}`),
         '',
         `  Encoding: ${chalk.bold(enc.encoding)}`,
-        `  Confidence: ${confidenceColor(enc.confidence + '%')}`,
+        `  Confidence: ${confidenceColor(`${enc.confidence}%`)}`,
         `  BOM: ${enc.bom || 'None'}`,
-        `  Details: ${enc.details}`
+        `  Details: ${enc.details}`,
       ];
 
       return success(enc, output.join('\n'));
     } catch (err) {
       return error(createFailedMessage('detect encoding', err));
     }
-  }
+  },
 };

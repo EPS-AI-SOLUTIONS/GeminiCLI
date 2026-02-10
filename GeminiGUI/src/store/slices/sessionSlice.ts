@@ -5,9 +5,9 @@
  */
 
 import type { StateCreator } from 'zustand';
+import { LIMITS } from '../../constants';
 import type { Session } from '../../types';
 import { sanitizeTitle } from '../../utils/validators';
-import { LIMITS } from '../../constants';
 
 // =============================================================================
 // TYPES
@@ -118,9 +118,7 @@ export const createSessionSlice: StateCreator<
       if (!sanitizedTitle) return state;
 
       return {
-        sessions: state.sessions.map((s) =>
-          s.id === id ? { ...s, title: sanitizedTitle } : s
-        ),
+        sessions: state.sessions.map((s) => (s.id === id ? { ...s, title: sanitizedTitle } : s)),
       };
     }),
 });

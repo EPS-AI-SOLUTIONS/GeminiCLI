@@ -2,8 +2,8 @@
  * Badge Component - Matrix Glass Theme
  */
 
-import { type HTMLAttributes, type ReactNode } from 'react';
 import { clsx } from 'clsx';
+import type { HTMLAttributes, ReactNode } from 'react';
 
 type BadgeVariant = 'default' | 'accent' | 'success' | 'warning' | 'error';
 
@@ -20,13 +20,7 @@ const variantClasses: Record<BadgeVariant, string> = {
   error: 'badge-error',
 };
 
-export function Badge({
-  className,
-  variant = 'default',
-  icon,
-  children,
-  ...props
-}: BadgeProps) {
+export function Badge({ className, variant = 'default', icon, children, ...props }: BadgeProps) {
   return (
     <span className={clsx('badge', variantClasses[variant], className)} {...props}>
       {icon}

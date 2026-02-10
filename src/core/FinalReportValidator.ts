@@ -8,7 +8,7 @@
  */
 
 import chalk from 'chalk';
-import { ExecutionResult } from '../types/index.js';
+import type { ExecutionResult } from '../types/index.js';
 
 // =============================================================================
 // INTERFACES
@@ -23,18 +23,18 @@ export type ValidationSeverity = 'critical' | 'warning' | 'info';
  * Types of validation issues that can be detected
  */
 export type ValidationIssueType =
-  | 'objective_mismatch'      // Report doesn't address original objective
-  | 'unsupported_claim'       // Claim not backed by agent data
-  | 'generic_name'            // file1.ts, Class1, etc.
-  | 'speculative_language'    // "might", "probably", "could"
-  | 'missing_source'          // Information without [Task #X] citation
-  | 'fabricated_file'         // File mentioned but not in agent results
-  | 'fabricated_code'         // Code block not from agent results
-  | 'placeholder_content'     // TODO, FIXME, implement here
+  | 'objective_mismatch' // Report doesn't address original objective
+  | 'unsupported_claim' // Claim not backed by agent data
+  | 'generic_name' // file1.ts, Class1, etc.
+  | 'speculative_language' // "might", "probably", "could"
+  | 'missing_source' // Information without [Task #X] citation
+  | 'fabricated_file' // File mentioned but not in agent results
+  | 'fabricated_code' // Code block not from agent results
+  | 'placeholder_content' // TODO, FIXME, implement here
   | 'proposal_instead_action' // "I will", "you should" instead of "done"
-  | 'missing_section'         // Required report section missing
-  | 'inconsistent_status'     // Report says success but results show failure
-  | 'phantom_artefact';       // Artifact mentioned but never produced
+  | 'missing_section' // Required report section missing
+  | 'inconsistent_status' // Report says success but results show failure
+  | 'phantom_artefact'; // Artifact mentioned but never produced
 
 /**
  * Individual validation issue
@@ -43,18 +43,18 @@ export interface ValidationIssue {
   type: ValidationIssueType;
   severity: ValidationSeverity;
   description: string;
-  location: string;           // Where in the report this was found
-  suggestion?: string;        // How to fix the issue
-  matchedText?: string;       // The problematic text that triggered this
+  location: string; // Where in the report this was found
+  suggestion?: string; // How to fix the issue
+  matchedText?: string; // The problematic text that triggered this
 }
 
 /**
  * Complete validation result
  */
 export interface ValidationResult {
-  isValid: boolean;           // True if no critical issues and score >= 60
+  isValid: boolean; // True if no critical issues and score >= 60
   issues: ValidationIssue[];
-  score: number;              // 0-100, higher is better
+  score: number; // 0-100, higher is better
   recommendations: string[];
   stats: ValidationStats;
 }
@@ -68,7 +68,7 @@ export interface ValidationStats {
   criticalIssues: number;
   warningIssues: number;
   infoIssues: number;
-  citationCoverage: number;   // Percentage of claims with [Task #X] citations
+  citationCoverage: number; // Percentage of claims with [Task #X] citations
   objectiveAlignment: number; // 0-100, how well report addresses objective
 }
 
@@ -89,50 +89,90 @@ export interface ValidationStats {
  * SPECULATIVE_LANGUAGE_PATTERNS.push({ pattern: /\bmaybe\b/gi, severity: 'warning' });
  * ```
  */
-export const SPECULATIVE_LANGUAGE_PATTERNS: Array<{ pattern: RegExp; severity: ValidationSeverity }> = [
+export const SPECULATIVE_LANGUAGE_PATTERNS: Array<{
+  pattern: RegExp;
+  severity: ValidationSeverity;
+}> = [
   { pattern: /\b(?:might|may|could|possibly|perhaps|probably)\b/gi, severity: 'warning' },
   { pattern: /\b(?:I think|I believe|I assume|I guess)\b/gi, severity: 'warning' },
   { pattern: /\b(?:myslę|sądzę|zakładam|prawdopodobnie|być może|chyba)\b/gi, severity: 'warning' },
-  { pattern: /\b(?:should work|powinno działać|hopefully|mam nadzieję)\b/gi, severity: 'info' }
+  { pattern: /\b(?:should work|powinno działać|hopefully|mam nadzieję)\b/gi, severity: 'info' },
 ];
 
 /**
  * Patterns for detecting proposal instead of action
  */
 const PROPOSAL_PATTERNS = [
-  { pattern: /\b(?:I will|I would|I can|Let me|I'll|I'm going to)\s+(?:create|write|implement|add|fix)\b/gi, severity: 'critical' as const },
-  { pattern: /\b(?:you should|you could|you can|you might want to)\b/gi, severity: 'warning' as const },
-  { pattern: /\b(?:Mogę|Będę|Zamierzam|Powinienem|Można)\s+(?:stworzyć|napisać|zaimplementować|dodać)\b/gi, severity: 'critical' as const },
-  { pattern: /\b(?:powinieneś|możesz|warto|rozważ)\b/gi, severity: 'warning' as const }
+  {
+    pattern:
+      /\b(?:I will|I would|I can|Let me|I'll|I'm going to)\s+(?:create|write|implement|add|fix)\b/gi,
+    severity: 'critical' as const,
+  },
+  {
+    pattern: /\b(?:you should|you could|you can|you might want to)\b/gi,
+    severity: 'warning' as const,
+  },
+  {
+    pattern:
+      /\b(?:Mogę|Będę|Zamierzam|Powinienem|Można)\s+(?:stworzyć|napisać|zaimplementować|dodać)\b/gi,
+    severity: 'critical' as const,
+  },
+  { pattern: /\b(?:powinieneś|możesz|warto|rozważ)\b/gi, severity: 'warning' as const },
 ];
 
 /**
  * Patterns for detecting generic/placeholder names
  */
 const GENERIC_NAME_PATTERNS = [
-  { pattern: /\b(?:file|class|component|module|service|helper|util|test)\d+\.(ts|js|tsx|jsx|py)\b/gi, severity: 'critical' as const },
-  { pattern: /\b(?:Class|Component|Service|Helper|Utils?|Handler|Manager)\d+\b/g, severity: 'critical' as const },
-  { pattern: /\b(?:foo|bar|baz|qux|example|sample|demo|test|dummy|mock|fake)\w*\.(ts|js|tsx|jsx)\b/gi, severity: 'warning' as const },
-  { pattern: /\b(?:MyClass|MyComponent|MyService|MyFunction|MyHelper)\b/g, severity: 'warning' as const },
-  { pattern: /\b(?:function|method|variable|value|result|data)\d+\b/gi, severity: 'warning' as const }
+  {
+    pattern:
+      /\b(?:file|class|component|module|service|helper|util|test)\d+\.(ts|js|tsx|jsx|py)\b/gi,
+    severity: 'critical' as const,
+  },
+  {
+    pattern: /\b(?:Class|Component|Service|Helper|Utils?|Handler|Manager)\d+\b/g,
+    severity: 'critical' as const,
+  },
+  {
+    pattern:
+      /\b(?:foo|bar|baz|qux|example|sample|demo|test|dummy|mock|fake)\w*\.(ts|js|tsx|jsx)\b/gi,
+    severity: 'warning' as const,
+  },
+  {
+    pattern: /\b(?:MyClass|MyComponent|MyService|MyFunction|MyHelper)\b/g,
+    severity: 'warning' as const,
+  },
+  {
+    pattern: /\b(?:function|method|variable|value|result|data)\d+\b/gi,
+    severity: 'warning' as const,
+  },
 ];
 
 /**
  * Patterns for detecting placeholder content
  */
 const PLACEHOLDER_PATTERNS = [
-  { pattern: /\b(?:TODO|FIXME|XXX|HACK|implement here|add code here)\b/gi, severity: 'critical' as const },
-  { pattern: /\b(?:placeholder|example code|sample code|boilerplate)\b/gi, severity: 'warning' as const },
-  { pattern: /\.\.\.\s*(?:implementation|code|logic)/gi, severity: 'warning' as const }
+  {
+    pattern: /\b(?:TODO|FIXME|XXX|HACK|implement here|add code here)\b/gi,
+    severity: 'critical' as const,
+  },
+  {
+    pattern: /\b(?:placeholder|example code|sample code|boilerplate)\b/gi,
+    severity: 'warning' as const,
+  },
+  { pattern: /\.\.\.\s*(?:implementation|code|logic)/gi, severity: 'warning' as const },
 ];
 
 /**
  * Patterns for detecting fake/template paths
  */
 const FAKE_PATH_PATTERNS = [
-  { pattern: /(?:\/path\/to\/|C:\\path\\to\\|\/your\/|\/user\/project\/)/gi, severity: 'critical' as const },
+  {
+    pattern: /(?:\/path\/to\/|C:\\path\\to\\|\/your\/|\/user\/project\/)/gi,
+    severity: 'critical' as const,
+  },
   { pattern: /\[path\]|\[filename\]|\[directory\]/gi, severity: 'critical' as const },
-  { pattern: /src\/components\/Example/gi, severity: 'warning' as const }
+  { pattern: /src\/components\/Example/gi, severity: 'warning' as const },
 ];
 
 /**
@@ -143,7 +183,7 @@ const REQUIRED_SECTIONS = [
   { section: '## Zgodność z celem', severity: 'critical' as const },
   { section: '## Wyniki', severity: 'critical' as const },
   { section: '## Problemy', severity: 'warning' as const },
-  { section: '## Rekomendacje', severity: 'info' as const }
+  { section: '## Rekomendacje', severity: 'info' as const },
 ];
 
 // =============================================================================
@@ -166,7 +206,7 @@ export class FinalReportValidator {
   validateReport(
     report: string,
     originalObjective: string,
-    agentResults: ExecutionResult[]
+    agentResults: ExecutionResult[],
   ): ValidationResult {
     const issues: ValidationIssue[] = [];
     const startTime = Date.now();
@@ -228,7 +268,7 @@ export class FinalReportValidator {
     const recommendations = this.generateRecommendations(issues, stats);
 
     // Determine if valid (no critical issues and score >= 60)
-    const criticalCount = issues.filter(i => i.severity === 'critical').length;
+    const criticalCount = issues.filter((i) => i.severity === 'critical').length;
     const isValid = criticalCount === 0 && score >= 60;
 
     const duration = Date.now() - startTime;
@@ -243,7 +283,7 @@ export class FinalReportValidator {
       issues,
       score,
       recommendations,
-      stats
+      stats,
     };
   }
 
@@ -258,8 +298,10 @@ export class FinalReportValidator {
     // Extract key terms from objective (words > 4 chars)
     const keyTerms = objectiveLower
       .split(/\s+/)
-      .filter(word => word.length > 4)
-      .filter(word => !/^(which|where|about|should|could|would|there|their|these|those)$/.test(word));
+      .filter((word) => word.length > 4)
+      .filter(
+        (word) => !/^(which|where|about|should|could|would|there|their|these|those)$/.test(word),
+      );
 
     // Count how many key terms appear in report
     let foundTerms = 0;
@@ -282,7 +324,7 @@ export class FinalReportValidator {
         description: `Raport nie adresuje oryginalnego celu (pokrycie: ${coverage.toFixed(0)}%)`,
         location: 'Cały raport',
         suggestion: `Upewnij się, że raport odnosi się do: "${objective}"`,
-        matchedText: missingTerms.slice(0, 5).join(', ')
+        matchedText: missingTerms.slice(0, 5).join(', '),
       });
     } else if (coverage < 60) {
       issues.push({
@@ -290,7 +332,7 @@ export class FinalReportValidator {
         severity: 'warning',
         description: `Częściowe pokrycie celu (${coverage.toFixed(0)}%)`,
         location: 'Cały raport',
-        suggestion: `Brakujące terminy: ${missingTerms.slice(0, 3).join(', ')}`
+        suggestion: `Brakujące terminy: ${missingTerms.slice(0, 3).join(', ')}`,
       });
     }
 
@@ -301,7 +343,7 @@ export class FinalReportValidator {
         severity: 'info',
         description: 'Raport nie zawiera jawnego odniesienia do oryginalnego celu',
         location: 'Nagłówek raportu',
-        suggestion: 'Dodaj sekcję z oryginalnym celem użytkownika'
+        suggestion: 'Dodaj sekcję z oryginalnym celem użytkownika',
       });
     }
 
@@ -311,18 +353,22 @@ export class FinalReportValidator {
   /**
    * Check for claims not supported by agent results
    */
-  private checkUnsupportedClaims(report: string, agentResults: ExecutionResult[]): ValidationIssue[] {
+  private checkUnsupportedClaims(
+    report: string,
+    agentResults: ExecutionResult[],
+  ): ValidationIssue[] {
     const issues: ValidationIssue[] = [];
 
     // Extract all content from agent results for comparison
     const agentContent = agentResults
-      .filter(r => r.success)
-      .map(r => (r.logs ?? []).join('\n'))
+      .filter((r) => r.success)
+      .map((r) => (r.logs ?? []).join('\n'))
       .join('\n')
       .toLowerCase();
 
     // Extract file paths mentioned in report
-    const reportFilePaths = report.match(/(?:src|lib|app|components|services|utils?)\/[\w\/-]+\.\w+/g) || [];
+    const reportFilePaths =
+      report.match(/(?:src|lib|app|components|services|utils?)\/[\w/-]+\.\w+/g) || [];
     const uniqueFilePaths = [...new Set(reportFilePaths)];
 
     for (const filePath of uniqueFilePaths) {
@@ -334,7 +380,7 @@ export class FinalReportValidator {
           description: `Plik "${filePath}" nie pojawia się w wynikach agentów`,
           location: 'Sekcja wyników',
           suggestion: 'Usuń lub zweryfikuj źródło tej informacji',
-          matchedText: filePath
+          matchedText: filePath,
         });
       }
     }
@@ -357,7 +403,7 @@ export class FinalReportValidator {
           description: 'Blok kodu może nie pochodzić z wyników agentów',
           location: 'Blok kodu',
           suggestion: 'Dodaj cytowanie [Zadanie #X] lub usuń kod',
-          matchedText: codeContent.substring(0, 80) + '...'
+          matchedText: `${codeContent.substring(0, 80)}...`,
         });
       }
     }
@@ -381,7 +427,7 @@ export class FinalReportValidator {
             description: `Generyczna/placeholder nazwa: "${match}"`,
             location: 'W treści raportu',
             suggestion: 'Użyj rzeczywistych nazw z wyników agentów',
-            matchedText: match
+            matchedText: match,
           });
         }
       }
@@ -409,7 +455,7 @@ export class FinalReportValidator {
           description: `Język spekulatywny: ${matches.length} wystąpień`,
           location: 'W treści raportu',
           suggestion: 'Zastąp spekulacje konkretnymi faktami z wyników agentów',
-          matchedText: matches.slice(0, 3).join(', ')
+          matchedText: matches.slice(0, 3).join(', '),
         });
       }
     }
@@ -433,7 +479,7 @@ export class FinalReportValidator {
             description: `Propozycja zamiast akcji: "${match}"`,
             location: 'W treści raportu',
             suggestion: 'Opisz co ZOSTAŁO zrobione, nie co MOŻNA zrobić',
-            matchedText: match
+            matchedText: match,
           });
         }
       }
@@ -458,7 +504,7 @@ export class FinalReportValidator {
             description: `Placeholder w raporcie: "${match}"`,
             location: 'W treści raportu',
             suggestion: 'Usuń placeholder lub zamień na rzeczywistą treść',
-            matchedText: match
+            matchedText: match,
           });
         }
       }
@@ -479,12 +525,12 @@ export class FinalReportValidator {
 
     // Find claim patterns that should have citations
     const claimPatterns = [
-      /plik\s+[\w\/\.-]+\.(ts|js|tsx|jsx)/gi,
+      /plik\s+[\w/.-]+\.(ts|js|tsx|jsx)/gi,
       /funkcja\s+\w+/gi,
       /klasa\s+\w+/gi,
       /komponent\s+\w+/gi,
       /interfejs\s+\w+/gi,
-      /zmodyfikowano|dodano|usunięto|naprawiono/gi
+      /zmodyfikowano|dodano|usunięto|naprawiono/gi,
     ];
 
     let claimCount = 0;
@@ -503,7 +549,7 @@ export class FinalReportValidator {
         severity: 'warning',
         description: `Niskie pokrycie cytatami: ${citations.length} cytatów dla ${claimCount} twierdzeń`,
         location: 'Sekcja Wyniki',
-        suggestion: 'Dodaj [Zadanie #X] do każdego twierdzenia'
+        suggestion: 'Dodaj [Zadanie #X] do każdego twierdzenia',
       });
     }
 
@@ -512,14 +558,14 @@ export class FinalReportValidator {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       // Check if line has a file path claim but no citation
-      if (/(?:plik|file)\s+[\w\/\.-]+\.(ts|js)/i.test(line) && !citationPattern.test(line)) {
+      if (/(?:plik|file)\s+[\w/.-]+\.(ts|js)/i.test(line) && !citationPattern.test(line)) {
         issues.push({
           type: 'missing_source',
           severity: 'info',
           description: 'Twierdzenie o pliku bez cytatu źródłowego',
           location: `Linia ${i + 1}`,
           suggestion: 'Dodaj [Zadanie #X] po twierdzeniu',
-          matchedText: line.substring(0, 60)
+          matchedText: line.substring(0, 60),
         });
       }
     }
@@ -539,10 +585,10 @@ export class FinalReportValidator {
         section,
         section.replace('## ', '**'),
         section.replace('## ', '### '),
-        section.toLowerCase()
+        section.toLowerCase(),
       ];
 
-      const found = patterns.some(p => report.toLowerCase().includes(p.toLowerCase()));
+      const found = patterns.some((p) => report.toLowerCase().includes(p.toLowerCase()));
 
       if (!found) {
         issues.push({
@@ -550,7 +596,7 @@ export class FinalReportValidator {
           severity,
           description: `Brakująca sekcja: ${section}`,
           location: 'Struktura raportu',
-          suggestion: `Dodaj sekcję "${section}" do raportu`
+          suggestion: `Dodaj sekcję "${section}" do raportu`,
         });
       }
     }
@@ -561,11 +607,14 @@ export class FinalReportValidator {
   /**
    * Check for status consistency between report and results
    */
-  private checkStatusConsistency(report: string, agentResults: ExecutionResult[]): ValidationIssue[] {
+  private checkStatusConsistency(
+    report: string,
+    agentResults: ExecutionResult[],
+  ): ValidationIssue[] {
     const issues: ValidationIssue[] = [];
     const reportLower = report.toLowerCase();
 
-    const successCount = agentResults.filter(r => r.success).length;
+    const successCount = agentResults.filter((r) => r.success).length;
     const failCount = agentResults.length - successCount;
     const successRatio = agentResults.length > 0 ? successCount / agentResults.length : 0;
 
@@ -579,7 +628,7 @@ export class FinalReportValidator {
         severity: 'critical',
         description: `Raport twierdzi sukces, ale ${failCount}/${agentResults.length} zadań zakończyło się błędem`,
         location: 'Sekcja Podsumowanie',
-        suggestion: 'Zaktualizuj status zgodnie z rzeczywistymi wynikami'
+        suggestion: 'Zaktualizuj status zgodnie z rzeczywistymi wynikami',
       });
     }
 
@@ -589,7 +638,7 @@ export class FinalReportValidator {
         severity: 'warning',
         description: `Raport sugeruje problemy, ale ${successCount}/${agentResults.length} zadań zakończyło się sukcesem`,
         location: 'Sekcja Podsumowanie',
-        suggestion: 'Zweryfikuj czy status jest prawidłowy'
+        suggestion: 'Zweryfikuj czy status jest prawidłowy',
       });
     }
 
@@ -612,7 +661,7 @@ export class FinalReportValidator {
             description: `Fikcyjna/szablonowa ścieżka: "${match}"`,
             location: 'W treści raportu',
             suggestion: 'Użyj rzeczywistych ścieżek z wyników agentów',
-            matchedText: match
+            matchedText: match,
           });
         }
       }
@@ -627,28 +676,29 @@ export class FinalReportValidator {
   private calculateStats(
     issues: ValidationIssue[],
     report: string,
-    objective: string
+    objective: string,
   ): ValidationStats {
-    const criticalIssues = issues.filter(i => i.severity === 'critical').length;
-    const warningIssues = issues.filter(i => i.severity === 'warning').length;
-    const infoIssues = issues.filter(i => i.severity === 'info').length;
+    const criticalIssues = issues.filter((i) => i.severity === 'critical').length;
+    const warningIssues = issues.filter((i) => i.severity === 'warning').length;
+    const infoIssues = issues.filter((i) => i.severity === 'info').length;
 
     // Calculate citation coverage
     const citationPattern = /\[(?:Zadanie|Task)\s*#?\d+\]/gi;
     const citations = report.match(citationPattern) || [];
     const claimPattern = /(?:plik|funkcja|klasa|komponent|zmodyfikowano|dodano)/gi;
     const claims = report.match(claimPattern) || [];
-    const citationCoverage = claims.length > 0
-      ? Math.min(100, (citations.length / claims.length) * 100)
-      : 100;
+    const citationCoverage =
+      claims.length > 0 ? Math.min(100, (citations.length / claims.length) * 100) : 100;
 
     // Calculate objective alignment
-    const objectiveTerms = objective.toLowerCase().split(/\s+/).filter(w => w.length > 4);
+    const objectiveTerms = objective
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((w) => w.length > 4);
     const reportLower = report.toLowerCase();
-    const foundTerms = objectiveTerms.filter(t => reportLower.includes(t)).length;
-    const objectiveAlignment = objectiveTerms.length > 0
-      ? (foundTerms / objectiveTerms.length) * 100
-      : 100;
+    const foundTerms = objectiveTerms.filter((t) => reportLower.includes(t)).length;
+    const objectiveAlignment =
+      objectiveTerms.length > 0 ? (foundTerms / objectiveTerms.length) * 100 : 100;
 
     return {
       totalChecks: 10, // Number of different check types
@@ -657,7 +707,7 @@ export class FinalReportValidator {
       warningIssues,
       infoIssues,
       citationCoverage: Math.round(citationCoverage),
-      objectiveAlignment: Math.round(objectiveAlignment)
+      objectiveAlignment: Math.round(objectiveAlignment),
     };
   }
 
@@ -707,12 +757,14 @@ export class FinalReportValidator {
       if (!issuesByType.has(issue.type)) {
         issuesByType.set(issue.type, []);
       }
-      issuesByType.get(issue.type)!.push(issue);
+      issuesByType.get(issue.type)?.push(issue);
     }
 
     // Generate recommendations based on most common issues
     if (issuesByType.has('generic_name')) {
-      recommendations.push('Zamień generyczne nazwy (file1.ts, Class1) na rzeczywiste nazwy z projektu');
+      recommendations.push(
+        'Zamień generyczne nazwy (file1.ts, Class1) na rzeczywiste nazwy z projektu',
+      );
     }
 
     if (issuesByType.has('fabricated_file') || issuesByType.has('fabricated_code')) {
@@ -728,7 +780,9 @@ export class FinalReportValidator {
     }
 
     if (issuesByType.has('proposal_instead_action')) {
-      recommendations.push('Opisz wykonane akcje, nie propozycje ("zrobiono" zamiast "można zrobić")');
+      recommendations.push(
+        'Opisz wykonane akcje, nie propozycje ("zrobiono" zamiast "można zrobić")',
+      );
     }
 
     if (issuesByType.has('objective_mismatch') && stats.objectiveAlignment < 60) {
@@ -736,8 +790,9 @@ export class FinalReportValidator {
     }
 
     if (issuesByType.has('missing_section')) {
-      const missingSections = issuesByType.get('missing_section')!
-        .map(i => i.matchedText || i.description)
+      const missingSections = issuesByType
+        .get('missing_section')
+        ?.map((i) => i.matchedText || i.description)
         .slice(0, 3);
       recommendations.push(`Dodaj brakujące sekcje: ${missingSections.join(', ')}`);
     }
@@ -774,7 +829,7 @@ export class FinalReportValidator {
           if (issue.matchedText) {
             correctedReport = correctedReport.replace(
               new RegExp(escapeRegex(issue.matchedText), 'g'),
-              `[WERYFIKUJ: ${issue.matchedText}]`
+              `[WERYFIKUJ: ${issue.matchedText}]`,
             );
           }
           break;
@@ -786,7 +841,7 @@ export class FinalReportValidator {
             for (const word of words) {
               correctedReport = correctedReport.replace(
                 new RegExp(`\\b${escapeRegex(word)}\\b`, 'gi'),
-                `**[?]** ${word}`
+                `**[?]** ${word}`,
               );
             }
           }
@@ -797,7 +852,7 @@ export class FinalReportValidator {
           if (issue.matchedText) {
             correctedReport = correctedReport.replace(
               new RegExp(escapeRegex(issue.matchedText), 'g'),
-              `**[NIEWERYFIKOWANY]** ${issue.matchedText}`
+              `**[NIEWERYFIKOWANY]** ${issue.matchedText}`,
             );
           }
           break;
@@ -807,7 +862,7 @@ export class FinalReportValidator {
           if (issue.matchedText) {
             correctedReport = correctedReport.replace(
               issue.matchedText,
-              `**[PROPOZYCJA, NIE AKCJA]** ${issue.matchedText}`
+              `**[PROPOZYCJA, NIE AKCJA]** ${issue.matchedText}`,
             );
           }
           break;
@@ -815,8 +870,8 @@ export class FinalReportValidator {
     }
 
     // Add validation summary at the top
-    const criticalCount = issues.filter(i => i.severity === 'critical').length;
-    const warningCount = issues.filter(i => i.severity === 'warning').length;
+    const criticalCount = issues.filter((i) => i.severity === 'critical').length;
+    const warningCount = issues.filter((i) => i.severity === 'warning').length;
 
     if (criticalCount > 0 || warningCount > 0) {
       const validationHeader = `
@@ -835,15 +890,21 @@ export class FinalReportValidator {
    * Log validation results to console
    */
   logResults(result: ValidationResult): void {
-    const statusColor = result.isValid ? chalk.green : result.score >= 40 ? chalk.yellow : chalk.red;
+    const statusColor = result.isValid
+      ? chalk.green
+      : result.score >= 40
+        ? chalk.yellow
+        : chalk.red;
     const statusText = result.isValid ? 'VALID' : 'NEEDS REVIEW';
 
-    console.log(chalk.cyan('\n' + '='.repeat(60)));
+    console.log(chalk.cyan(`\n${'='.repeat(60)}`));
     console.log(chalk.cyan('  FINAL REPORT VALIDATION'));
     console.log(chalk.cyan('='.repeat(60)));
 
     console.log(statusColor(`\nStatus: ${statusText} | Score: ${result.score}/100`));
-    console.log(chalk.gray(`Checks: ${result.stats.passedChecks}/${result.stats.totalChecks} passed`));
+    console.log(
+      chalk.gray(`Checks: ${result.stats.passedChecks}/${result.stats.totalChecks} passed`),
+    );
     console.log(chalk.gray(`Citation Coverage: ${result.stats.citationCoverage}%`));
     console.log(chalk.gray(`Objective Alignment: ${result.stats.objectiveAlignment}%`));
 
@@ -851,9 +912,9 @@ export class FinalReportValidator {
       console.log(chalk.yellow(`\nIssues Found: ${result.issues.length}`));
 
       // Group by severity
-      const critical = result.issues.filter(i => i.severity === 'critical');
-      const warnings = result.issues.filter(i => i.severity === 'warning');
-      const info = result.issues.filter(i => i.severity === 'info');
+      const critical = result.issues.filter((i) => i.severity === 'critical');
+      const warnings = result.issues.filter((i) => i.severity === 'warning');
+      const info = result.issues.filter((i) => i.severity === 'info');
 
       if (critical.length > 0) {
         console.log(chalk.red(`\n  CRITICAL (${critical.length}):`));
@@ -887,7 +948,7 @@ export class FinalReportValidator {
       }
     }
 
-    console.log(chalk.cyan('\n' + '='.repeat(60)));
+    console.log(chalk.cyan(`\n${'='.repeat(60)}`));
   }
 }
 
@@ -917,7 +978,7 @@ export const finalReportValidator = new FinalReportValidator({ verbose: false })
 export function validateFinalReport(
   report: string,
   originalObjective: string,
-  agentResults: ExecutionResult[]
+  agentResults: ExecutionResult[],
 ): ValidationResult {
   return finalReportValidator.validateReport(report, originalObjective, agentResults);
 }
@@ -928,7 +989,7 @@ export function validateFinalReport(
 export function isReportValid(
   report: string,
   originalObjective: string,
-  agentResults: ExecutionResult[]
+  agentResults: ExecutionResult[],
 ): boolean {
   const result = finalReportValidator.validateReport(report, originalObjective, agentResults);
   return result.isValid;
@@ -939,5 +1000,5 @@ export default {
   finalReportValidator,
   validateFinalReport,
   isReportValid,
-  SPECULATIVE_LANGUAGE_PATTERNS
+  SPECULATIVE_LANGUAGE_PATTERNS,
 };

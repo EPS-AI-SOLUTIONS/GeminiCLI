@@ -4,41 +4,40 @@
  * @module fewshot
  */
 
-// Types
-export type {
-  FewShotExample,
-  AgentExample,
-  ExampleUsageStats,
-  FewShotExampleCollection,
-  AgentExampleCollection,
-} from './types.js';
+export { AGENT_SPECIFIC_EXAMPLES } from './agent-examples.js';
 
 // Data
 export { EXTENDED_FEW_SHOT_EXAMPLES } from './extended-examples.js';
-export { AGENT_SPECIFIC_EXAMPLES } from './agent-examples.js';
-
 // Selection & scoring
 export {
-  selectBestExamples,
+  detectExampleCategory,
   getAgentSpecificExamples,
+  getBestFewShotExamples,
+  getTopEffectiveExamples,
   recordExampleUsage,
   scoreExampleEffectiveness,
-  getTopEffectiveExamples,
-  detectExampleCategory,
-  getBestFewShotExamples,
+  selectBestExamples,
 } from './selection.js';
+// Types
+export type {
+  AgentExample,
+  AgentExampleCollection,
+  ExampleUsageStats,
+  FewShotExample,
+  FewShotExampleCollection,
+} from './types.js';
 
+import { AGENT_SPECIFIC_EXAMPLES } from './agent-examples.js';
 // Default export (backward compatibility)
 import { EXTENDED_FEW_SHOT_EXAMPLES } from './extended-examples.js';
-import { AGENT_SPECIFIC_EXAMPLES } from './agent-examples.js';
 import {
-  selectBestExamples,
+  detectExampleCategory,
   getAgentSpecificExamples,
+  getBestFewShotExamples,
+  getTopEffectiveExamples,
   recordExampleUsage,
   scoreExampleEffectiveness,
-  getTopEffectiveExamples,
-  detectExampleCategory,
-  getBestFewShotExamples,
+  selectBestExamples,
 } from './selection.js';
 
 export default {
@@ -50,5 +49,5 @@ export default {
   scoreExampleEffectiveness,
   getTopEffectiveExamples,
   detectExampleCategory,
-  getBestFewShotExamples
+  getBestFewShotExamples,
 };

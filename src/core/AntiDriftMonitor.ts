@@ -56,32 +56,174 @@ export interface DriftConfig {
  */
 const DEFAULT_STOP_WORDS = new Set([
   // Polish stop words
-  'i', 'w', 'z', 'do', 'na', 'dla', 'to', 'jest', 'jako', 'oraz', 'lub', 'czy',
-  'nie', 'tak', 'ze', 'od', 'po', 'przy', 'przed', 'za', 'pod', 'nad', 'przez',
-  'jak', 'co', 'ktory', 'ktora', 'ktore', 'ten', 'ta', 'te', 'tym', 'tego',
-  'ale', 'bo', 'gdyz', 'poniewaz', 'jesli', 'jezeli', 'zeby', 'aby', 'jednak',
-  'tez', 'rowniez', 'jeszcze', 'juz', 'tylko', 'wiecej', 'mniej', 'bardzo',
-  'wszystko', 'wszystkie', 'kazdy', 'kazda', 'jakis', 'jakies', 'pare',
-  'moze', 'mozna', 'musi', 'musisz', 'powinien', 'trzeba', 'nalezy',
+  'i',
+  'w',
+  'z',
+  'do',
+  'na',
+  'dla',
+  'to',
+  'jest',
+  'jako',
+  'oraz',
+  'lub',
+  'czy',
+  'nie',
+  'tak',
+  'ze',
+  'od',
+  'po',
+  'przy',
+  'przed',
+  'za',
+  'pod',
+  'nad',
+  'przez',
+  'jak',
+  'co',
+  'ktory',
+  'ktora',
+  'ktore',
+  'ten',
+  'ta',
+  'te',
+  'tym',
+  'tego',
+  'ale',
+  'bo',
+  'gdyz',
+  'poniewaz',
+  'jesli',
+  'jezeli',
+  'zeby',
+  'aby',
+  'jednak',
+  'tez',
+  'rowniez',
+  'jeszcze',
+  'juz',
+  'tylko',
+  'wiecej',
+  'mniej',
+  'bardzo',
+  'wszystko',
+  'wszystkie',
+  'kazdy',
+  'kazda',
+  'jakis',
+  'jakies',
+  'pare',
+  'moze',
+  'mozna',
+  'musi',
+  'musisz',
+  'powinien',
+  'trzeba',
+  'nalezy',
   // English stop words
-  'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of',
-  'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'been', 'be',
-  'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should',
-  'may', 'might', 'must', 'shall', 'can', 'need', 'dare', 'ought', 'used',
-  'this', 'that', 'these', 'those', 'it', 'its', 'what', 'which', 'who',
-  'whom', 'whose', 'where', 'when', 'why', 'how', 'all', 'each', 'every',
-  'both', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not',
-  'only', 'own', 'same', 'so', 'than', 'too', 'very', 'just', 'also', 'now',
+  'the',
+  'a',
+  'an',
+  'and',
+  'or',
+  'but',
+  'in',
+  'on',
+  'at',
+  'to',
+  'for',
+  'of',
+  'with',
+  'by',
+  'from',
+  'as',
+  'is',
+  'was',
+  'are',
+  'were',
+  'been',
+  'be',
+  'have',
+  'has',
+  'had',
+  'do',
+  'does',
+  'did',
+  'will',
+  'would',
+  'could',
+  'should',
+  'may',
+  'might',
+  'must',
+  'shall',
+  'can',
+  'need',
+  'dare',
+  'ought',
+  'used',
+  'this',
+  'that',
+  'these',
+  'those',
+  'it',
+  'its',
+  'what',
+  'which',
+  'who',
+  'whom',
+  'whose',
+  'where',
+  'when',
+  'why',
+  'how',
+  'all',
+  'each',
+  'every',
+  'both',
+  'few',
+  'more',
+  'most',
+  'other',
+  'some',
+  'such',
+  'no',
+  'nor',
+  'not',
+  'only',
+  'own',
+  'same',
+  'so',
+  'than',
+  'too',
+  'very',
+  'just',
+  'also',
+  'now',
   // Common programming terms to ignore
-  'function', 'class', 'method', 'file', 'code', 'implement', 'create', 'add',
-  'update', 'delete', 'remove', 'change', 'modify', 'use', 'using', 'used'
+  'function',
+  'class',
+  'method',
+  'file',
+  'code',
+  'implement',
+  'create',
+  'add',
+  'update',
+  'delete',
+  'remove',
+  'change',
+  'modify',
+  'use',
+  'using',
+  'used',
 ]);
 
 const DEFAULT_CONFIG: DriftConfig = {
   driftThreshold: 40,
   minWordLength: 3,
   stopWords: DEFAULT_STOP_WORDS,
-  strictMode: false
+  strictMode: false,
 };
 
 /**
@@ -101,10 +243,7 @@ export class AntiDriftMonitor {
     this.config = { ...DEFAULT_CONFIG, ...config };
     if (config.stopWords) {
       // Merge custom stop words with defaults
-      this.config.stopWords = new Set([
-        ...DEFAULT_STOP_WORDS,
-        ...config.stopWords
-      ]);
+      this.config.stopWords = new Set([...DEFAULT_STOP_WORDS, ...config.stopWords]);
     }
   }
 
@@ -119,8 +258,12 @@ export class AntiDriftMonitor {
     this.phaseOutputs.clear();
 
     // Log initialization
-    console.log(`[AntiDrift] Original intent set: ${this.originalIntentWords.length} key words extracted`);
-    console.log(`[AntiDrift] Key intent words: ${this.originalIntentWords.slice(0, 10).join(', ')}${this.originalIntentWords.length > 10 ? '...' : ''}`);
+    console.log(
+      `[AntiDrift] Original intent set: ${this.originalIntentWords.length} key words extracted`,
+    );
+    console.log(
+      `[AntiDrift] Key intent words: ${this.originalIntentWords.slice(0, 10).join(', ')}${this.originalIntentWords.length > 10 ? '...' : ''}`,
+    );
   }
 
   /**
@@ -139,7 +282,7 @@ export class AntiDriftMonitor {
     // Calculate drift metrics
     const { driftScore, divergentTopics } = this.calculateDrift(
       this.originalIntentWords,
-      currentFocus
+      currentFocus,
     );
 
     // Determine if drift is significant
@@ -153,7 +296,7 @@ export class AntiDriftMonitor {
       divergentTopics,
       phase,
       timestamp: Date.now(),
-      contentLength: currentContent.length
+      contentLength: currentContent.length,
     };
 
     // Add to history
@@ -190,21 +333,21 @@ export class AntiDriftMonitor {
     const suggestions: string[] = [];
 
     // Identify missing original intent words
-    const currentSet = new Set(driftCheck.currentFocus.map(w => w.toLowerCase()));
+    const currentSet = new Set(driftCheck.currentFocus.map((w) => w.toLowerCase()));
     const missingIntent = driftCheck.originalIntent.filter(
-      word => !currentSet.has(word.toLowerCase())
+      (word) => !currentSet.has(word.toLowerCase()),
     );
 
     if (missingIntent.length > 0) {
       suggestions.push(
-        `REFOCUS: The output is missing key intent terms: ${missingIntent.slice(0, 5).join(', ')}`
+        `REFOCUS: The output is missing key intent terms: ${missingIntent.slice(0, 5).join(', ')}`,
       );
     }
 
     // Identify divergent topics to remove
     if (driftCheck.divergentTopics.length > 0) {
       suggestions.push(
-        `REMOVE: Divergent topics not in original intent: ${driftCheck.divergentTopics.slice(0, 5).join(', ')}`
+        `REMOVE: Divergent topics not in original intent: ${driftCheck.divergentTopics.slice(0, 5).join(', ')}`,
       );
     }
 
@@ -213,25 +356,25 @@ export class AntiDriftMonitor {
       case 'A':
         suggestions.push(
           'PHASE A CORRECTION: Regenerate plan focusing only on: ' +
-          `"${this.originalObjective}". Ignore tangential tasks.`
+            `"${this.originalObjective}". Ignore tangential tasks.`,
         );
         break;
       case 'B':
         suggestions.push(
           'PHASE B CORRECTION: Filter task results to remove outputs not directly ' +
-          'addressing the original objective. Discard speculative content.'
+            'addressing the original objective. Discard speculative content.',
         );
         break;
       case 'C':
         suggestions.push(
           'PHASE C CORRECTION: During self-healing, validate repairs against original ' +
-          'objective, not the refined/drifted version.'
+            'objective, not the refined/drifted version.',
         );
         break;
       case 'D':
         suggestions.push(
           'PHASE D CORRECTION: Synthesize report referencing ONLY the original objective: ' +
-          `"${this.originalObjective}". Include explicit comparison.`
+            `"${this.originalObjective}". Include explicit comparison.`,
         );
         break;
     }
@@ -239,7 +382,7 @@ export class AntiDriftMonitor {
     // Add general realignment instruction
     suggestions.push(
       `REALIGNMENT: Original objective was: "${this.originalObjective}". ` +
-      'All outputs must directly serve this goal.'
+        'All outputs must directly serve this goal.',
     );
 
     return suggestions.join('\n\n');
@@ -261,7 +404,7 @@ export class AntiDriftMonitor {
         worstPhase: null,
         worstScore: 0,
         phasesWithDrift: [],
-        isAligned: true
+        isAligned: true,
       };
     }
 
@@ -281,10 +424,10 @@ export class AntiDriftMonitor {
 
     // Calculate overall drift as weighted average (later phases weighted more)
     const phaseWeights: Record<SwarmPhase, number> = {
-      'A': 1.5,
-      'B': 2.0,
-      'C': 1.5,
-      'D': 2.5
+      A: 1.5,
+      B: 2.0,
+      C: 1.5,
+      D: 2.5,
     };
 
     let weightedSum = 0;
@@ -296,16 +439,14 @@ export class AntiDriftMonitor {
       totalWeight += weight;
     }
 
-    const overallDriftScore = totalWeight > 0
-      ? Math.round(weightedSum / totalWeight)
-      : 0;
+    const overallDriftScore = totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 0;
 
     return {
       overallDriftScore,
       worstPhase,
       worstScore,
       phasesWithDrift,
-      isAligned: overallDriftScore < this.config.driftThreshold
+      isAligned: overallDriftScore < this.config.driftThreshold,
     };
   }
 
@@ -380,7 +521,7 @@ export class AntiDriftMonitor {
     return {
       willComplete: confidence >= 50,
       confidence,
-      recommendation
+      recommendation,
     };
   }
 
@@ -395,7 +536,7 @@ export class AntiDriftMonitor {
     // Normalize text
     const normalized = text
       .toLowerCase()
-      .replace(/[^\p{L}\p{N}\s]/gu, ' ')  // Remove non-alphanumeric
+      .replace(/[^\p{L}\p{N}\s]/gu, ' ') // Remove non-alphanumeric
       .replace(/\s+/g, ' ')
       .trim();
 
@@ -437,7 +578,7 @@ export class AntiDriftMonitor {
    */
   private calculateDrift(
     originalIntent: string[],
-    currentFocus: string[]
+    currentFocus: string[],
   ): {
     driftScore: number;
     divergentTopics: string[];
@@ -446,8 +587,8 @@ export class AntiDriftMonitor {
       return { driftScore: 0, divergentTopics: [] };
     }
 
-    const originalSet = new Set(originalIntent.map(w => w.toLowerCase()));
-    const currentSet = new Set(currentFocus.map(w => w.toLowerCase()));
+    const originalSet = new Set(originalIntent.map((w) => w.toLowerCase()));
+    const currentSet = new Set(currentFocus.map((w) => w.toLowerCase()));
 
     // Calculate overlap (Jaccard-like similarity)
     let matches = 0;
@@ -472,7 +613,7 @@ export class AntiDriftMonitor {
     const currentPurity = currentSet.size > 0 ? matches / currentSet.size : 0; // How much of current is from original
 
     // Weight original coverage more heavily (we want to preserve original intent)
-    const alignmentScore = (originalCoverage * 0.7) + (currentPurity * 0.3);
+    const alignmentScore = originalCoverage * 0.7 + currentPurity * 0.3;
     let driftScore = Math.round((1 - alignmentScore) * 100);
 
     // Apply strict mode penalty for high divergent topic count
@@ -482,7 +623,7 @@ export class AntiDriftMonitor {
 
     return {
       driftScore: Math.max(0, Math.min(100, driftScore)),
-      divergentTopics: divergentTopics.slice(0, 20) // Limit to top 20
+      divergentTopics: divergentTopics.slice(0, 20), // Limit to top 20
     };
   }
 

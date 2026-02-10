@@ -2,9 +2,9 @@
  * Tests for Refinement Service
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { RefinementService, getRefinementService } from '../../src/services/RefinementService.js';
-import type { LLMProvider, ChatCompletionResponse } from '../../src/types/index.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { getRefinementService, RefinementService } from '../../src/services/RefinementService.js';
+import type { ChatCompletionResponse, LLMProvider } from '../../src/types/index.js';
 
 // Mock LlamaCppProvider
 vi.mock('../../src/providers/LlamaCppProvider.js', () => ({
@@ -29,11 +29,13 @@ function createMockProvider(response: string): LLMProvider {
       object: 'chat.completion',
       created: Date.now(),
       model: 'test-model',
-      choices: [{
-        index: 0,
-        message: { role: 'assistant', content: response },
-        finish_reason: 'stop',
-      }],
+      choices: [
+        {
+          index: 0,
+          message: { role: 'assistant', content: response },
+          finish_reason: 'stop',
+        },
+      ],
     } satisfies ChatCompletionResponse),
   };
 }

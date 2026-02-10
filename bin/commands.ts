@@ -4,32 +4,32 @@
  * @module bin/commands
  */
 
-import { Command } from 'commander';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import chalk from 'chalk';
-import fs from 'fs/promises';
-import path from 'path';
-import { Agent, AGENT_PERSONAS } from '../src/core/agent/Agent.js';
-import { WatchMode } from '../src/cli/WatchMode.js';
-import { ProjectContext } from '../src/cli/ProjectContext.js';
+import type { Command } from 'commander';
 import { costTracker } from '../src/cli/CostTracker.js';
-import { sessionMemory } from '../src/memory/SessionMemory.js';
-import { longTermMemory } from '../src/memory/LongTermMemory.js';
-import { agentMemory } from '../src/memory/AgentMemory.js';
-import { projectMemory } from '../src/memory/ProjectMemory.js';
+import { ProjectContext } from '../src/cli/ProjectContext.js';
 import { promptCommands } from '../src/cli/PromptCommands.js';
-import { FileHandlers } from '../src/files/FileHandlers.js';
+import { WatchMode } from '../src/cli/WatchMode.js';
+import { AGENT_PERSONAS, Agent } from '../src/core/agent/Agent.js';
 import { DebugLoop } from '../src/debug/DebugLoop.js';
+import { FileHandlers } from '../src/files/FileHandlers.js';
 import { mcpManager } from '../src/mcp/index.js';
+import { agentMemory } from '../src/memory/AgentMemory.js';
+import { longTermMemory } from '../src/memory/LongTermMemory.js';
+import { projectMemory } from '../src/memory/ProjectMemory.js';
+import { sessionMemory } from '../src/memory/SessionMemory.js';
 import {
   execAsync,
-  ROOT_DIR,
-  swarm,
-  printBanner,
   initializeSwarm,
+  printBanner,
+  ROOT_DIR,
   setProjectContext,
+  swarm,
 } from './cli-config.js';
-import { runPipeline } from './interactive.js';
 import { executeSwarm } from './execute.js';
+import { runPipeline } from './interactive.js';
 
 // ============================================================================
 // REGISTER ALL SUBCOMMANDS
@@ -61,7 +61,7 @@ export function registerCommands(program: Command): void {
 
       const parsedDebounce = parseInt(options.debounce, 10);
       const watchMode = new WatchMode(swarm, {
-        debounce: isNaN(parsedDebounce) || parsedDebounce < 0 ? 1000 : parsedDebounce,
+        debounce: Number.isNaN(parsedDebounce) || parsedDebounce < 0 ? 1000 : parsedDebounce,
         agent: options.agent,
       });
 
@@ -97,7 +97,7 @@ export function registerCommands(program: Command): void {
     .action(async (amount) => {
       await costTracker.load();
       const parsedBudget = parseFloat(amount);
-      if (isNaN(parsedBudget) || parsedBudget < 0) {
+      if (Number.isNaN(parsedBudget) || parsedBudget < 0) {
         console.error(chalk.red('Invalid budget amount. Must be a non-negative number.'));
         return;
       }
@@ -144,7 +144,8 @@ export function registerCommands(program: Command): void {
       // Agents
       console.log(chalk.gray('\n12 Witcher Agents:'));
       Object.entries(AGENT_PERSONAS).forEach(([name, persona]) => {
-        const model = persona.model === 'gemini-cloud' ? chalk.cyan('Gemini') : chalk.yellow(persona.model);
+        const model =
+          persona.model === 'gemini-cloud' ? chalk.cyan('Gemini') : chalk.yellow(persona.model);
         console.log(chalk.gray(`  ${name.padEnd(10)} ${persona.role.padEnd(12)} ${model}`));
       });
 
@@ -161,7 +162,7 @@ export function registerCommands(program: Command): void {
           console.log(chalk.gray('  Status:'), chalk.yellow('No servers configured'));
           console.log(chalk.gray('  Add with: gemini mcp --add <name> --command "..."'));
         }
-      } catch (error: any) {
+      } catch (_error: any) {
         console.log(chalk.gray('  Status:'), chalk.yellow('Not initialized'));
       }
 
@@ -204,7 +205,7 @@ export function registerCommands(program: Command): void {
       await costTracker.load();
 
       const matchedAgent = Object.keys(AGENT_PERSONAS).find(
-        a => a.toLowerCase() === name.toLowerCase()
+        (a) => a.toLowerCase() === name.toLowerCase(),
       );
 
       if (!matchedAgent) {
@@ -249,7 +250,7 @@ export function registerCommands(program: Command): void {
       if (options.search) {
         const results = longTermMemory.search(options.search);
         console.log(chalk.cyan(`\nSearch results for "${options.search}":\n`));
-        results.forEach(m => {
+        results.forEach((m) => {
           console.log(chalk.gray(`[${m.category}] ${m.content}`));
         });
         return;
@@ -274,8 +275,10 @@ export function registerCommands(program: Command): void {
       if (options.list) {
         const sessions = await sessionMemory.listSessions();
         console.log(chalk.cyan('\n═══ Sessions ═══\n'));
-        sessions.forEach(s => {
-          console.log(chalk.gray(`${s.id} | ${s.name} | ${s.messageCount} msgs | ${s.updated.toISOString()}`));
+        sessions.forEach((s) => {
+          console.log(
+            chalk.gray(`${s.id} | ${s.name} | ${s.messageCount} msgs | ${s.updated.toISOString()}`),
+          );
         });
         return;
       }
@@ -400,7 +403,7 @@ export function registerCommands(program: Command): void {
       const debugLoop = new DebugLoop();
       const parsedMax = parseInt(options.max, 10);
       const session = await debugLoop.startDebugLoop(target || process.cwd(), {
-        maxIterations: isNaN(parsedMax) || parsedMax < 1 ? 10 : parsedMax,
+        maxIterations: Number.isNaN(parsedMax) || parsedMax < 1 ? 10 : parsedMax,
         autoFix: options.autoFix,
         screenshotCommand: options.screenshot,
       });
@@ -469,7 +472,9 @@ export function registerCommands(program: Command): void {
       if (options.add) {
         if (!options.command && !options.url) {
           console.error(chalk.red('Error: --command or --url required'));
-          console.log(chalk.gray('Example: gemini mcp --add myserver --command "npx -y @server/mcp"'));
+          console.log(
+            chalk.gray('Example: gemini mcp --add myserver --command "npx -y @server/mcp"'),
+          );
           return;
         }
 
@@ -535,9 +540,13 @@ export function registerCommands(program: Command): void {
       const tools = mcpManager.getAllTools();
       if (tools.length > 0) {
         console.log(chalk.cyan('\n═══ Available Tools ═══\n'));
-        tools.forEach(tool => {
+        tools.forEach((tool) => {
           console.log(chalk.white(`mcp__${tool.serverName}__${tool.name}`));
-          console.log(chalk.gray(`  ${tool.description.substring(0, 80)}${tool.description.length > 80 ? '...' : ''}`));
+          console.log(
+            chalk.gray(
+              `  ${tool.description.substring(0, 80)}${tool.description.length > 80 ? '...' : ''}`,
+            ),
+          );
         });
       }
 
@@ -545,7 +554,7 @@ export function registerCommands(program: Command): void {
       const prompts = mcpManager.getAllPrompts();
       if (prompts.length > 0) {
         console.log(chalk.cyan('\n═══ Available Prompts ═══\n'));
-        prompts.forEach(prompt => {
+        prompts.forEach((prompt) => {
           console.log(chalk.white(`${prompt.serverName}/${prompt.name}`));
           console.log(chalk.gray(`  ${prompt.description || 'No description'}`));
         });
@@ -555,7 +564,7 @@ export function registerCommands(program: Command): void {
       const resources = mcpManager.getAllResources();
       if (resources.length > 0) {
         console.log(chalk.cyan('\n═══ Available Resources ═══\n'));
-        resources.forEach(resource => {
+        resources.forEach((resource) => {
           console.log(chalk.white(`${resource.name}`));
           console.log(chalk.gray(`  ${resource.uri}`));
         });
@@ -616,11 +625,14 @@ export function registerCommands(program: Command): void {
         return;
       }
 
-      servers.forEach(s => {
+      servers.forEach((s) => {
         const icon = s.status === 'connected' ? '✓' : s.status === 'connecting' ? '...' : '✗';
-        const color = s.status === 'connected' ? chalk.green : s.status === 'error' ? chalk.red : chalk.yellow;
+        const color =
+          s.status === 'connected' ? chalk.green : s.status === 'error' ? chalk.red : chalk.yellow;
         console.log(color(`${icon} ${s.name}`));
-        console.log(chalk.gray(`    Tools: ${s.tools} | Prompts: ${s.prompts} | Resources: ${s.resources}`));
+        console.log(
+          chalk.gray(`    Tools: ${s.tools} | Prompts: ${s.prompts} | Resources: ${s.resources}`),
+        );
       });
     });
 }

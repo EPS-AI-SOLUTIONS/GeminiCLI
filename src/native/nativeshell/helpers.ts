@@ -8,14 +8,14 @@
  */
 
 import chalk from 'chalk';
+import { DEFAULT_BLOCKED_ENV_VARS, TIMEOUT_PROFILES } from './constants.js';
 import type {
-  StderrAnalysis,
-  ProcessResult,
+  EnvironmentConfig,
   OutputChunk,
+  ProcessResult,
   ShellTimeoutConfig,
-  EnvironmentConfig
+  StderrAnalysis,
 } from './types.js';
-import { TIMEOUT_PROFILES, DEFAULT_BLOCKED_ENV_VARS } from './constants.js';
 
 // ============================================================
 // Stderr Analysis Utilities
@@ -43,10 +43,10 @@ const ERROR_PATTERNS: RegExp[] = [
   /\bsyntax error\b/i,
   /\btype error\b/i,
   /\breference error\b/i,
-  /^E:/i,          // npm-style errors
-  /^ERR!/i,        // npm errors
-  /^\[ERROR\]/i,   // bracketed errors
-  /^error\[/i,     // Rust-style errors
+  /^E:/i, // npm-style errors
+  /^ERR!/i, // npm errors
+  /^\[ERROR\]/i, // bracketed errors
+  /^error\[/i, // Rust-style errors
 ];
 
 /**
@@ -59,24 +59,24 @@ const WARNING_PATTERNS: RegExp[] = [
   /\bdeprecation\b/i,
   /\bcaution\b/i,
   /\battention\b/i,
-  /^W:/i,          // npm-style warnings
-  /^WARN/i,        // npm warnings
-  /^\[WARN/i,      // bracketed warnings
+  /^W:/i, // npm-style warnings
+  /^WARN/i, // npm warnings
+  /^\[WARN/i, // bracketed warnings
   /^\[WARNING\]/i, // bracketed warnings
-  /^warning\[/i,   // Rust-style warnings
+  /^warning\[/i, // Rust-style warnings
 ];
 
 /**
  * Analyze stderr content for errors and warnings
  */
 export function analyzeStderr(stderr: string): StderrAnalysis {
-  const lines = stderr.split('\n').filter(line => line.trim().length > 0);
+  const lines = stderr.split('\n').filter((line) => line.trim().length > 0);
   const errorLines: string[] = [];
   const warningLines: string[] = [];
 
   for (const line of lines) {
-    const isError = ERROR_PATTERNS.some(pattern => pattern.test(line));
-    const isWarning = WARNING_PATTERNS.some(pattern => pattern.test(line));
+    const isError = ERROR_PATTERNS.some((pattern) => pattern.test(line));
+    const isWarning = WARNING_PATTERNS.some((pattern) => pattern.test(line));
 
     if (isError) {
       errorLines.push(line);
@@ -91,7 +91,7 @@ export function analyzeStderr(stderr: string): StderrAnalysis {
     errorLines,
     warningLines,
     errorCount: errorLines.length,
-    warningCount: warningLines.length
+    warningCount: warningLines.length,
   };
 }
 
@@ -107,7 +107,7 @@ export function createProcessResult(
   combined: string,
   chunks: OutputChunk[],
   duration: number,
-  stderrAnalysis: StderrAnalysis
+  stderrAnalysis: StderrAnalysis,
 ): ProcessResult {
   return {
     pid,
@@ -129,13 +129,15 @@ export function createProcessResult(
     },
 
     getColorizedOutput(): string {
-      return this.chunks.map(chunk => {
-        if (chunk.type === 'stderr') {
-          return chalk.red(chunk.data);
-        }
-        return chunk.data;
-      }).join('');
-    }
+      return this.chunks
+        .map((chunk) => {
+          if (chunk.type === 'stderr') {
+            return chalk.red(chunk.data);
+          }
+          return chunk.data;
+        })
+        .join('');
+    },
   };
 }
 
@@ -148,9 +150,9 @@ export function createProcessResult(
  */
 export function createDefaultTimeoutConfig(): ShellTimeoutConfig {
   return {
-    defaultTimeout: TIMEOUT_PROFILES.normal,  // 120s default
-    maxTimeout: TIMEOUT_PROFILES.build,       // 600s max
-    perCommandTimeouts: new Map()
+    defaultTimeout: TIMEOUT_PROFILES.normal, // 120s default
+    maxTimeout: TIMEOUT_PROFILES.build, // 600s max
+    perCommandTimeouts: new Map(),
   };
 }
 
@@ -162,6 +164,6 @@ export function createDefaultEnvironmentConfig(): EnvironmentConfig {
     inheritEnv: true,
     additionalEnv: {},
     blockedEnvVars: [...DEFAULT_BLOCKED_ENV_VARS],
-    activeProfile: undefined
+    activeProfile: undefined,
   };
 }

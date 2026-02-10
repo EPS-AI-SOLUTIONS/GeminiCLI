@@ -6,13 +6,8 @@
  * - Selects optimal local model for execution
  */
 
-import type {
-  LLMProvider,
-  RefinementResult,
-  TaskDifficulty,
-  ChatMessage,
-} from '../types/index.js';
 import { LlamaCppProvider } from '../providers/LlamaCppProvider.js';
+import type { ChatMessage, LLMProvider, RefinementResult, TaskDifficulty } from '../types/index.js';
 
 const REFINEMENT_PROMPT = `You are a task analyzer. Analyze the given objective and respond in JSON format.
 
@@ -72,7 +67,8 @@ export class RefinementService {
         language: result.language || 'en',
         difficulty: this.normalizeDifficulty(result.difficulty),
         recommendedModel:
-          result.recommendedModel || LlamaCppProvider.getRecommendedModel(result.difficulty || 'moderate'),
+          result.recommendedModel ||
+          LlamaCppProvider.getRecommendedModel(result.difficulty || 'moderate'),
         context: result.context,
       };
     } catch (error) {

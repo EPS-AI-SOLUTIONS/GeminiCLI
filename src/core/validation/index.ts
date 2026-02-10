@@ -5,21 +5,27 @@
  * Re-exports all validation types, classes, and utilities.
  */
 
-// Types
-export type { FormatType, FormatSpec, JsonSchema, FormatError, FormatValidation } from './types.js';
-
-// Main class
-export { OutputFormatValidator } from './OutputFormatValidator.js';
-
-// Sub-validators
-export { validateJson, validateJsonSchema, extractJson, autoCorrectJson } from './JsonValidator.js';
-export { validateMarkdown, extractMarkdownHeaders, autoCorrectMarkdown } from './MarkdownValidator.js';
-export { validateCode, extractCodeBlocks, looksLikeCode, autoCorrectCode } from './CodeValidator.js';
-export { validateList, extractListItems, autoCorrectList } from './ListValidator.js';
-
+export {
+  autoCorrectCode,
+  extractCodeBlocks,
+  looksLikeCode,
+  validateCode,
+} from './CodeValidator.js';
+export { CommonFormats, createSpec } from './CommonFormats.js';
 // Utilities
 export { detectFormat, getCorrections } from './FormatDetection.js';
-export { CommonFormats, createSpec } from './CommonFormats.js';
+// Sub-validators
+export { autoCorrectJson, extractJson, validateJson, validateJsonSchema } from './JsonValidator.js';
+export { autoCorrectList, extractListItems, validateList } from './ListValidator.js';
+export {
+  autoCorrectMarkdown,
+  extractMarkdownHeaders,
+  validateMarkdown,
+} from './MarkdownValidator.js';
+// Main class
+export { OutputFormatValidator } from './OutputFormatValidator.js';
+// Types
+export type { FormatError, FormatSpec, FormatType, FormatValidation, JsonSchema } from './types.js';
 
 // Singleton & convenience functions
 import { OutputFormatValidator } from './OutputFormatValidator.js';

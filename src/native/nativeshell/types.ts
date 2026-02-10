@@ -6,7 +6,7 @@
  * @module native/nativeshell/types
  */
 
-import { ChildProcess } from 'child_process';
+import type { ChildProcess } from 'node:child_process';
 
 // ============================================================
 // Shell Types
@@ -347,12 +347,12 @@ export interface ScriptExecutionLog {
 export class CwdValidationError extends Error {
   constructor(
     public readonly requestedCwd: string,
-    public readonly reason: 'not_exists' | 'not_directory' | 'no_access'
+    public readonly reason: 'not_exists' | 'not_directory' | 'no_access',
   ) {
     const messages = {
       not_exists: `Working directory does not exist: ${requestedCwd}`,
       not_directory: `Path is not a directory: ${requestedCwd}`,
-      no_access: `Cannot access working directory: ${requestedCwd}`
+      no_access: `Cannot access working directory: ${requestedCwd}`,
     };
     super(messages[reason]);
     this.name = 'CwdValidationError';
@@ -365,13 +365,17 @@ export class CwdValidationError extends Error {
 export class ScriptValidationError extends Error {
   constructor(
     public readonly scriptPath: string,
-    public readonly reason: 'not_exists' | 'invalid_extension' | 'no_read_access' | 'sandbox_violation'
+    public readonly reason:
+      | 'not_exists'
+      | 'invalid_extension'
+      | 'no_read_access'
+      | 'sandbox_violation',
   ) {
     const messages = {
       not_exists: `Script file does not exist: ${scriptPath}`,
       invalid_extension: `Invalid script extension: ${scriptPath}`,
       no_read_access: `Cannot read script file: ${scriptPath}`,
-      sandbox_violation: `Script contains blocked imports (sandbox mode): ${scriptPath}`
+      sandbox_violation: `Script contains blocked imports (sandbox mode): ${scriptPath}`,
     };
     super(messages[reason]);
     this.name = 'ScriptValidationError';

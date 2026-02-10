@@ -43,7 +43,7 @@ export const ModelSelector = memo<ModelSelectorProps>(
           ))}
       </select>
     );
-  }
+  },
 );
 
 ModelSelector.displayName = 'ModelSelector';

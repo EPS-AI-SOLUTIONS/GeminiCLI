@@ -11,9 +11,8 @@
  * - JSON persistence with auto-save
  */
 
-import path from 'path';
 import chalk from 'chalk';
-import { saveToFile, loadFromFile } from './persistence.js';
+import { loadFromFile, saveToFile } from './persistence.js';
 
 // ============================================================
 // Types
@@ -96,7 +95,7 @@ export class NativeMemory {
       autoSave: config.autoSave ?? true,
       autoSaveInterval: config.autoSaveInterval || 30000,
       maxEntities: config.maxEntities || 10000,
-      enableEmbeddings: config.enableEmbeddings ?? false
+      enableEmbeddings: config.enableEmbeddings ?? false,
     };
 
     if (this.config.autoSave && this.config.persistPath) {
@@ -124,7 +123,7 @@ export class NativeMemory {
       observations: [],
       metadata,
       created: new Date(),
-      updated: new Date()
+      updated: new Date(),
     };
 
     this.entities.set(id, entity);
@@ -159,13 +158,18 @@ export class NativeMemory {
   findEntitiesByType(type: string): Entity[] {
     const ids = this.entityIndex.get(type);
     if (!ids) return [];
-    return Array.from(ids).map(id => this.entities.get(id)!).filter(Boolean);
+    return Array.from(ids)
+      .map((id) => this.entities.get(id)!)
+      .filter(Boolean);
   }
 
   /**
    * Update entity
    */
-  updateEntity(id: string, updates: Partial<Pick<Entity, 'name' | 'type' | 'metadata'>>): Entity | undefined {
+  updateEntity(
+    id: string,
+    updates: Partial<Pick<Entity, 'name' | 'type' | 'metadata'>>,
+  ): Entity | undefined {
     const entity = this.entities.get(id);
     if (!entity) return undefined;
 
@@ -216,10 +220,14 @@ export class NativeMemory {
   /**
    * Add observation to entity
    */
-  addObservation(entityId: string, content: string, options?: {
-    source?: string;
-    confidence?: number;
-  }): Observation | undefined {
+  addObservation(
+    entityId: string,
+    content: string,
+    options?: {
+      source?: string;
+      confidence?: number;
+    },
+  ): Observation | undefined {
     const entity = this.entities.get(entityId);
     if (!entity) return undefined;
 
@@ -228,7 +236,7 @@ export class NativeMemory {
       content,
       source: options?.source,
       confidence: options?.confidence,
-      timestamp: new Date()
+      timestamp: new Date(),
     };
 
     entity.observations.push(observation);
@@ -258,7 +266,7 @@ export class NativeMemory {
     const entity = this.entities.get(entityId);
     if (!entity) return false;
 
-    const index = entity.observations.findIndex(o => o.id === observationId);
+    const index = entity.observations.findIndex((o) => o.id === observationId);
     if (index < 0) return false;
 
     entity.observations.splice(index, 1);
@@ -282,7 +290,12 @@ export class NativeMemory {
   /**
    * Create relation between entities
    */
-  createRelation(fromId: string, toId: string, type: string, metadata?: Record<string, any>): Relation | undefined {
+  createRelation(
+    fromId: string,
+    toId: string,
+    type: string,
+    metadata?: Record<string, any>,
+  ): Relation | undefined {
     if (!this.entities.has(fromId) || !this.entities.has(toId)) {
       return undefined;
     }
@@ -294,7 +307,7 @@ export class NativeMemory {
       to: toId,
       type,
       metadata,
-      created: new Date()
+      created: new Date(),
     };
 
     this.relations.set(id, relation);
@@ -307,7 +320,12 @@ export class NativeMemory {
   /**
    * Create relation by entity names
    */
-  relate(fromName: string, toName: string, relationType: string, createIfMissing: boolean = true): Relation | undefined {
+  relate(
+    fromName: string,
+    toName: string,
+    relationType: string,
+    createIfMissing: boolean = true,
+  ): Relation | undefined {
     let fromEntity = this.findEntityByName(fromName);
     let toEntity = this.findEntityByName(toName);
 
@@ -327,7 +345,9 @@ export class NativeMemory {
   getRelationsFrom(entityId: string): Relation[] {
     const ids = this.relationIndex.get(`from:${entityId}`);
     if (!ids) return [];
-    return Array.from(ids).map(id => this.relations.get(id)!).filter(Boolean);
+    return Array.from(ids)
+      .map((id) => this.relations.get(id)!)
+      .filter(Boolean);
   }
 
   /**
@@ -336,7 +356,9 @@ export class NativeMemory {
   getRelationsTo(entityId: string): Relation[] {
     const ids = this.relationIndex.get(`to:${entityId}`);
     if (!ids) return [];
-    return Array.from(ids).map(id => this.relations.get(id)!).filter(Boolean);
+    return Array.from(ids)
+      .map((id) => this.relations.get(id)!)
+      .filter(Boolean);
   }
 
   /**
@@ -408,23 +430,19 @@ export class NativeMemory {
     let results: Entity[] = Array.from(this.entities.values());
 
     if (q.entityType) {
-      results = results.filter(e => e.type === q.entityType);
+      results = results.filter((e) => e.type === q.entityType);
     }
 
     if (q.entityName) {
-      const pattern = typeof q.entityName === 'string'
-        ? new RegExp(q.entityName, 'i')
-        : q.entityName;
-      results = results.filter(e => pattern.test(e.name));
+      const pattern =
+        typeof q.entityName === 'string' ? new RegExp(q.entityName, 'i') : q.entityName;
+      results = results.filter((e) => pattern.test(e.name));
     }
 
     if (q.hasObservation) {
-      const pattern = typeof q.hasObservation === 'string'
-        ? new RegExp(q.hasObservation, 'i')
-        : q.hasObservation;
-      results = results.filter(e =>
-        e.observations.some(o => pattern.test(o.content))
-      );
+      const pattern =
+        typeof q.hasObservation === 'string' ? new RegExp(q.hasObservation, 'i') : q.hasObservation;
+      results = results.filter((e) => e.observations.some((o) => pattern.test(o.content)));
     }
 
     if (q.offset) {
@@ -443,13 +461,9 @@ export class NativeMemory {
    */
   getRelatedEntities(entityId: string, relationType?: string): Entity[] {
     const relations = this.getRelationsFrom(entityId);
-    const filtered = relationType
-      ? relations.filter(r => r.type === relationType)
-      : relations;
+    const filtered = relationType ? relations.filter((r) => r.type === relationType) : relations;
 
-    return filtered
-      .map(r => this.entities.get(r.to))
-      .filter((e): e is Entity => e !== undefined);
+    return filtered.map((r) => this.entities.get(r.to)).filter((e): e is Entity => e !== undefined);
   }
 
   /**
@@ -463,7 +477,7 @@ export class NativeMemory {
       const current = queue.shift()!;
 
       if (current.id === toId) {
-        return current.path.map(id => this.entities.get(id)!);
+        return current.path.map((id) => this.entities.get(id)!);
       }
 
       if (current.path.length >= maxDepth) continue;
@@ -542,8 +556,8 @@ export class NativeMemory {
       metadata: {
         created: new Date(),
         lastModified: new Date(),
-        version: '1.0.0'
-      }
+        version: '1.0.0',
+      },
     };
 
     await saveToFile(savePath, snapshot);
@@ -561,7 +575,7 @@ export class NativeMemory {
 
     const snapshot = await loadFromFile<MemorySnapshot>(loadPath, {
       dateFields: ['created', 'updated', 'timestamp'],
-      recursiveDates: true
+      recursiveDates: true,
     });
 
     // File doesn't exist yet, that's ok
@@ -635,7 +649,7 @@ export class NativeMemory {
       entities: this.entities.size,
       relations: this.relations.size,
       observations: totalObservations,
-      types
+      types,
     };
   }
 
@@ -665,7 +679,7 @@ export class NativeMemory {
     if (!this.entityIndex.has(entity.type)) {
       this.entityIndex.set(entity.type, new Set());
     }
-    this.entityIndex.get(entity.type)!.add(entity.id);
+    this.entityIndex.get(entity.type)?.add(entity.id);
   }
 
   private unindexEntity(entity: Entity): void {
@@ -683,8 +697,8 @@ export class NativeMemory {
       this.relationIndex.set(toKey, new Set());
     }
 
-    this.relationIndex.get(fromKey)!.add(relation.id);
-    this.relationIndex.get(toKey)!.add(relation.id);
+    this.relationIndex.get(fromKey)?.add(relation.id);
+    this.relationIndex.get(toKey)?.add(relation.id);
   }
 
   private unindexRelation(relation: Relation): void {

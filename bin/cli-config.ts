@@ -4,16 +4,16 @@
  * @module bin/cli-config
  */
 
+import { exec } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 import chalk from 'chalk';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import { Swarm } from '../src/core/swarm/Swarm.js';
-import { ProjectContext } from '../src/cli/ProjectContext.js';
 import { costTracker } from '../src/cli/CostTracker.js';
-import { startupLogger } from '../src/utils/startupLogger.js';
+import type { ProjectContext } from '../src/cli/ProjectContext.js';
 import { validateEnvVars } from '../src/config/config.js';
+import { Swarm } from '../src/core/swarm/Swarm.js';
+import { startupLogger } from '../src/utils/startupLogger.js';
 
 export const execAsync = promisify(exec);
 
@@ -23,7 +23,7 @@ export let inquirerInput: any = null;
 
 export async function loadInquirer() {
   try {
-    // @ts-ignore - Optional dependency, may not be installed
+    // @ts-expect-error - Optional dependency, may not be installed
     const inquirer = await import('@inquirer/prompts');
     inquirerInput = inquirer.input;
     return true;

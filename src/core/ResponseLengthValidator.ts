@@ -55,33 +55,33 @@ export class ResponseLengthValidator {
     read: {
       min: 100,
       max: 2000,
-      description: 'Reading/reporting existing content - should be concise'
+      description: 'Reading/reporting existing content - should be concise',
     },
     write: {
       min: 200,
       max: 5000,
-      description: 'Writing code or content - includes code + confirmation'
+      description: 'Writing code or content - includes code + confirmation',
     },
     analyze: {
       min: 500,
       max: 3000,
-      description: 'Analysis tasks - detailed but focused'
+      description: 'Analysis tasks - detailed but focused',
     },
     fix: {
       min: 100,
       max: 1000,
-      description: 'Bug fixes - targeted and specific'
+      description: 'Bug fixes - targeted and specific',
     },
     list: {
       min: 50,
       max: 500,
-      description: 'Listing items - concise enumeration'
+      description: 'Listing items - concise enumeration',
     },
     unknown: {
       min: 100,
       max: 3000,
-      description: 'Unknown task type - using moderate defaults'
-    }
+      description: 'Unknown task type - using moderate defaults',
+    },
   };
 
   /**
@@ -91,7 +91,7 @@ export class ResponseLengthValidator {
     low: 0.5,
     medium: 1.0,
     high: 2.0,
-    unknown: 1.0
+    unknown: 1.0,
   };
 
   /**
@@ -115,7 +115,7 @@ export class ResponseLengthValidator {
   validateLength(
     response: string,
     taskType: string,
-    expectedComplexity: string = 'medium'
+    expectedComplexity: string = 'medium',
   ): LengthValidation {
     const actualLength = response.length;
     const normalizedTaskType = this.normalizeTaskType(taskType);
@@ -127,7 +127,7 @@ export class ResponseLengthValidator {
     // Calculate adjusted range based on complexity
     const expectedRange: [number, number] = [
       Math.floor(baseExpectation.min * multiplier),
-      Math.ceil(baseExpectation.max * multiplier)
+      Math.ceil(baseExpectation.max * multiplier),
     ];
 
     // Determine if valid
@@ -137,17 +137,25 @@ export class ResponseLengthValidator {
     const result: LengthValidation = {
       valid,
       actualLength,
-      expectedRange
+      expectedRange,
     };
 
     // Add warnings and suggestions for invalid responses
     if (!valid) {
       if (actualLength < expectedRange[0]) {
         result.warning = this.generateShortWarning(actualLength, expectedRange, normalizedTaskType);
-        result.suggestion = this.generateShortSuggestion(actualLength, expectedRange, normalizedTaskType);
+        result.suggestion = this.generateShortSuggestion(
+          actualLength,
+          expectedRange,
+          normalizedTaskType,
+        );
       } else {
         result.warning = this.generateLongWarning(actualLength, expectedRange, normalizedTaskType);
-        result.suggestion = this.generateLongSuggestion(actualLength, expectedRange, normalizedTaskType);
+        result.suggestion = this.generateLongSuggestion(
+          actualLength,
+          expectedRange,
+          normalizedTaskType,
+        );
       }
     } else {
       // Even valid responses might have warnings at the edges
@@ -168,43 +176,43 @@ export class ResponseLengthValidator {
 
     // Map common variations to standard types
     const typeMapping: Record<string, TaskType> = {
-      'read': 'read',
-      'reading': 'read',
-      'get': 'read',
-      'fetch': 'read',
-      'retrieve': 'read',
-      'show': 'read',
-      'display': 'read',
+      read: 'read',
+      reading: 'read',
+      get: 'read',
+      fetch: 'read',
+      retrieve: 'read',
+      show: 'read',
+      display: 'read',
 
-      'write': 'write',
-      'writing': 'write',
-      'create': 'write',
-      'generate': 'write',
-      'implement': 'write',
-      'add': 'write',
+      write: 'write',
+      writing: 'write',
+      create: 'write',
+      generate: 'write',
+      implement: 'write',
+      add: 'write',
 
-      'analyze': 'analyze',
-      'analysis': 'analyze',
-      'analyse': 'analyze',
-      'review': 'analyze',
-      'examine': 'analyze',
-      'inspect': 'analyze',
-      'explain': 'analyze',
+      analyze: 'analyze',
+      analysis: 'analyze',
+      analyse: 'analyze',
+      review: 'analyze',
+      examine: 'analyze',
+      inspect: 'analyze',
+      explain: 'analyze',
 
-      'fix': 'fix',
-      'fixing': 'fix',
-      'repair': 'fix',
-      'debug': 'fix',
-      'patch': 'fix',
-      'correct': 'fix',
-      'resolve': 'fix',
+      fix: 'fix',
+      fixing: 'fix',
+      repair: 'fix',
+      debug: 'fix',
+      patch: 'fix',
+      correct: 'fix',
+      resolve: 'fix',
 
-      'list': 'list',
-      'listing': 'list',
-      'enumerate': 'list',
-      'find': 'list',
-      'search': 'list',
-      'count': 'list'
+      list: 'list',
+      listing: 'list',
+      enumerate: 'list',
+      find: 'list',
+      search: 'list',
+      count: 'list',
     };
 
     return typeMapping[normalized] || 'unknown';
@@ -217,24 +225,24 @@ export class ResponseLengthValidator {
     const normalized = complexity.toLowerCase().trim();
 
     const complexityMapping: Record<string, ComplexityLevel> = {
-      'low': 'low',
-      'simple': 'low',
-      'basic': 'low',
-      'trivial': 'low',
-      'easy': 'low',
+      low: 'low',
+      simple: 'low',
+      basic: 'low',
+      trivial: 'low',
+      easy: 'low',
 
-      'medium': 'medium',
-      'moderate': 'medium',
-      'normal': 'medium',
-      'standard': 'medium',
-      'average': 'medium',
+      medium: 'medium',
+      moderate: 'medium',
+      normal: 'medium',
+      standard: 'medium',
+      average: 'medium',
 
-      'high': 'high',
-      'complex': 'high',
-      'advanced': 'high',
-      'difficult': 'high',
-      'hard': 'high',
-      'comprehensive': 'high'
+      high: 'high',
+      complex: 'high',
+      advanced: 'high',
+      difficult: 'high',
+      hard: 'high',
+      comprehensive: 'high',
     };
 
     return complexityMapping[normalized] || 'unknown';
@@ -246,26 +254,30 @@ export class ResponseLengthValidator {
   private generateShortWarning(
     actual: number,
     expected: [number, number],
-    taskType: TaskType
+    taskType: TaskType,
   ): string {
     const percentOfMin = Math.round((actual / expected[0]) * 100);
 
     if (actual < expected[0] * this.criticallyShortThreshold) {
-      return `CRITICAL: Response is critically short (${actual} chars, only ${percentOfMin}% of minimum). ` +
-             `Likely incomplete or truncated for ${taskType} task.`;
+      return (
+        `CRITICAL: Response is critically short (${actual} chars, only ${percentOfMin}% of minimum). ` +
+        `Likely incomplete or truncated for ${taskType} task.`
+      );
     }
 
-    return `Response may be incomplete: ${actual} chars is below the expected minimum of ${expected[0]} ` +
-           `for ${taskType} tasks (${percentOfMin}% of minimum).`;
+    return (
+      `Response may be incomplete: ${actual} chars is below the expected minimum of ${expected[0]} ` +
+      `for ${taskType} tasks (${percentOfMin}% of minimum).`
+    );
   }
 
   /**
    * Generates suggestion for responses that are too short
    */
   private generateShortSuggestion(
-    actual: number,
-    expected: [number, number],
-    taskType: TaskType
+    _actual: number,
+    _expected: [number, number],
+    taskType: TaskType,
   ): string {
     const taskSuggestions: Record<TaskType, string> = {
       read: 'Verify the file/content exists and was read completely. Check for read errors.',
@@ -273,7 +285,7 @@ export class ResponseLengthValidator {
       analyze: 'The analysis may be superficial. Consider requesting more detailed analysis.',
       fix: 'Verify the fix addresses the full issue. May need additional context.',
       list: 'Check if all items were enumerated. Verify search criteria are correct.',
-      unknown: 'Request clarification or retry the operation with more context.'
+      unknown: 'Request clarification or retry the operation with more context.',
     };
 
     return taskSuggestions[taskType];
@@ -285,34 +297,39 @@ export class ResponseLengthValidator {
   private generateLongWarning(
     actual: number,
     expected: [number, number],
-    taskType: TaskType
+    taskType: TaskType,
   ): string {
     const percentOfMax = Math.round((actual / expected[1]) * 100);
 
     if (actual > expected[1] * this.suspiciousLongThreshold) {
-      return `SUSPICIOUS: Response is unusually long (${actual} chars, ${percentOfMax}% of maximum). ` +
-             `May contain padding, repetition, or hallucinated content for ${taskType} task.`;
+      return (
+        `SUSPICIOUS: Response is unusually long (${actual} chars, ${percentOfMax}% of maximum). ` +
+        `May contain padding, repetition, or hallucinated content for ${taskType} task.`
+      );
     }
 
-    return `Response exceeds expected length: ${actual} chars is above the maximum of ${expected[1]} ` +
-           `for ${taskType} tasks (${percentOfMax}% of maximum).`;
+    return (
+      `Response exceeds expected length: ${actual} chars is above the maximum of ${expected[1]} ` +
+      `for ${taskType} tasks (${percentOfMax}% of maximum).`
+    );
   }
 
   /**
    * Generates suggestion for responses that are too long
    */
   private generateLongSuggestion(
-    actual: number,
-    expected: [number, number],
-    taskType: TaskType
+    _actual: number,
+    _expected: [number, number],
+    taskType: TaskType,
   ): string {
     const taskSuggestions: Record<TaskType, string> = {
       read: 'Review for unnecessary verbosity. May include unrelated content.',
-      write: 'Check for duplicated code or excessive comments. Consider splitting into smaller files.',
+      write:
+        'Check for duplicated code or excessive comments. Consider splitting into smaller files.',
       analyze: 'Verify analysis stays focused on the topic. May contain tangential information.',
       fix: 'Fix may be over-engineered. Review for scope creep or unnecessary changes.',
       list: 'List may include irrelevant items. Apply stricter filtering criteria.',
-      unknown: 'Review response for relevance and remove any padding or repetition.'
+      unknown: 'Review response for relevance and remove any padding or repetition.',
     };
 
     return taskSuggestions[taskType];
@@ -341,17 +358,20 @@ export class ResponseLengthValidator {
    * Batch validate multiple responses
    */
   validateBatch(
-    responses: Array<{ response: string; taskType: string; complexity?: string }>
+    responses: Array<{ response: string; taskType: string; complexity?: string }>,
   ): LengthValidation[] {
-    return responses.map(item =>
-      this.validateLength(item.response, item.taskType, item.complexity || 'medium')
+    return responses.map((item) =>
+      this.validateLength(item.response, item.taskType, item.complexity || 'medium'),
     );
   }
 
   /**
    * Get length expectations for a task type (useful for UI display or debugging)
    */
-  getExpectations(taskType: string, complexity: string = 'medium'): LengthExpectation & { adjustedRange: [number, number] } {
+  getExpectations(
+    taskType: string,
+    complexity: string = 'medium',
+  ): LengthExpectation & { adjustedRange: [number, number] } {
     const normalizedTaskType = this.normalizeTaskType(taskType);
     const normalizedComplexity = this.normalizeComplexity(complexity);
     const base = this.lengthExpectations[normalizedTaskType];
@@ -359,10 +379,7 @@ export class ResponseLengthValidator {
 
     return {
       ...base,
-      adjustedRange: [
-        Math.floor(base.min * multiplier),
-        Math.ceil(base.max * multiplier)
-      ]
+      adjustedRange: [Math.floor(base.min * multiplier), Math.ceil(base.max * multiplier)],
     };
   }
 

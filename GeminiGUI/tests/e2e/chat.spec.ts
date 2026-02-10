@@ -5,8 +5,8 @@
  * receiving responses, and message display.
  */
 
-import { test, expect } from '../fixtures/test-setup';
 import { TEST_MESSAGES, TIMEOUTS } from '../fixtures/test-data';
+import { expect, test } from '../fixtures/test-setup';
 
 test.describe('Chat Functionality', () => {
   test('should display empty state when no messages', async ({ chat }) => {

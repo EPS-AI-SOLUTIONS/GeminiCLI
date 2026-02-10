@@ -13,13 +13,13 @@
  * Also includes simpler SelfReflectionEngine for basic reflection needs.
  */
 
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import chalk from 'chalk';
-import fs from 'fs/promises';
-import path from 'path';
-import { geminiSemaphore } from '../TrafficControl.js';
 import { GEMINI_MODELS } from '../../config/models.config.js';
 import { GEMINIHYDRA_DIR } from '../../config/paths.config.js';
+import { geminiSemaphore } from '../TrafficControl.js';
 
 // Initialize Gemini client
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
@@ -71,10 +71,10 @@ export interface ReflectionConfig {
  * Evaluation criteria for responses
  */
 export interface ReflectionCriteria {
-  accuracy: number;      // Factual accuracy (0-100)
-  completeness: number;  // Response completeness (0-100)
-  clarity: number;       // Clarity of message (0-100)
-  relevance: number;     // Relevance to task (0-100)
+  accuracy: number; // Factual accuracy (0-100)
+  completeness: number; // Response completeness (0-100)
+  clarity: number; // Clarity of message (0-100)
+  relevance: number; // Relevance to task (0-100)
   actionability: number; // Practical usefulness (0-100)
 }
 
@@ -83,12 +83,12 @@ export interface ReflectionCriteria {
  */
 export interface ReflexionLesson {
   id: string;
-  taskPattern: string;          // Pattern/category of the task
-  errorType: string;            // Type of error encountered
-  lesson: string;               // What was learned
-  correction: string;           // How to fix this type of error
-  successRate: number;          // How often this lesson helped (0-1)
-  usageCount: number;           // How many times this lesson was applied
+  taskPattern: string; // Pattern/category of the task
+  errorType: string; // Type of error encountered
+  lesson: string; // What was learned
+  correction: string; // How to fix this type of error
+  successRate: number; // How often this lesson helped (0-1)
+  usageCount: number; // How many times this lesson was applied
   created: Date;
   lastUsed: Date;
 }
@@ -109,12 +109,12 @@ export interface TrajectoryCheckpoint {
  * Evaluation result from self-evaluation
  */
 export interface EvaluationResult {
-  score: number;                 // 0-100
-  isCorrect: boolean;            // Binary correctness
-  errors: string[];              // List of identified errors
-  missingElements: string[];     // What's missing from the response
-  strengths: string[];           // What's good about the response
-  suggestions: string[];         // How to improve
+  score: number; // 0-100
+  isCorrect: boolean; // Binary correctness
+  errors: string[]; // List of identified errors
+  missingElements: string[]; // What's missing from the response
+  strengths: string[]; // What's good about the response
+  suggestions: string[]; // How to improve
 }
 
 /**
@@ -197,7 +197,9 @@ class ReflexionMemoryManager {
   /**
    * Add a new lesson to memory
    */
-  async addLesson(lesson: Omit<ReflexionLesson, 'id' | 'created' | 'lastUsed' | 'usageCount' | 'successRate'>): Promise<string> {
+  async addLesson(
+    lesson: Omit<ReflexionLesson, 'id' | 'created' | 'lastUsed' | 'usageCount' | 'successRate'>,
+  ): Promise<string> {
     const id = `lesson-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
     const similar = this.findSimilarLessons(lesson.taskPattern, lesson.errorType);
@@ -235,29 +237,33 @@ class ReflexionMemoryManager {
    * Find lessons relevant to a task
    */
   findRelevantLessons(taskDescription: string, limit: number = 5): ReflexionLesson[] {
-    const words = taskDescription.toLowerCase().split(/\W+/).filter(w => w.length > 2);
+    const words = taskDescription
+      .toLowerCase()
+      .split(/\W+/)
+      .filter((w) => w.length > 2);
 
-    const scored = this.memory.lessons.map(lesson => {
+    const scored = this.memory.lessons.map((lesson) => {
       const patternWords = lesson.taskPattern.toLowerCase().split(/\W+/);
-      const matchCount = words.filter(w => patternWords.includes(w)).length;
+      const matchCount = words.filter((w) => patternWords.includes(w)).length;
       const score = (matchCount / Math.max(words.length, 1)) * lesson.successRate;
       return { lesson, score };
     });
 
     return scored
-      .filter(s => s.score > 0.1)
+      .filter((s) => s.score > 0.1)
       .sort((a, b) => b.score - a.score)
       .slice(0, limit)
-      .map(s => s.lesson);
+      .map((s) => s.lesson);
   }
 
   /**
    * Find lessons for a specific error type
    */
   findSimilarLessons(taskPattern: string, errorType: string): ReflexionLesson[] {
-    return this.memory.lessons.filter(l =>
-      l.taskPattern.toLowerCase().includes(taskPattern.toLowerCase()) ||
-      l.errorType.toLowerCase() === errorType.toLowerCase()
+    return this.memory.lessons.filter(
+      (l) =>
+        l.taskPattern.toLowerCase().includes(taskPattern.toLowerCase()) ||
+        l.errorType.toLowerCase() === errorType.toLowerCase(),
     );
   }
 
@@ -265,7 +271,7 @@ class ReflexionMemoryManager {
    * Update lesson success rate based on outcome
    */
   async updateLessonOutcome(lessonId: string, wasSuccessful: boolean): Promise<void> {
-    const lesson = this.memory.lessons.find(l => l.id === lessonId);
+    const lesson = this.memory.lessons.find((l) => l.id === lessonId);
     if (!lesson) return;
 
     lesson.usageCount++;
@@ -294,9 +300,10 @@ class ReflexionMemoryManager {
   getStats(): { lessons: number; successRate: number; totalReflections: number } {
     return {
       lessons: this.memory.lessons.length,
-      successRate: this.memory.totalReflections > 0
-        ? this.memory.successfulReflections / this.memory.totalReflections
-        : 0,
+      successRate:
+        this.memory.totalReflections > 0
+          ? this.memory.successfulReflections / this.memory.totalReflections
+          : 0,
       totalReflections: this.memory.totalReflections,
     };
   }
@@ -345,11 +352,12 @@ const reflexionMemory = new ReflexionMemoryManager();
 async function selfEvaluate(
   task: string,
   response: string,
-  previousErrors?: string[]
+  previousErrors?: string[],
 ): Promise<EvaluationResult> {
-  const previousContext = previousErrors && previousErrors.length > 0
-    ? `\n\nPOPRZEDNIE BŁĘDY DO UNIKNIĘCIA:\n${previousErrors.map((e, i) => `${i + 1}. ${e}`).join('\n')}`
-    : '';
+  const previousContext =
+    previousErrors && previousErrors.length > 0
+      ? `\n\nPOPRZEDNIE BŁĘDY DO UNIKNIĘCIA:\n${previousErrors.map((e, i) => `${i + 1}. ${e}`).join('\n')}`
+      : '';
 
   const evaluationPrompt = `Jesteś surowym ewaluatorem AI. Oceń poniższą odpowiedź.
 
@@ -382,13 +390,16 @@ Bądź SUROWY ale SPRAWIEDLIWY. Zwróć TYLKO JSON.`;
     const result = await geminiSemaphore.withPermit(async () => {
       const model = genAI.getGenerativeModel({
         model: INTELLIGENCE_MODEL,
-        generationConfig: { temperature: 0.2, maxOutputTokens: 2048 }
+        generationConfig: { temperature: 0.2, maxOutputTokens: 2048 },
       });
       const response = await model.generateContent(evaluationPrompt);
       return response.response.text();
     });
 
-    const jsonStr = result.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const jsonStr = result
+      .replace(/```json/gi, '')
+      .replace(/```/g, '')
+      .trim();
     return JSON.parse(jsonStr);
   } catch (error: any) {
     console.log(chalk.yellow(`[Evaluate] Evaluation failed: ${error.message}`));
@@ -413,7 +424,7 @@ Bądź SUROWY ale SPRAWIEDLIWY. Zwróć TYLKO JSON.`;
 async function learnFromFailure(
   task: string,
   failedResponse: string,
-  evaluation: EvaluationResult
+  evaluation: EvaluationResult,
 ): Promise<ReflexionLesson[]> {
   const learningPrompt = `Jesteś ekspertem od uczenia maszynowego. Przeanalizuj nieudaną próbę i wyciągnij wnioski.
 
@@ -449,19 +460,25 @@ Wyciągnij 1-3 NAJWAŻNIEJSZYCH lekcji. Zwróć TYLKO JSON array.`;
     const result = await geminiSemaphore.withPermit(async () => {
       const model = genAI.getGenerativeModel({
         model: INTELLIGENCE_MODEL,
-        generationConfig: { temperature: 0.3, maxOutputTokens: 2048 }
+        generationConfig: { temperature: 0.3, maxOutputTokens: 2048 },
       });
       const response = await model.generateContent(learningPrompt);
       return response.response.text();
     });
 
-    const jsonStr = result.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const jsonStr = result
+      .replace(/```json/gi, '')
+      .replace(/```/g, '')
+      .trim();
     const lessons = JSON.parse(jsonStr);
 
     const savedLessons: ReflexionLesson[] = [];
     for (const lesson of lessons) {
-      const id = await reflexionMemory.addLesson(lesson);
-      const savedLesson = reflexionMemory.findSimilarLessons(lesson.taskPattern, lesson.errorType)[0];
+      const _id = await reflexionMemory.addLesson(lesson);
+      const savedLesson = reflexionMemory.findSimilarLessons(
+        lesson.taskPattern,
+        lesson.errorType,
+      )[0];
       if (savedLesson) {
         savedLessons.push(savedLesson);
       }
@@ -489,7 +506,7 @@ function findBestCheckpoint(trajectory: TrajectoryCheckpoint[]): TrajectoryCheck
   if (candidates.length === 0) return null;
 
   return candidates.reduce((best, current) =>
-    current.evaluation.score > best.evaluation.score ? current : best
+    current.evaluation.score > best.evaluation.score ? current : best,
   );
 }
 
@@ -504,7 +521,7 @@ function findBestCheckpoint(trajectory: TrajectoryCheckpoint[]): TrajectoryCheck
 export async function reflexionLoop(
   task: string,
   initialResponse: string,
-  options: ReflexionOptions = {}
+  options: ReflexionOptions = {},
 ): Promise<ReflexionResult> {
   const {
     maxIterations = 5,
@@ -515,7 +532,11 @@ export async function reflexionLoop(
   } = options;
 
   console.log(chalk.magenta('[Reflexion] Starting Reflexion loop...'));
-  console.log(chalk.gray(`[Reflexion] Max iterations: ${maxIterations}, Early stop: <${earlyStopThreshold}%, Target: ${minScore}%`));
+  console.log(
+    chalk.gray(
+      `[Reflexion] Max iterations: ${maxIterations}, Early stop: <${earlyStopThreshold}%, Target: ${minScore}%`,
+    ),
+  );
 
   if (enableMemory) {
     await reflexionMemory.init();
@@ -534,7 +555,9 @@ export async function reflexionLoop(
   if (enableMemory) {
     const relevantLessons = reflexionMemory.findRelevantLessons(task);
     if (relevantLessons.length > 0) {
-      console.log(chalk.cyan(`[Reflexion] Found ${relevantLessons.length} relevant lessons from memory`));
+      console.log(
+        chalk.cyan(`[Reflexion] Found ${relevantLessons.length} relevant lessons from memory`),
+      );
       lessonsApplied.push(...relevantLessons);
     }
   }
@@ -566,7 +589,11 @@ export async function reflexionLoop(
       if (enableTrajectoryReplay && trajectory.length > 2) {
         const bestCheckpoint = findBestCheckpoint(trajectory);
         if (bestCheckpoint && bestCheckpoint.evaluation.score > evaluation.score) {
-          console.log(chalk.yellow(`[Reflexion] Replaying from checkpoint ${bestCheckpoint.iteration} (score: ${bestCheckpoint.evaluation.score}%)`));
+          console.log(
+            chalk.yellow(
+              `[Reflexion] Replaying from checkpoint ${bestCheckpoint.iteration} (score: ${bestCheckpoint.evaluation.score}%)`,
+            ),
+          );
           currentResponse = bestCheckpoint.response;
           previousErrors = bestCheckpoint.evaluation.errors;
           continue;
@@ -629,21 +656,27 @@ Zwróć TYLKO JSON.`;
       const result = await geminiSemaphore.withPermit(async () => {
         const model = genAI.getGenerativeModel({
           model: INTELLIGENCE_MODEL,
-          generationConfig: { temperature: 0.4, maxOutputTokens: 8192 }
+          generationConfig: { temperature: 0.4, maxOutputTokens: 8192 },
         });
         const response = await model.generateContent(reflectionPrompt);
         return response.response.text();
       });
 
-      const jsonStr = result.replace(/```json/gi, '').replace(/```/g, '').trim();
+      const jsonStr = result
+        .replace(/```json/gi, '')
+        .replace(/```/g, '')
+        .trim();
       const parsed = JSON.parse(jsonStr);
 
       reflections.push(`Iteracja ${iteration + 1}: ${parsed.reflection}`);
       currentResponse = parsed.improvedResponse;
       previousErrors = [...previousErrors, ...evaluation.errors];
 
-      console.log(chalk.gray(`[Reflexion] Fixed: ${parsed.fixedErrors?.length || 0} errors, Added: ${parsed.addedElements?.length || 0} elements`));
-
+      console.log(
+        chalk.gray(
+          `[Reflexion] Fixed: ${parsed.fixedErrors?.length || 0} errors, Added: ${parsed.addedElements?.length || 0} elements`,
+        ),
+      );
     } catch (error: any) {
       console.log(chalk.yellow(`[Reflexion] Iteration ${iteration + 1} failed: ${error.message}`));
     }
@@ -663,8 +696,16 @@ Zwróć TYLKO JSON.`;
   const totalImprovement = finalEvaluation.score - (trajectory[0]?.evaluation.score || 0);
 
   console.log(chalk.green(`\n[Reflexion] Completed after ${trajectory.length} iterations`));
-  console.log(chalk.green(`[Reflexion] Final score: ${finalEvaluation.score}% (${totalImprovement >= 0 ? '+' : ''}${totalImprovement.toFixed(1)}%)`));
-  console.log(chalk.green(`[Reflexion] Lessons learned: ${lessonsLearned.length}, Applied: ${lessonsApplied.length}`));
+  console.log(
+    chalk.green(
+      `[Reflexion] Final score: ${finalEvaluation.score}% (${totalImprovement >= 0 ? '+' : ''}${totalImprovement.toFixed(1)}%)`,
+    ),
+  );
+  console.log(
+    chalk.green(
+      `[Reflexion] Lessons learned: ${lessonsLearned.length}, Applied: ${lessonsApplied.length}`,
+    ),
+  );
 
   return {
     originalResponse: initialResponse,
@@ -694,7 +735,7 @@ Zwróć TYLKO JSON.`;
 export async function selfReflect(
   task: string,
   initialResponse: string,
-  maxIterations: number = 3
+  maxIterations: number = 3,
 ): Promise<ReflectionResult> {
   console.log(chalk.magenta('[Reflect] Starting self-reflection loop...'));
 
@@ -729,13 +770,16 @@ Odpowiadaj PO POLSKU. Zwróć TYLKO JSON.`;
       const response = await geminiSemaphore.withPermit(async () => {
         const model = genAI.getGenerativeModel({
           model: INTELLIGENCE_MODEL,
-          generationConfig: { temperature: 0.3, maxOutputTokens: 4096 }
+          generationConfig: { temperature: 0.3, maxOutputTokens: 4096 },
         });
         const result = await model.generateContent(reflectionPrompt);
         return result.response.text();
       });
 
-      const jsonStr = response.replace(/```json/gi, '').replace(/```/g, '').trim();
+      const jsonStr = response
+        .replace(/```json/gi, '')
+        .replace(/```/g, '')
+        .trim();
       const parsed = JSON.parse(jsonStr);
 
       reflections.push(`Iteracja ${i + 1}: ${parsed.weaknesses.join(', ')}`);
@@ -743,12 +787,13 @@ Odpowiadaj PO POLSKU. Zwróć TYLKO JSON.`;
       if (parsed.improvementScore > 5) {
         currentResponse = parsed.improvedResponse;
         totalImprovement += parsed.improvementScore;
-        console.log(chalk.gray(`[Reflect] Iteration ${i + 1}: +${parsed.improvementScore}% improvement`));
+        console.log(
+          chalk.gray(`[Reflect] Iteration ${i + 1}: +${parsed.improvementScore}% improvement`),
+        );
       } else {
         console.log(chalk.gray(`[Reflect] Iteration ${i + 1}: No significant improvement needed`));
         break;
       }
-
     } catch (error: any) {
       console.log(chalk.yellow(`[Reflect] Iteration ${i + 1} failed: ${error.message}`));
       break;
@@ -763,7 +808,7 @@ Odpowiadaj PO POLSKU. Zwróć TYLKO JSON.`;
     reflection: reflections.join('\n'),
     improvedResponse: currentResponse,
     confidenceImprovement: totalImprovement,
-    confidenceGain: totalImprovement
+    confidenceGain: totalImprovement,
   };
 }
 
@@ -785,7 +830,7 @@ export class SelfReflectionEngine {
       temperature: config.temperature || 0.3,
       maxOutputTokens: config.maxOutputTokens || 4096,
       minImprovementThreshold: config.minImprovementThreshold || 15,
-      verbose: config.verbose ?? true
+      verbose: config.verbose ?? true,
     };
   }
 
@@ -801,11 +846,15 @@ export class SelfReflectionEngine {
   /**
    * Advanced reflexion with episodic memory
    */
-  async reflexion(response: string, task: string, options?: ReflexionOptions): Promise<ReflexionResult> {
+  async reflexion(
+    response: string,
+    task: string,
+    options?: ReflexionOptions,
+  ): Promise<ReflexionResult> {
     const result = await reflexionLoop(task, response, {
       maxIterations: options?.maxIterations || 3,
       minScore: options?.minScore || 85,
-      ...options
+      ...options,
     });
     this.addToHistory(task, result);
     return result;
@@ -818,35 +867,84 @@ export class SelfReflectionEngine {
     const taskLower = task.toLowerCase();
 
     const complexIndicators = [
-      'implementuj', 'implement', 'zaprojektuj', 'design',
-      'architektura', 'architecture', 'strategia', 'strategy',
-      'analiz', 'analy', 'ocen', 'evaluat', 'review',
-      'optymalizuj', 'optimiz', 'refaktor', 'refactor',
-      'rozwiąż', 'solve', 'napraw', 'fix', 'debug',
-      'plan', 'roadmap', 'proposal', 'propozycja',
-      'porównaj', 'compare', 'wybierz', 'choose', 'select',
-      'wyjaśnij dlaczego', 'explain why', 'uzasadnij', 'justify',
-      'złożony', 'complex', 'trudny', 'difficult', 'skomplikowany'
+      'implementuj',
+      'implement',
+      'zaprojektuj',
+      'design',
+      'architektura',
+      'architecture',
+      'strategia',
+      'strategy',
+      'analiz',
+      'analy',
+      'ocen',
+      'evaluat',
+      'review',
+      'optymalizuj',
+      'optimiz',
+      'refaktor',
+      'refactor',
+      'rozwiąż',
+      'solve',
+      'napraw',
+      'fix',
+      'debug',
+      'plan',
+      'roadmap',
+      'proposal',
+      'propozycja',
+      'porównaj',
+      'compare',
+      'wybierz',
+      'choose',
+      'select',
+      'wyjaśnij dlaczego',
+      'explain why',
+      'uzasadnij',
+      'justify',
+      'złożony',
+      'complex',
+      'trudny',
+      'difficult',
+      'skomplikowany',
     ];
 
     const simpleIndicators = [
-      'pokaż', 'show', 'wyświetl', 'display', 'list',
-      'ile', 'how many', 'policz', 'count',
-      'tak lub nie', 'yes or no', 'czy', 'is it',
-      'hello', 'cześć', 'hi', 'witaj',
-      'pomoc', 'help', 'instrukcja', 'manual',
-      'wersja', 'version', 'status'
+      'pokaż',
+      'show',
+      'wyświetl',
+      'display',
+      'list',
+      'ile',
+      'how many',
+      'policz',
+      'count',
+      'tak lub nie',
+      'yes or no',
+      'czy',
+      'is it',
+      'hello',
+      'cześć',
+      'hi',
+      'witaj',
+      'pomoc',
+      'help',
+      'instrukcja',
+      'manual',
+      'wersja',
+      'version',
+      'status',
     ];
 
     if (task.length < 30) {
       return false;
     }
 
-    if (simpleIndicators.some(indicator => taskLower.includes(indicator))) {
+    if (simpleIndicators.some((indicator) => taskLower.includes(indicator))) {
       return false;
     }
 
-    if (complexIndicators.some(indicator => taskLower.includes(indicator))) {
+    if (complexIndicators.some((indicator) => taskLower.includes(indicator))) {
       return true;
     }
 
@@ -859,10 +957,14 @@ export class SelfReflectionEngine {
   async iterativeImprovement(
     response: string,
     task: string,
-    maxIterations: number = 3
+    maxIterations: number = 3,
   ): Promise<string> {
     if (this.config.verbose) {
-      console.log(chalk.cyan(`[SelfReflection] Starting iterative improvement (max ${maxIterations} iterations)...`));
+      console.log(
+        chalk.cyan(
+          `[SelfReflection] Starting iterative improvement (max ${maxIterations} iterations)...`,
+        ),
+      );
     }
 
     let currentResponse = response;
@@ -873,7 +975,11 @@ export class SelfReflectionEngine {
 
       if (result.confidenceImprovement < this.config.minImprovementThreshold) {
         if (this.config.verbose) {
-          console.log(chalk.gray(`[SelfReflection] Iteration ${i + 1}: Improvement below threshold. Stopping.`));
+          console.log(
+            chalk.gray(
+              `[SelfReflection] Iteration ${i + 1}: Improvement below threshold. Stopping.`,
+            ),
+          );
         }
         break;
       }
@@ -883,7 +989,11 @@ export class SelfReflectionEngine {
 
       if (totalImprovement >= 80) {
         if (this.config.verbose) {
-          console.log(chalk.green(`[SelfReflection] High quality achieved (+${totalImprovement}%). Stopping.`));
+          console.log(
+            chalk.green(
+              `[SelfReflection] High quality achieved (+${totalImprovement}%). Stopping.`,
+            ),
+          );
         }
         break;
       }
@@ -958,9 +1068,8 @@ export class SelfReflectionEngine {
     return {
       totalReflections,
       uniqueTasks: this.reflectionHistory.size,
-      averageImprovement: totalReflections > 0
-        ? Math.round(totalImprovement / totalReflections)
-        : 0
+      averageImprovement:
+        totalReflections > 0 ? Math.round(totalImprovement / totalReflections) : 0,
     };
   }
 }
@@ -1002,12 +1111,7 @@ export const selfReflection = new SelfReflectionEngine();
 // Exports
 // ============================================================================
 
-export {
-  reflexionMemory,
-  selfEvaluate,
-  learnFromFailure,
-  findBestCheckpoint
-};
+export { reflexionMemory, selfEvaluate, learnFromFailure, findBestCheckpoint };
 
 export default {
   selfReflect,
@@ -1018,5 +1122,5 @@ export default {
   clearReflexionMemory,
   reflexionMemory,
   selfReflection,
-  SelfReflectionEngine
+  SelfReflectionEngine,
 };

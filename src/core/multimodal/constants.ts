@@ -60,14 +60,11 @@ export const DOCUMENT_MIME_TYPES: Record<string, string> = {
 
 /** Maximum file sizes by type (in bytes) */
 export const MAX_FILE_SIZES = {
-  image: 20 * 1024 * 1024,    // 20MB
-  audio: 25 * 1024 * 1024,    // 25MB
-  video: 100 * 1024 * 1024,   // 100MB
+  image: 20 * 1024 * 1024, // 20MB
+  audio: 25 * 1024 * 1024, // 25MB
+  video: 100 * 1024 * 1024, // 100MB
   document: 50 * 1024 * 1024, // 50MB
 };
 
 /** Models supporting multimodal input */
-export const MULTIMODAL_MODELS = [
-  'gemini-3-pro-preview',
-  'gemini-3-flash-preview',
-];
+export const MULTIMODAL_MODELS = ['gemini-3-pro-preview', 'gemini-3-flash-preview'];

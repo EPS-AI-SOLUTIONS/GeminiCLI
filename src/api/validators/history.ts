@@ -3,9 +3,9 @@
  * Validators for history endpoint requests
  */
 
-import { ValidationError } from '../middleware/index.js';
 import { API_CONFIG } from '../config/index.js';
 import { VALIDATION_ERRORS } from '../constants/index.js';
+import { ValidationError } from '../middleware/index.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // History Validators
@@ -20,7 +20,7 @@ export function validateHistoryLimit(limit: unknown): number {
   }
 
   const parsed = Number(limit);
-  if (isNaN(parsed)) {
+  if (Number.isNaN(parsed)) {
     throw new ValidationError(VALIDATION_ERRORS.INVALID_TYPE('limit', 'number'));
   }
 
@@ -41,19 +41,22 @@ export function validateSearchQuery(query: unknown): string {
 /**
  * Validate date range for history filtering
  */
-export function validateDateRange(start: unknown, end: unknown): { startDate?: Date; endDate?: Date } {
+export function validateDateRange(
+  start: unknown,
+  end: unknown,
+): { startDate?: Date; endDate?: Date } {
   const result: { startDate?: Date; endDate?: Date } = {};
 
   if (start !== undefined) {
     const startDate = new Date(String(start));
-    if (!isNaN(startDate.getTime())) {
+    if (!Number.isNaN(startDate.getTime())) {
       result.startDate = startDate;
     }
   }
 
   if (end !== undefined) {
     const endDate = new Date(String(end));
-    if (!isNaN(endDate.getTime())) {
+    if (!Number.isNaN(endDate.getTime())) {
       result.endDate = endDate;
     }
   }

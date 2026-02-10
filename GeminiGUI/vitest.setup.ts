@@ -5,8 +5,8 @@
  * Global setup and utilities for all tests
  */
 
-import { expect, afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
+import { afterEach, vi } from 'vitest';
 
 // Cleanup after each test
 afterEach(() => {
@@ -46,10 +46,7 @@ global.ResizeObserver = vi.fn(() => ({
 const originalError = console.error;
 beforeEach(() => {
   console.error = (...args: any[]) => {
-    if (
-      typeof args[0] === 'string' &&
-      args[0].includes('Warning: ReactDOM.render')
-    ) {
+    if (typeof args[0] === 'string' && args[0].includes('Warning: ReactDOM.render')) {
       return;
     }
     originalError.call(console, ...args);

@@ -2,7 +2,7 @@
  * Chat E2E Tests
  */
 
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 test.describe('Chat', () => {
   test.beforeEach(async ({ page }) => {

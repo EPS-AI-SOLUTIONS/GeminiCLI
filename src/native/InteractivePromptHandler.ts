@@ -9,9 +9,9 @@
  * - Logging for detected prompts
  */
 
+import type { ChildProcess } from 'node:child_process';
+import { EventEmitter } from 'node:events';
 import chalk from 'chalk';
-import { ChildProcess } from 'child_process';
-import { EventEmitter } from 'events';
 
 // ============================================================
 // Types
@@ -60,7 +60,7 @@ export interface InteractivePromptLog {
  * Return a string to respond, null to skip, or undefined to use auto-respond
  */
 export type InteractivePromptCallback = (
-  prompt: InteractivePrompt
+  prompt: InteractivePrompt,
 ) => string | null | undefined | Promise<string | null | undefined>;
 
 /**
@@ -139,7 +139,7 @@ export const INTERACTIVE_PROMPT_PATTERNS: Record<InteractivePromptType, RegExp[]
     /option \d+/i,
     /\(\d+\)/,
   ],
-  unknown: []
+  unknown: [],
 };
 
 // ============================================================
@@ -198,7 +198,7 @@ export function createDefaultInteractiveConfig(): InteractivePromptConfig {
     autoRespond: new Map(),
     responseTimeout: 30000, // 30 seconds
     logPrompts: true,
-    defaultResponse: 'none'
+    defaultResponse: 'none',
   };
 }
 
@@ -270,14 +270,14 @@ export class InteractivePromptDetector {
         if (pattern.test(checkText)) {
           // Find the line containing the prompt
           const lines = checkText.split('\n');
-          const promptLine = lines.reverse().find(line => pattern.test(line)) || checkText;
+          const promptLine = lines.reverse().find((line) => pattern.test(line)) || checkText;
 
           return {
             type,
             text: promptLine.trim(),
             pattern,
             timestamp: new Date(),
-            autoResponded: false
+            autoResponded: false,
           };
         }
       }
@@ -300,7 +300,9 @@ export class InteractivePromptDetector {
    */
   removePattern(type: InteractivePromptType, pattern: RegExp): boolean {
     const existing = this.patterns.get(type) || [];
-    const index = existing.findIndex(p => p.source === pattern.source && p.flags === pattern.flags);
+    const index = existing.findIndex(
+      (p) => p.source === pattern.source && p.flags === pattern.flags,
+    );
     if (index !== -1) {
       existing.splice(index, 1);
       this.patterns.set(type, existing);
@@ -343,7 +345,7 @@ export class InteractivePromptHandler extends EventEmitter {
     this.config = {
       ...defaultConfig,
       ...config,
-      autoRespond: config?.autoRespond || defaultConfig.autoRespond
+      autoRespond: config?.autoRespond || defaultConfig.autoRespond,
     };
 
     this.detector = new InteractivePromptDetector();
@@ -376,8 +378,8 @@ export class InteractivePromptHandler extends EventEmitter {
   usePreset(preset: 'autoYes' | 'autoNo' | 'autoSkip'): void {
     if (AUTO_RESPOND_PRESETS[preset]) {
       this.config.autoRespond = new Map(AUTO_RESPOND_PRESETS[preset]);
-      this.config.defaultResponse = preset === 'autoYes' ? 'yes' :
-                                     preset === 'autoNo' ? 'no' : 'skip';
+      this.config.defaultResponse =
+        preset === 'autoYes' ? 'yes' : preset === 'autoNo' ? 'no' : 'skip';
     }
   }
 
@@ -489,7 +491,7 @@ export class InteractivePromptHandler extends EventEmitter {
    */
   async handlePrompt(
     prompt: InteractivePrompt,
-    sendInput: (input: string) => Promise<void>
+    sendInput: (input: string) => Promise<void>,
   ): Promise<string | null> {
     const startTime = Date.now();
 
@@ -508,8 +510,8 @@ export class InteractivePromptHandler extends EventEmitter {
         const callbackResponse = await Promise.race([
           Promise.resolve(this.config.onPrompt(prompt)),
           new Promise<null>((resolve) =>
-            setTimeout(() => resolve(null), this.config.responseTimeout)
-          )
+            setTimeout(() => resolve(null), this.config.responseTimeout),
+          ),
         ]);
 
         if (callbackResponse !== undefined && callbackResponse !== null) {
@@ -520,12 +522,16 @@ export class InteractivePromptHandler extends EventEmitter {
           const promptLog: InteractivePromptLog = {
             prompt,
             responded: true,
-            responseTime: Date.now() - startTime
+            responseTime: Date.now() - startTime,
           };
           this.promptLogs.push(promptLog);
 
           if (this.config.logPrompts) {
-            console.log(chalk.green(`  Response (callback): "${callbackResponse}" (${promptLog.responseTime}ms)`));
+            console.log(
+              chalk.green(
+                `  Response (callback): "${callbackResponse}" (${promptLog.responseTime}ms)`,
+              ),
+            );
           }
 
           this.emit('response', { prompt, response: callbackResponse, source: 'callback' });
@@ -547,12 +553,14 @@ export class InteractivePromptHandler extends EventEmitter {
       const promptLog: InteractivePromptLog = {
         prompt,
         responded: true,
-        responseTime: Date.now() - startTime
+        responseTime: Date.now() - startTime,
       };
       this.promptLogs.push(promptLog);
 
       if (this.config.logPrompts) {
-        console.log(chalk.green(`  Response (auto): "${autoResponse}" (${promptLog.responseTime}ms)`));
+        console.log(
+          chalk.green(`  Response (auto): "${autoResponse}" (${promptLog.responseTime}ms)`),
+        );
       }
 
       this.emit('response', { prompt, response: autoResponse, source: 'auto' });
@@ -562,7 +570,7 @@ export class InteractivePromptHandler extends EventEmitter {
     // No response available
     const promptLog: InteractivePromptLog = {
       prompt,
-      responded: false
+      responded: false,
     };
     this.promptLogs.push(promptLog);
 
@@ -596,7 +604,7 @@ export class InteractivePromptHandler extends EventEmitter {
           return;
         }
 
-        proc.stdin.write(input + '\n', (err) => {
+        proc.stdin.write(`${input}\n`, (err) => {
           if (err) {
             reject(err);
           } else {
@@ -646,7 +654,7 @@ export class InteractivePromptHandler extends EventEmitter {
  * Create a new InteractivePromptHandler
  */
 export function createInteractiveHandler(
-  config?: Partial<InteractivePromptConfig>
+  config?: Partial<InteractivePromptConfig>,
 ): InteractivePromptHandler {
   return new InteractivePromptHandler(config);
 }
@@ -655,12 +663,12 @@ export function createInteractiveHandler(
  * Create a handler with a preset
  */
 export function createInteractiveHandlerWithPreset(
-  preset: 'autoYes' | 'autoNo' | 'autoSkip'
+  preset: 'autoYes' | 'autoNo' | 'autoSkip',
 ): InteractivePromptHandler {
   const handler = new InteractivePromptHandler({
     enabled: true,
     autoRespond: AUTO_RESPOND_PRESETS[preset],
-    logPrompts: true
+    logPrompts: true,
   });
   return handler;
 }
@@ -669,7 +677,7 @@ export function createInteractiveHandlerWithPreset(
  * Create a detector only (for manual detection)
  */
 export function createPromptDetector(
-  customPatterns?: Partial<Record<InteractivePromptType, RegExp[]>>
+  customPatterns?: Partial<Record<InteractivePromptType, RegExp[]>>,
 ): InteractivePromptDetector {
   return new InteractivePromptDetector(customPatterns);
 }

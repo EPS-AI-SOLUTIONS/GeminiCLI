@@ -5,12 +5,12 @@
 
 import type {
   AgentRole,
-  ModelTier,
-  ComplexityLevel,
   ClassificationResult,
-  ComplexityAnalysis
+  ComplexityAnalysis,
+  ComplexityLevel,
+  ModelTier,
 } from '../../types/swarm.js';
-import { AGENT_SPECS, MODEL_TIERS, getAgentsByTier } from './definitions.js';
+import { AGENT_SPECS, getAgentsByTier, MODEL_TIERS } from './definitions.js';
 
 /**
  * Keywords for agent matching - weighted by priority
@@ -19,120 +19,263 @@ import { AGENT_SPECS, MODEL_TIERS, getAgentsByTier } from './definitions.js';
 const AGENT_KEYWORDS: Record<AgentRole, string[]> = {
   // Commander
   dijkstra: [
-    'project roadmap', 'migration strategy', 'sprint backlog', 'team tasks',
-    'plan the', 'create a strategy', 'coordinate the', 'manage the',
-    'orchestrate', 'assign', 'delegate', 'workflow', 'roadmap'
+    'project roadmap',
+    'migration strategy',
+    'sprint backlog',
+    'team tasks',
+    'plan the',
+    'create a strategy',
+    'coordinate the',
+    'manage the',
+    'orchestrate',
+    'assign',
+    'delegate',
+    'workflow',
+    'roadmap',
   ],
 
   // Coordinators
   regis: [
-    'research the', 'market trends', 'latest developments', 'root cause',
-    'research', 'investigate', 'study the', 'developments in',
-    'analyze the', 'what are the'
+    'research the',
+    'market trends',
+    'latest developments',
+    'root cause',
+    'research',
+    'investigate',
+    'study the',
+    'developments in',
+    'analyze the',
+    'what are the',
   ],
   yennefer: [
-    'system architecture', 'microservices structure', 'software design',
-    'design the system', 'design the architecture', 'plan the software design',
-    'codebase', 'refactor the codebase', 'architecture', 'refactor the', 'synthesize',
-    'design', 'structure', 'microservice', 'components'
+    'system architecture',
+    'microservices structure',
+    'software design',
+    'design the system',
+    'design the architecture',
+    'plan the software design',
+    'codebase',
+    'refactor the codebase',
+    'architecture',
+    'refactor the',
+    'synthesize',
+    'design',
+    'structure',
+    'microservice',
+    'components',
   ],
   jaskier: [
-    'summarize this', 'write documentation', 'create a changelog', 'explain this',
-    'summarize', 'documentation', 'changelog', 'explain',
-    'present the', 'describe to'
+    'summarize this',
+    'write documentation',
+    'create a changelog',
+    'explain this',
+    'summarize',
+    'documentation',
+    'changelog',
+    'explain',
+    'present the',
+    'describe to',
   ],
 
   // Executors
   geralt: [
-    'security vulnerabilities', 'authentication system', 'encryption implementation',
-    'security threats', 'authentication bug',
-    'security', 'vulnerability', 'vulnerabilities', 'authentication',
-    'encrypt', 'audit', 'secure'
+    'security vulnerabilities',
+    'authentication system',
+    'encryption implementation',
+    'security threats',
+    'authentication bug',
+    'security',
+    'vulnerability',
+    'vulnerabilities',
+    'authentication',
+    'encrypt',
+    'audit',
+    'secure',
   ],
   triss: [
-    'unit tests', 'test suite', 'integration tests', 'failing test',
-    'add coverage', 'write tests',
-    'test', 'tests', 'testing', 'coverage', 'spec'
+    'unit tests',
+    'test suite',
+    'integration tests',
+    'failing test',
+    'add coverage',
+    'write tests',
+    'test',
+    'tests',
+    'testing',
+    'coverage',
+    'spec',
   ],
   vesemir: [
-    'pull request', 'best practices', 'code quality', 'good practice',
-    'review this', 'review the', 'mentor me',
-    'review', 'mentor', 'best practice', 'evaluate', 'critique'
+    'pull request',
+    'best practices',
+    'code quality',
+    'good practice',
+    'review this',
+    'review the',
+    'mentor me',
+    'review',
+    'mentor',
+    'best practice',
+    'evaluate',
+    'critique',
   ],
   ciri: [
-    'quickly format', 'fast answer', 'help me briefly', 'simple question',
-    'quick', 'fast', 'quickly', 'briefly', 'simple'
+    'quickly format',
+    'fast answer',
+    'help me briefly',
+    'simple question',
+    'quick',
+    'fast',
+    'quickly',
+    'briefly',
+    'simple',
   ],
   eskel: [
-    'deploy the', 'ci/cd pipeline', 'docker containers', 'kubernetes manifest',
-    'set up infrastructure', 'terraform',
-    'deploy', 'ci/cd', 'docker', 'kubernetes', 'infrastructure', 'pipeline'
+    'deploy the',
+    'ci/cd pipeline',
+    'docker containers',
+    'kubernetes manifest',
+    'set up infrastructure',
+    'terraform',
+    'deploy',
+    'ci/cd',
+    'docker',
+    'kubernetes',
+    'infrastructure',
+    'pipeline',
   ],
   lambert: [
-    'debug this', 'application performance', 'function slow', 'trace the bug',
+    'debug this',
+    'application performance',
+    'function slow',
+    'trace the bug',
     'troubleshoot the',
-    'debug', 'profile', 'performance', 'slow', 'troubleshoot', 'trace'
+    'debug',
+    'profile',
+    'performance',
+    'slow',
+    'troubleshoot',
+    'trace',
   ],
   zoltan: [
-    'sql query', 'database schema', 'database query', 'create a migration',
+    'sql query',
+    'database schema',
+    'database query',
+    'create a migration',
     'postgresql indexes',
-    'database', 'sql', 'schema', 'query', 'migration', 'postgresql', 'postgres'
+    'database',
+    'sql',
+    'schema',
+    'query',
+    'migration',
+    'postgresql',
+    'postgres',
   ],
   philippa: [
-    'api endpoint', 'external service', 'rest api', 'webhooks for',
+    'api endpoint',
+    'external service',
+    'rest api',
+    'webhooks for',
     'payment gateway',
-    'api', 'endpoint', 'webhook', 'rest', 'graphql', 'integrate with', 'gateway'
+    'api',
+    'endpoint',
+    'webhook',
+    'rest',
+    'graphql',
+    'integrate with',
+    'gateway',
   ],
 
   // Code Intelligence Agent
   serena: [
-    'find symbol', 'code navigation', 'code intelligence', 'lsp',
-    'find references', 'go to definition', 'symbol search',
-    'rename symbol', 'code analysis', 'semantic search'
-  ]
+    'find symbol',
+    'code navigation',
+    'code intelligence',
+    'lsp',
+    'find references',
+    'go to definition',
+    'symbol search',
+    'rename symbol',
+    'code analysis',
+    'semantic search',
+  ],
 };
 
 /**
  * Technical terms for complexity analysis
  */
 const TECHNICAL_TERMS = [
-  'algorithm', 'microservice', 'distributed', 'concurrent', 'async',
-  'polymorphism', 'inheritance', 'encapsulation', 'abstraction',
-  'dependency injection', 'middleware', 'cache', 'queue', 'stream',
-  'transaction', 'idempotent', 'stateless', 'scalable', 'resilient',
-  'kubernetes', 'docker', 'terraform', 'ansible', 'prometheus',
-  'graphql', 'grpc', 'websocket', 'oauth', 'jwt', 'ssl', 'tls',
-  'nosql', 'mongodb', 'postgres', 'redis', 'elasticsearch',
-  'react', 'vue', 'angular', 'nextjs', 'typescript', 'rust'
+  'algorithm',
+  'microservice',
+  'distributed',
+  'concurrent',
+  'async',
+  'polymorphism',
+  'inheritance',
+  'encapsulation',
+  'abstraction',
+  'dependency injection',
+  'middleware',
+  'cache',
+  'queue',
+  'stream',
+  'transaction',
+  'idempotent',
+  'stateless',
+  'scalable',
+  'resilient',
+  'kubernetes',
+  'docker',
+  'terraform',
+  'ansible',
+  'prometheus',
+  'graphql',
+  'grpc',
+  'websocket',
+  'oauth',
+  'jwt',
+  'ssl',
+  'tls',
+  'nosql',
+  'mongodb',
+  'postgres',
+  'redis',
+  'elasticsearch',
+  'react',
+  'vue',
+  'angular',
+  'nextjs',
+  'typescript',
+  'rust',
 ];
 
 /**
  * Code indicators
  */
 const CODE_PATTERNS = [
-  /```[\s\S]*?```/,           // Code blocks
-  /`[^`]+`/,                   // Inline code
-  /function\s+\w+/,            // Function declarations
-  /class\s+\w+/,               // Class declarations
-  /const\s+\w+\s*=/,           // Const declarations
-  /import\s+.*from/,           // ES imports
-  /require\s*\(/,              // CommonJS requires
-  /\w+\.\w+\(/,                // Method calls
-  /=>\s*{/,                    // Arrow functions
-  /if\s*\(/,                   // Conditionals
-  /for\s*\(/,                  // Loops
+  /```[\s\S]*?```/, // Code blocks
+  /`[^`]+`/, // Inline code
+  /function\s+\w+/, // Function declarations
+  /class\s+\w+/, // Class declarations
+  /const\s+\w+\s*=/, // Const declarations
+  /import\s+.*from/, // ES imports
+  /require\s*\(/, // CommonJS requires
+  /\w+\.\w+\(/, // Method calls
+  /=>\s*{/, // Arrow functions
+  /if\s*\(/, // Conditionals
+  /for\s*\(/, // Loops
 ];
 
 /**
  * Multi-task indicators
  */
 const MULTI_TASK_PATTERNS = [
-  /\d+\./,                     // Numbered lists
-  /first.*then/i,              // Sequential tasks
-  /and\s+also/i,               // Multiple requirements
-  /additionally/i,             // Added requirements
-  /\bstep\s+\d/i,              // Step references
-  /phase\s+\d/i,               // Phase references
+  /\d+\./, // Numbered lists
+  /first.*then/i, // Sequential tasks
+  /and\s+also/i, // Multiple requirements
+  /additionally/i, // Added requirements
+  /\bstep\s+\d/i, // Step references
+  /phase\s+\d/i, // Phase references
 ];
 
 /**
@@ -144,14 +287,14 @@ export function analyzeComplexity(prompt: string): ComplexityAnalysis {
   const wordCount = words.length;
 
   // Check for code
-  const hasCode = CODE_PATTERNS.some(pattern => pattern.test(prompt));
+  const hasCode = CODE_PATTERNS.some((pattern) => pattern.test(prompt));
 
   // Check for multiple tasks
-  const hasMultipleTasks = MULTI_TASK_PATTERNS.some(pattern => pattern.test(prompt));
+  const hasMultipleTasks = MULTI_TASK_PATTERNS.some((pattern) => pattern.test(prompt));
 
   // Count technical terms
-  const technicalTerms = TECHNICAL_TERMS.filter(term =>
-    lowerPrompt.includes(term.toLowerCase())
+  const technicalTerms = TECHNICAL_TERMS.filter((term) =>
+    lowerPrompt.includes(term.toLowerCase()),
   ).length;
 
   // Calculate complexity score
@@ -200,7 +343,7 @@ export function analyzeComplexity(prompt: string): ComplexityAnalysis {
     hasCode,
     hasMultipleTasks,
     technicalTerms,
-    recommendedAgent
+    recommendedAgent,
   };
 }
 
@@ -237,7 +380,7 @@ export function classifyPrompt(prompt: string): ClassificationResult {
       agent: 'dijkstra',
       model: MODEL_TIERS.commander,
       tier: 'commander',
-      confidence: 0.9
+      confidence: 0.9,
     };
   }
 
@@ -266,7 +409,7 @@ export function classifyPrompt(prompt: string): ClassificationResult {
       agent: bestMatch.role,
       model: MODEL_TIERS[spec.tier],
       tier: spec.tier,
-      confidence
+      confidence,
     };
   }
 
@@ -278,7 +421,7 @@ export function classifyPrompt(prompt: string): ClassificationResult {
     agent: complexity.recommendedAgent,
     model: MODEL_TIERS[spec.tier],
     tier: spec.tier,
-    confidence: 0.5
+    confidence: 0.5,
   };
 }
 
@@ -305,7 +448,7 @@ export function getAgentCandidates(prompt: string, maxCandidates = 3): Classific
       agent: role,
       model: MODEL_TIERS[spec.tier],
       tier: spec.tier,
-      confidence
+      confidence,
     };
   });
 }
@@ -318,7 +461,7 @@ export function classifyForTier(prompt: string, tier: ModelTier): Classification
 
   let bestMatch: { role: AgentRole; score: number } = {
     role: agentsInTier[0],
-    score: 0
+    score: 0,
   };
 
   for (const role of agentsInTier) {
@@ -328,18 +471,17 @@ export function classifyForTier(prompt: string, tier: ModelTier): Classification
     }
   }
 
-  const spec = AGENT_SPECS[bestMatch.role];
+  const _spec = AGENT_SPECS[bestMatch.role];
   const maxPossibleScore = AGENT_KEYWORDS[bestMatch.role].length;
-  const confidence = bestMatch.score > 0
-    ? Math.min(bestMatch.score / maxPossibleScore + 0.4, 0.9)
-    : 0.4;
+  const confidence =
+    bestMatch.score > 0 ? Math.min(bestMatch.score / maxPossibleScore + 0.4, 0.9) : 0.4;
 
   return {
     prompt,
     agent: bestMatch.role,
     model: MODEL_TIERS[tier],
     tier,
-    confidence
+    confidence,
   };
 }
 
@@ -349,8 +491,8 @@ export function classifyForTier(prompt: string, tier: ModelTier): Classification
 export function suggestAgentsForTask(taskDescription: string): AgentRole[] {
   const candidates = getAgentCandidates(taskDescription, 5);
   const executors = candidates
-    .filter(c => c.tier === 'executor' && c.confidence > 0.3)
-    .map(c => c.agent);
+    .filter((c) => c.tier === 'executor' && c.confidence > 0.3)
+    .map((c) => c.agent);
 
   // Always include at least one executor
   if (executors.length === 0) {
@@ -385,12 +527,20 @@ export function needsResearch(prompt: string): boolean {
   const lowerPrompt = prompt.toLowerCase();
 
   const researchIndicators = [
-    'what is', 'how does', 'explain', 'why', 'compare',
-    'difference between', 'best practice', 'recommend',
-    'pros and cons', 'alternatives', 'options'
+    'what is',
+    'how does',
+    'explain',
+    'why',
+    'compare',
+    'difference between',
+    'best practice',
+    'recommend',
+    'pros and cons',
+    'alternatives',
+    'options',
   ];
 
-  return researchIndicators.some(indicator => lowerPrompt.includes(indicator));
+  return researchIndicators.some((indicator) => lowerPrompt.includes(indicator));
 }
 
 /**
@@ -408,7 +558,7 @@ export const DOMAIN_PATTERNS: Record<string, string[]> = {
   research: ['research', 'analyze', 'study', 'investigate', 'explore'],
   architecture: ['architecture', 'design', 'structure', 'pattern', 'synthesize'],
   communication: ['document', 'summarize', 'explain', 'report', 'write'],
-  planning: ['plan', 'strategy', 'coordinate', 'orchestrate', 'organize']
+  planning: ['plan', 'strategy', 'coordinate', 'orchestrate', 'organize'],
 };
 
 /**
@@ -426,7 +576,7 @@ const DOMAIN_TO_AGENT: Record<string, AgentRole> = {
   research: 'regis',
   architecture: 'yennefer',
   communication: 'jaskier',
-  planning: 'dijkstra'
+  planning: 'dijkstra',
 };
 
 /**

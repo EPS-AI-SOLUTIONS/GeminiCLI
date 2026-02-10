@@ -3,11 +3,11 @@
  * Exposes Witcher Swarm agent information
  */
 
-import { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync } from 'fastify';
 import { classificationService } from '../services/index.js';
-import { validateClassifyRequest } from '../validators/index.js';
-import type { AgentsResponse, ClassifyResponse } from '../types/index.js';
 import type { ClassifyRequest } from '../types/fastify.js';
+import type { AgentsResponse, ClassifyResponse } from '../types/index.js';
+import { validateClassifyRequest } from '../validators/index.js';
 
 export const agentsRoutes: FastifyPluginAsync = async (fastify) => {
   /**
@@ -29,6 +29,6 @@ export const agentsRoutes: FastifyPluginAsync = async (fastify) => {
       const { prompt } = validateClassifyRequest(request.body);
       const result = classificationService.getFullClassification(prompt);
       return result;
-    }
+    },
   );
 };

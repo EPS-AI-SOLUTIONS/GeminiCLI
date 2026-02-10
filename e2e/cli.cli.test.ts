@@ -3,9 +3,9 @@
  * Tests for command-line interface functionality
  */
 
-import { test, expect } from '@playwright/test';
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
+import { expect, test } from '@playwright/test';
 
 const execAsync = promisify(exec);
 const CLI_PATH = 'npx tsx bin/gemini.ts';

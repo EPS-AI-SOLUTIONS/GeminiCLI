@@ -2,7 +2,7 @@
  * Tests for Planning Service
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PlanningService, planningService } from '../../src/services/PlanningService.js';
 
 // Mock logger (used by BaseAgentService which PlanningService imports)
@@ -109,9 +109,7 @@ That's the plan!`;
     });
 
     it('should fill in missing properties with defaults', () => {
-      const tasks = [
-        { task: 'Task with minimal props' },
-      ];
+      const tasks = [{ task: 'Task with minimal props' }];
 
       const result = service.validateTasks(tasks);
 

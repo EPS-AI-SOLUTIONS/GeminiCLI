@@ -4,11 +4,11 @@
  * @module help/interactive
  */
 
+import readline from 'node:readline';
 import chalk from 'chalk';
-import readline from 'readline';
 import { commandRegistry } from '../CommandRegistry.js';
-import { categoryConfig, getCategoryDisplay } from './HelpMetaRegistry.js';
 import { generateCategoryHelp, generateCommandHelp, searchHelp } from './generators.js';
+import { getCategoryDisplay } from './HelpMetaRegistry.js';
 
 /**
  * Run interactive help browser
@@ -16,20 +16,33 @@ import { generateCategoryHelp, generateCommandHelp, searchHelp } from './generat
 export async function runInteractiveHelp(): Promise<void> {
   const rl = readline.createInterface({
     input: process.stdin,
-    output: process.stdout
+    output: process.stdout,
   });
 
-  const categories = commandRegistry.getCategories()
-    .map(c => getCategoryDisplay(c))
+  const categories = commandRegistry
+    .getCategories()
+    .map((c) => getCategoryDisplay(c))
     .sort((a, b) => a.order - b.order);
 
   let running = true;
 
   const showMenu = () => {
     console.clear();
-    console.log(chalk.bold.cyan('\n\u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557'));
-    console.log(chalk.bold.cyan('\u2551') + chalk.bold.white('         Interactive Help Browser                          ') + chalk.bold.cyan('\u2551'));
-    console.log(chalk.bold.cyan('\u255A\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u255D\n'));
+    console.log(
+      chalk.bold.cyan(
+        '\n\u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557',
+      ),
+    );
+    console.log(
+      chalk.bold.cyan('\u2551') +
+        chalk.bold.white('         Interactive Help Browser                          ') +
+        chalk.bold.cyan('\u2551'),
+    );
+    console.log(
+      chalk.bold.cyan(
+        '\u255A\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u255D\n',
+      ),
+    );
 
     console.log(chalk.bold.white('Navigation:'));
     console.log(chalk.gray('  [number] - Select category'));
@@ -42,7 +55,9 @@ export async function runInteractiveHelp(): Promise<void> {
     categories.forEach((cat, i) => {
       const cmdCount = commandRegistry.getByCategory(cat.name).length;
       if (cmdCount > 0) {
-        console.log(`  ${chalk.cyan((i + 1).toString().padStart(2))}. ${cat.icon} ${cat.displayName} ${chalk.gray(`(${cmdCount})`)}`);
+        console.log(
+          `  ${chalk.cyan((i + 1).toString().padStart(2))}. ${cat.icon} ${cat.displayName} ${chalk.gray(`(${cmdCount})`)}`,
+        );
       }
     });
 
@@ -85,8 +100,8 @@ export async function runInteractiveHelp(): Promise<void> {
       continue;
     }
 
-    const num = parseInt(input);
-    if (!isNaN(num) && num >= 1 && num <= categories.length) {
+    const num = parseInt(input, 10);
+    if (!Number.isNaN(num) && num >= 1 && num <= categories.length) {
       const cat = categories[num - 1];
       showCategory(cat);
       continue;
@@ -99,9 +114,10 @@ export async function runInteractiveHelp(): Promise<void> {
       continue;
     }
 
-    const matchedCat = categories.find(c =>
-      c.name.toLowerCase() === input.toLowerCase() ||
-      c.displayName.toLowerCase() === input.toLowerCase()
+    const matchedCat = categories.find(
+      (c) =>
+        c.name.toLowerCase() === input.toLowerCase() ||
+        c.displayName.toLowerCase() === input.toLowerCase(),
     );
 
     if (matchedCat) {

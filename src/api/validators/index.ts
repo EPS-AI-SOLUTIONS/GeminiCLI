@@ -7,32 +7,29 @@
 // Re-exports
 // ═══════════════════════════════════════════════════════════════════════════
 
-export { validatePrompt, isNonEmptyString } from './prompt.js';
+export {
+  type ClassifyRequest,
+  validateAgentId,
+  validateClassifyRequest,
+} from './agents.js';
 
 export {
+  type ExecuteOptions,
+  validateExecuteOptions,
   validateExecuteRequest,
   validateExecutionMode,
-  validateExecuteOptions,
-  type ExecuteOptions,
 } from './execute.js';
-
 export {
-  validateSettingsUpdate,
-  validateTheme,
-  validateLanguage,
-  validateTemperature,
-  validateMaxTokens,
-  validateModel,
-} from './settings.js';
-
-export {
+  validateDateRange,
   validateHistoryLimit,
   validateSearchQuery,
-  validateDateRange,
 } from './history.js';
-
+export { isNonEmptyString, validatePrompt } from './prompt.js';
 export {
-  validateClassifyRequest,
-  validateAgentId,
-  type ClassifyRequest,
-} from './agents.js';
+  validateLanguage,
+  validateMaxTokens,
+  validateModel,
+  validateSettingsUpdate,
+  validateTemperature,
+  validateTheme,
+} from './settings.js';

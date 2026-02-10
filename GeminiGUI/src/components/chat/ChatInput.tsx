@@ -11,13 +11,13 @@
  * - Input history (basic)
  */
 
-import { memo, useEffect, useCallback } from 'react';
-import TextareaAutosize from 'react-textarea-autosize';
-import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { AnimatePresence, motion } from 'framer-motion';
+import { AlertCircle, Paperclip, Send, StopCircle, X } from 'lucide-react';
+import { memo, useCallback, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import TextareaAutosize from 'react-textarea-autosize';
 import { z } from 'zod';
-import { Send, X, AlertCircle, Paperclip, StopCircle } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../utils';
 
 // ============================================================================
@@ -45,7 +45,7 @@ type ChatFormData = z.infer<typeof chatSchema>;
 // ============================================================================
 
 const ImagePreview = memo(({ src, onRemove }: { src: string; onRemove: () => void }) => (
-  <motion.div 
+  <motion.div
     layout
     initial={{ opacity: 0, scale: 0.8, y: 10 }}
     animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -74,13 +74,7 @@ ImagePreview.displayName = 'ImagePreview';
 // ============================================================================
 
 export const ChatInput = memo<ChatInputProps>(
-  ({
-    isStreaming,
-    onSubmit,
-    pendingImage,
-    onClearImage,
-    onPasteImage
-  }) => {
+  ({ isStreaming, onSubmit, pendingImage, onClearImage, onPasteImage }) => {
     const {
       register,
       handleSubmit,
@@ -118,28 +112,35 @@ export const ChatInput = memo<ChatInputProps>(
       }
     };
 
-    const handlePaste = useCallback((e: React.ClipboardEvent) => {
-      const items = e.clipboardData.items;
-      for (const item of items) {
-        if (item.type.indexOf('image') !== -1) {
-          const blob = item.getAsFile();
-          if (blob) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-              if (event.target?.result && typeof event.target.result === 'string') {
-                if (onPasteImage) onPasteImage(event.target.result);
-                // Fallback if no specific handler, user might need to handle this upstream
-                // For now assuming onPasteImage is passed or we ignore paste if not handled
-              }
-            };
-            reader.readAsDataURL(blob);
-            e.preventDefault(); // Stop pasting the binary string into text
+    const handlePaste = useCallback(
+      (e: React.ClipboardEvent) => {
+        const items = e.clipboardData.items;
+        for (const item of items) {
+          if (item.type.indexOf('image') !== -1) {
+            const blob = item.getAsFile();
+            if (blob) {
+              const reader = new FileReader();
+              reader.onload = (event) => {
+                if (event.target?.result && typeof event.target.result === 'string') {
+                  if (onPasteImage) onPasteImage(event.target.result);
+                  // Fallback if no specific handler, user might need to handle this upstream
+                  // For now assuming onPasteImage is passed or we ignore paste if not handled
+                }
+              };
+              reader.readAsDataURL(blob);
+              e.preventDefault(); // Stop pasting the binary string into text
+            }
           }
         }
-      }
-    }, [onPasteImage]);
+      },
+      [onPasteImage],
+    );
 
-    const canSubmit = !isStreaming && !isOverLimit && (isValid || !!pendingImage) && (promptValue.trim().length > 0 || !!pendingImage);
+    const canSubmit =
+      !isStreaming &&
+      !isOverLimit &&
+      (isValid || !!pendingImage) &&
+      (promptValue.trim().length > 0 || !!pendingImage);
 
     return (
       <form
@@ -149,15 +150,15 @@ export const ChatInput = memo<ChatInputProps>(
         {/* Error Toast */}
         <AnimatePresence>
           {errors.prompt && (
-             <motion.div
-               initial={{ opacity: 0, y: 10 }}
-               animate={{ opacity: 1, y: 0 }}
-               exit={{ opacity: 0, y: 5 }}
-               className="absolute bottom-full left-4 mb-2 flex items-center gap-2 text-xs text-red-400 bg-red-950/90 border border-red-500/30 px-3 py-2 rounded-lg shadow-lg backdrop-blur-sm"
-             >
-               <AlertCircle size={14} />
-               <span>{errors.prompt.message}</span>
-             </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 5 }}
+              className="absolute bottom-full left-4 mb-2 flex items-center gap-2 text-xs text-red-400 bg-red-950/90 border border-red-500/30 px-3 py-2 rounded-lg shadow-lg backdrop-blur-sm"
+            >
+              <AlertCircle size={14} />
+              <span>{errors.prompt.message}</span>
+            </motion.div>
           )}
         </AnimatePresence>
 
@@ -182,29 +183,33 @@ export const ChatInput = memo<ChatInputProps>(
               disabled={isStreaming}
               placeholder={pendingImage ? 'Opisz cel wizualny...' : 'Wpisz polecenie...'}
               className={cn(
-                "w-full bg-[var(--matrix-input-bg)] text-[var(--matrix-text)]",
-                "rounded-2xl px-5 py-3 pr-24", // pr-24 for counters/buttons inside
-                "focus:outline-none focus:ring-2 focus:ring-[var(--matrix-accent)]/30",
-                "placeholder:text-[var(--matrix-text-dim)]/40 font-mono text-sm resize-none scrollbar-hide",
-                "transition-all duration-300 shadow-inner",
-                "disabled:opacity-50 disabled:cursor-not-allowed",
-                isOverLimit && "border-red-500 focus:ring-red-500",
-                errors.prompt && "border-red-500/50"
+                'w-full bg-[var(--matrix-input-bg)] text-[var(--matrix-text)] border border-[var(--matrix-border)]',
+                'rounded-xl px-5 py-3 pr-24', // pr-24 for counters/buttons inside
+                'focus:outline-none focus:ring-2 focus:ring-[var(--matrix-accent)]/50',
+                'placeholder:text-[var(--matrix-text-dim)]/60 font-mono text-sm resize-none scrollbar-hide',
+                'transition-all duration-300 shadow-inner',
+                'disabled:opacity-50 disabled:cursor-not-allowed',
+                isOverLimit && 'border-red-500 focus:ring-red-500',
+                errors.prompt && 'border-red-500/50',
               )}
             />
-            
+
             {/* Focus Glow Effect */}
-            <div className="absolute inset-0 rounded-2xl bg-[var(--matrix-accent)]/5 opacity-0 group-focus-within:opacity-100 pointer-events-none transition-opacity duration-500 blur-sm" />
+            <div className="absolute inset-0 rounded-xl bg-[var(--matrix-accent)]/5 opacity-0 group-focus-within:opacity-100 pointer-events-none transition-opacity duration-500 blur-sm" />
 
             {/* Input Actions / Counters (Inside Input) */}
             <div className="absolute right-3 bottom-2.5 flex items-center gap-3">
-              {/* Char Counter */}
-              <div className={cn(
-                "text-[10px] font-mono transition-colors duration-300",
-                isOverLimit ? "text-red-500 font-bold" : "text-[var(--matrix-text-dim)]/50"
-              )}>
-                {charCount}/{MAX_CHARS}
-              </div>
+              {/* Char Counter - only show when typing */}
+              {charCount > 0 && (
+                <div
+                  className={cn(
+                    'text-[10px] font-mono transition-colors duration-300',
+                    isOverLimit ? 'text-red-500 font-bold' : 'text-[var(--matrix-text-dim)]/50',
+                  )}
+                >
+                  {charCount}/{MAX_CHARS}
+                </div>
+              )}
             </div>
           </div>
 
@@ -213,13 +218,17 @@ export const ChatInput = memo<ChatInputProps>(
             type="submit"
             disabled={!canSubmit}
             className={cn(
-              "flex items-center justify-center p-3.5 rounded-xl transition-all duration-300 mb-[1px]", // align with textarea bottom
-              "bg-[var(--matrix-accent)] text-black shadow-[0_0_15px_rgba(0,255,0,0.15)]",
-              "hover:bg-[#00ff41] hover:shadow-[0_0_12px_rgba(0,255,0,0.3)] hover:scale-[1.03]",
-              "active:scale-95 active:translate-y-0",
-              "disabled:opacity-20 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:shadow-none disabled:bg-gray-800 disabled:text-gray-500"
+              'flex items-center justify-center p-3.5 rounded-xl transition-all duration-300 mb-[1px]',
+              canSubmit
+                ? 'bg-[var(--matrix-accent)] text-black shadow-[0_0_15px_rgba(0,255,0,0.15)]'
+                : 'bg-slate-700/50 text-slate-500',
+              canSubmit
+                ? 'hover:bg-[#00ff41] hover:shadow-[0_0_12px_rgba(0,255,0,0.3)] hover:scale-[1.03]'
+                : '',
+              'active:scale-95 active:translate-y-0',
+              'disabled:cursor-not-allowed disabled:hover:scale-100',
             )}
-            title={isStreaming ? "Generowanie..." : "Wyślij (Enter)"}
+            title={isStreaming ? 'Generowanie...' : 'Wyślij (Enter)'}
           >
             {isStreaming ? (
               <StopCircle className="animate-pulse text-red-900" size={20} fill="currentColor" />
@@ -228,20 +237,20 @@ export const ChatInput = memo<ChatInputProps>(
             )}
           </button>
         </div>
-        
+
         {/* Footer info */}
         <div className="flex justify-between px-2 mt-2">
-           <span className="text-[10px] text-[var(--matrix-text-dim)] opacity-40 flex items-center gap-1">
-             <Paperclip size={10} />
-             Wklej obraz ze schowka (Ctrl+V)
-           </span>
-           <span className="text-[10px] text-[var(--matrix-text-dim)] opacity-40 font-mono">
-             Shift+Enter: nowa linia
-           </span>
+          <span className="text-[10px] text-[var(--matrix-text-dim)] opacity-50 flex items-center gap-1">
+            <Paperclip size={10} />
+            Wklej obraz ze schowka (Ctrl+V)
+          </span>
+          <span className="text-[10px] text-[var(--matrix-text-dim)] opacity-50 font-mono">
+            Shift+Enter: nowa linia
+          </span>
         </div>
       </form>
     );
-  }
+  },
 );
 
 ChatInput.displayName = 'ChatInput';

@@ -13,7 +13,11 @@
  *   npx tsx bin/download-model.ts --list
  */
 
-import { downloadModel, listAvailableModels, RECOMMENDED_MODELS } from '../src/services/LlamaCppServer.js';
+import {
+  downloadModel,
+  listAvailableModels,
+  RECOMMENDED_MODELS,
+} from '../src/services/LlamaCppServer.js';
 
 async function main() {
   const args = process.argv.slice(2);
@@ -49,7 +53,7 @@ Examples:
   if (!RECOMMENDED_MODELS[modelName as keyof typeof RECOMMENDED_MODELS]) {
     console.error(`Unknown model: ${modelName}`);
     console.log('\nAvailable models:');
-    Object.keys(RECOMMENDED_MODELS).forEach(name => console.log(`  - ${name}`));
+    Object.keys(RECOMMENDED_MODELS).forEach((name) => console.log(`  - ${name}`));
     process.exit(1);
   }
 

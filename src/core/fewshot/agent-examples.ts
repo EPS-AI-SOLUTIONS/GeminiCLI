@@ -90,8 +90,8 @@ ZaimplementowaÄ‡ wielopoziomowy system cachowania redukujÄ…cy latencjÄ™
 - Cache hit ratio > 90%
 - Latencja P99 < 50ms
 - Brak memory leaks po 24h`,
-      keywords: ['plan', 'strategia', 'architektura', 'zaleĹĽnoĹ›ci', 'harmonogram']
-    }
+      keywords: ['plan', 'strategia', 'architektura', 'zaleĹĽnoĹ›ci', 'harmonogram'],
+    },
   ],
 
   // Geralt - Security Review
@@ -141,8 +141,8 @@ Wymagane poprawki przed merge:
 - [ ] ImplementowaÄ‡ constant-time comparison
 
 *Wiatr wieje... pachnie bugami.*`,
-      keywords: ['security', 'bezpieczeĹ„stwo', 'veto', 'audit', 'review']
-    }
+      keywords: ['security', 'bezpieczeĹ„stwo', 'veto', 'audit', 'review'],
+    },
   ],
 
   // Lambert - Debugging
@@ -206,8 +206,8 @@ function processNode(node, depth = 0, maxDepth = 100) {
 - [ ] Do przetestowania z edge cases
 
 *Bug znaleziony. NastÄ™pny proszÄ™.*`,
-      keywords: ['debug', 'error', 'bĹ‚Ä…d', 'stack', 'crash', 'exception']
-    }
+      keywords: ['debug', 'error', 'bĹ‚Ä…d', 'stack', 'crash', 'exception'],
+    },
   ],
 
   // Triss - Testing/QA
@@ -257,8 +257,8 @@ function processNode(node, depth = 0, maxDepth = 100) {
 - **Nie przeszĹ‚o:** 3/12
 - **OstrzeĹĽenie:** 1/12
 - **Ocena:** Wymaga poprawek przed release`,
-      keywords: ['test', 'qa', 'walidacja', 'verify', 'sprawdĹş', 'quality']
-    }
+      keywords: ['test', 'qa', 'walidacja', 'verify', 'sprawdĹş', 'quality'],
+    },
   ],
 
   // Yennefer - Architecture
@@ -339,8 +339,8 @@ interface PaymentGateway {
 - **Factory Pattern:** Tworzenie instancji providerĂłw
 
 *Chaos i porzÄ…dek - w idealnej rĂłwnowadze.*`,
-      keywords: ['architektura', 'design', 'wzorce', 'moduĹ‚', 'struktura']
-    }
+      keywords: ['architektura', 'design', 'wzorce', 'moduĹ‚', 'struktura'],
+    },
   ],
 
   // Jaskier - Documentation/Communication
@@ -407,7 +407,7 @@ function quickSort(arr: number[]): number[] {
 *QuickSort jest jak dobra ballada - prosty motyw, a potrafi zaczarowaÄ‡ nawet najwiÄ™kszÄ… tablicÄ™!*
 
 đźŽµ *Toss a coin to your sorter, O valley of arrays!* đźŽµ`,
-      keywords: ['wyjaĹ›nij', 'explain', 'jak dziaĹ‚a', 'co to', 'dokumentacja']
-    }
-  ]
+      keywords: ['wyjaĹ›nij', 'explain', 'jak dziaĹ‚a', 'co to', 'dokumentacja'],
+    },
+  ],
 };

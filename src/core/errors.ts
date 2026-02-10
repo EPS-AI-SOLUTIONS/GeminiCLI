@@ -69,7 +69,7 @@ export class HydraError extends Error {
       retryable: this.retryable,
       context: this.context,
       timestamp: this.timestamp.toISOString(),
-      stack: this.stack
+      stack: this.stack,
     };
   }
 
@@ -92,7 +92,7 @@ export class ProviderError extends HydraError {
     super(message, {
       code: options.code ?? 'PROVIDER_ERROR',
       retryable: options.retryable ?? true,
-      ...options
+      ...options,
     });
     this.name = 'ProviderError';
     this.provider = provider;
@@ -107,7 +107,7 @@ export class GeminiError extends ProviderError {
   constructor(message: string, options: HydraErrorOptions = {}) {
     super(message, 'gemini', {
       code: options.code ?? 'GEMINI_ERROR',
-      ...options
+      ...options,
     });
     this.name = 'GeminiError';
   }
@@ -120,7 +120,7 @@ export class LlamaCppError extends ProviderError {
   constructor(message: string, options: HydraErrorOptions = {}) {
     super(message, 'llamacpp', {
       code: options.code ?? 'LLAMACPP_ERROR',
-      ...options
+      ...options,
     });
     this.name = 'LlamaCppError';
   }
@@ -133,7 +133,7 @@ export class OllamaError extends ProviderError {
   constructor(message: string, options: HydraErrorOptions = {}) {
     super(message, 'ollama', {
       code: options.code ?? 'OLLAMA_ERROR',
-      ...options
+      ...options,
     });
     this.name = 'OllamaError';
   }
@@ -147,7 +147,7 @@ export class NetworkError extends HydraError {
     super(message, {
       code: options.code ?? 'NETWORK_ERROR',
       retryable: options.retryable ?? true,
-      ...options
+      ...options,
     });
     this.name = 'NetworkError';
   }
@@ -163,7 +163,7 @@ export class TimeoutError extends HydraError {
     super(message, {
       code: options.code ?? 'TIMEOUT_ERROR',
       retryable: options.retryable ?? true,
-      ...options
+      ...options,
     });
     this.name = 'TimeoutError';
     this.timeoutMs = timeoutMs;
@@ -180,7 +180,7 @@ export class ConfigurationError extends HydraError {
       code: options.code ?? 'CONFIG_ERROR',
       recoverable: false,
       retryable: false,
-      ...options
+      ...options,
     });
     this.name = 'ConfigurationError';
   }
@@ -194,7 +194,7 @@ export class RoutingError extends HydraError {
     super(message, {
       code: options.code ?? 'ROUTING_ERROR',
       retryable: options.retryable ?? true,
-      ...options
+      ...options,
     });
     this.name = 'RoutingError';
   }
@@ -209,7 +209,7 @@ export class PipelineError extends HydraError {
   constructor(message: string, stage?: string, options: HydraErrorOptions = {}) {
     super(message, {
       code: options.code ?? 'PIPELINE_ERROR',
-      ...options
+      ...options,
     });
     this.name = 'PipelineError';
     this.stage = stage;
@@ -229,7 +229,7 @@ export class RateLimitError extends HydraError {
     super(message, {
       code: options.code ?? 'RATE_LIMIT_ERROR',
       retryable: true,
-      ...options
+      ...options,
     });
     this.name = 'RateLimitError';
     this.retryAfterMs = retryAfterMs;
@@ -249,7 +249,7 @@ export class CircuitOpenError extends HydraError {
     super(message, {
       code: options.code ?? 'CIRCUIT_OPEN',
       retryable: true,
-      ...options
+      ...options,
     });
     this.name = 'CircuitOpenError';
     this.nextAttemptAt = nextAttemptAt;
@@ -270,7 +270,7 @@ export class ValidationError extends HydraError {
       code: options.code ?? 'VALIDATION_ERROR',
       recoverable: false,
       retryable: false,
-      ...options
+      ...options,
     });
     this.name = 'ValidationError';
     this.field = field;
@@ -290,7 +290,7 @@ export class PoolExhaustedError extends HydraError {
     super(message, {
       code: options.code ?? 'POOL_EXHAUSTED',
       retryable: true,
-      ...options
+      ...options,
     });
     this.name = 'PoolExhaustedError';
     this.queueSize = queueSize;
@@ -309,12 +309,12 @@ export class AggregateHydraError extends HydraError {
   constructor(message: string, errors: Error[], options: HydraErrorOptions = {}) {
     super(message, {
       code: options.code ?? 'AGGREGATE_ERROR',
-      ...options
+      ...options,
     });
     this.name = 'AggregateHydraError';
     this.errors = errors;
     this.context.errorCount = errors.length;
-    this.context.errorTypes = [...new Set(errors.map(e => e.name))];
+    this.context.errorTypes = [...new Set(errors.map((e) => e.name))];
   }
 }
 
@@ -333,7 +333,7 @@ export function normalizeError(source: unknown, defaultCode = 'UNKNOWN_ERROR'): 
   if (source instanceof Error) {
     return new HydraError(source.message, {
       code: defaultCode,
-      cause: source
+      cause: source,
     });
   }
 
@@ -343,7 +343,7 @@ export function normalizeError(source: unknown, defaultCode = 'UNKNOWN_ERROR'): 
 
   return new HydraError('Unknown error', {
     code: defaultCode,
-    context: { originalError: source }
+    context: { originalError: source },
   });
 }
 
@@ -397,11 +397,7 @@ export function getErrorCode(error: unknown): string {
 /**
  * Add retry context to error
  */
-export function withRetryContext(
-  error: Error,
-  attempt: number,
-  maxAttempts: number
-): Error {
+export function withRetryContext(error: Error, attempt: number, maxAttempts: number): Error {
   if (error instanceof HydraError) {
     error.context.attempt = attempt;
     error.context.maxAttempts = maxAttempts;
@@ -411,7 +407,66 @@ export function withRetryContext(
 }
 
 // ============================================================================
+// TYPE SAFETY UTILITIES (#16)
+// ============================================================================
+
+/**
+ * Safely extract error message from unknown catch value.
+ *
+ * TYPE SAFETY FIX (#16): Use this instead of `catch (error: any) { error.message }`
+ *
+ * @example
+ * ```ts
+ * try { ... } catch (error) {
+ *   console.error(getErrorMessage(error));
+ *   // or with prefix:
+ *   throw new Error(`API failed: ${getErrorMessage(error)}`);
+ * }
+ * ```
+ */
+export function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  if (error && typeof error === 'object' && 'message' in error) {
+    return String((error as { message: unknown }).message);
+  }
+  return String(error);
+}
+
+/**
+ * Safely extract error code from unknown catch value.
+ */
+export function getErrorCodeSafe(error: unknown): string | undefined {
+  if (error instanceof HydraError) return error.code;
+  if (error instanceof Error && 'code' in error) {
+    return String((error as Error & { code: unknown }).code);
+  }
+  return undefined;
+}
+
+/**
+ * Type guard: narrows unknown to Error
+ */
+export function isError(value: unknown): value is Error {
+  return value instanceof Error;
+}
+
+/**
+ * Ensure error is an Error instance (wrap primitives)
+ */
+export function toError(value: unknown): Error {
+  if (value instanceof Error) return value;
+  if (typeof value === 'string') return new Error(value);
+  return new Error(String(value));
+}
+
+// ============================================================================
 // Centralized Error Handler (re-export)
 // ============================================================================
 
-export { ErrorHandler, type ErrorCategory, type ErrorHandleResult, type GeminiHydraError } from './ErrorHandler.js';
+export {
+  type ErrorCategory,
+  type ErrorHandleResult,
+  ErrorHandler,
+  type GeminiHydraError,
+} from './ErrorHandler.js';

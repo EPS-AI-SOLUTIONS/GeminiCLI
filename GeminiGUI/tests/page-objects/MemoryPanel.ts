@@ -4,9 +4,9 @@
  * Handles memory panel interactions.
  */
 
-import { Page, Locator, expect } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
+import { SELECTORS, UI_TEXTS } from '../fixtures/test-data';
 import { BasePage } from './BasePage';
-import { SELECTORS, TIMEOUTS, UI_TEXTS, AGENTS } from '../fixtures/test-data';
 
 interface MemoryEntry {
   agent: string;

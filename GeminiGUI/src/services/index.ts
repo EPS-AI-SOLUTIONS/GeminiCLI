@@ -5,18 +5,17 @@
  * Centralized export of all service modules.
  */
 
-export {
-  TauriService,
-  BridgeService,
-  SystemService,
-  MemoryService,
-  default as TauriServiceDefault,
-} from './tauri.service';
-
 export type {
-  EnvVars,
   AgentMemory,
-  KnowledgeNode,
+  EnvVars,
   KnowledgeEdge,
   KnowledgeGraph,
+  KnowledgeNode,
+} from './tauri.service';
+export {
+  BridgeService,
+  default as TauriServiceDefault,
+  MemoryService,
+  SystemService,
+  TauriService,
 } from './tauri.service';

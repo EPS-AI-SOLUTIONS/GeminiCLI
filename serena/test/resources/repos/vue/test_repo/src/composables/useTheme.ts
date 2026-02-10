@@ -1,18 +1,18 @@
-import { ref, computed, watch, inject, provide, type InjectionKey, type Ref } from 'vue'
+import { computed, type InjectionKey, inject, provide, type Ref, ref, watch } from 'vue';
 
 /**
  * Theme configuration type
  */
 export interface ThemeConfig {
-  isDark: boolean
-  primaryColor: string
-  fontSize: number
+  isDark: boolean;
+  primaryColor: string;
+  fontSize: number;
 }
 
 /**
  * Injection key for theme - demonstrates provide/inject pattern
  */
-export const ThemeKey: InjectionKey<Ref<ThemeConfig>> = Symbol('theme')
+export const ThemeKey: InjectionKey<Ref<ThemeConfig>> = Symbol('theme');
 
 /**
  * Composable for theme management with watchers.
@@ -21,10 +21,10 @@ export const ThemeKey: InjectionKey<Ref<ThemeConfig>> = Symbol('theme')
 export function useThemeProvider() {
   // Initialize theme from localStorage or defaults
   const loadThemeFromStorage = (): ThemeConfig => {
-    const stored = localStorage.getItem('app-theme')
+    const stored = localStorage.getItem('app-theme');
     if (stored) {
       try {
-        return JSON.parse(stored)
+        return JSON.parse(stored);
       } catch {
         // Fall through to defaults
       }
@@ -32,51 +32,51 @@ export function useThemeProvider() {
     return {
       isDark: false,
       primaryColor: '#667eea',
-      fontSize: 16
-    }
-  }
+      fontSize: 16,
+    };
+  };
 
-  const theme = ref<ThemeConfig>(loadThemeFromStorage())
+  const theme = ref<ThemeConfig>(loadThemeFromStorage());
 
   // Computed properties
-  const isDarkMode = computed(() => theme.value.isDark)
-  const themeClass = computed(() => theme.value.isDark ? 'dark-theme' : 'light-theme')
+  const isDarkMode = computed(() => theme.value.isDark);
+  const themeClass = computed(() => (theme.value.isDark ? 'dark-theme' : 'light-theme'));
 
   // Watch for theme changes and persist to localStorage
   watch(
     theme,
     (newTheme) => {
-      localStorage.setItem('app-theme', JSON.stringify(newTheme))
-      document.documentElement.className = newTheme.isDark ? 'dark' : 'light'
+      localStorage.setItem('app-theme', JSON.stringify(newTheme));
+      document.documentElement.className = newTheme.isDark ? 'dark' : 'light';
     },
-    { deep: true }
-  )
+    { deep: true },
+  );
 
   // Methods
   const toggleDarkMode = (): void => {
-    theme.value.isDark = !theme.value.isDark
-  }
+    theme.value.isDark = !theme.value.isDark;
+  };
 
   const setPrimaryColor = (color: string): void => {
-    theme.value.primaryColor = color
-  }
+    theme.value.primaryColor = color;
+  };
 
   const setFontSize = (size: number): void => {
     if (size >= 12 && size <= 24) {
-      theme.value.fontSize = size
+      theme.value.fontSize = size;
     }
-  }
+  };
 
   const resetTheme = (): void => {
     theme.value = {
       isDark: false,
       primaryColor: '#667eea',
-      fontSize: 16
-    }
-  }
+      fontSize: 16,
+    };
+  };
 
   // Provide theme to child components
-  provide(ThemeKey, theme)
+  provide(ThemeKey, theme);
 
   return {
     theme,
@@ -85,8 +85,8 @@ export function useThemeProvider() {
     toggleDarkMode,
     setPrimaryColor,
     setFontSize,
-    resetTheme
-  }
+    resetTheme,
+  };
 }
 
 /**
@@ -94,20 +94,20 @@ export function useThemeProvider() {
  * Demonstrates: inject pattern
  */
 export function useTheme() {
-  const theme = inject(ThemeKey)
+  const theme = inject(ThemeKey);
 
   if (!theme) {
-    throw new Error('useTheme must be used within a component that provides ThemeKey')
+    throw new Error('useTheme must be used within a component that provides ThemeKey');
   }
 
-  const isDark = computed(() => theme.value.isDark)
-  const primaryColor = computed(() => theme.value.primaryColor)
-  const fontSize = computed(() => theme.value.fontSize)
+  const isDark = computed(() => theme.value.isDark);
+  const primaryColor = computed(() => theme.value.primaryColor);
+  const fontSize = computed(() => theme.value.fontSize);
 
   return {
     theme,
     isDark,
     primaryColor,
-    fontSize
-  }
+    fontSize,
+  };
 }

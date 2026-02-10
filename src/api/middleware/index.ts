@@ -3,21 +3,18 @@
  * Re-exports all middleware
  */
 
-export {
-  errorHandler,
-  notFoundHandler,
-  ApiError,
-  ValidationError,
-  NotFoundError,
-  ExecutionError,
-} from './errorHandler.js';
-
 export type { ErrorResponse } from './errorHandler.js';
-
 export {
+  ApiError,
+  ExecutionError,
+  errorHandler,
+  NotFoundError,
+  notFoundHandler,
+  ValidationError,
+} from './errorHandler.js';
+export type { RequestLog } from './requestLogger.js';
+export {
+  generateRequestId,
   onRequest,
   onResponse,
-  generateRequestId,
 } from './requestLogger.js';
-
-export type { RequestLog } from './requestLogger.js';

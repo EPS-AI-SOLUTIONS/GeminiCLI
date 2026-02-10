@@ -8,11 +8,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
 
   // Reporters
-  reporter: [
-    ['html', { open: 'never' }],
-    ['list'],
-    process.env.CI ? ['github'] : ['line'],
-  ],
+  reporter: [['html', { open: 'never' }], ['list'], process.env.CI ? ['github'] : ['line']],
 
   // Global timeout for tests
   timeout: 60000,

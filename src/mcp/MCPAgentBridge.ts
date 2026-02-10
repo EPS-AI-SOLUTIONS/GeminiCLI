@@ -9,9 +9,9 @@
  */
 
 import chalk from 'chalk';
+import type { Agent } from '../core/agent/Agent.js';
 import { mcpManager } from './MCPManager.js';
-import { MCPTool, MCPToolResult } from './MCPTypes.js';
-import { Agent } from '../core/agent/Agent.js';
+import type { MCPTool, MCPToolResult } from './MCPTypes.js';
 import { NATIVE_SERVER_NAME, NATIVE_TOOL_ALIASES } from './NativeToolsServer.js';
 
 // ============================================================
@@ -20,8 +20,6 @@ import { NATIVE_SERVER_NAME, NATIVE_TOOL_ALIASES } from './NativeToolsServer.js'
 
 export class MCPAgentBridge {
   private initialized: boolean = false;
-
-  constructor() {}
 
   // ============================================================
   // Initialization
@@ -137,7 +135,12 @@ export class MCPAgentBridge {
     const nativeServer = mcpManager.getNativeToolsServer();
     const nativeTools = nativeServer.isInitialized() ? nativeServer.getAllTools() : [];
 
-    if (tools.length === 0 && prompts.length === 0 && resources.length === 0 && nativeTools.length === 0) {
+    if (
+      tools.length === 0 &&
+      prompts.length === 0 &&
+      resources.length === 0 &&
+      nativeTools.length === 0
+    ) {
       return '';
     }
 
@@ -215,12 +218,14 @@ export class MCPAgentBridge {
     if (!content) return null;
 
     if (Array.isArray(content)) {
-      return content.map((c: any) => {
-        if (c.type === 'text') return c.text;
-        if (c.type === 'image') return `[Image: ${c.mimeType}]`;
-        if (c.type === 'resource') return `[Resource: ${c.uri}]`;
-        return JSON.stringify(c);
-      }).join('\n');
+      return content
+        .map((c: any) => {
+          if (c.type === 'text') return c.text;
+          if (c.type === 'image') return `[Image: ${c.mimeType}]`;
+          if (c.type === 'resource') return `[Resource: ${c.uri}]`;
+          return JSON.stringify(c);
+        })
+        .join('\n');
     }
 
     return content;
@@ -267,7 +272,7 @@ To use an MCP tool, respond with:
 MCP_CALL: mcp__serverName__toolName({"param": "value"})`;
 
     // First pass: get agent's initial response
-    let response = await agent.think(enhancedTask);
+    const response = await agent.think(enhancedTask);
     const toolCalls = this.parseToolCalls(response);
 
     if (toolCalls.length === 0) {

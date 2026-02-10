@@ -4,16 +4,16 @@
  */
 
 import chalk from 'chalk';
-import type { FormatSpec, FormatError, FormatValidation, FormatType } from './types.js';
-import { validateJson, autoCorrectJson } from './JsonValidator.js';
-import { validateMarkdown, autoCorrectMarkdown } from './MarkdownValidator.js';
-import { validateCode, autoCorrectCode } from './CodeValidator.js';
-import { validateList, autoCorrectList } from './ListValidator.js';
+import { autoCorrectCode, validateCode } from './CodeValidator.js';
+import { CommonFormats, createSpec } from './CommonFormats.js';
 import { detectFormat, getCorrections } from './FormatDetection.js';
-import { createSpec, CommonFormats } from './CommonFormats.js';
+import { autoCorrectJson, validateJson } from './JsonValidator.js';
+import { autoCorrectList, validateList } from './ListValidator.js';
+import { autoCorrectMarkdown, validateMarkdown } from './MarkdownValidator.js';
+import type { FormatError, FormatSpec, FormatType, FormatValidation } from './types.js';
 
 // Re-export types so consumers can import from this file
-export type { FormatType, FormatSpec, JsonSchema, FormatError, FormatValidation } from './types.js';
+export type { FormatError, FormatSpec, FormatType, FormatValidation, JsonSchema } from './types.js';
 
 // Re-export CommonFormats
 export { CommonFormats };
@@ -44,7 +44,7 @@ export class OutputFormatValidator {
           type: 'invalid',
           message: 'Output is empty',
           expected: 'Non-empty output',
-          actual: 'Empty string'
+          actual: 'Empty string',
         });
         suggestions.push('Provide meaningful content in the output');
       }
@@ -52,7 +52,7 @@ export class OutputFormatValidator {
         valid: expectedFormat.allowEmpty ?? false,
         errors,
         suggestions,
-        metadata: { format: expectedFormat.type, parseTime: Date.now() - startTime }
+        metadata: { format: expectedFormat.type, parseTime: Date.now() - startTime },
       };
     }
 
@@ -62,9 +62,11 @@ export class OutputFormatValidator {
         type: 'length',
         message: `Output exceeds maximum length of ${expectedFormat.maxLength}`,
         expected: `<= ${expectedFormat.maxLength} characters`,
-        actual: `${output.length} characters`
+        actual: `${output.length} characters`,
       });
-      suggestions.push(`Truncate or summarize output to fit within ${expectedFormat.maxLength} characters`);
+      suggestions.push(
+        `Truncate or summarize output to fit within ${expectedFormat.maxLength} characters`,
+      );
     }
 
     // Validate based on format type
@@ -99,9 +101,13 @@ export class OutputFormatValidator {
     const valid = errors.length === 0;
 
     if (this.debug) {
-      console.log(chalk.gray(`[OutputFormatValidator] Validated ${expectedFormat.type}: ${valid ? chalk.green('VALID') : chalk.red('INVALID')}`));
+      console.log(
+        chalk.gray(
+          `[OutputFormatValidator] Validated ${expectedFormat.type}: ${valid ? chalk.green('VALID') : chalk.red('INVALID')}`,
+        ),
+      );
       if (errors.length > 0) {
-        errors.forEach(e => console.log(chalk.yellow(`  - ${e.type}: ${e.message}`)));
+        errors.forEach((e) => console.log(chalk.yellow(`  - ${e.type}: ${e.message}`)));
       }
     }
 
@@ -114,8 +120,8 @@ export class OutputFormatValidator {
         format: expectedFormat.type,
         detectedFormat: detectFormat(output),
         parseTime: Date.now() - startTime,
-        corrections: correctedOutput ? getCorrections(output, correctedOutput) : undefined
-      }
+        corrections: correctedOutput ? getCorrections(output, correctedOutput) : undefined,
+      },
     };
   }
 
@@ -141,7 +147,7 @@ export class OutputFormatValidator {
     }
 
     if (format.maxLength && corrected.length > format.maxLength) {
-      corrected = corrected.substring(0, format.maxLength - 3) + '...';
+      corrected = `${corrected.substring(0, format.maxLength - 3)}...`;
     }
 
     return corrected;

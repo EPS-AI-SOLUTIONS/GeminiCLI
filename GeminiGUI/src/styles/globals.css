@@ -67,10 +67,10 @@
   --glass-radius: 12px;
 
   /* GeminiHydra compat aliases */
-  --matrix-text: #e2e8f0;
-  --matrix-text-dim: #94a3b8;
-  --matrix-panel-bg: rgba(10, 20, 10, 0.25);
-  --matrix-input-bg: rgba(0, 0, 0, 0.3);
+  --matrix-text: #f0f5f0;
+  --matrix-text-dim: #a0b8a0;
+  --matrix-panel-bg: rgba(5, 15, 5, 0.55);
+  --matrix-input-bg: rgba(0, 0, 0, 0.5);
   --matrix-hover-bg: rgba(0, 255, 65, 0.08);
   --matrix-active-bg: rgba(0, 255, 65, 0.12);
   --matrix-divider: rgba(0, 255, 65, 0.06);
@@ -126,9 +126,10 @@
    BASE STYLES
    ============================================ */
 html {
-  font-size: 80%;
+  font-size: 100%;
   height: 100%;
   background: var(--matrix-bg-primary);
+  transition: background-color 0.5s ease, color 0.5s ease;
 }
 
 body {
@@ -139,6 +140,7 @@ body {
   font-feature-settings: "rlig" 1, "calt" 1;
   overflow: hidden;
   height: 100%;
+  transition: background-color 0.5s ease, color 0.5s ease;
 }
 
 :root.light body,
@@ -223,20 +225,20 @@ body {
    GLASS PANEL STYLES (Tissaia Design)
    ============================================ */
 .glass-panel-light {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.65);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border: none;
+  border: 1px solid rgba(0, 0, 0, 0.10);
   box-shadow: var(--glass-light-shadow);
   color: var(--glass-light-text);
   border-radius: var(--glass-radius);
 }
 
 .glass-panel-dark {
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.55);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: var(--glass-dark-shadow);
   color: var(--glass-dark-text);
   border-radius: var(--glass-radius);
@@ -244,28 +246,28 @@ body {
 
 /* Legacy glass-panel */
 .glass-panel {
-  background: var(--matrix-panel-bg);
+  background: rgba(5, 15, 5, 0.65);
   backdrop-filter: blur(20px) saturate(200%);
   -webkit-backdrop-filter: blur(20px) saturate(200%);
   border-radius: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
 }
 
 :root.light .glass-panel,
 [data-theme='light'] .glass-panel {
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.8);
   border-color: rgba(45, 106, 79, 0.15);
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.08);
 }
 
 .glass-card {
-  background: rgba(15, 25, 40, 0.65);
+  background: rgba(10, 20, 30, 0.75);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-radius: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
 }
 
 :root.light .glass-card,
@@ -400,7 +402,7 @@ body {
    MESSAGE BUBBLES
    ============================================ */
 .message-bubble-user {
-  @apply max-w-[95%] p-3 rounded-xl text-sm overflow-hidden relative;
+  @apply max-w-[80%] p-4 rounded-xl text-sm overflow-hidden relative;
   @apply font-bold font-sans;
   background: var(--matrix-accent);
   color: black;
@@ -408,12 +410,12 @@ body {
 }
 
 .message-bubble-assistant {
-  @apply max-w-[95%] p-4 rounded-xl text-sm overflow-hidden relative;
+  @apply max-w-[80%] p-4 rounded-xl text-sm overflow-hidden relative;
   @apply font-mono backdrop-blur-xl;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.6);
   color: var(--matrix-text);
-  border-left: 2px solid color-mix(in srgb, var(--matrix-accent) 25%, transparent);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  border-left: 2px solid color-mix(in srgb, var(--matrix-accent) 35%, transparent);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
 }
 
 .message-bubble-system {
@@ -425,10 +427,10 @@ body {
 
 :root.light .message-bubble-assistant,
 [data-theme='light'] .message-bubble-assistant {
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.85);
   color: var(--matrix-text);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(5, 150, 105, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(5, 150, 105, 0.12);
 }
 
 :root.light .message-bubble-user,
@@ -440,8 +442,9 @@ body {
 
 :root.light .message-bubble-system,
 [data-theme='light'] .message-bubble-system {
-  background: rgba(219, 234, 254, 0.6);
+  background: rgba(219, 234, 254, 0.8);
   color: #1e3a5f;
+  border: 1px solid rgba(59, 130, 246, 0.1);
 }
 
 /* ============================================
@@ -527,6 +530,18 @@ body {
   background: rgba(0, 0, 0, 0.15);
 }
 
+:root.light .data-box,
+[data-theme='light'] .data-box {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--matrix-text);
+}
+
+:root.light .data-box-scroll,
+[data-theme='light'] .data-box-scroll {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--matrix-text);
+}
+
 /* ============================================
    WELCOME SCREEN
    ============================================ */
@@ -570,7 +585,7 @@ body {
 
 .welcome-subtitle {
   font-size: 0.8rem;
-  max-width: 28rem;
+  max-width: 36rem;
   color: var(--matrix-text-dim);
   line-height: 1.5;
 }
@@ -614,7 +629,7 @@ body {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 0.625rem;
-  max-width: 28rem;
+  max-width: 36rem;
   width: 100%;
 }
 
@@ -748,6 +763,19 @@ body {
   transform: scale(1.02);
 }
 
+:root.light .dropzone,
+[data-theme='light'] .dropzone {
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+:root.light .dropzone:hover,
+[data-theme='light'] .dropzone:hover,
+:root.light .dropzone.active,
+[data-theme='light'] .dropzone.active {
+  border-color: #2d6a4f;
+  background: rgba(45, 106, 79, 0.05);
+}
+
 /* ============================================
    FOCUS STATES (Accessibility)
    ============================================ */
@@ -813,9 +841,9 @@ img, button, header, footer, .sidebar-item, .status-badge, .noselect {
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.01ms;
   }
 }
 
@@ -832,9 +860,11 @@ img, button, header, footer, .sidebar-item, .status-badge, .noselect {
 
 @media (min-width: 1024px) {
   .message-bubble-user,
-  .message-bubble-assistant,
+  .message-bubble-assistant {
+    max-width: 75%;
+  }
   .message-bubble-system {
-    max-width: 85%;
+    max-width: 90%;
   }
 }
 

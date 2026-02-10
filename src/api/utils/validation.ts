@@ -13,7 +13,7 @@ export function requireString(
   value: unknown,
   fieldName: string,
   minLength: number = 1,
-  maxLength: number = 10000
+  maxLength: number = 10000,
 ): string {
   if (typeof value !== 'string') {
     throw new ValidationError(`${fieldName} must be a string`);
@@ -33,7 +33,7 @@ export function requireString(
 export function optionalString(
   value: unknown,
   fieldName: string,
-  maxLength: number = 10000
+  maxLength: number = 10000,
 ): string | undefined {
   if (value === undefined || value === null) {
     return undefined;
@@ -49,11 +49,11 @@ export function requireNumber(
   value: unknown,
   fieldName: string,
   min?: number,
-  max?: number
+  max?: number,
 ): number {
   const num = Number(value);
 
-  if (isNaN(num)) {
+  if (Number.isNaN(num)) {
     throw new ValidationError(`${fieldName} must be a number`);
   }
 
@@ -72,7 +72,7 @@ export function optionalNumber(
   value: unknown,
   fieldName: string,
   min?: number,
-  max?: number
+  max?: number,
 ): number | undefined {
   if (value === undefined || value === null) {
     return undefined;
@@ -95,10 +95,7 @@ export function requireBoolean(value: unknown, fieldName: string): boolean {
   throw new ValidationError(`${fieldName} must be a boolean`);
 }
 
-export function optionalBoolean(
-  value: unknown,
-  fieldName: string
-): boolean | undefined {
+export function optionalBoolean(value: unknown, fieldName: string): boolean | undefined {
   if (value === undefined || value === null) {
     return undefined;
   }
@@ -112,16 +109,14 @@ export function optionalBoolean(
 export function requireEnum<T extends string>(
   value: unknown,
   fieldName: string,
-  validValues: readonly T[]
+  validValues: readonly T[],
 ): T {
   if (typeof value !== 'string') {
     throw new ValidationError(`${fieldName} must be a string`);
   }
 
   if (!validValues.includes(value as T)) {
-    throw new ValidationError(
-      `${fieldName} must be one of: ${validValues.join(', ')}`
-    );
+    throw new ValidationError(`${fieldName} must be one of: ${validValues.join(', ')}`);
   }
 
   return value as T;
@@ -130,7 +125,7 @@ export function requireEnum<T extends string>(
 export function optionalEnum<T extends string>(
   value: unknown,
   fieldName: string,
-  validValues: readonly T[]
+  validValues: readonly T[],
 ): T | undefined {
   if (value === undefined || value === null) {
     return undefined;
@@ -142,10 +137,7 @@ export function optionalEnum<T extends string>(
 // Object Validation
 // ═══════════════════════════════════════════════════════════════════════════
 
-export function requireObject(
-  value: unknown,
-  fieldName: string
-): Record<string, unknown> {
+export function requireObject(value: unknown, fieldName: string): Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     throw new ValidationError(`${fieldName} must be an object`);
   }
@@ -159,7 +151,7 @@ export function requireObject(
 export function requireArray<T>(
   value: unknown,
   fieldName: string,
-  itemValidator?: (item: unknown, index: number) => T
+  itemValidator?: (item: unknown, index: number) => T,
 ): T[] {
   if (!Array.isArray(value)) {
     throw new ValidationError(`${fieldName} must be an array`);

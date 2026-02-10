@@ -6,7 +6,7 @@
  * and test what can be unit-tested: constructor behavior and AGENT_PERSONAS structure.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ============================================================================
 // Mock ALL external dependencies BEFORE importing the module under test
@@ -42,14 +42,15 @@ vi.mock('ollama', () => ({
 // Mock @google/generative-ai (must be a real class for `new` to work at module level)
 vi.mock('@google/generative-ai', () => {
   class MockGoogleGenerativeAI {
-    constructor(_apiKey: string) {}
     getGenerativeModel() {
       return {
         generateContent: vi.fn().mockResolvedValue({
           response: { text: () => 'mocked' },
         }),
         generateContentStream: vi.fn().mockResolvedValue({
-          stream: (async function* () { yield { text: () => 'mocked' }; })(),
+          stream: (async function* () {
+            yield { text: () => 'mocked' };
+          })(),
         }),
       };
     }
@@ -113,7 +114,7 @@ vi.mock('../../src/core/PromptInjectionDetector.js', () => ({
 // Import the module under test AFTER all mocks are set up
 // ============================================================================
 
-import { Agent, AGENT_PERSONAS } from '../../src/core/Agent.js';
+import { AGENT_PERSONAS, Agent } from '../../src/core/agent/index.js';
 
 // ============================================================================
 // Tests
@@ -121,9 +122,18 @@ import { Agent, AGENT_PERSONAS } from '../../src/core/Agent.js';
 
 describe('AGENT_PERSONAS', () => {
   const expectedAgents = [
-    'geralt', 'yennefer', 'triss', 'jaskier',
-    'vesemir', 'ciri', 'eskel', 'lambert',
-    'zoltan', 'regis', 'dijkstra', 'philippa',
+    'geralt',
+    'yennefer',
+    'triss',
+    'jaskier',
+    'vesemir',
+    'ciri',
+    'eskel',
+    'lambert',
+    'zoltan',
+    'regis',
+    'dijkstra',
+    'philippa',
     'serena',
   ];
 
@@ -149,12 +159,12 @@ describe('AGENT_PERSONAS', () => {
       expect(typeof persona.role).toBe('string');
       expect(persona.role.length).toBeGreaterThan(0);
       expect(typeof persona.model).toBe('string');
-      expect(persona.model!.length).toBeGreaterThan(0);
+      expect(persona.model?.length).toBeGreaterThan(0);
     }
   });
 
   it('should have unique roles for each persona', () => {
-    const roles = Object.values(AGENT_PERSONAS).map(p => p.role);
+    const roles = Object.values(AGENT_PERSONAS).map((p) => p.role);
     const uniqueRoles = new Set(roles);
     expect(uniqueRoles.size).toBe(roles.length);
   });
@@ -193,9 +203,19 @@ describe('Agent', () => {
 
     it('should accept all valid agent roles', () => {
       const roles = [
-        'dijkstra', 'geralt', 'yennefer', 'triss',
-        'vesemir', 'jaskier', 'ciri', 'eskel',
-        'lambert', 'zoltan', 'regis', 'philippa', 'serena',
+        'dijkstra',
+        'geralt',
+        'yennefer',
+        'triss',
+        'vesemir',
+        'jaskier',
+        'ciri',
+        'eskel',
+        'lambert',
+        'zoltan',
+        'regis',
+        'philippa',
+        'serena',
       ] as const;
 
       for (const role of roles) {

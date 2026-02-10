@@ -16,7 +16,7 @@
  *   const metadata = useAppStore(useShallow(selectSessionMetadata));
  */
 
-import type { AppState, Session, Message } from '../types';
+import type { AppState, Message, Session } from '../types';
 
 // Extended AppState with pagination (mirrors definition in useAppStore)
 interface PaginationState {
@@ -37,14 +37,14 @@ type AppStateWithPagination = AppState & PaginationState;
  * Prevents unnecessary re-renders for composite selectors returning objects.
  */
 function createStableSelector<T extends Record<string, unknown>>(
-  selector: (state: AppStateWithPagination) => T
+  selector: (state: AppStateWithPagination) => T,
 ): (state: AppStateWithPagination) => T {
   let prev: T | undefined;
   return (state: AppStateWithPagination): T => {
     const next = selector(state);
     if (prev !== undefined) {
       const keys = Object.keys(next) as Array<keyof T>;
-      const isEqual = keys.every((k) => prev![k] === next[k]);
+      const isEqual = keys.every((k) => prev?.[k] === next[k]);
       if (isEqual) return prev;
     }
     prev = next;
@@ -181,9 +181,11 @@ export const selectSessions = (state: AppState) => state.sessions;
  * @param id - Session ID to find
  * @returns Function that takes state and returns the session or undefined
  */
-export const selectSessionById = (id: string) => (state: AppState): Session | undefined => {
-  return state.sessions.find((session) => session.id === id);
-};
+export const selectSessionById =
+  (id: string) =>
+  (state: AppState): Session | undefined => {
+    return state.sessions.find((session) => session.id === id);
+  };
 
 /**
  * Get current session object
@@ -234,9 +236,11 @@ export const selectCurrentMessages = (state: AppState): Message[] => {
  * @param id - Session ID
  * @returns Function that takes state and returns messages for that session
  */
-export const selectMessagesBySessionId = (id: string) => (state: AppState): Message[] => {
-  return state.chatHistory[id] || [];
-};
+export const selectMessagesBySessionId =
+  (id: string) =>
+  (state: AppState): Message[] => {
+    return state.chatHistory[id] || [];
+  };
 
 /**
  * Get total message count in current session
@@ -254,9 +258,11 @@ export const selectMessageCount = (state: AppState): number => {
  * @param id - Session ID
  * @returns Function that takes state and returns message count
  */
-export const selectMessageCountBySessionId = (id: string) => (state: AppState): number => {
-  return (state.chatHistory[id] || []).length;
-};
+export const selectMessageCountBySessionId =
+  (id: string) =>
+  (state: AppState): number => {
+    return (state.chatHistory[id] || []).length;
+  };
 
 /**
  * Check if current session has any messages
@@ -275,9 +281,11 @@ export const selectHasMessages = (state: AppState): boolean => {
  * @param id - Session ID
  * @returns Function that takes state and returns boolean
  */
-export const selectSessionHasMessages = (id: string) => (state: AppState): boolean => {
-  return (state.chatHistory[id] || []).length > 0;
-};
+export const selectSessionHasMessages =
+  (id: string) =>
+  (state: AppState): boolean => {
+    return (state.chatHistory[id] || []).length > 0;
+  };
 
 /**
  * Get last message in current session
@@ -295,10 +303,12 @@ export const selectLastMessage = (state: AppState): Message | undefined => {
  * @param id - Session ID
  * @returns Function that takes state and returns last message or undefined
  */
-export const selectLastMessageBySessionId = (id: string) => (state: AppState): Message | undefined => {
-  const messages = state.chatHistory[id] || [];
-  return messages.length > 0 ? messages[messages.length - 1] : undefined;
-};
+export const selectLastMessageBySessionId =
+  (id: string) =>
+  (state: AppState): Message | undefined => {
+    const messages = state.chatHistory[id] || [];
+    return messages.length > 0 ? messages[messages.length - 1] : undefined;
+  };
 
 // ============================================================================
 // COMPOSITE SELECTORS (Multiple State Slices)
@@ -371,7 +381,7 @@ export const selectPaginatedMessages = (state: AppStateWithPagination): Message[
   const totalMessages = allMessages.length;
   const { messagesPerPage, currentPage } = state;
 
-  const endOffset = totalMessages - (currentPage * messagesPerPage);
+  const endOffset = totalMessages - currentPage * messagesPerPage;
   const startOffset = Math.max(0, endOffset - messagesPerPage);
 
   return allMessages.slice(startOffset, endOffset);

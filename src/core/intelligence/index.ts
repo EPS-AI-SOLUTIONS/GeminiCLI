@@ -18,141 +18,155 @@
 
 import chalk from 'chalk';
 
-// Re-export all modules
-export { SemanticCache, semanticCache, type CacheEntry } from './SemanticCache.js';
-export { KnowledgeGraph, knowledgeGraph, type KnowledgeNode, type KnowledgeEdge } from './KnowledgeGraph.js';
-export { chainOfThought, type ChainOfThoughtResult } from './ChainOfThought.js';
+export { type Analogy, findAnalogies } from './AnalogicalReasoning.js';
+export { type ChainOfThoughtResult, chainOfThought } from './ChainOfThought.js';
+export { type ConfidenceScore, scoreConfidence } from './ConfidenceScoring.js';
+export { type ContextChunk, ContextWindowManager, contextManager } from './ContextManager.js';
 export {
-  selfReflect,
-  reflexionLoop,
-  getReflexionStats,
-  clearReflexionMemory,
-  reflexionMemory,
-  type ReflectionResult,
-  type ReflexionResult,
-  type ReflexionLesson,
-  type ReflexionMemory,
-  type EvaluationResult,
-  type TrajectoryCheckpoint
-} from './SelfReflection.js';
-export { scoreConfidence, type ConfidenceScore } from './ConfidenceScoring.js';
-export { multiPerspectiveAnalysis, type Perspective, type MultiPerspectiveResult } from './MultiPerspective.js';
-export { ContextWindowManager, contextManager, type ContextChunk } from './ContextManager.js';
-export {
-  decomposeQuery,
-  detectQueryType,
-  hierarchicalDecompose,
-  mergeRelatedQueries,
-  buildHierarchyTree,
-  visualizeDependencyGraph,
-  shouldDecompose,
-  robustJsonParse,
-  decompositionCache,
-  getDecompositionCacheStats,
-  clearDecompositionCache,
-  type DecomposedQuery,
-  type SubQuery,
-  type QueryType,
-  type QueryTypeInfo,
-  type HierarchyNode,
-  type MergedGroup
-} from './QueryDecomposition.js';
-export { findAnalogies, type Analogy } from './AnalogicalReasoning.js';
-export {
-  treeOfThoughts,
-  quickTreeOfThoughts,
-  mctsTreeOfThoughts,
-  bfsTreeOfThoughts,
-  parallelTreeOfThoughts,
-  type ThoughtNode,
-  type TreeOfThoughtsResult,
-  type ToTOptions,
-  type SearchStrategy
-} from './TreeOfThoughts.js';
+  type KnowledgeEdge,
+  KnowledgeGraph,
+  type KnowledgeNode,
+  knowledgeGraph,
+} from './KnowledgeGraph.js';
 // MetaPrompting - Full implementation in intelligence/MetaPrompting.ts
 export {
-  // Classes
-  MetaPrompter,
+  type ABTestResult,
   AdvancedMetaPrompter,
-  PromptTemplateLibrary,
-
-  // Singleton instances
-  metaPrompter,
   advancedMetaPrompter,
-  promptTemplateLibrary,
-
-  // Quick functions
-  quickOptimize,
-  quickEvolve,
-  quickCompress,
-  quickABTest,
-
+  type CompressionResult,
+  classifyTaskType,
+  type DomainOptimizationResult,
+  type DomainType,
+  type EvolutionConfig,
+  executeWithMetaPrompt,
   // Legacy API functions
   generateMetaPrompt,
-  executeWithMetaPrompt,
-  classifyTaskType,
   getPromptTemplate,
-
-  // Types - Main
-  type PromptOptimization,
+  // Classes
+  MetaPrompter,
   type MetaPromptingConfig,
-  type EvolutionConfig,
-  type ABTestResult,
-  type CompressionResult,
-  type DomainOptimizationResult,
-  type RecursiveOptimizationResult,
-  type PromptTemplate,
-  type TemplateCategory,
-  type DomainType,
-
   // Types - Legacy
   type MetaPromptResult,
-  type TaskType
+  // Singleton instances
+  metaPrompter,
+  // Types - Main
+  type PromptOptimization,
+  type PromptTemplate,
+  PromptTemplateLibrary,
+  promptTemplateLibrary,
+  quickABTest,
+  quickCompress,
+  quickEvolve,
+  // Quick functions
+  quickOptimize,
+  type RecursiveOptimizationResult,
+  type TaskType,
+  type TemplateCategory,
 } from './MetaPrompting.js';
 export {
-  semanticChunk,
-  createSemanticChunks,
-  createCodeAwareChunks,
-  createHierarchicalChunks,
-  detectSemanticBoundaries,
-  detectLanguage,
-  mergeChunksWithOverlap,
-  prioritizeChunks,
-  findRelevantChunks,
-  summarizeChunks,
-  reconstructText,
+  type MultiPerspectiveResult,
+  multiPerspectiveAnalysis,
+  type Perspective,
+} from './MultiPerspective.js';
+export {
+  buildHierarchyTree,
+  clearDecompositionCache,
+  type DecomposedQuery,
+  decomposeQuery,
+  decompositionCache,
+  detectQueryType,
+  getDecompositionCacheStats,
+  type HierarchyNode,
+  hierarchicalDecompose,
+  type MergedGroup,
+  mergeRelatedQueries,
+  type QueryType,
+  type QueryTypeInfo,
+  robustJsonParse,
+  type SubQuery,
+  shouldDecompose,
+  visualizeDependencyGraph,
+} from './QueryDecomposition.js';
+export {
+  clearReflexionMemory,
+  type EvaluationResult,
+  getReflexionStats,
+  type ReflectionResult,
+  type ReflexionLesson,
+  type ReflexionMemory,
+  type ReflexionResult,
+  reflexionLoop,
+  reflexionMemory,
+  selfReflect,
+  type TrajectoryCheckpoint,
+} from './SelfReflection.js';
+// Re-export all modules
+export { type CacheEntry, SemanticCache, semanticCache } from './SemanticCache.js';
+export {
   addToContextWithChunking,
-  getSemanticContext,
-  type SemanticChunk,
-  type ChunkType,
-  type ChunkingResult,
-  type ChunkBoundary,
   type BoundaryType,
-  type HierarchyLevel,
+  type ChunkBoundary,
   type ChunkHierarchy,
   type ChunkingOptions,
-  type ProgrammingLanguage
+  type ChunkingResult,
+  type ChunkType,
+  createCodeAwareChunks,
+  createHierarchicalChunks,
+  createSemanticChunks,
+  detectLanguage,
+  detectSemanticBoundaries,
+  findRelevantChunks,
+  getSemanticContext,
+  type HierarchyLevel,
+  mergeChunksWithOverlap,
+  type ProgrammingLanguage,
+  prioritizeChunks,
+  reconstructText,
+  type SemanticChunk,
+  semanticChunk,
+  summarizeChunks,
 } from './SemanticChunking.js';
+export {
+  bfsTreeOfThoughts,
+  mctsTreeOfThoughts,
+  parallelTreeOfThoughts,
+  quickTreeOfThoughts,
+  type SearchStrategy,
+  type ThoughtNode,
+  type ToTOptions,
+  type TreeOfThoughtsResult,
+  treeOfThoughts,
+} from './TreeOfThoughts.js';
 
+import { findAnalogies } from './AnalogicalReasoning.js';
+import { scoreConfidence } from './ConfidenceScoring.js';
+import { contextManager } from './ContextManager.js';
+import { knowledgeGraph } from './KnowledgeGraph.js';
+import {
+  advancedMetaPrompter,
+  classifyTaskType,
+  generateMetaPrompt,
+  metaPrompter,
+} from './MetaPrompting.js';
+import { multiPerspectiveAnalysis } from './MultiPerspective.js';
+import { selfReflect } from './SelfReflection.js';
 // Import for internal use
 import { semanticCache } from './SemanticCache.js';
-import { knowledgeGraph } from './KnowledgeGraph.js';
-import { contextManager } from './ContextManager.js';
-import { selfReflect, reflexionLoop } from './SelfReflection.js';
-import { scoreConfidence } from './ConfidenceScoring.js';
-import { multiPerspectiveAnalysis } from './MultiPerspective.js';
-import { findAnalogies } from './AnalogicalReasoning.js';
-import { treeOfThoughts, mctsTreeOfThoughts, bfsTreeOfThoughts, parallelTreeOfThoughts } from './TreeOfThoughts.js';
-import { generateMetaPrompt, classifyTaskType, metaPrompter, advancedMetaPrompter } from './MetaPrompting.js';
 import {
-  semanticChunk,
-  createSemanticChunks,
-  createCodeAwareChunks,
-  findRelevantChunks,
-  prioritizeChunks,
   addToContextWithChunking,
-  getSemanticContext
+  createCodeAwareChunks,
+  createSemanticChunks,
+  findRelevantChunks,
+  getSemanticContext,
+  prioritizeChunks,
+  semanticChunk,
 } from './SemanticChunking.js';
+import {
+  bfsTreeOfThoughts,
+  mctsTreeOfThoughts,
+  parallelTreeOfThoughts,
+  treeOfThoughts,
+} from './TreeOfThoughts.js';
 
 // =============================================================================
 // UNIFIED INTELLIGENCE PIPELINE
@@ -167,9 +181,9 @@ export interface IntelligenceConfig {
   useKnowledgeGraph?: boolean;
   useQueryDecomposition?: boolean;
   useAnalogicalReasoning?: boolean;
-  useTreeOfThoughts?: boolean;      // NEW: Tree-of-Thoughts exploration
-  useMetaPrompting?: boolean;       // NEW: Dynamic prompt optimization
-  useSemanticChunking?: boolean;    // NEW: Intelligent text segmentation
+  useTreeOfThoughts?: boolean; // NEW: Tree-of-Thoughts exploration
+  useMetaPrompting?: boolean; // NEW: Dynamic prompt optimization
+  useSemanticChunking?: boolean; // NEW: Intelligent text segmentation
   confidenceThreshold?: number;
 }
 
@@ -177,15 +191,15 @@ const DEFAULT_INTELLIGENCE_CONFIG: IntelligenceConfig = {
   useChainOfThought: true,
   useSelfReflection: true,
   useConfidenceScoring: true,
-  useMultiPerspective: false,    // Expensive, use for critical tasks
+  useMultiPerspective: false, // Expensive, use for critical tasks
   useSemanticCache: true,
   useKnowledgeGraph: true,
   useQueryDecomposition: true,
   useAnalogicalReasoning: true,
-  useTreeOfThoughts: false,      // Expensive, use for exploration problems
-  useMetaPrompting: true,        // Enabled by default for prompt optimization
-  useSemanticChunking: true,     // Enabled for long context handling
-  confidenceThreshold: 70
+  useTreeOfThoughts: false, // Expensive, use for exploration problems
+  useMetaPrompting: true, // Enabled by default for prompt optimization
+  useSemanticChunking: true, // Enabled for long context handling
+  confidenceThreshold: 70,
 };
 
 /**
@@ -194,7 +208,7 @@ const DEFAULT_INTELLIGENCE_CONFIG: IntelligenceConfig = {
 export async function enhanceWithIntelligence(
   task: string,
   baseResponse: string,
-  config: IntelligenceConfig = {}
+  config: IntelligenceConfig = {},
 ): Promise<string> {
   const cfg = { ...DEFAULT_INTELLIGENCE_CONFIG, ...config };
 
@@ -223,7 +237,7 @@ export async function enhanceWithIntelligence(
     const analogies = await findAnalogies(task);
     if (analogies.length > 0) {
       const analogyContext = analogies
-        .map(a => `[Analogy] ${a.sourcePattern} -> ${a.suggestedApproach}`)
+        .map((a) => `[Analogy] ${a.sourcePattern} -> ${a.suggestedApproach}`)
         .join('\n');
       contextManager.add(analogyContext, 'system', 0.6);
     }
@@ -245,7 +259,7 @@ export async function enhanceWithIntelligence(
       // Add clarification note
       enhancedResponse += `\n\n[CONFIDENCE] ${confidence.overall}%\n`;
       enhancedResponse += `Pytania do wyjasnienia:\n`;
-      enhancedResponse += confidence.clarificationQuestions.map(q => `* ${q}`).join('\n');
+      enhancedResponse += confidence.clarificationQuestions.map((q) => `* ${q}`).join('\n');
     }
   }
 
@@ -255,7 +269,7 @@ export async function enhanceWithIntelligence(
     if (perspectives.disagreements.length > 0) {
       enhancedResponse += `\n\n[PERSPECTIVES]\n`;
       enhancedResponse += perspectives.perspectives
-        .map(p => `* ${p.viewpoint}: ${p.recommendation}`)
+        .map((p) => `* ${p.viewpoint}: ${p.recommendation}`)
         .join('\n');
     }
   }
@@ -303,5 +317,5 @@ export default {
   findRelevantChunks,
   prioritizeChunks,
   addToContextWithChunking,
-  getSemanticContext
+  getSemanticContext,
 };

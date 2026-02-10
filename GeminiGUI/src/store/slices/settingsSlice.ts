@@ -5,9 +5,9 @@
  */
 
 import type { StateCreator } from 'zustand';
+import { DEFAULT_SETTINGS, LIMITS } from '../../constants';
 import type { Settings } from '../../types';
 import { isValidApiKey, sanitizeContent } from '../../utils/validators';
-import { LIMITS, DEFAULT_SETTINGS } from '../../constants';
 
 // =============================================================================
 // TYPES
@@ -55,7 +55,7 @@ export const createSettingsSlice: StateCreator<SettingsSlice, [], [], SettingsSl
       if (newSettings.systemPrompt !== undefined) {
         validated.systemPrompt = sanitizeContent(
           newSettings.systemPrompt,
-          LIMITS.MAX_SYSTEM_PROMPT_LENGTH
+          LIMITS.MAX_SYSTEM_PROMPT_LENGTH,
         );
       }
 

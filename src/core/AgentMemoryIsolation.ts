@@ -20,8 +20,8 @@
  *   isolation.clearAgentContext('geralt');
  */
 
-import { AgentRole } from '../types/index.js';
-import crypto from 'crypto';
+import crypto from 'node:crypto';
+import type { AgentRole } from '../types/index.js';
 
 // ============================================================================
 // INTERFACES
@@ -143,12 +143,12 @@ export interface MemoryIsolationConfig {
 // ============================================================================
 
 const DEFAULT_CONFIG: MemoryIsolationConfig = {
-  contextTtlMs: 30 * 60 * 1000,        // 30 minutes
+  contextTtlMs: 30 * 60 * 1000, // 30 minutes
   strictMode: false,
   enableLeakDetection: true,
   leakConfidenceThreshold: 60,
   maxContextsPerAgent: 10,
-  cleanupIntervalMs: 5 * 60 * 1000     // 5 minutes
+  cleanupIntervalMs: 5 * 60 * 1000, // 5 minutes
 };
 
 // ============================================================================
@@ -164,10 +164,12 @@ const LEAK_PATTERNS = {
   previousTaskReference: /(?:task|zadanie)\s*#?(\d+)|(?:from|z)\s+(?:previous|poprzedni)/gi,
 
   // Agent name mentions (might indicate cross-agent info sharing)
-  agentCrossReference: /(?:geralt|yennefer|triss|dijkstra|vesemir|jaskier|ciri|eskel|lambert|zoltan|regis|philippa)\s+(?:said|mentioned|reported|powiedział|wspomniał)/gi,
+  agentCrossReference:
+    /(?:geralt|yennefer|triss|dijkstra|vesemir|jaskier|ciri|eskel|lambert|zoltan|regis|philippa)\s+(?:said|mentioned|reported|powiedział|wspomniał)/gi,
 
   // File path patterns that suggest reading from unauthorized sources
-  suspiciousFilePaths: /(?:read|accessed|opened|czytałem|otworzyłem)\s+(?:file|plik)?\s*['""]?([^'""]+)['""]?/gi,
+  suspiciousFilePaths:
+    /(?:read|accessed|opened|czytałem|otworzyłem)\s+(?:file|plik)?\s*['""]?([^'""]+)['""]?/gi,
 
   // Session or context IDs that don't match current
   foreignContextId: /context[_-]?id\s*[:=]\s*['"]?([a-f0-9-]+)['"]?/gi,
@@ -179,7 +181,8 @@ const LEAK_PATTERNS = {
   timeReferences: /(?:earlier|wcześniej|previously|poprzednio|before|przed)\s+(?:I|we|agent)/gi,
 
   // Explicit hallucination indicators
-  hallucinationIndicators: /(?:I recall|pamiętam że|I remember|przypominam sobie|as mentioned before|jak wspomniałem)/gi
+  hallucinationIndicators:
+    /(?:I recall|pamiętam że|I remember|przypominam sobie|as mentioned before|jak wspomniałem)/gi,
 };
 
 // ============================================================================
@@ -210,7 +213,7 @@ export class AgentMemoryIsolation {
     contextsCreated: 0,
     contextsCleared: 0,
     leaksDetected: 0,
-    leaksBlocked: 0
+    leaksBlocked: 0,
   };
 
   constructor(config: Partial<MemoryIsolationConfig> = {}) {
@@ -238,7 +241,7 @@ export class AgentMemoryIsolation {
       allowedPreviousTasks?: number[];
       parentContextId?: string;
       customTtlMs?: number;
-    } = {}
+    } = {},
   ): IsolatedContext {
     // Generate unique context ID
     const contextId = this.generateContextId(agentId, taskId);
@@ -248,16 +251,13 @@ export class AgentMemoryIsolation {
     const ttl = options.customTtlMs || this.config.contextTtlMs;
 
     // Build allowed memories list based on allowed previous tasks
-    const allowedMemories = this.buildAllowedMemories(
-      agentId,
-      options.allowedPreviousTasks || []
-    );
+    const allowedMemories = this.buildAllowedMemories(agentId, options.allowedPreviousTasks || []);
 
     // Build blocked memories list (memories from unrelated tasks)
     const blockedMemories = this.buildBlockedMemories(
       agentId,
       taskId,
-      options.allowedPreviousTasks || []
+      options.allowedPreviousTasks || [],
     );
 
     // Create the isolated context
@@ -272,7 +272,7 @@ export class AgentMemoryIsolation {
       parentContextId: options.parentContextId,
       allowedPreviousTasks: options.allowedPreviousTasks || [],
       dataFingerprints: new Map(),
-      active: true
+      active: true,
     };
 
     // Store context
@@ -316,7 +316,7 @@ export class AgentMemoryIsolation {
     // Find most recent active context
     for (let i = contextIds.length - 1; i >= 0; i--) {
       const ctx = this.contexts.get(contextIds[i]);
-      if (ctx && ctx.active && ctx.expiresAt > Date.now()) {
+      if (ctx?.active && ctx.expiresAt > Date.now()) {
         return ctx;
       }
     }
@@ -370,7 +370,7 @@ export class AgentMemoryIsolation {
 
     const fullEntry: MemoryEntry = {
       ...entry,
-      fingerprint
+      fingerprint,
     };
 
     this.memoryStore.set(entry.key, fullEntry);
@@ -380,11 +380,7 @@ export class AgentMemoryIsolation {
   /**
    * Inject data into a context (adds fingerprint for leak tracking)
    */
-  injectDataIntoContext(
-    contextId: string,
-    dataKey: string,
-    data: string
-  ): void {
+  injectDataIntoContext(contextId: string, dataKey: string, data: string): void {
     const context = this.contexts.get(contextId);
     if (!context || !context.active) {
       throw new Error(`Cannot inject data: context ${contextId} not found or inactive`);
@@ -436,17 +432,14 @@ export class AgentMemoryIsolation {
    * @param isolatedContext - The context the agent was operating in
    * @returns Leak detection result
    */
-  validateContextLeak(
-    response: string,
-    isolatedContext: IsolatedContext
-  ): ContextLeakResult {
+  validateContextLeak(response: string, isolatedContext: IsolatedContext): ContextLeakResult {
     if (!this.config.enableLeakDetection) {
       return {
         leaked: false,
         leakedContent: [],
         severity: 'low',
         details: ['Leak detection disabled'],
-        confidence: 0
+        confidence: 0,
       };
     }
 
@@ -458,8 +451,10 @@ export class AgentMemoryIsolation {
     // 1. Check for references to tasks not in allowed list
     const taskRefs = this.extractTaskReferences(response);
     for (const taskId of taskRefs) {
-      if (!isolatedContext.allowedPreviousTasks.includes(taskId) &&
-          taskId !== isolatedContext.taskId) {
+      if (
+        !isolatedContext.allowedPreviousTasks.includes(taskId) &&
+        taskId !== isolatedContext.taskId
+      ) {
         leakedContent.push(`Task #${taskId}`);
         details.push(`References unauthorized task #${taskId}`);
         totalScore += 30;
@@ -512,7 +507,7 @@ export class AgentMemoryIsolation {
     }
 
     // Calculate final confidence score
-    const confidence = checkCount > 0 ? Math.min(100, totalScore / checkCount * 10) : 0;
+    const confidence = checkCount > 0 ? Math.min(100, (totalScore / checkCount) * 10) : 0;
     const leaked = confidence >= this.config.leakConfidenceThreshold;
 
     // Determine severity
@@ -531,7 +526,7 @@ export class AgentMemoryIsolation {
       leakedContent,
       severity,
       details,
-      confidence: Math.round(confidence)
+      confidence: Math.round(confidence),
     };
   }
 
@@ -577,11 +572,7 @@ export class AgentMemoryIsolation {
    */
   private generateFingerprint(data: string): string {
     // Use content-based hashing with some normalization
-    const normalized = data
-      .toLowerCase()
-      .replace(/\s+/g, ' ')
-      .trim()
-      .substring(0, 500); // Use first 500 chars for fingerprint
+    const normalized = data.toLowerCase().replace(/\s+/g, ' ').trim().substring(0, 500); // Use first 500 chars for fingerprint
 
     return crypto.createHash('sha256').update(normalized).digest('hex').substring(0, 16);
   }
@@ -616,15 +607,17 @@ export class AgentMemoryIsolation {
   private buildBlockedMemories(
     agentId: string,
     taskId: number,
-    allowedTaskIds: number[]
+    allowedTaskIds: number[],
   ): string[] {
     const blocked: string[] = [];
 
     for (const [key, memory] of this.memoryStore) {
       // Block memories from non-allowed tasks (that aren't public)
-      if (!allowedTaskIds.includes(memory.sourceTaskId) &&
-          memory.sourceTaskId !== taskId &&
-          memory.accessLevel !== 'public') {
+      if (
+        !allowedTaskIds.includes(memory.sourceTaskId) &&
+        memory.sourceTaskId !== taskId &&
+        memory.accessLevel !== 'public'
+      ) {
         blocked.push(key);
       }
       // Block other agents' private memories
@@ -665,7 +658,7 @@ export class AgentMemoryIsolation {
     let match;
     while ((match = pattern.exec(text)) !== null) {
       const taskId = parseInt(match[1], 10);
-      if (!isNaN(taskId) && taskId > 0 && taskId < 10000) {
+      if (!Number.isNaN(taskId) && taskId > 0 && taskId < 10000) {
         taskIds.push(taskId);
       }
     }
@@ -696,7 +689,7 @@ export class AgentMemoryIsolation {
    */
   private detectFingerprintLeaks(
     response: string,
-    currentContext: IsolatedContext
+    currentContext: IsolatedContext,
   ): Array<{ match: string; source: string; score: number }> {
     const leaks: Array<{ match: string; source: string; score: number }> = [];
     const responseFingerprint = this.generateFingerprint(response);
@@ -715,7 +708,7 @@ export class AgentMemoryIsolation {
             leaks.push({
               match: dataKey,
               source: ctxId,
-              score: Math.round(similarity * 50)
+              score: Math.round(similarity * 50),
             });
           }
         }
@@ -747,7 +740,11 @@ export class AgentMemoryIsolation {
 
     // Check each hallucination pattern
     for (const [name, pattern] of Object.entries(LEAK_PATTERNS)) {
-      if (name === 'hallucinationIndicators' || name === 'memoryAccess' || name === 'timeReferences') {
+      if (
+        name === 'hallucinationIndicators' ||
+        name === 'memoryAccess' ||
+        name === 'timeReferences'
+      ) {
         const matches = response.match(pattern);
         if (matches) {
           score += matches.length * 10;
@@ -763,7 +760,7 @@ export class AgentMemoryIsolation {
       'z poprzedniej',
       'you told me before',
       'earlier in our conversation',
-      'wcześniej w rozmowie'
+      'wcześniej w rozmowie',
     ];
 
     for (const phrase of hallucPhases) {
@@ -782,8 +779,18 @@ export class AgentMemoryIsolation {
     let score = 0;
 
     const agentNames: AgentRole[] = [
-      'dijkstra', 'geralt', 'yennefer', 'triss', 'vesemir',
-      'jaskier', 'ciri', 'eskel', 'lambert', 'zoltan', 'regis', 'philippa'
+      'dijkstra',
+      'geralt',
+      'yennefer',
+      'triss',
+      'vesemir',
+      'jaskier',
+      'ciri',
+      'eskel',
+      'lambert',
+      'zoltan',
+      'regis',
+      'philippa',
     ];
 
     for (const agent of agentNames) {
@@ -794,7 +801,7 @@ export class AgentMemoryIsolation {
         new RegExp(`${agent}\\s+(?:said|mentioned|reported|found|discovered)`, 'gi'),
         new RegExp(`${agent}\\s+(?:powiedział|wspomniał|zgłosił|znalazł)`, 'gi'),
         new RegExp(`(?:according to|według)\\s+${agent}`, 'gi'),
-        new RegExp(`${agent}'s\\s+(?:analysis|report|findings)`, 'gi')
+        new RegExp(`${agent}'s\\s+(?:analysis|report|findings)`, 'gi'),
       ];
 
       for (const pattern of patterns) {
@@ -872,9 +879,9 @@ export class AgentMemoryIsolation {
   } {
     return {
       ...this.stats,
-      activeContexts: Array.from(this.contexts.values()).filter(c => c.active).length,
+      activeContexts: Array.from(this.contexts.values()).filter((c) => c.active).length,
       totalMemories: this.memoryStore.size,
-      agentsWithContexts: this.agentContexts.size
+      agentsWithContexts: this.agentContexts.size,
     };
   }
 
@@ -896,7 +903,7 @@ export class AgentMemoryIsolation {
     const contextIds = this.agentContexts.get(agentId) || [];
     const now = Date.now();
 
-    const contexts = contextIds.map(ctxId => {
+    const contexts = contextIds.map((ctxId) => {
       const ctx = this.contexts.get(ctxId)!;
       return {
         contextId: ctx.contextId,
@@ -904,14 +911,14 @@ export class AgentMemoryIsolation {
         active: ctx.active,
         allowedMemoryCount: ctx.allowedMemories.length,
         blockedMemoryCount: ctx.blockedMemories.length,
-        age: Math.round((now - ctx.createdAt) / 1000)
+        age: Math.round((now - ctx.createdAt) / 1000),
       };
     });
 
     return {
       contextCount: contexts.length,
-      activeCount: contexts.filter(c => c.active).length,
-      contexts
+      activeCount: contexts.filter((c) => c.active).length,
+      contexts,
     };
   }
 }
@@ -937,7 +944,7 @@ export function getAgentMemoryIsolation(): AgentMemoryIsolation {
  * Initialize AgentMemoryIsolation with custom config
  */
 export function initializeAgentMemoryIsolation(
-  config?: Partial<MemoryIsolationConfig>
+  config?: Partial<MemoryIsolationConfig>,
 ): AgentMemoryIsolation {
   globalInstance = new AgentMemoryIsolation(config);
   return globalInstance;
@@ -947,7 +954,4 @@ export function initializeAgentMemoryIsolation(
 // EXPORTS
 // ============================================================================
 
-export {
-  AgentMemoryIsolation as default,
-  LEAK_PATTERNS
-};
+export { AgentMemoryIsolation as default, LEAK_PATTERNS };

@@ -37,7 +37,7 @@ export enum CommandErrorCode {
   TEMPORARY_RATE_LIMITED = 403,
 
   // Unknown errors (9xx)
-  UNKNOWN = 999
+  UNKNOWN = 999,
 }
 
 /**
@@ -50,14 +50,15 @@ export const ERROR_SUGGESTIONS: Record<CommandErrorCode, string> = {
   [CommandErrorCode.VALIDATION_TYPE_MISMATCH]: 'Check expected argument types',
   [CommandErrorCode.EXECUTION_FAILED]: 'Try again or check logs for details',
   [CommandErrorCode.EXECUTION_HANDLER_ERROR]: 'Report this error if it persists',
-  [CommandErrorCode.EXECUTION_PERMISSION_DENIED]: 'Check permissions or run with elevated privileges',
+  [CommandErrorCode.EXECUTION_PERMISSION_DENIED]:
+    'Check permissions or run with elevated privileges',
   [CommandErrorCode.EXECUTION_NOT_FOUND]: 'Verify the resource exists',
   [CommandErrorCode.TIMEOUT_EXCEEDED]: 'Increase timeout or simplify the operation',
   [CommandErrorCode.TIMEOUT_CANCELLED]: 'Operation was cancelled by user or system',
   [CommandErrorCode.TEMPORARY_NETWORK]: 'Check network connection and retry',
   [CommandErrorCode.TEMPORARY_RESOURCE_BUSY]: 'Wait and retry the operation',
   [CommandErrorCode.TEMPORARY_RATE_LIMITED]: 'Wait before retrying (rate limited)',
-  [CommandErrorCode.UNKNOWN]: 'Check logs for more details'
+  [CommandErrorCode.UNKNOWN]: 'Check logs for more details',
 };
 
 // ============================================================================
@@ -78,7 +79,12 @@ export function detectErrorCode(err: Error): CommandErrorCode {
   const msg = err.message.toLowerCase();
 
   // Network errors
-  if (msg.includes('network') || msg.includes('econnrefused') || msg.includes('enotfound') || msg.includes('socket')) {
+  if (
+    msg.includes('network') ||
+    msg.includes('econnrefused') ||
+    msg.includes('enotfound') ||
+    msg.includes('socket')
+  ) {
     return CommandErrorCode.TEMPORARY_NETWORK;
   }
 
@@ -93,7 +99,12 @@ export function detectErrorCode(err: Error): CommandErrorCode {
   }
 
   // Permission errors
-  if (msg.includes('permission') || msg.includes('access denied') || msg.includes('eacces') || msg.includes('eperm')) {
+  if (
+    msg.includes('permission') ||
+    msg.includes('access denied') ||
+    msg.includes('eacces') ||
+    msg.includes('eperm')
+  ) {
     return CommandErrorCode.EXECUTION_PERMISSION_DENIED;
   }
 
@@ -139,7 +150,7 @@ export class CommandError extends Error {
     code: CommandErrorCode,
     command: string,
     args: string[] = [],
-    context?: Record<string, unknown>
+    context?: Record<string, unknown>,
   ) {
     super(message);
     this.name = 'CommandError';
@@ -171,7 +182,7 @@ export class CommandError extends Error {
       chalk.red(`[Error ${this.code}] ${this.message}`),
       chalk.yellow(`Command: /${this.command}`),
       chalk.gray(`Args: ${this.args.join(' ') || '(none)'}`),
-      chalk.cyan(`Suggestion: ${this.suggestion}`)
+      chalk.cyan(`Suggestion: ${this.suggestion}`),
     ];
 
     if (this.context) {
@@ -194,7 +205,7 @@ export class CommandError extends Error {
       `[Error ${this.code}] ${this.message}`,
       `Command: /${this.command}`,
       `Args: ${this.args.join(' ') || '(none)'}`,
-      `Suggestion: ${this.suggestion}`
+      `Suggestion: ${this.suggestion}`,
     ];
 
     if (this.context) {
@@ -222,7 +233,7 @@ export class CommandError extends Error {
       suggestion: this.suggestion,
       timestamp: this.timestamp.toISOString(),
       context: this.context,
-      stack: this.stack
+      stack: this.stack,
     };
   }
 
@@ -237,7 +248,7 @@ export class CommandError extends Error {
     const code = detectErrorCode(err);
     return new CommandError(err.message, code, command, args, {
       originalName: err.name,
-      originalStack: err.stack
+      originalStack: err.stack,
     });
   }
 }
@@ -258,14 +269,14 @@ export class ValidationError extends CommandError {
       invalidValue?: string;
       expectedType?: string;
       context?: Record<string, unknown>;
-    } = {}
+    } = {},
   ) {
     super(
       message,
       options.code ?? CommandErrorCode.VALIDATION_INVALID_ARG,
       command,
       args,
-      options.context
+      options.context,
     );
     this.name = 'ValidationError';
     this.invalidValue = options.invalidValue;
@@ -276,12 +287,9 @@ export class ValidationError extends CommandError {
    * Create validation error for missing argument
    */
   static missingArg(command: string, argName: string, args: string[] = []): ValidationError {
-    return new ValidationError(
-      `Missing required argument: ${argName}`,
-      command,
-      args,
-      { code: CommandErrorCode.VALIDATION_MISSING_ARG }
-    );
+    return new ValidationError(`Missing required argument: ${argName}`, command, args, {
+      code: CommandErrorCode.VALIDATION_MISSING_ARG,
+    });
   }
 
   /**
@@ -292,7 +300,7 @@ export class ValidationError extends CommandError {
     argName: string,
     expectedType: string,
     receivedValue: string,
-    args: string[] = []
+    args: string[] = [],
   ): ValidationError {
     return new ValidationError(
       `Invalid type for argument '${argName}': expected ${expectedType}, got '${receivedValue}'`,
@@ -301,8 +309,8 @@ export class ValidationError extends CommandError {
       {
         code: CommandErrorCode.VALIDATION_TYPE_MISMATCH,
         invalidValue: receivedValue,
-        expectedType
-      }
+        expectedType,
+      },
     );
   }
 
@@ -310,12 +318,9 @@ export class ValidationError extends CommandError {
    * Create validation error for invalid flag
    */
   static invalidFlag(command: string, flagName: string, args: string[] = []): ValidationError {
-    return new ValidationError(
-      `Unknown flag: ${flagName}`,
-      command,
-      args,
-      { code: CommandErrorCode.VALIDATION_INVALID_FLAG }
-    );
+    return new ValidationError(`Unknown flag: ${flagName}`, command, args, {
+      code: CommandErrorCode.VALIDATION_INVALID_FLAG,
+    });
   }
 }
 
@@ -333,14 +338,14 @@ export class ExecutionError extends CommandError {
       cause?: Error;
       code?: CommandErrorCode;
       context?: Record<string, unknown>;
-    } = {}
+    } = {},
   ) {
     super(
       message,
       options.code ?? CommandErrorCode.EXECUTION_FAILED,
       command,
       args,
-      options.context
+      options.context,
     );
     this.name = 'ExecutionError';
     this.cause = options.cause;
@@ -358,7 +363,7 @@ export class ExecutionError extends CommandError {
     const code = detectErrorCode(err);
     return new ExecutionError(err.message, command, args, {
       cause: err,
-      code
+      code,
     });
   }
 
@@ -366,24 +371,18 @@ export class ExecutionError extends CommandError {
    * Create permission denied error
    */
   static permissionDenied(command: string, resource: string, args: string[] = []): ExecutionError {
-    return new ExecutionError(
-      `Permission denied: cannot access '${resource}'`,
-      command,
-      args,
-      { code: CommandErrorCode.EXECUTION_PERMISSION_DENIED }
-    );
+    return new ExecutionError(`Permission denied: cannot access '${resource}'`, command, args, {
+      code: CommandErrorCode.EXECUTION_PERMISSION_DENIED,
+    });
   }
 
   /**
    * Create not found error
    */
   static notFound(command: string, resource: string, args: string[] = []): ExecutionError {
-    return new ExecutionError(
-      `Not found: '${resource}' does not exist`,
-      command,
-      args,
-      { code: CommandErrorCode.EXECUTION_NOT_FOUND }
-    );
+    return new ExecutionError(`Not found: '${resource}' does not exist`, command, args, {
+      code: CommandErrorCode.EXECUTION_NOT_FOUND,
+    });
   }
 }
 
@@ -397,14 +396,14 @@ export class CommandTimeoutError extends CommandError {
     command: string,
     args: string[] = [],
     timeoutMs: number,
-    context?: Record<string, unknown>
+    context?: Record<string, unknown>,
   ) {
     super(
       `Command '${command}' exceeded timeout of ${timeoutMs}ms`,
       CommandErrorCode.TIMEOUT_EXCEEDED,
       command,
       args,
-      { ...context, timeoutMs }
+      { ...context, timeoutMs },
     );
     this.name = 'CommandTimeoutError';
     this.timeoutMs = timeoutMs;
@@ -425,14 +424,14 @@ export class TemporaryError extends CommandError {
       code?: CommandErrorCode;
       retryAfterMs?: number;
       context?: Record<string, unknown>;
-    } = {}
+    } = {},
   ) {
     super(
       message,
       options.code ?? CommandErrorCode.TEMPORARY_RESOURCE_BUSY,
       command,
       args,
-      options.context
+      options.context,
     );
     this.name = 'TemporaryError';
     this.retryAfterMs = options.retryAfterMs;
@@ -442,12 +441,9 @@ export class TemporaryError extends CommandError {
    * Create network error
    */
   static networkError(command: string, args: string[] = [], message?: string): TemporaryError {
-    return new TemporaryError(
-      message || 'Network error occurred',
-      command,
-      args,
-      { code: CommandErrorCode.TEMPORARY_NETWORK }
-    );
+    return new TemporaryError(message || 'Network error occurred', command, args, {
+      code: CommandErrorCode.TEMPORARY_NETWORK,
+    });
   }
 
   /**
@@ -458,7 +454,7 @@ export class TemporaryError extends CommandError {
       `Rate limit exceeded${retryAfterMs ? `. Retry after ${retryAfterMs}ms` : ''}`,
       command,
       args,
-      { code: CommandErrorCode.TEMPORARY_RATE_LIMITED, retryAfterMs }
+      { code: CommandErrorCode.TEMPORARY_RATE_LIMITED, retryAfterMs },
     );
   }
 
@@ -466,12 +462,9 @@ export class TemporaryError extends CommandError {
    * Create resource busy error
    */
   static resourceBusy(command: string, resource: string, args: string[] = []): TemporaryError {
-    return new TemporaryError(
-      `Resource '${resource}' is busy, try again later`,
-      command,
-      args,
-      { code: CommandErrorCode.TEMPORARY_RESOURCE_BUSY }
-    );
+    return new TemporaryError(`Resource '${resource}' is busy, try again later`, command, args, {
+      code: CommandErrorCode.TEMPORARY_RESOURCE_BUSY,
+    });
   }
 }
 
@@ -492,7 +485,10 @@ export interface ErrorCommandContext {
 /**
  * Error handler function type
  */
-export type ErrorHandler = (error: CommandError, context: ErrorCommandContext) => Promise<void> | void;
+export type ErrorHandler = (
+  error: CommandError,
+  context: ErrorCommandContext,
+) => Promise<void> | void;
 
 /**
  * Error log entry
@@ -537,7 +533,7 @@ export class ErrorLogger {
       error,
       context,
       retryCount,
-      resolved: false
+      resolved: false,
     };
 
     this.errorLog.push(entry);
@@ -582,28 +578,28 @@ export class ErrorLogger {
    * Get unresolved errors
    */
   getUnresolved(): ErrorLogEntry[] {
-    return this.errorLog.filter(e => !e.resolved);
+    return this.errorLog.filter((e) => !e.resolved);
   }
 
   /**
    * Get errors by command
    */
   getByCommand(command: string): ErrorLogEntry[] {
-    return this.errorLog.filter(e => e.error.command === command);
+    return this.errorLog.filter((e) => e.error.command === command);
   }
 
   /**
    * Get errors by code
    */
   getByCode(code: CommandErrorCode): ErrorLogEntry[] {
-    return this.errorLog.filter(e => e.error.code === code);
+    return this.errorLog.filter((e) => e.error.code === code);
   }
 
   /**
    * Get retryable errors
    */
   getRetryable(): ErrorLogEntry[] {
-    return this.errorLog.filter(e => e.error.isRetryable());
+    return this.errorLog.filter((e) => e.error.isRetryable());
   }
 
   /**
@@ -624,7 +620,7 @@ export class ErrorLogger {
    * Get unresolved error count
    */
   get unresolvedCount(): number {
-    return this.errorLog.filter(e => !e.resolved).length;
+    return this.errorLog.filter((e) => !e.resolved).length;
   }
 }
 
@@ -652,5 +648,5 @@ export default {
   CommandTimeoutError,
   TemporaryError,
   ErrorLogger,
-  globalErrorLogger
+  globalErrorLogger,
 };

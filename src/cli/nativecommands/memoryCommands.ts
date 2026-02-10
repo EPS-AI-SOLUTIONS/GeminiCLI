@@ -6,12 +6,7 @@
  * @module cli/nativecommands/memoryCommands
  */
 
-import {
-  success, error,
-  type CommandResult,
-  getTools,
-  createFailedMessage
-} from './helpers.js';
+import { type CommandResult, createFailedMessage, error, getTools, success } from './helpers.js';
 
 // ============================================================
 // Memory Commands
@@ -81,9 +76,12 @@ export const memoryCommands = {
       const tools = getTools();
       const results = tools.memory.searchEntities(query);
 
-      return success({
-        entities: results.slice(0, 20)
-      }, `Found ${results.length} entities matching "${query}"`);
+      return success(
+        {
+          entities: results.slice(0, 20),
+        },
+        `Found ${results.length} entities matching "${query}"`,
+      );
     } catch (err) {
       return error(createFailedMessage('find entities', err));
     }
@@ -167,11 +165,14 @@ export const memoryCommands = {
       const entities = tools.memory.getAllEntities();
       const relations = tools.memory.getAllRelations();
 
-      return success({
-        entities: entities.length,
-        relations: relations.length,
-        types: [...new Set(entities.map(e => e.type))]
-      }, 'Knowledge Graph');
+      return success(
+        {
+          entities: entities.length,
+          relations: relations.length,
+          types: [...new Set(entities.map((e) => e.type))],
+        },
+        'Knowledge Graph',
+      );
     } catch (err) {
       return error(createFailedMessage('get graph', err));
     }
@@ -201,5 +202,5 @@ export const memoryCommands = {
     } catch (err) {
       return error(createFailedMessage('load memory', err));
     }
-  }
+  },
 };

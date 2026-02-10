@@ -41,11 +41,11 @@
  * - Incremental search
  */
 
-import fs from 'fs/promises';
-import path from 'path';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import chalk from 'chalk';
-import { SearchMatch } from './types.js';
 import { escapeRegex } from '../utils/regex.js';
+import type { SearchMatch } from './types.js';
 
 // ============================================================
 // Types
@@ -68,7 +68,16 @@ export interface FileSearchOptions {
 
 export interface SymbolMatch {
   name: string;
-  type: 'function' | 'class' | 'variable' | 'interface' | 'type' | 'method' | 'property' | 'import' | 'export';
+  type:
+    | 'function'
+    | 'class'
+    | 'variable'
+    | 'interface'
+    | 'type'
+    | 'method'
+    | 'property'
+    | 'import'
+    | 'export';
   file: string;
   line: number;
   signature?: string;
@@ -127,7 +136,7 @@ const SYMBOL_PATTERNS: Record<string, Record<string, RegExp>> = {
     enum: /(?:pub\s+)?enum\s+(\w+)/g,
     trait: /(?:pub\s+)?trait\s+(\w+)/g,
     impl: /impl(?:<[^>]+>)?\s+(\w+)/g,
-  }
+  },
 };
 
 // ============================================================
@@ -140,9 +149,15 @@ export class NativeSearch {
   constructor(config: NativeSearchConfig) {
     this.config = {
       rootDir: path.resolve(config.rootDir),
-      defaultIgnore: config.defaultIgnore || ['node_modules', '.git', 'dist', 'build', '__pycache__'],
+      defaultIgnore: config.defaultIgnore || [
+        'node_modules',
+        '.git',
+        'dist',
+        'build',
+        '__pycache__',
+      ],
       maxFileSize: config.maxFileSize || 10 * 1024 * 1024, // 10MB
-      defaultContextLines: config.defaultContextLines || 2
+      defaultContextLines: config.defaultContextLines || 2,
     };
   }
 
@@ -160,7 +175,7 @@ export class NativeSearch {
       wholeWord = false,
       maxResults = 100,
       contextLines = this.config.defaultContextLines,
-      includeHidden = false
+      includeHidden = false,
     } = options;
 
     // Build regex
@@ -201,7 +216,7 @@ export class NativeSearch {
               line: i + 1,
               column: match.index + 1,
               content: line,
-              matchedText: match[0]
+              matchedText: match[0],
             };
 
             if (contextLines > 0) {
@@ -210,7 +225,7 @@ export class NativeSearch {
 
               searchMatch.context = {
                 before: lines.slice(beforeStart, i),
-                after: lines.slice(i + 1, afterEnd + 1)
+                after: lines.slice(i + 1, afterEnd + 1),
               };
             }
 
@@ -241,7 +256,7 @@ export class NativeSearch {
       pattern,
       glob: glob || '**/*',
       maxResults: 50,
-      contextLines: 1
+      contextLines: 1,
     });
   }
 
@@ -258,7 +273,7 @@ export class NativeSearch {
     const files = await this.getFilesToSearch({
       pattern: '',
       glob: options.glob || '**/*.{ts,tsx,js,jsx,py,rs}',
-      paths: options.paths
+      paths: options.paths,
     });
 
     const matches: SymbolMatch[] = [];
@@ -301,7 +316,7 @@ export class NativeSearch {
                 file,
                 line: lineNumber,
                 signature: lines[lineNumber - 1]?.trim(),
-                score: this.calculateSymbolScore(name, pattern)
+                score: this.calculateSymbolScore(name, pattern),
               });
 
               if (matches.length >= maxResults) break;
@@ -326,7 +341,7 @@ export class NativeSearch {
   async findDefinition(name: string): Promise<SymbolMatch | null> {
     const matches = await this.searchSymbols({
       pattern: `^${name}$`,
-      maxResults: 1
+      maxResults: 1,
     });
     return matches[0] || null;
   }
@@ -339,7 +354,7 @@ export class NativeSearch {
       pattern: `\\b${escapeRegex(name)}\\b`,
       glob: glob || '**/*.{ts,tsx,js,jsx,py,rs}',
       wholeWord: true,
-      maxResults: 100
+      maxResults: 100,
     });
   }
 
@@ -362,7 +377,7 @@ export class NativeSearch {
         results.push({
           item,
           score: result.score,
-          matches: result.matches
+          matches: result.matches,
         });
       }
     }
@@ -376,10 +391,10 @@ export class NativeSearch {
   async fuzzyFindFile(query: string, maxResults: number = 20): Promise<FuzzyMatch<string>[]> {
     const files = await this.getFilesToSearch({
       pattern: '',
-      glob: '**/*'
+      glob: '**/*',
     });
 
-    return this.fuzzyMatch(files, query, f => path.basename(f)).slice(0, maxResults);
+    return this.fuzzyMatch(files, query, (f) => path.basename(f)).slice(0, maxResults);
   }
 
   // ============================================================
@@ -400,7 +415,7 @@ export class NativeSearch {
       const matches = await this.searchFiles({
         ...options,
         paths: [file],
-        maxResults: 100
+        maxResults: 100,
       });
 
       for (const match of matches) {
@@ -432,7 +447,7 @@ export class NativeSearch {
         const relPath = path.join(relativePath, entry.name);
 
         // Skip ignored
-        if (ignore.some(i => entry.name.includes(i) || relPath.includes(i))) {
+        if (ignore.some((i) => entry.name.includes(i) || relPath.includes(i))) {
           continue;
         }
 
@@ -450,7 +465,10 @@ export class NativeSearch {
             // Extract extensions from glob like "**/*.{ts,js}"
             const extMatch = globPattern.match(/\*\.(\{[^}]+\}|\w+)$/);
             if (extMatch) {
-              const allowedExts = extMatch[1].replace(/[{}]/g, '').split(',').map(e => '.' + e);
+              const allowedExts = extMatch[1]
+                .replace(/[{}]/g, '')
+                .split(',')
+                .map((e) => `.${e}`);
               if (!allowedExts.includes(ext)) {
                 continue;
               }
@@ -472,7 +490,7 @@ export class NativeSearch {
       js: 'javascript',
       jsx: 'javascript',
       py: 'python',
-      rs: 'rust'
+      rs: 'rust',
     };
     return langMap[ext] || null;
   }
@@ -543,7 +561,9 @@ export class NativeSearch {
   printStatus(): void {
     console.log(chalk.cyan('\n=== Native Search ===\n'));
     console.log(chalk.gray(`  Root: ${this.config.rootDir}`));
-    console.log(chalk.gray(`  Max File Size: ${(this.config.maxFileSize / 1024 / 1024).toFixed(1)}MB`));
+    console.log(
+      chalk.gray(`  Max File Size: ${(this.config.maxFileSize / 1024 / 1024).toFixed(1)}MB`),
+    );
     console.log(chalk.gray(`  Default Context Lines: ${this.config.defaultContextLines}`));
     console.log(chalk.gray(`  Ignored: ${this.config.defaultIgnore.join(', ')}`));
   }

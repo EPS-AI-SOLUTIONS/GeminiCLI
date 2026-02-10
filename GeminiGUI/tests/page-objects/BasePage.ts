@@ -4,9 +4,9 @@
  * Provides common utilities and helpers for all page objects.
  */
 
-import { Page, Locator, expect } from '@playwright/test';
-import { emitTauriEvent, setMockInvokeResult, injectTauriMocks } from '../fixtures/tauri-mocks';
-import { TIMEOUTS, SELECTORS } from '../fixtures/test-data';
+import { expect, type Page } from '@playwright/test';
+import { emitTauriEvent, injectTauriMocks, setMockInvokeResult } from '../fixtures/tauri-mocks';
+import { SELECTORS, TIMEOUTS } from '../fixtures/test-data';
 
 export class BasePage {
   constructor(protected page: Page) {}
@@ -156,5 +156,4 @@ export class BasePage {
   async clearLocalStorage(): Promise<void> {
     await this.page.evaluate(() => localStorage.clear());
   }
-
 }

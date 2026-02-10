@@ -25,7 +25,7 @@ export class Semaphore {
     }
 
     // Wait for a permit to become available
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
       this.waiting.push(resolve);
     });
   }
@@ -74,7 +74,7 @@ export class Semaphore {
     return {
       available: this.permits,
       waiting: this.waiting.length,
-      max: this.maxPermits
+      max: this.maxPermits,
     };
   }
 }
@@ -114,7 +114,7 @@ export class RateLimiter {
 
     // Wait for tokens to become available
     const waitTime = ((tokens - this.tokens) / this.refillRate) * 1000;
-    await new Promise(resolve => setTimeout(resolve, waitTime));
+    await new Promise((resolve) => setTimeout(resolve, waitTime));
 
     this.refill();
     this.tokens -= tokens;
@@ -131,14 +131,9 @@ export async function withRetry<T>(
     baseDelay?: number;
     maxDelay?: number;
     onRetry?: (attempt: number, error: Error) => void;
-  } = {}
+  } = {},
 ): Promise<T> {
-  const {
-    maxRetries = 3,
-    baseDelay = 1000,
-    maxDelay = 30000,
-    onRetry
-  } = options;
+  const { maxRetries = 3, baseDelay = 1000, maxDelay = 30000, onRetry } = options;
 
   let lastError: Error;
 
@@ -150,13 +145,13 @@ export async function withRetry<T>(
 
       if (attempt < maxRetries) {
         // Exponential backoff: 1s, 2s, 4s, 8s, ...
-        const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
+        const delay = Math.min(baseDelay * 2 ** attempt, maxDelay);
 
         if (onRetry) {
           onRetry(attempt + 1, error);
         }
 
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
   }
@@ -183,5 +178,5 @@ export default {
   withRetry,
   llamaSemaphore,
   ollamaSemaphore,
-  geminiSemaphore
+  geminiSemaphore,
 };

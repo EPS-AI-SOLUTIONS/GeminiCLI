@@ -8,38 +8,33 @@
  */
 
 import chalk from 'chalk';
-
-// Import enhanced argument parser
-import {
-  parseArgs as enhancedParseArgs,
-  tokenizeInput,
-  validateCommandFlags,
-  generateFlagHelp,
-} from '../EnhancedArgParser.js';
+import type { ErrorCommandContext, ErrorHandler, ErrorLogEntry } from '../CommandErrors.js';
 
 // Import error handling
 import {
-  CommandErrorCode,
-  isRetryableError,
-  detectErrorCode,
   CommandError,
-  ValidationError,
+  CommandErrorCode,
+  detectErrorCode,
   ExecutionError,
+  globalErrorLogger,
+  isRetryableError,
   TemporaryError,
-  globalErrorLogger
+  ValidationError,
 } from '../CommandErrors.js';
-import type {
-  ErrorHandler,
-  ErrorLogEntry,
-  ErrorCommandContext,
-} from '../CommandErrors.js';
+// Import enhanced argument parser
+import {
+  parseArgs as enhancedParseArgs,
+  generateFlagHelp,
+  tokenizeInput,
+  validateCommandFlags,
+} from '../EnhancedArgParser.js';
 
 // Import types
 import type {
+  ArgType,
   Command,
   CommandArg,
   CommandContext,
-  CommandHandler,
   CommandInfo,
   CommandPriority,
   CommandRateLimitConfig,
@@ -51,10 +46,9 @@ import type {
   RateLimitConfig,
   RateLimitStatus,
   ValidationResult,
-  ArgType,
 } from './types.js';
 
-import { RateLimitExceededError, RegisterOptions } from './types.js';
+import { RateLimitExceededError, type RegisterOptions } from './types.js';
 
 // ============================================================================
 // Default Logger
@@ -66,7 +60,7 @@ import { RateLimitExceededError, RegisterOptions } from './types.js';
 const defaultLogger: ConflictLogger = {
   warn: (msg: string) => console.warn(chalk.yellow(`[CommandRegistry] ${msg}`)),
   info: (msg: string) => console.log(chalk.gray(`[CommandRegistry] ${msg}`)),
-  debug: (msg: string) => console.log(chalk.dim(`[CommandRegistry] ${msg}`))
+  debug: (msg: string) => console.log(chalk.dim(`[CommandRegistry] ${msg}`)),
 };
 
 // ============================================================================
@@ -89,7 +83,7 @@ export class CommandRegistry {
   private rateLimitConfig: RateLimitConfig = {
     maxCommandsPerSecond: 10,
     maxCommandsPerMinute: 60,
-    enabled: false
+    enabled: false,
   };
   private tokensPerSecond: number = 10;
   private tokensPerMinute: number = 60;
@@ -189,7 +183,7 @@ export class CommandRegistry {
     if (parts.length > 1) {
       return {
         namespace: parts.slice(0, -1).join('.'),
-        name: parts[parts.length - 1]
+        name: parts[parts.length - 1],
       };
     }
     return { name: identifier };
@@ -197,10 +191,14 @@ export class CommandRegistry {
 
   getPriorityString(priority: CommandPriority): string {
     switch (priority) {
-      case 2: return 'built-in';  // BUILTIN
-      case 1: return 'user';      // USER
-      case 0: return 'plugin';    // PLUGIN
-      default: return 'unknown';
+      case 2:
+        return 'built-in'; // BUILTIN
+      case 1:
+        return 'user'; // USER
+      case 0:
+        return 'plugin'; // PLUGIN
+      default:
+        return 'unknown';
     }
   }
 
@@ -210,7 +208,7 @@ export class CommandRegistry {
 
   private checkConflicts(
     command: Command,
-    options: RegisterOptions = {}
+    options: RegisterOptions = {},
   ): { hasConflict: boolean; conflicts: ConflictInfo[] } {
     const conflicts: ConflictInfo[] = [];
     const fullName = this.getFullName(command);
@@ -228,7 +226,7 @@ export class CommandRegistry {
         existingPriority,
         newPriority,
         wouldOverwrite: newPriority > existingPriority || options.overwrite === true,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
     }
 
@@ -249,7 +247,7 @@ export class CommandRegistry {
             existingPriority,
             newPriority,
             wouldOverwrite: newPriority > existingPriority || options.overwrite === true,
-            timestamp: Date.now()
+            timestamp: Date.now(),
           });
         }
       }
@@ -260,11 +258,12 @@ export class CommandRegistry {
         conflicts.push({
           identifier: fullAlias,
           type: 'alias',
-          existingCommand: this.getFullName(existing),          newCommand: fullName,
+          existingCommand: this.getFullName(existing),
+          newCommand: fullName,
           existingPriority,
           newPriority,
           wouldOverwrite: newPriority > existingPriority || options.overwrite === true,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         });
       }
     }
@@ -282,7 +281,7 @@ export class CommandRegistry {
           existingPriority,
           newPriority,
           wouldOverwrite: false,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         });
       }
     }
@@ -300,14 +299,14 @@ export class CommandRegistry {
       if (conflict.wouldOverwrite) {
         this.logger.warn(
           `Command ${conflict.type} '${conflict.identifier}' conflict: ` +
-          `'${conflict.newCommand}' (${newPriorityStr}) overwrites ` +
-          `'${conflict.existingCommand}' (${priorityStr})`
+            `'${conflict.newCommand}' (${newPriorityStr}) overwrites ` +
+            `'${conflict.existingCommand}' (${priorityStr})`,
         );
       } else {
         this.logger.warn(
           `Command ${conflict.type} '${conflict.identifier}' conflict: ` +
-          `'${conflict.newCommand}' (${newPriorityStr}) blocked by ` +
-          `'${conflict.existingCommand}' (${priorityStr})`
+            `'${conflict.newCommand}' (${newPriorityStr}) blocked by ` +
+            `'${conflict.existingCommand}' (${priorityStr})`,
         );
       }
     }
@@ -370,10 +369,11 @@ export class CommandRegistry {
       tokensPerSecond: this.tokensPerSecond,
       tokensPerMinute: this.tokensPerMinute,
       maxTokensPerSecond: this.rateLimitConfig.maxCommandsPerSecond,
-      maxTokensPerMinute: this.rateLimitConfig.maxCommandsPerMinute,      lastRefillTime: Math.max(this.lastSecondRefill, this.lastMinuteRefill),
+      maxTokensPerMinute: this.rateLimitConfig.maxCommandsPerMinute,
+      lastRefillTime: Math.max(this.lastSecondRefill, this.lastMinuteRefill),
       whitelistedCommands: Array.from(this.whitelistedCommands),
       perCommandLimits: Object.fromEntries(this.perCommandLimits),
-      recentCommands: [...this.commandHistory]
+      recentCommands: [...this.commandHistory],
     };
   }
 
@@ -415,49 +415,53 @@ export class CommandRegistry {
       const tokensToAdd = Math.floor(secondsElapsed) * this.rateLimitConfig.maxCommandsPerSecond;
       this.tokensPerSecond = Math.min(
         this.rateLimitConfig.maxCommandsPerSecond,
-        this.tokensPerSecond + tokensToAdd
+        this.tokensPerSecond + tokensToAdd,
       );
-      this.lastSecondRefill = now - ((secondsElapsed % 1) * 1000);
+      this.lastSecondRefill = now - (secondsElapsed % 1) * 1000;
     }
     const minutesElapsed = (now - this.lastMinuteRefill) / 60000;
     if (minutesElapsed >= 1) {
       const tokensToAdd = Math.floor(minutesElapsed) * this.rateLimitConfig.maxCommandsPerMinute;
       this.tokensPerMinute = Math.min(
         this.rateLimitConfig.maxCommandsPerMinute,
-        this.tokensPerMinute + tokensToAdd
+        this.tokensPerMinute + tokensToAdd,
       );
-      this.lastMinuteRefill = now - ((minutesElapsed % 1) * 60000);
+      this.lastMinuteRefill = now - (minutesElapsed % 1) * 60000;
     }
   }
 
   private cleanupHistory(): void {
     const cutoff = Date.now() - this.HISTORY_RETENTION_MS;
-    this.commandHistory = this.commandHistory.filter(entry => entry.timestamp > cutoff);
+    this.commandHistory = this.commandHistory.filter((entry) => entry.timestamp > cutoff);
   }
 
-  private checkPerCommandLimit(command: string): { allowed: boolean; retryAfterMs?: number; limitType?: 'second' | 'minute' } {
+  private checkPerCommandLimit(command: string): {
+    allowed: boolean;
+    retryAfterMs?: number;
+    limitType?: 'second' | 'minute';
+  } {
     const config = this.perCommandLimits.get(command);
     if (!config) return { allowed: true };
 
     const now = Date.now();
-    const commandEntries = this.commandHistory.filter(e => e.command === command);
+    const commandEntries = this.commandHistory.filter((e) => e.command === command);
 
     if (config.maxPerSecond !== undefined) {
       const oneSecondAgo = now - 1000;
-      const recentCount = commandEntries.filter(e => e.timestamp > oneSecondAgo).length;
+      const recentCount = commandEntries.filter((e) => e.timestamp > oneSecondAgo).length;
       if (recentCount >= config.maxPerSecond) {
-        const oldestInWindow = commandEntries.find(e => e.timestamp > oneSecondAgo);
-        const retryAfter = oldestInWindow ? (oldestInWindow.timestamp + 1000) - now : 1000;
+        const oldestInWindow = commandEntries.find((e) => e.timestamp > oneSecondAgo);
+        const retryAfter = oldestInWindow ? oldestInWindow.timestamp + 1000 - now : 1000;
         return { allowed: false, retryAfterMs: Math.max(retryAfter, 0), limitType: 'second' };
       }
     }
 
     if (config.maxPerMinute !== undefined) {
       const oneMinuteAgo = now - 60000;
-      const recentCount = commandEntries.filter(e => e.timestamp > oneMinuteAgo).length;
+      const recentCount = commandEntries.filter((e) => e.timestamp > oneMinuteAgo).length;
       if (recentCount >= config.maxPerMinute) {
-        const oldestInWindow = commandEntries.find(e => e.timestamp > oneMinuteAgo);
-        const retryAfter = oldestInWindow ? (oldestInWindow.timestamp + 60000) - now : 60000;
+        const oldestInWindow = commandEntries.find((e) => e.timestamp > oneMinuteAgo);
+        const retryAfter = oldestInWindow ? oldestInWindow.timestamp + 60000 - now : 60000;
         return { allowed: false, retryAfterMs: Math.max(retryAfter, 0), limitType: 'minute' };
       }
     }
@@ -520,12 +524,13 @@ export class CommandRegistry {
     if (hasConflict) {
       this.conflictHistory.push(...conflicts);
       this.logConflicts(conflicts, options.silent);
-      const shouldRegister = conflicts.every(c => c.wouldOverwrite) || options.overwrite;
+      const shouldRegister = conflicts.every((c) => c.wouldOverwrite) || options.overwrite;
       if (!shouldRegister) {
         this.debugLog(`Registration blocked for: ${fullName} due to conflicts`);
         return false;
       }
-      for (const conflict of conflicts) {        if (conflict.wouldOverwrite) {
+      for (const conflict of conflicts) {
+        if (conflict.wouldOverwrite) {
           if (conflict.type === 'name') {
             this.unregister(conflict.existingCommand);
           } else {
@@ -558,7 +563,7 @@ export class CommandRegistry {
       this.categories.set(category, new Set());
       this.debugLog(`  - Created category: ${category}`);
     }
-    this.categories.get(category)!.add(fullName);
+    this.categories.get(category)?.add(fullName);
     this.debugLog(`  - Added to category: ${category}`);
 
     if (command.namespace) {
@@ -566,18 +571,25 @@ export class CommandRegistry {
         this.namespaces.set(command.namespace, new Set());
         this.debugLog(`  - Created namespace: ${command.namespace}`);
       }
-      this.namespaces.get(command.namespace)!.add(fullName);
+      this.namespaces.get(command.namespace)?.add(fullName);
       this.debugLog(`  - Added to namespace: ${command.namespace}`);
     }
 
     return true;
   }
 
-  registerAll(commands: Command[], options: RegisterOptions = {}): { registered: number; failed: number } {
+  registerAll(
+    commands: Command[],
+    options: RegisterOptions = {},
+  ): { registered: number; failed: number } {
     let registered = 0;
     let failed = 0;
     for (const cmd of commands) {
-      if (this.register(cmd, options)) { registered++; } else { failed++; }
+      if (this.register(cmd, options)) {
+        registered++;
+      } else {
+        failed++;
+      }
     }
     return { registered, failed };
   }
@@ -610,7 +622,7 @@ export class CommandRegistry {
         hidden: cmd.hidden || false,
         hasSubcommands: cmd.subcommands ? cmd.subcommands.size > 0 : false,
         namespace: cmd.namespace,
-        priority: cmd.priority
+        priority: cmd.priority,
       });
     }
     return result.sort((a, b) => a.name.localeCompare(b.name));
@@ -625,7 +637,9 @@ export class CommandRegistry {
     const s2 = str2.toLowerCase();
     const m = s1.length;
     const n = s2.length;
-    const dp: number[][] = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+    const dp: number[][] = Array(m + 1)
+      .fill(null)
+      .map(() => Array(n + 1).fill(0));
     for (let i = 0; i <= m; i++) dp[i][0] = i;
     for (let j = 0; j <= n; j++) dp[0][j] = j;
     for (let i = 1; i <= m; i++) {
@@ -640,7 +654,11 @@ export class CommandRegistry {
     return dp[m][n];
   }
 
-  findSimilarCommands(input: string, maxSuggestions: number = 3, maxDistance: number = 3): string[] {
+  findSimilarCommands(
+    input: string,
+    maxSuggestions: number = 3,
+    maxDistance: number = 3,
+  ): string[] {
     const lowerInput = input.toLowerCase();
     const candidates: Array<{ name: string; distance: number; isAlias: boolean }> = [];
     for (const name of this.commands.keys()) {
@@ -653,37 +671,34 @@ export class CommandRegistry {
       const distance = this.levenshteinDistance(lowerInput, alias);
       if (distance <= maxDistance) {
         const realName = this.aliasMap.get(alias)!;
-        if (!candidates.some(c => c.name === realName && !c.isAlias)) {
+        if (!candidates.some((c) => c.name === realName && !c.isAlias)) {
           candidates.push({ name: alias, distance, isAlias: true });
         }
       }
     }
     for (const name of this.commands.keys()) {
-      if (name.toLowerCase().startsWith(lowerInput) && !candidates.some(c => c.name === name)) {
+      if (name.toLowerCase().startsWith(lowerInput) && !candidates.some((c) => c.name === name)) {
         candidates.push({ name, distance: 0.5, isAlias: false });
       }
     }
     return candidates
       .sort((a, b) => a.distance - b.distance)
       .slice(0, maxSuggestions)
-      .map(c => c.name);
+      .map((c) => c.name);
   }
 
   // ============================================================================
   // Command Execution
   // ============================================================================
 
-  async execute(
-    nameOrAlias: string,
-    ctx: Omit<CommandContext, 'flags'>
-  ): Promise<CommandResult> {
+  async execute(nameOrAlias: string, ctx: Omit<CommandContext, 'flags'>): Promise<CommandResult> {
     const command = this.get(nameOrAlias);
 
     if (!command) {
       const suggestions = this.findSimilarCommands(nameOrAlias);
       let errorMsg = `Unknown command: '${nameOrAlias}'.`;
       if (suggestions.length > 0) {
-        errorMsg += ` Did you mean: ${suggestions.map(s => `/${s}`).join(', ')}?`;
+        errorMsg += ` Did you mean: ${suggestions.map((s) => `/${s}`).join(', ')}?`;
       } else {
         errorMsg += ' Use /help to see available commands.';
       }
@@ -694,19 +709,33 @@ export class CommandRegistry {
         CommandErrorCode.EXECUTION_NOT_FOUND,
         nameOrAlias,
         ctxArgs0,
-        { suggestions }
+        { suggestions },
       );
 
-      const fullCtx: CommandContext = { ...ctx, args: ctxArgs0, flags: {}, rawArgs: ctxArgs0.join(' '), cwd: (ctx as any).cwd || process.cwd() } as CommandContext;
+      const fullCtx: CommandContext = {
+        ...ctx,
+        args: ctxArgs0,
+        flags: {},
+        rawArgs: ctxArgs0.join(' '),
+        cwd: (ctx as any).cwd || process.cwd(),
+      } as CommandContext;
       const toErrorCtx0 = (c: CommandContext): ErrorCommandContext => ({
-        cwd: c.cwd, args: c.args, flags: c.flags, rawArgs: (c.rawArgs as string) || ''
+        cwd: c.cwd,
+        args: c.args,
+        flags: c.flags,
+        rawArgs: (c.rawArgs as string) || '',
       });
       globalErrorLogger.log(cmdError, toErrorCtx0(fullCtx));
-      this.debugLog(`Command not found: ${nameOrAlias}. Suggestions: ${suggestions.join(', ') || 'none'}`);
+      this.debugLog(
+        `Command not found: ${nameOrAlias}. Suggestions: ${suggestions.join(', ') || 'none'}`,
+      );
 
       if (this.globalErrorHandler) {
-        try { await this.globalErrorHandler(cmdError, toErrorCtx0(fullCtx)); }
-        catch (handlerErr) { this.debugLog(`Error handler threw: ${handlerErr}`); }
+        try {
+          await this.globalErrorHandler(cmdError, toErrorCtx0(fullCtx));
+        } catch (handlerErr) {
+          this.debugLog(`Error handler threw: ${handlerErr}`);
+        }
       }
 
       return {
@@ -715,16 +744,25 @@ export class CommandRegistry {
         data: {
           code: CommandErrorCode.EXECUTION_NOT_FOUND,
           suggestion: cmdError.suggestion,
-          retryable: false
-        }
+          retryable: false,
+        },
       };
     }
 
     const ctxArgs = ctx.args as string[];
     const { positional, flags } = this.parseArgs(ctxArgs);
-    const fullCtx: CommandContext = { ...ctx, args: positional, flags, rawArgs: ctxArgs.join(' '), cwd: (ctx as any).cwd || process.cwd() } as CommandContext;
+    const fullCtx: CommandContext = {
+      ...ctx,
+      args: positional,
+      flags,
+      rawArgs: ctxArgs.join(' '),
+      cwd: (ctx as any).cwd || process.cwd(),
+    } as CommandContext;
     const toErrorCtx = (c: CommandContext): ErrorCommandContext => ({
-      cwd: c.cwd, args: c.args, flags: c.flags, rawArgs: (c.rawArgs as string) || ''
+      cwd: c.cwd,
+      args: c.args,
+      flags: c.flags,
+      rawArgs: (c.rawArgs as string) || '',
     });
 
     try {
@@ -735,17 +773,18 @@ export class CommandRegistry {
         if (!validation.valid) {
           const errorLines = validation.errors.join('\n');
           const helpHint = `\nUse /help ${command.name} to see required arguments.`;
-          const valError = new ValidationError(
-            validation.errors[0],
-            command.name,
-            positional,
-            { code: CommandErrorCode.VALIDATION_MISSING_ARG, context: { allErrors: validation.errors } }
-          );
+          const valError = new ValidationError(validation.errors[0], command.name, positional, {
+            code: CommandErrorCode.VALIDATION_MISSING_ARG,
+            context: { allErrors: validation.errors },
+          });
           globalErrorLogger.log(valError, toErrorCtx(fullCtx));
 
           if (this.globalErrorHandler) {
-            try { await this.globalErrorHandler(valError, toErrorCtx(fullCtx)); }
-            catch (handlerErr) { this.debugLog(`Error handler threw: ${handlerErr}`); }
+            try {
+              await this.globalErrorHandler(valError, toErrorCtx(fullCtx));
+            } catch (handlerErr) {
+              this.debugLog(`Error handler threw: ${handlerErr}`);
+            }
           }
 
           return {
@@ -754,8 +793,8 @@ export class CommandRegistry {
             data: {
               code: CommandErrorCode.VALIDATION_MISSING_ARG,
               suggestion: valError.suggestion,
-              retryable: false
-            }
+              retryable: false,
+            },
           };
         }
       }
@@ -767,32 +806,44 @@ export class CommandRegistry {
       if (err instanceof CommandError) {
         cmdError = err;
       } else if (err instanceof RateLimitExceededError) {
-        cmdError = new TemporaryError(
-          err.message, command.name, positional,
-          { code: CommandErrorCode.TEMPORARY_RATE_LIMITED, retryAfterMs: err.retryAfterMs }
-        );
+        cmdError = new TemporaryError(err.message, command.name, positional, {
+          code: CommandErrorCode.TEMPORARY_RATE_LIMITED,
+          retryAfterMs: err.retryAfterMs,
+        });
       } else if (err instanceof Error) {
         const code = detectErrorCode(err);
         if (isRetryableError(code)) {
           cmdError = new TemporaryError(err.message, command.name, positional, { code });
         } else {
-          cmdError = new ExecutionError(err.message, command.name, positional, { cause: err, code });
+          cmdError = new ExecutionError(err.message, command.name, positional, {
+            cause: err,
+            code,
+          });
         }
       } else {
-        cmdError = new CommandError(String(err), CommandErrorCode.UNKNOWN, command.name, positional);
+        cmdError = new CommandError(
+          String(err),
+          CommandErrorCode.UNKNOWN,
+          command.name,
+          positional,
+        );
       }
 
       globalErrorLogger.log(cmdError, toErrorCtx(fullCtx));
 
       if (this.globalErrorHandler) {
-        try { await this.globalErrorHandler(cmdError, toErrorCtx(fullCtx)); }
-        catch (handlerErr) { this.debugLog(`Error handler threw: ${handlerErr}`); }
+        try {
+          await this.globalErrorHandler(cmdError, toErrorCtx(fullCtx));
+        } catch (handlerErr) {
+          this.debugLog(`Error handler threw: ${handlerErr}`);
+        }
       }
 
       let errorMessage = `Error executing /${command.name}: ${cmdError.message}`;
       if (cmdError.suggestion) {
         errorMessage += `\n${chalk.cyan('Suggestion:')} ${cmdError.suggestion}`;
-      }      if (this.debugMode && cmdError.stack) {
+      }
+      if (this.debugMode && cmdError.stack) {
         errorMessage += `\n${chalk.gray(cmdError.stack)}`;
       }
 
@@ -803,8 +854,8 @@ export class CommandRegistry {
           code: cmdError.code,
           suggestion: cmdError.suggestion,
           retryable: cmdError.isRetryable(),
-          context: cmdError.context
-        }
+          context: cmdError.context,
+        },
       };
     }
   }
@@ -813,7 +864,12 @@ export class CommandRegistry {
     nameOrAlias: string,
     ctx: Omit<CommandContext, 'flags'>,
     timeoutMs: number,
-    onProgress?: (progress: { current: number; total?: number; message?: string; percentage?: number }) => void
+    _onProgress?: (progress: {
+      current: number;
+      total?: number;
+      message?: string;
+      percentage?: number;
+    }) => void,
   ): Promise<CommandResult> {
     return new Promise((resolve) => {
       let isResolved = false;
@@ -821,10 +877,11 @@ export class CommandRegistry {
 
       timeoutId = setTimeout(() => {
         if (!isResolved) {
-          isResolved = true;          resolve({
+          isResolved = true;
+          resolve({
             success: false,
             error: `Command '${nameOrAlias}' timed out after ${timeoutMs}ms`,
-            data: { timeout: true, timeoutMs }
+            data: { timeout: true, timeoutMs },
           });
         }
       }, timeoutMs);
@@ -843,7 +900,7 @@ export class CommandRegistry {
             if (timeoutId) clearTimeout(timeoutId);
             resolve({
               success: false,
-              error: err instanceof Error ? err.message : String(err)
+              error: err instanceof Error ? err.message : String(err),
             });
           }
         });
@@ -869,13 +926,13 @@ export class CommandRegistry {
     const result = enhancedParseArgs(args);
     return {
       positional: result.positional,
-      flags: result.flags as Record<string, string | boolean>
+      flags: result.flags as Record<string, string | boolean>,
     };
   }
 
   validateParsedFlags(
     parsedArgs: ParsedArgs,
-    command: Command
+    command: Command,
   ): { valid: boolean; warnings: string[]; errors: string[] } {
     return validateCommandFlags(parsedArgs, command as any);
   }
@@ -916,7 +973,7 @@ export class CommandRegistry {
         if (!argDef.choices.includes(valueToUse)) {
           result.valid = false;
           result.errors.push(
-            `Argument ${argDef.name} musi byc jednym z: ${argDef.choices.join(', ')} (podano: ${valueToUse})`
+            `Argument ${argDef.name} musi byc jednym z: ${argDef.choices.join(', ')} (podano: ${valueToUse})`,
           );
           continue;
         }
@@ -933,7 +990,8 @@ export class CommandRegistry {
         const customResult = argDef.validate(valueToUse);
         if (customResult !== true) {
           result.valid = false;
-          const errorMsg = typeof customResult === 'string' ? customResult : 'nieprawidlowa wartosc';
+          const errorMsg =
+            typeof customResult === 'string' ? customResult : 'nieprawidlowa wartosc';
           result.errors.push(`Argument ${argDef.name}: ${errorMsg}`);
           continue;
         }
@@ -947,7 +1005,7 @@ export class CommandRegistry {
 
   private validateAndParseType(
     value: string,
-    argDef: CommandArg
+    argDef: CommandArg,
   ): { value?: string | number | boolean; error?: string } {
     const type = argDef.type || 'string';
     switch (type) {
@@ -955,7 +1013,7 @@ export class CommandRegistry {
         return { value };
       case 'number': {
         const num = Number(value);
-        if (isNaN(num)) return { error: `oczekiwano liczby, otrzymano "${value}"` };
+        if (Number.isNaN(num)) return { error: `oczekiwano liczby, otrzymano "${value}"` };
         return { value: num };
       }
       case 'boolean': {
@@ -966,7 +1024,8 @@ export class CommandRegistry {
       }
       case 'path': {
         const invalidChars = /[<>"|?*]/;
-        if (invalidChars.test(value)) return { error: `sciezka zawiera nieprawidlowe znaki: ${value}` };
+        if (invalidChars.test(value))
+          return { error: `sciezka zawiera nieprawidlowe znaki: ${value}` };
         const normalizedPath = value.replace(/\\/g, '/');
         return { value: normalizedPath };
       }
@@ -977,11 +1036,14 @@ export class CommandRegistry {
 
   private getTypeDisplay(type?: ArgType): string {
     switch (type) {
-      case 'number': return 'liczba';
-      case 'boolean': return 'tak/nie';
-      case 'path': return 'sciezka';
-      case 'string':
-      default: return 'tekst';
+      case 'number':
+        return 'liczba';
+      case 'boolean':
+        return 'tak/nie';
+      case 'path':
+        return 'sciezka';
+      default:
+        return 'tekst';
     }
   }
 
@@ -993,10 +1055,13 @@ export class CommandRegistry {
       const reqMark = arg.required ? chalk.red('*') : chalk.gray('?');
       const typeStr = chalk.blue(`[${this.getTypeDisplay(arg.type)}]`);
       const defStr = arg.default !== undefined ? chalk.gray(` (domyslnie: ${arg.default})`) : '';
-      const choicesStr = arg.choices && arg.choices.length > 0
-        ? chalk.gray(` dozwolone: ${arg.choices.join('|')}`)
-        : '';
-      lines.push(`  ${reqMark} ${chalk.cyan(arg.name)} ${typeStr} - ${arg.description}${defStr}${choicesStr}`);
+      const choicesStr =
+        arg.choices && arg.choices.length > 0
+          ? chalk.gray(` dozwolone: ${arg.choices.join('|')}`)
+          : '';
+      lines.push(
+        `  ${reqMark} ${chalk.cyan(arg.name)} ${typeStr} - ${arg.description}${defStr}${choicesStr}`,
+      );
     }
     lines.push('');
     lines.push(chalk.gray(`  ${chalk.red('*')} = wymagane, ${chalk.gray('?')} = opcjonalne`));
@@ -1008,13 +1073,15 @@ export class CommandRegistry {
   // ============================================================================
 
   getAll(): Command[] {
-    return Array.from(this.commands.values()).filter(cmd => !cmd.hidden);
+    return Array.from(this.commands.values()).filter((cmd) => !cmd.hidden);
   }
 
   getByCategory(category: string): Command[] {
     const names = this.categories.get(category);
     if (!names) return [];
-    return Array.from(names).map(name => this.commands.get(name)!).filter(cmd => !cmd.hidden);
+    return Array.from(names)
+      .map((name) => this.commands.get(name)!)
+      .filter((cmd) => !cmd.hidden);
   }
 
   getCategories(): string[] {
@@ -1033,7 +1100,9 @@ export class CommandRegistry {
   getByNamespace(namespace: string): Command[] {
     const names = this.namespaces.get(namespace);
     if (!names) return [];
-    return Array.from(names).map(name => this.commands.get(name)!).filter(cmd => cmd && !cmd.hidden);
+    return Array.from(names)
+      .map((name) => this.commands.get(name)!)
+      .filter((cmd) => cmd && !cmd.hidden);
   }
 
   getNamespaces(): string[] {
@@ -1046,7 +1115,7 @@ export class CommandRegistry {
 
   getConflictsFor(nameOrAlias: string): ConflictInfo[] {
     return this.conflictHistory.filter(
-      c => c.existingCommand === nameOrAlias || c.newCommand === nameOrAlias
+      (c) => c.existingCommand === nameOrAlias || c.newCommand === nameOrAlias,
     );
   }
 
@@ -1103,10 +1172,12 @@ export class CommandRegistry {
 
     if (command.aliases && command.aliases.length > 0) {
       lines.push(chalk.bold('Aliases:'));
-      const aliasDisplay = command.aliases.map(a => {
-        const fullAlias = command.namespace ? `${command.namespace}.${a}` : a;
-        return chalk.yellow(`/${fullAlias}`);
-      }).join(', ');
+      const aliasDisplay = command.aliases
+        .map((a) => {
+          const fullAlias = command.namespace ? `${command.namespace}.${a}` : a;
+          return chalk.yellow(`/${fullAlias}`);
+        })
+        .join(', ');
       lines.push(`  ${aliasDisplay}`);
       lines.push('');
     }
@@ -1135,10 +1206,11 @@ export class CommandRegistry {
         const fullName = this.getFullName(cmd);
         const aliases = cmd.aliases.length > 0 ? chalk.gray(` (${cmd.aliases.join(', ')})`) : '';
         const ns = cmd.namespace ? chalk.magenta(`[${cmd.namespace}] `) : '';
-        const priority = cmd.priority !== undefined
-          ? chalk.dim(` [${this.getPriorityString(cmd.priority)}]`)
-          : '';
-        lines.push(`  ${ns}${chalk.yellow(`/${fullName}`).padEnd(30)} ${cmd.description}${aliases}${priority}`);
+        const priority =
+          cmd.priority !== undefined ? chalk.dim(` [${this.getPriorityString(cmd.priority)}]`) : '';
+        lines.push(
+          `  ${ns}${chalk.yellow(`/${fullName}`).padEnd(30)} ${cmd.description}${aliases}${priority}`,
+        );
       }
     }
 
@@ -1156,7 +1228,9 @@ export class CommandRegistry {
     }
 
     lines.push(chalk.gray('\n─'.repeat(50)));
-    lines.push(chalk.gray(`Use ${chalk.white('/help <command>')} for detailed help on a specific command\n`));
+    lines.push(
+      chalk.gray(`Use ${chalk.white('/help <command>')} for detailed help on a specific command\n`),
+    );
     return lines.join('\n');
   }
 
@@ -1178,7 +1252,8 @@ export class CommandRegistry {
 
   autocompleteSubcommand(commandName: string, partial: string): string[] {
     const command = this.get(commandName);
-    if (!command || !command.subcommands) return [];    const lowerPartial = partial.toLowerCase();
+    if (!command || !command.subcommands) return [];
+    const lowerPartial = partial.toLowerCase();
     const suggestions: string[] = [];
     for (const subName of command.subcommands.keys()) {
       if (subName.toLowerCase().startsWith(lowerPartial)) suggestions.push(subName);
@@ -1221,7 +1296,7 @@ export class CommandRegistry {
       aliases: this.aliasMap.size,
       categories: this.categories.size,
       namespaces: this.namespaces.size,
-      conflicts: this.conflictHistory.length
+      conflicts: this.conflictHistory.length,
     };
   }
 
@@ -1238,8 +1313,11 @@ export class CommandRegistry {
   // ============================================================================
 
   private registerAliasInternal(commandName: string, alias: string): boolean {
-    if (this.commands.has(alias)) {      console.warn(
-        chalk.yellow(`[CommandRegistry] Warning: Alias '${alias}' conflicts with existing command name. Alias will not be registered.`)
+    if (this.commands.has(alias)) {
+      console.warn(
+        chalk.yellow(
+          `[CommandRegistry] Warning: Alias '${alias}' conflicts with existing command name. Alias will not be registered.`,
+        ),
       );
       return false;
     }
@@ -1247,7 +1325,9 @@ export class CommandRegistry {
       const existingCommand = this.aliasMap.get(alias);
       if (existingCommand !== commandName) {
         console.warn(
-          chalk.yellow(`[CommandRegistry] Warning: Alias '${alias}' already exists for command '${existingCommand}'. Overwriting with '${commandName}'.`)
+          chalk.yellow(
+            `[CommandRegistry] Warning: Alias '${alias}' already exists for command '${existingCommand}'. Overwriting with '${commandName}'.`,
+          ),
         );
       }
     }
@@ -1271,7 +1351,9 @@ export class CommandRegistry {
   registerAlias(commandName: string, newAlias: string): boolean {
     if (!this.commands.has(commandName)) {
       console.warn(
-        chalk.yellow(`[CommandRegistry] Warning: Cannot register alias '${newAlias}' - command '${commandName}' does not exist.`)
+        chalk.yellow(
+          `[CommandRegistry] Warning: Cannot register alias '${newAlias}' - command '${commandName}' does not exist.`,
+        ),
       );
       return false;
     }

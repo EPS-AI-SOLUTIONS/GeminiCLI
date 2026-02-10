@@ -17,11 +17,11 @@
  */
 
 import chalk from 'chalk';
-import { ExecutionResult } from '../types/index.js';
-import { detectHallucinations, HallucinationResult } from './HallucinationDetector.js';
-import { CitationEnforcer, EnforcementResult, Source } from './CitationEnforcer.js';
-import { ResponseCoherenceAnalyzer, CoherenceAnalysis } from './ResponseCoherenceAnalyzer.js';
-import { FinalReportValidator, ValidationResult } from './FinalReportValidator.js';
+import type { ExecutionResult } from '../types/index.js';
+import { CitationEnforcer, type Source } from './CitationEnforcer.js';
+import { FinalReportValidator } from './FinalReportValidator.js';
+import { detectHallucinations } from './HallucinationDetector.js';
+import { ResponseCoherenceAnalyzer } from './ResponseCoherenceAnalyzer.js';
 
 // =============================================================================
 // INTERFACES
@@ -124,25 +124,21 @@ const DEFAULT_CONFIG: FinalQualityGateConfig = {
   rejectThreshold: 40,
   verbose: false,
   strictMode: false,
-  weights: undefined
+  weights: undefined,
 };
 
 /** Default component weights (sum = 1.0) */
 export const DEFAULT_WEIGHTS: ComponentWeights = {
-  hallucination: 0.25,       // 25% - Most critical
-  citation: 0.20,            // 20% - Important for verification
-  coherence: 0.15,           // 15% - Logical consistency
-  objectiveAlignment: 0.20,  // 20% - Relevance to task
-  evidenceCompleteness: 0.10,// 10% - Supporting evidence
-  formatCompliance: 0.10     // 10% - Structural requirements
+  hallucination: 0.25, // 25% - Most critical
+  citation: 0.2, // 20% - Important for verification
+  coherence: 0.15, // 15% - Logical consistency
+  objectiveAlignment: 0.2, // 20% - Relevance to task
+  evidenceCompleteness: 0.1, // 10% - Supporting evidence
+  formatCompliance: 0.1, // 10% - Structural requirements
 };
 
 /** Required sections for format compliance */
-const REQUIRED_SECTIONS = [
-  '## Podsumowanie',
-  '## Wyniki',
-  '## Zgodność z celem'
-];
+const REQUIRED_SECTIONS = ['## Podsumowanie', '## Wyniki', '## Zgodność z celem'];
 
 /** Patterns indicating fabricated content */
 const FABRICATION_PATTERNS = [
@@ -150,7 +146,7 @@ const FABRICATION_PATTERNS = [
   /\bClass\d+\b/g,
   /\bComponent\d+\b/g,
   /\/path\/to\//gi,
-  /\[TODO\]|\[PLACEHOLDER\]/gi
+  /\[TODO\]|\[PLACEHOLDER\]/gi,
 ];
 
 // =============================================================================
@@ -166,7 +162,6 @@ export class FinalQualityGate {
   private lastResult: QualityResult | null = null;
   private citationEnforcer: CitationEnforcer;
   private coherenceAnalyzer: ResponseCoherenceAnalyzer;
-  private reportValidator: FinalReportValidator;
 
   constructor(config: Partial<FinalQualityGateConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -179,7 +174,7 @@ export class FinalQualityGate {
     this.citationEnforcer = new CitationEnforcer({ verbose: this.config.verbose });
     this.coherenceAnalyzer = new ResponseCoherenceAnalyzer({
       coherenceThreshold: 70,
-      verbose: this.config.verbose
+      verbose: this.config.verbose,
     });
     this.reportValidator = new FinalReportValidator({ verbose: this.config.verbose });
   }
@@ -217,8 +212,8 @@ export class FinalQualityGate {
     const hallucinationComponent = this.evaluateHallucination(report, context);
     components.push(hallucinationComponent);
     if (!hallucinationComponent.passed) {
-      blockers.push(...hallucinationComponent.issues.filter(i => i.includes('CRITICAL')));
-      warnings.push(...hallucinationComponent.issues.filter(i => !i.includes('CRITICAL')));
+      blockers.push(...hallucinationComponent.issues.filter((i) => i.includes('CRITICAL')));
+      warnings.push(...hallucinationComponent.issues.filter((i) => !i.includes('CRITICAL')));
     }
 
     // === COMPONENT 2: Citation Coverage (20%) ===
@@ -282,7 +277,7 @@ export class FinalQualityGate {
       warnings,
       recommendation,
       timestamp: Date.now(),
-      evaluationTime
+      evaluationTime,
     };
 
     this.lastResult = result;
@@ -297,7 +292,7 @@ export class FinalQualityGate {
   /**
    * Evaluate hallucination score
    */
-  private evaluateHallucination(report: string, context: QualityContext): QualityComponent {
+  private evaluateHallucination(report: string, _context: QualityContext): QualityComponent {
     const issues: string[] = [];
 
     // Use HallucinationDetector
@@ -332,7 +327,7 @@ export class FinalQualityGate {
       score: Math.round(score),
       weight: this.weights.hallucination,
       issues,
-      passed: score >= 60
+      passed: score >= 60,
     };
   }
 
@@ -344,11 +339,11 @@ export class FinalQualityGate {
 
     // Create sources from agent results
     const sources: Source[] = context.agentResults
-      .filter(r => r.success)
+      .filter((r) => r.success)
       .map((r, index) => ({
         taskId: r.id ?? index + 1,
         agentId: r.sourceTracking?.agent ?? 'unknown',
-        content: (r.logs ?? []).join('\n')
+        content: (r.logs ?? []).join('\n'),
       }));
 
     // Use CitationEnforcer
@@ -358,9 +353,14 @@ export class FinalQualityGate {
 
     // Penalize for hallucinations detected
     if (citationResult.hallucinations.length > 0) {
-      const criticalHallucinations = citationResult.hallucinations.filter(h => h.severity === 'critical');
+      const criticalHallucinations = citationResult.hallucinations.filter(
+        (h) => h.severity === 'critical',
+      );
       score = Math.max(0, score - criticalHallucinations.length * 15);
-      score = Math.max(0, score - (citationResult.hallucinations.length - criticalHallucinations.length) * 5);
+      score = Math.max(
+        0,
+        score - (citationResult.hallucinations.length - criticalHallucinations.length) * 5,
+      );
 
       for (const h of citationResult.hallucinations.slice(0, 5)) {
         issues.push(`[${h.severity.toUpperCase()}] ${h.claim}: ${h.reason}`);
@@ -380,7 +380,7 @@ export class FinalQualityGate {
       score: Math.round(score),
       weight: this.weights.citation,
       issues,
-      passed: score >= 50
+      passed: score >= 50,
     };
   }
 
@@ -412,7 +412,7 @@ export class FinalQualityGate {
       score: Math.round(score),
       weight: this.weights.coherence,
       issues,
-      passed: coherenceResult.coherent
+      passed: coherenceResult.coherent,
     };
   }
 
@@ -425,10 +425,22 @@ export class FinalQualityGate {
     const objectiveLower = context.originalObjective.toLowerCase();
 
     // Extract key terms from objective (words > 3 chars, excluding stop words)
-    const stopWords = new Set(['this', 'that', 'with', 'from', 'have', 'been', 'will', 'would', 'could', 'should', 'about']);
+    const stopWords = new Set([
+      'this',
+      'that',
+      'with',
+      'from',
+      'have',
+      'been',
+      'will',
+      'would',
+      'could',
+      'should',
+      'about',
+    ]);
     const keyTerms = objectiveLower
       .split(/\s+/)
-      .filter(word => word.length > 3 && !stopWords.has(word))
+      .filter((word) => word.length > 3 && !stopWords.has(word))
       .slice(0, 20); // Max 20 key terms
 
     // Count matches
@@ -447,7 +459,8 @@ export class FinalQualityGate {
     const alignment = keyTerms.length > 0 ? (matchCount / keyTerms.length) * 100 : 100;
 
     // Check for explicit objective reference
-    const hasObjectiveReference = report.includes('ORYGINALNY CEL') ||
+    const hasObjectiveReference =
+      report.includes('ORYGINALNY CEL') ||
       report.includes('Original objective') ||
       report.includes('## Cel') ||
       report.includes('## Objective');
@@ -462,10 +475,11 @@ export class FinalQualityGate {
     // Check if key results address the objective
     const resultsSection = report.match(/## Wyniki[\s\S]*?(?=##|$)/i);
     if (resultsSection) {
-      const resultsKeyTermMatches = keyTerms.filter(term =>
-        resultsSection[0].toLowerCase().includes(term)
+      const resultsKeyTermMatches = keyTerms.filter((term) =>
+        resultsSection[0].toLowerCase().includes(term),
       ).length;
-      const resultsCoverage = keyTerms.length > 0 ? (resultsKeyTermMatches / keyTerms.length) * 100 : 100;
+      const resultsCoverage =
+        keyTerms.length > 0 ? (resultsKeyTermMatches / keyTerms.length) * 100 : 100;
 
       // Average with results-specific alignment
       score = (score + resultsCoverage) / 2;
@@ -488,7 +502,7 @@ export class FinalQualityGate {
       score: Math.round(score),
       weight: this.weights.objectiveAlignment,
       issues,
-      passed: score >= 60
+      passed: score >= 60,
     };
   }
 
@@ -499,7 +513,7 @@ export class FinalQualityGate {
     const issues: string[] = [];
 
     // Count successful agent results
-    const successfulResults = context.agentResults.filter(r => r.success);
+    const successfulResults = context.agentResults.filter((r) => r.success);
     const totalResults = context.agentResults.length;
 
     // Calculate task completion rate
@@ -514,13 +528,10 @@ export class FinalQualityGate {
     }
 
     // Calculate citation coverage of successful results
-    const citedSuccessful = successfulResults.filter(r =>
-      citedTasks.has(r.id ?? 0)
-    ).length;
+    const citedSuccessful = successfulResults.filter((r) => citedTasks.has(r.id ?? 0)).length;
 
-    const citationCoverage = successfulResults.length > 0
-      ? (citedSuccessful / successfulResults.length) * 100
-      : 100;
+    const citationCoverage =
+      successfulResults.length > 0 ? (citedSuccessful / successfulResults.length) * 100 : 100;
 
     // Check for evidence markers
     const evidencePatterns = [
@@ -528,7 +539,7 @@ export class FinalQualityGate {
       /ponieważ|because|since/gi,
       /na podstawie|based on/gi,
       /zgodnie z|according to/gi,
-      /wynika z|results from|follows from/gi
+      /wynika z|results from|follows from/gi,
     ];
 
     let evidenceMarkerCount = 0;
@@ -540,11 +551,14 @@ export class FinalQualityGate {
     }
 
     // Calculate score
-    let score = (completionRate * 0.4) + (citationCoverage * 0.4) + (Math.min(evidenceMarkerCount * 5, 20));
+    const score =
+      completionRate * 0.4 + citationCoverage * 0.4 + Math.min(evidenceMarkerCount * 5, 20);
 
     // Add issues
     if (completionRate < 70) {
-      issues.push(`Low task completion rate: ${completionRate.toFixed(0)}% (${successfulResults.length}/${totalResults})`);
+      issues.push(
+        `Low task completion rate: ${completionRate.toFixed(0)}% (${successfulResults.length}/${totalResults})`,
+      );
     }
 
     if (citationCoverage < 50) {
@@ -560,7 +574,7 @@ export class FinalQualityGate {
       score: Math.round(score),
       weight: this.weights.evidenceCompleteness,
       issues,
-      passed: score >= 50
+      passed: score >= 50,
     };
   }
 
@@ -577,10 +591,10 @@ export class FinalQualityGate {
         section,
         section.replace('## ', '### '),
         section.replace('## ', '**'),
-        section.toLowerCase()
+        section.toLowerCase(),
       ];
 
-      const found = patterns.some(p => report.toLowerCase().includes(p.toLowerCase()));
+      const found = patterns.some((p) => report.toLowerCase().includes(p.toLowerCase()));
       if (!found) {
         score -= 15;
         issues.push(`Missing required section: ${section}`);
@@ -628,7 +642,7 @@ export class FinalQualityGate {
       score: Math.max(0, score),
       weight: this.weights.formatCompliance,
       issues,
-      passed: score >= 60
+      passed: score >= 60,
     };
   }
 
@@ -653,7 +667,7 @@ export class FinalQualityGate {
   private determineRecommendation(
     score: number,
     blockers: string[],
-    context: QualityContext
+    _context: QualityContext,
   ): 'accept' | 'review' | 'reject' {
     // If in strict mode and has blockers, reject
     if (this.config.strictMode && blockers.length > 0) {
@@ -692,8 +706,10 @@ export class FinalQualityGate {
 
     // Overall status
     const statusIcon = r.passed ? '[PASS]' : '[FAIL]';
-    const statusColor = r.passed ? 'green' : 'red';
-    lines.push(`Status: ${statusIcon} | Score: ${r.overallScore}/100 | Recommendation: ${r.recommendation.toUpperCase()}`);
+    const _statusColor = r.passed ? 'green' : 'red';
+    lines.push(
+      `Status: ${statusIcon} | Score: ${r.overallScore}/100 | Recommendation: ${r.recommendation.toUpperCase()}`,
+    );
     lines.push(`Threshold: ${this.config.passThreshold}% | Strict Mode: ${this.config.strictMode}`);
     lines.push(`Evaluation Time: ${r.evaluationTime}ms`);
     lines.push('');
@@ -708,7 +724,9 @@ export class FinalQualityGate {
       const weightPercent = (component.weight * 100).toFixed(0);
       const contribution = (component.score * component.weight).toFixed(1);
 
-      lines.push(`  ${passIcon} ${component.name.padEnd(22)} ${component.score.toString().padStart(3)}/100 (${weightPercent}% weight, +${contribution} pts)`);
+      lines.push(
+        `  ${passIcon} ${component.name.padEnd(22)} ${component.score.toString().padStart(3)}/100 (${weightPercent}% weight, +${contribution} pts)`,
+      );
 
       if (component.issues.length > 0 && !component.passed) {
         for (const issue of component.issues.slice(0, 2)) {
@@ -779,7 +797,7 @@ export class FinalQualityGate {
     const statusColor = result.passed ? chalk.green : chalk.red;
     const statusIcon = result.passed ? '[PASS]' : '[FAIL]';
 
-    console.log(chalk.cyan('\n' + '='.repeat(60)));
+    console.log(chalk.cyan(`\n${'='.repeat(60)}`));
     console.log(chalk.cyan('  FINAL QUALITY GATE EVALUATION'));
     console.log(chalk.cyan('='.repeat(60)));
 
@@ -790,10 +808,12 @@ export class FinalQualityGate {
     console.log(chalk.yellow('\nComponent Scores:'));
     for (const component of result.components) {
       const passIcon = component.passed ? chalk.green('[OK]') : chalk.red('[X]');
-      const scoreColor = component.score >= 70 ? chalk.green :
-        component.score >= 50 ? chalk.yellow : chalk.red;
+      const scoreColor =
+        component.score >= 70 ? chalk.green : component.score >= 50 ? chalk.yellow : chalk.red;
 
-      console.log(`  ${passIcon} ${component.name.padEnd(22)} ${scoreColor(component.score + '/100')} (${(component.weight * 100).toFixed(0)}%)`);
+      console.log(
+        `  ${passIcon} ${component.name.padEnd(22)} ${scoreColor(`${component.score}/100`)} (${(component.weight * 100).toFixed(0)}%)`,
+      );
     }
 
     if (result.blockers.length > 0) {
@@ -810,7 +830,7 @@ export class FinalQualityGate {
       }
     }
 
-    console.log(chalk.cyan('\n' + '='.repeat(60)));
+    console.log(chalk.cyan(`\n${'='.repeat(60)}`));
   }
 
   /**
@@ -859,7 +879,7 @@ export const finalQualityGate = new FinalQualityGate({
   acceptThreshold: 85,
   rejectThreshold: 40,
   verbose: false,
-  strictMode: false
+  strictMode: false,
 });
 
 /**
@@ -904,13 +924,13 @@ export function createQualityContext(
   originalObjective: string,
   agentResults: ExecutionResult[],
   executionTime: number,
-  phaseResults?: Map<string, any>
+  phaseResults?: Map<string, any>,
 ): QualityContext {
   return {
     originalObjective,
     agentResults,
     executionTime,
-    phaseResults: phaseResults ?? new Map()
+    phaseResults: phaseResults ?? new Map(),
   };
 }
 
@@ -927,5 +947,5 @@ export default {
   setQualityThreshold,
   enableStrictMode,
   createQualityContext,
-  DEFAULT_WEIGHTS
+  DEFAULT_WEIGHTS,
 };

@@ -4,8 +4,8 @@
  * Tests for keyboard shortcuts functionality.
  */
 
-import { test, expect } from '../fixtures/test-setup';
 import { SHORTCUTS, TIMEOUTS, UI_TEXTS } from '../fixtures/test-data';
+import { expect, test } from '../fixtures/test-setup';
 
 test.describe('Keyboard Shortcuts', () => {
   test('Ctrl+, should open settings', async ({ page }) => {

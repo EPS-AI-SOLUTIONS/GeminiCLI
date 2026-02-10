@@ -16,28 +16,23 @@
  * - Full integration with NativeShell
  */
 
-import { spawn, ChildProcess, SpawnOptions, execSync } from 'child_process';
-import { EventEmitter } from 'events';
-import os from 'os';
-import path from 'path';
-import fs from 'fs';
+import { type ChildProcess, execSync } from 'node:child_process';
+import { EventEmitter } from 'node:events';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import chalk from 'chalk';
-
-import {
-  NativeShell,
-  TIMEOUT_PROFILES,
-  CwdValidationError
-} from './nativeshell/index.js';
 import type {
-  ShellType,
-  ShellInfo,
+  NativeShellConfig,
   ProcessInfo,
   ProcessResult,
+  ShellInfo,
   ShellSession,
-  NativeShellConfig,
   ShellTimeoutConfig,
+  ShellType,
   TimeoutProfile,
 } from './nativeshell/index.js';
+import { CwdValidationError, NativeShell, TIMEOUT_PROFILES } from './nativeshell/index.js';
 
 // ============================================================
 // Types
@@ -51,7 +46,8 @@ export type ShellConfigProfile = 'default' | 'secure' | 'performance' | 'debug';
 /**
  * Extended shell configuration with all options
  */
-export interface ShellManagerConfig extends Omit<NativeShellConfig, 'environmentConfig' | 'autoFallback'> {
+export interface ShellManagerConfig
+  extends Omit<NativeShellConfig, 'environmentConfig' | 'autoFallback'> {
   /** Profile name for predefined configuration */
   profile?: ShellConfigProfile;
 
@@ -187,7 +183,7 @@ export const SHELL_PROFILES: Record<ShellConfigProfile, Partial<ShellManagerConf
     maxHistorySize: 100,
     streamOutput: false,
     verbose: false,
-    sandbox: false
+    sandbox: false,
   },
 
   /**
@@ -208,16 +204,14 @@ export const SHELL_PROFILES: Record<ShellConfigProfile, Partial<ShellManagerConf
       'format',
       'shutdown',
       'reboot',
-      ':(){:|:&};:',  // Fork bomb
+      ':(){:|:&};:', // Fork bomb
       'dd if=/dev/random',
       'mkfs',
       'chmod -R 777',
       'wget http',
-      'curl http'
+      'curl http',
     ],
-    allowedDirs: [
-      process.cwd()
-    ]
+    allowedDirs: [process.cwd()],
   },
 
   /**
@@ -231,7 +225,7 @@ export const SHELL_PROFILES: Record<ShellConfigProfile, Partial<ShellManagerConf
     maxHistorySize: 0,
     streamOutput: true,
     verbose: false,
-    sandbox: false
+    sandbox: false,
   },
 
   /**
@@ -245,8 +239,8 @@ export const SHELL_PROFILES: Record<ShellConfigProfile, Partial<ShellManagerConf
     maxHistorySize: 1000,
     streamOutput: true,
     verbose: true,
-    sandbox: false
-  }
+    sandbox: false,
+  },
 };
 
 // ============================================================
@@ -274,7 +268,8 @@ export class ShellManager extends EventEmitter {
     const mergedConfig: Required<ShellManagerConfig> = {
       // From NativeShellConfig
       defaultShell: config.defaultShell || this.detectDefaultShell(),
-      defaultTimeout: config.defaultTimeout ?? profileConfig.defaultTimeout ?? TIMEOUT_PROFILES.normal,
+      defaultTimeout:
+        config.defaultTimeout ?? profileConfig.defaultTimeout ?? TIMEOUT_PROFILES.normal,
       maxProcesses: config.maxProcesses ?? profileConfig.maxProcesses ?? 50,
       cwd: config.cwd || process.cwd(),
       env: { ...process.env, ...config.customEnv, ...config.env } as Record<string, string>,
@@ -288,13 +283,14 @@ export class ShellManager extends EventEmitter {
       verbose: config.verbose ?? profileConfig.verbose ?? false,
       blockedCommands: config.blockedCommands ?? profileConfig.blockedCommands ?? [],
       allowedDirs: config.allowedDirs ?? profileConfig.allowedDirs ?? [],
-      maxConcurrentProcesses: config.maxConcurrentProcesses ?? profileConfig.maxConcurrentProcesses ?? 10,
+      maxConcurrentProcesses:
+        config.maxConcurrentProcesses ?? profileConfig.maxConcurrentProcesses ?? 10,
       trackHistory: config.trackHistory ?? profileConfig.trackHistory ?? true,
       maxHistorySize: config.maxHistorySize ?? profileConfig.maxHistorySize ?? 100,
       streamOutput: config.streamOutput ?? profileConfig.streamOutput ?? false,
       customEnv: config.customEnv ?? {},
       commandPrefix: config.commandPrefix ?? '',
-      commandSuffix: config.commandSuffix ?? ''
+      commandSuffix: config.commandSuffix ?? '',
     };
 
     this.config = mergedConfig;
@@ -307,7 +303,7 @@ export class ShellManager extends EventEmitter {
       cwd: mergedConfig.cwd,
       env: mergedConfig.env,
       timeoutConfig: mergedConfig.timeoutConfig,
-      inheritCwd: mergedConfig.inheritCwd
+      inheritCwd: mergedConfig.inheritCwd,
     });
 
     // Set up event forwarding
@@ -413,10 +409,16 @@ export class ShellManager extends EventEmitter {
                 // CMD doesn't have a version flag
                 version = 'Windows CMD';
               } else if (type === 'powershell' || type === 'pwsh') {
-                const result = execSync(`"${shellPath}" -Command "$PSVersionTable.PSVersion.ToString()"`, { encoding: 'utf-8', timeout: 5000 });
+                const result = execSync(
+                  `"${shellPath}" -Command "$PSVersionTable.PSVersion.ToString()"`,
+                  { encoding: 'utf-8', timeout: 5000 },
+                );
                 version = result.trim();
               } else {
-                const result = execSync(`"${shellPath}" --version`, { encoding: 'utf-8', timeout: 5000 });
+                const result = execSync(`"${shellPath}" --version`, {
+                  encoding: 'utf-8',
+                  timeout: 5000,
+                });
                 version = result.split('\n')[0].trim();
               }
             } catch {
@@ -424,31 +426,46 @@ export class ShellManager extends EventEmitter {
             }
             return { type, path: shellPath, available: true, version };
           }
-        } catch {
-          continue;
-        }
+        } catch {}
       }
       return { type, path: '', available: false };
     };
 
     const [cmd, powershell, pwsh, bash, sh, zsh] = await Promise.all([
       checkShell('cmd', isWindows ? ['C:\\Windows\\System32\\cmd.exe'] : []),
-      checkShell('powershell', isWindows
-        ? ['C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe']
-        : ['/usr/bin/powershell', '/usr/local/bin/powershell']),
-      checkShell('pwsh', isWindows
-        ? ['C:\\Program Files\\PowerShell\\7\\pwsh.exe', 'C:\\Program Files\\PowerShell\\pwsh.exe']
-        : ['/usr/bin/pwsh', '/usr/local/bin/pwsh']),
-      checkShell('bash', isWindows
-        ? ['C:\\Program Files\\Git\\bin\\bash.exe', 'C:\\Windows\\System32\\bash.exe']
-        : ['/bin/bash', '/usr/bin/bash']),
+      checkShell(
+        'powershell',
+        isWindows
+          ? ['C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe']
+          : ['/usr/bin/powershell', '/usr/local/bin/powershell'],
+      ),
+      checkShell(
+        'pwsh',
+        isWindows
+          ? [
+              'C:\\Program Files\\PowerShell\\7\\pwsh.exe',
+              'C:\\Program Files\\PowerShell\\pwsh.exe',
+            ]
+          : ['/usr/bin/pwsh', '/usr/local/bin/pwsh'],
+      ),
+      checkShell(
+        'bash',
+        isWindows
+          ? ['C:\\Program Files\\Git\\bin\\bash.exe', 'C:\\Windows\\System32\\bash.exe']
+          : ['/bin/bash', '/usr/bin/bash'],
+      ),
       checkShell('sh', ['/bin/sh', '/usr/bin/sh']),
-      checkShell('zsh', ['/bin/zsh', '/usr/bin/zsh', '/usr/local/bin/zsh'])
+      checkShell('zsh', ['/bin/zsh', '/usr/bin/zsh', '/usr/local/bin/zsh']),
     ]);
 
     this.shellAvailability = {
-      cmd, powershell, pwsh, bash, sh, zsh,
-      default: this.config.preferredShell
+      cmd,
+      powershell,
+      pwsh,
+      bash,
+      sh,
+      zsh,
+      default: this.config.preferredShell,
     };
 
     return this.shellAvailability;
@@ -480,7 +497,7 @@ export class ShellManager extends EventEmitter {
         ? ['C:\\Program Files\\Git\\bin\\bash.exe', 'C:\\Windows\\System32\\bash.exe']
         : ['/bin/bash', '/usr/bin/bash'],
       sh: ['/bin/sh', '/usr/bin/sh'],
-      zsh: ['/bin/zsh', '/usr/bin/zsh']
+      zsh: ['/bin/zsh', '/usr/bin/zsh'],
     };
 
     const paths = shellPaths[shell] || [];
@@ -510,9 +527,6 @@ export class ShellManager extends EventEmitter {
       case 'powershell':
       case 'pwsh':
         return this.escapePowerShellString(str, options);
-      case 'bash':
-      case 'sh':
-      case 'zsh':
       default:
         return this.escapeBashString(str, options);
     }
@@ -530,9 +544,6 @@ export class ShellManager extends EventEmitter {
       case 'powershell':
       case 'pwsh':
         return `"${this.escapePowerShellString(str, { ...options, quote: false })}"`;
-      case 'bash':
-      case 'sh':
-      case 'zsh':
       default:
         return `'${str.replace(/'/g, "'\\''")}'`;
     }
@@ -569,11 +580,7 @@ export class ShellManager extends EventEmitter {
 
   private escapePowerShellString(str: string, _options: EscapeOptions): string {
     // PowerShell special characters: ` $ " ' @ # { } ( ) ; ,
-    return str
-      .replace(/`/g, '``')
-      .replace(/\$/g, '`$')
-      .replace(/"/g, '`"')
-      .replace(/'/g, "''");
+    return str.replace(/`/g, '``').replace(/\$/g, '`$').replace(/"/g, '`"').replace(/'/g, "''");
   }
 
   private escapeBashString(str: string, _options: EscapeOptions): string {
@@ -601,7 +608,9 @@ export class ShellManager extends EventEmitter {
 
     // Check concurrent process limit
     if (this.runningCount >= this.config.maxConcurrentProcesses) {
-      throw new Error(`Maximum concurrent processes (${this.config.maxConcurrentProcesses}) reached`);
+      throw new Error(
+        `Maximum concurrent processes (${this.config.maxConcurrentProcesses}) reached`,
+      );
     }
 
     // Apply prefix/suffix
@@ -621,7 +630,7 @@ export class ShellManager extends EventEmitter {
         cwd: options.cwd || this.config.cwd,
         env: { ...this.config.env, ...options.env },
         timeout: options.timeout || this.config.defaultTimeout,
-        shell: options.shell ? this.getShellExecutable(options.shell) : this.config.defaultShell
+        shell: options.shell ? this.getShellExecutable(options.shell) : this.config.defaultShell,
       });
 
       const duration = Date.now() - startTime;
@@ -634,7 +643,7 @@ export class ShellManager extends EventEmitter {
           exitCode: result.exitCode,
           duration,
           shell: options.shell || this.config.preferredShell,
-          cwd: options.cwd || this.config.cwd
+          cwd: options.cwd || this.config.cwd,
         });
       }
 
@@ -645,7 +654,7 @@ export class ShellManager extends EventEmitter {
         this.log('Command completed', {
           command: command.slice(0, 50),
           exitCode: result.exitCode,
-          duration
+          duration,
         });
       }
 
@@ -692,7 +701,7 @@ export class ShellManager extends EventEmitter {
   spawn(
     command: string,
     args: string[] = [],
-    options: ExecuteOptions = {}
+    options: ExecuteOptions = {},
   ): { pid: number; process: ChildProcess } {
     if (this.config.sandbox) {
       this.validateCommand(command);
@@ -701,15 +710,15 @@ export class ShellManager extends EventEmitter {
     const result = this.shell.spawn(command, args, {
       cwd: options.cwd || this.config.cwd,
       env: { ...this.config.env, ...options.env },
-      shell: options.shell ? this.getShellExecutable(options.shell) : true
+      shell: options.shell ? this.getShellExecutable(options.shell) : true,
     });
 
     // Set up streaming callbacks
     if (options.onStdout) {
-      result.process.stdout?.on('data', (data) => options.onStdout!(data.toString()));
+      result.process.stdout?.on('data', (data) => options.onStdout?.(data.toString()));
     }
     if (options.onStderr) {
-      result.process.stderr?.on('data', (data) => options.onStderr!(data.toString()));
+      result.process.stderr?.on('data', (data) => options.onStderr?.(data.toString()));
     }
 
     if (this.config.verbose) {
@@ -777,11 +786,11 @@ export class ShellManager extends EventEmitter {
    * List all processes
    */
   listProcesses(filter?: { status?: ProcessInfo['status'] }): (ProcessInfo | TrackedProcess)[] {
-    const shellProcesses = this.shell.listProcesses(filter);
+    const _shellProcesses = this.shell.listProcesses(filter);
     const trackedProcesses = Array.from(this.trackedProcesses.values());
 
     if (filter?.status) {
-      return trackedProcesses.filter(p => p.status === filter.status);
+      return trackedProcesses.filter((p) => p.status === filter.status);
     }
 
     return trackedProcesses;
@@ -838,7 +847,7 @@ export class ShellManager extends EventEmitter {
     return this.shell.createSession({
       shell,
       cwd: options?.cwd || this.config.cwd,
-      env: { ...this.config.env, ...options?.env }
+      env: { ...this.config.env, ...options?.env },
     });
   }
 
@@ -898,8 +907,8 @@ export class ShellManager extends EventEmitter {
    * Search history
    */
   searchHistory(query: string): HistoryEntry[] {
-    return this.commandHistory.filter(entry =>
-      entry.command.toLowerCase().includes(query.toLowerCase())
+    return this.commandHistory.filter((entry) =>
+      entry.command.toLowerCase().includes(query.toLowerCase()),
     );
   }
 
@@ -926,8 +935,8 @@ export class ShellManager extends EventEmitter {
         sandbox: this.config.sandbox,
         runningProcesses: this.runningCount,
         trackedProcesses: this.trackedProcesses.size,
-        historySize: this.commandHistory.length
-      }
+        historySize: this.commandHistory.length,
+      },
     };
   }
 
@@ -959,11 +968,17 @@ export class ShellManager extends EventEmitter {
     console.log(chalk.gray(`  Default Shell: ${this.config.defaultShell}`));
     console.log(chalk.gray(`  Working Dir: ${this.config.cwd}`));
     console.log(chalk.gray(`  Timeout: ${this.config.defaultTimeout}ms`));
-    console.log(chalk.gray(`  Sandbox: ${this.config.sandbox ? chalk.yellow('ENABLED') : 'disabled'}`));
+    console.log(
+      chalk.gray(`  Sandbox: ${this.config.sandbox ? chalk.yellow('ENABLED') : 'disabled'}`),
+    );
     console.log(chalk.gray(`  Verbose: ${this.config.verbose}`));
-    console.log(chalk.gray(`  Running Processes: ${this.runningCount}/${this.config.maxConcurrentProcesses}`));
+    console.log(
+      chalk.gray(`  Running Processes: ${this.runningCount}/${this.config.maxConcurrentProcesses}`),
+    );
     console.log(chalk.gray(`  Tracked Processes: ${this.trackedProcesses.size}`));
-    console.log(chalk.gray(`  History: ${this.commandHistory.length}/${this.config.maxHistorySize}`));
+    console.log(
+      chalk.gray(`  History: ${this.commandHistory.length}/${this.config.maxHistorySize}`),
+    );
 
     // Also print underlying shell status
     this.shell.printStatus();
@@ -982,7 +997,7 @@ export class ShellManager extends EventEmitter {
       running: this.runningCount,
       tracked: this.trackedProcesses.size,
       historySize: this.commandHistory.length,
-      sessionsActive: this.shell.listSessions().length
+      sessionsActive: this.shell.listSessions().length,
     };
   }
 
@@ -1024,7 +1039,7 @@ export class ShellManager extends EventEmitter {
     return {
       defaultTimeout: TIMEOUT_PROFILES.normal,
       maxTimeout: TIMEOUT_PROFILES.build,
-      perCommandTimeouts: new Map()
+      perCommandTimeouts: new Map(),
     };
   }
 
@@ -1041,13 +1056,15 @@ export class ShellManager extends EventEmitter {
     // Check allowed directories if specified
     if (this.config.allowedDirs.length > 0) {
       // Basic check - more sophisticated validation would require parsing the command
-      const hasUnsafeAccess = !this.config.allowedDirs.some(dir =>
-        command.includes(dir) || command.includes(path.resolve(dir))
+      const hasUnsafeAccess = !this.config.allowedDirs.some(
+        (dir) => command.includes(dir) || command.includes(path.resolve(dir)),
       );
 
       // Only warn in verbose mode, don't block (could have false positives)
       if (hasUnsafeAccess && this.config.verbose) {
-        this.log('Warning: Command may access directories outside allowed list', { command: command.slice(0, 50) });
+        this.log('Warning: Command may access directories outside allowed list', {
+          command: command.slice(0, 50),
+        });
       }
     }
   }
@@ -1056,7 +1073,7 @@ export class ShellManager extends EventEmitter {
     pid: number,
     command: string,
     options: ExecuteOptions,
-    result: ProcessResult
+    result: ProcessResult,
   ): void {
     const tracked: TrackedProcess = {
       pid,
@@ -1069,7 +1086,7 @@ export class ShellManager extends EventEmitter {
       stdout: [result.stdout],
       stderr: [result.stderr],
       cwd: options.cwd || this.config.cwd,
-      env: { ...this.config.env, ...options.env }
+      env: { ...this.config.env, ...options.env },
     };
 
     this.trackedProcesses.set(pid, tracked);

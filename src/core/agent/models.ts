@@ -10,9 +10,9 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import chalk from 'chalk';
 import 'dotenv/config';
-import { AgentRole, AgentPersona } from '../../types/index.js';
-import { getBestAvailableModel, DEFAULT_MODEL } from '../GeminiCLI.js';
 import { GEMINI_MODELS } from '../../config/models.config.js';
+import type { AgentPersona, AgentRole } from '../../types/index.js';
+import { DEFAULT_MODEL, getBestAvailableModel } from '../GeminiCLI.js';
 import type { TaskComplexity } from './types.js';
 
 // ============================================================================
@@ -35,16 +35,16 @@ export const DIJKSTRA_CHAIN = [
   { name: GEMINI_MODELS.PRO, role: 'Flagowiec (Flagship)', temperature: 1.0 },
   { name: GEMINI_MODELS.PRO, role: 'Pierwszy oficer (First Officer)', temperature: 1.0 },
   { name: GEMINI_MODELS.FLASH, role: 'Szybki zwiadowca (Fast Scout)', temperature: 1.1 },
-  { name: GEMINI_MODELS.FLASH, role: 'Ostatnia deska ratunku (Last Resort)', temperature: 1.2 }
+  { name: GEMINI_MODELS.FLASH, role: 'Ostatnia deska ratunku (Last Resort)', temperature: 1.2 },
 ];
 
 /** Model tiers for intelligent routing (Gemini 3 only) */
 export const MODEL_TIERS = {
   classifier: GEMINI_MODELS.FLASH, // Fast classification
-  fast: GEMINI_MODELS.FLASH,       // Fast for simple tasks
-  standard: GEMINI_MODELS.FLASH,   // Balanced
-  pro: GEMINI_MODELS.FLASH,        // Quality
-  best: GEMINI_MODELS.PRO          // Best quality (for critical tasks)
+  fast: GEMINI_MODELS.FLASH, // Fast for simple tasks
+  standard: GEMINI_MODELS.FLASH, // Balanced
+  pro: GEMINI_MODELS.PRO, // FIX: Quality tier now correctly maps to Pro (was Flash)
+  best: GEMINI_MODELS.PRO, // Best quality (for critical tasks)
 };
 
 // ============================================================================
@@ -52,7 +52,7 @@ export const MODEL_TIERS = {
 // ============================================================================
 
 /** Dynamic model selection state */
-let availableModels: Set<string> = new Set();
+const availableModels: Set<string> = new Set();
 let modelInitialized = false;
 
 /**
@@ -72,7 +72,7 @@ export async function initializeGeminiModels(): Promise<void> {
     availableModels.add(GEMINI_MODELS.PRO);
 
     modelInitialized = true;
-  } catch (error) {
+  } catch (_error) {
     console.warn(chalk.yellow('[Gemini] Could not verify models, using defaults'));
     modelInitialized = true;
   }
@@ -89,7 +89,7 @@ export async function classifyTaskComplexity(task: string): Promise<TaskComplexi
   try {
     const classifierModel = genAI.getGenerativeModel({
       model: MODEL_TIERS.classifier,
-      generationConfig: { temperature: 0, maxOutputTokens: 20 }
+      generationConfig: { temperature: 0, maxOutputTokens: 20 },
     });
 
     const prompt = `Classify this task complexity. Reply with ONLY one word: trivial, simple, medium, complex, or critical.
@@ -102,10 +102,10 @@ Complexity:`;
     const response = result.response.text().toLowerCase().trim();
 
     const validLevels: TaskComplexity[] = ['trivial', 'simple', 'medium', 'complex', 'critical'];
-    const matched = validLevels.find(level => response.includes(level));
+    const matched = validLevels.find((level) => response.includes(level));
 
     return matched || 'medium';
-  } catch (error) {
+  } catch (_error) {
     // If classifier fails, default to medium
     return 'medium';
   }
@@ -120,7 +120,7 @@ export function selectModelForComplexity(complexity: TaskComplexity): string {
     simple: MODEL_TIERS.fast,
     medium: MODEL_TIERS.standard,
     complex: MODEL_TIERS.pro,
-    critical: MODEL_TIERS.best
+    critical: MODEL_TIERS.best,
   };
 
   const selectedModel = modelMap[complexity];
@@ -144,17 +144,98 @@ export function selectModelForComplexity(complexity: TaskComplexity): string {
 // ============================================================================
 
 export const AGENT_PERSONAS: Record<AgentRole, AgentPersona> = {
-  dijkstra: { name: 'dijkstra', role: 'Strategist', model: 'gemini-cloud', description: 'Master strategist using Gemini 3 Flash. Create JSON plans.' },
-  geralt:   { name: 'geralt',   role: 'Security',   model: 'qwen3:4b',        description: 'Oversee security. VETO unsafe changes.' },
-  yennefer: { name: 'yennefer', role: 'Architect',  model: 'qwen3:4b',        description: 'Focus on design patterns and code purity.' },
-  triss:    { name: 'triss',    role: 'QA',         model: 'qwen3:4b',        description: 'QA role. Create test scenarios.' },
-  vesemir:  { name: 'vesemir',  role: 'Mentor',     model: 'qwen3:4b',        description: 'Mentor. Review plans.' },
-  jaskier:  { name: 'jaskier',  role: 'Bard',       model: 'qwen3:4b',        description: 'Translate technical reports into summaries.' },
-  ciri:     { name: 'ciri',     role: 'Scout',      model: 'qwen3:0.6b',      description: 'Speed role. Execute simple, atomic tasks.' },
-  eskel:    { name: 'eskel',    role: 'DevOps',     model: 'qwen3:4b',        description: 'DevOps specialist. Build and deploy.' },
-  lambert:  { name: 'lambert',  role: 'Debugger',   model: 'qwen3:4b',        description: 'Debugger. Analyze and fix errors.' },
-  zoltan:   { name: 'zoltan',   role: 'Data',       model: 'qwen3:4b',        description: 'Data master. Analyze JSON/CSV/YML.' },
-  regis:    { name: 'regis',    role: 'Researcher', model: 'gemini-cloud',     description: 'Synthesizer and Researcher. Deep analysis with Gemini.' },
-  philippa: { name: 'philippa', role: 'API',        model: 'qwen3:8b',        description: 'API specialist.' },
-  serena:   { name: 'serena',   role: 'CodeIntel',  model: 'gemini-cloud',     description: 'Code Intelligence via real Serena MCP. LSP-powered symbol search, refactoring, deep code analysis.' }
+  // === GEMINI PRO agents (critical reasoning tasks) ===
+  dijkstra: {
+    name: 'dijkstra',
+    role: 'Strategist',
+    model: 'gemini-cloud',
+    geminiTier: 'pro',
+    description: 'Master strategist using Gemini 3 Pro. Create JSON plans.',
+  },
+  geralt: {
+    name: 'geralt',
+    role: 'Security',
+    model: 'gemini-cloud',
+    geminiTier: 'pro',
+    description: 'Security auditor using Gemini 3 Pro. VETO unsafe changes.',
+  },
+  yennefer: {
+    name: 'yennefer',
+    role: 'Architect',
+    model: 'gemini-cloud',
+    geminiTier: 'pro',
+    description: 'Code architect using Gemini 3 Pro. Design patterns and code purity.',
+  },
+
+  // === GEMINI FLASH agents (quality tasks, fast) ===
+  lambert: {
+    name: 'lambert',
+    role: 'Debugger',
+    model: 'gemini-cloud',
+    geminiTier: 'flash',
+    description: 'Debugger using Gemini 3 Flash. Analyze and fix errors.',
+  },
+  triss: {
+    name: 'triss',
+    role: 'QA',
+    model: 'gemini-cloud',
+    geminiTier: 'flash',
+    description: 'QA using Gemini 3 Flash. Create test scenarios.',
+  },
+  jaskier: {
+    name: 'jaskier',
+    role: 'Bard',
+    model: 'gemini-cloud',
+    geminiTier: 'flash',
+    description: 'Communicator using Gemini 3 Flash. Translate technical reports into summaries.',
+  },
+  regis: {
+    name: 'regis',
+    role: 'Researcher',
+    model: 'gemini-cloud',
+    geminiTier: 'flash',
+    description: 'Synthesizer and Researcher using Gemini 3 Flash. Deep analysis.',
+  },
+  vesemir: {
+    name: 'vesemir',
+    role: 'Mentor',
+    model: 'gemini-cloud',
+    geminiTier: 'flash',
+    description: 'Mentor using Gemini 3 Flash. Review plans and share best practices.',
+  },
+  philippa: {
+    name: 'philippa',
+    role: 'API',
+    model: 'gemini-cloud',
+    geminiTier: 'flash',
+    description: 'API specialist using Gemini 3 Flash. MCP and external integrations.',
+  },
+  zoltan: {
+    name: 'zoltan',
+    role: 'Data',
+    model: 'gemini-cloud',
+    geminiTier: 'flash',
+    description: 'Data master using Gemini 3 Flash. Analyze JSON/CSV/YML.',
+  },
+  serena: {
+    name: 'serena',
+    role: 'CodeIntel',
+    model: 'gemini-cloud',
+    geminiTier: 'flash',
+    description: 'Code Intelligence via Serena MCP. LSP-powered symbol search, refactoring.',
+  },
+
+  // === OLLAMA agents (speed-critical, local) ===
+  ciri: {
+    name: 'ciri',
+    role: 'Scout',
+    model: 'qwen3:1.7b',
+    description: 'Speed role on local Ollama. Execute simple, atomic tasks.',
+  },
+  eskel: {
+    name: 'eskel',
+    role: 'DevOps',
+    model: 'qwen3:4b',
+    description: 'DevOps on local Ollama. Build and deploy.',
+  },
 };

@@ -9,9 +9,9 @@
  */
 
 import chalk from 'chalk';
-import { commandRegistry, success, error } from './CommandRegistry.js';
-import { serenaAgent, SERENA_TOOLS } from '../core/SerenaAgent.js';
-import type { CommandResult, CommandContext } from './CommandRegistry.js';
+import { serenaAgent } from '../core/SerenaAgent.js';
+import type { CommandContext, CommandResult } from './CommandRegistry.js';
+import { commandRegistry, error, success } from './CommandRegistry.js';
 
 // ============================================================
 // Command Handlers
@@ -28,8 +28,7 @@ async function handleStatus(): Promise<CommandResult> {
   console.log(chalk.cyan('═══════════════════════════════════════════\n'));
 
   console.log(
-    chalk.gray('Connected:    ') +
-      (status.connected ? chalk.green('YES ✓') : chalk.red('NO ✗'))
+    chalk.gray('Connected:    ') + (status.connected ? chalk.green('YES ✓') : chalk.red('NO ✗')),
   );
   console.log(chalk.gray('Server:       ') + chalk.white(status.serverName));
   console.log(chalk.gray('Project Root: ') + chalk.white(status.projectRoot));
@@ -82,7 +81,9 @@ async function handleFind(args: string[]): Promise<CommandResult> {
       }
       if (symbol.location) {
         const loc = symbol.location;
-        console.log(chalk.gray(`   Location: ${loc.uri || loc.file}:${loc.range?.start?.line || loc.line}`));
+        console.log(
+          chalk.gray(`   Location: ${loc.uri || loc.file}:${loc.range?.start?.line || loc.line}`),
+        );
       }
       if (symbol.info) {
         console.log(chalk.gray(`   Info: ${symbol.info.substring(0, 100)}...`));
@@ -312,15 +313,27 @@ function printHelp(): void {
 
   console.log(chalk.white('COMMANDS:\n'));
 
-  console.log(chalk.cyan('  @serena status') + chalk.gray('              - Show connection status'));
-  console.log(chalk.cyan('  @serena find <pattern>') + chalk.gray('      - Find symbol by pattern (LSP)'));
-  console.log(chalk.cyan('  @serena overview <file>') + chalk.gray('     - Get file structure/outline'));
-  console.log(chalk.cyan('  @serena search <pattern>') + chalk.gray('    - Search code with regex'));
-  console.log(chalk.cyan('  @serena refs <sym> <file>') + chalk.gray('   - Find references to symbol'));
+  console.log(
+    chalk.cyan('  @serena status') + chalk.gray('              - Show connection status'),
+  );
+  console.log(
+    chalk.cyan('  @serena find <pattern>') + chalk.gray('      - Find symbol by pattern (LSP)'),
+  );
+  console.log(
+    chalk.cyan('  @serena overview <file>') + chalk.gray('     - Get file structure/outline'),
+  );
+  console.log(
+    chalk.cyan('  @serena search <pattern>') + chalk.gray('    - Search code with regex'),
+  );
+  console.log(
+    chalk.cyan('  @serena refs <sym> <file>') + chalk.gray('   - Find references to symbol'),
+  );
   console.log(chalk.cyan('  @serena read <file>') + chalk.gray('         - Read file contents'));
   console.log(chalk.cyan('  @serena ls [dir]') + chalk.gray('            - List directory'));
   console.log(chalk.cyan('  @serena memories') + chalk.gray('            - List Serena memories'));
-  console.log(chalk.cyan('  @serena instructions') + chalk.gray('        - Get Serena instructions'));
+  console.log(
+    chalk.cyan('  @serena instructions') + chalk.gray('        - Get Serena instructions'),
+  );
   console.log(chalk.cyan('  @serena help') + chalk.gray('                - Show this help'));
 
   console.log(chalk.white('\nEXAMPLES:\n'));

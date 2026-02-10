@@ -9,62 +9,61 @@
  * Also exports the createFileSystem factory function.
  */
 
-import fs from 'fs/promises';
-import fsSync from 'fs';
-import path from 'path';
-import { createReadStream, createWriteStream } from 'fs';
-import { pipeline } from 'stream/promises';
-import { glob } from 'glob';
+import { exec } from 'node:child_process';
+import fsSync, { createReadStream, createWriteStream } from 'node:fs';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { pipeline } from 'node:stream/promises';
+import { promisify } from 'node:util';
 import chalk from 'chalk';
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { glob } from 'glob';
 import type {
-  DirectoryTree,
-  WatchEvent,
-  SymlinkWarning,
-  SymlinkType,
-  NativeFileSystemConfig,
-  WriteFileOptions,
-  EnsureDirectoryResult,
-  DirectoryCreationError,
-  PathValidationResult,
-  PathDiagnosticLog,
-} from './types.js';
-import { DEFAULT_BLOCKED_PATHS } from './types.js';
-import type {
-  SearchMatch,
-  FileInfo,
-  FileAttributes,
-  SetFileAttributesOptions,
-  SetFileAttributesResult,
-  FileLockInfo,
-  FileLockRetryOptions,
-  WriteWithRetryResult,
-} from '../types.js';
-import { FileLockError } from '../types.js';
-import { createSearch } from '../NativeSearch.js';
-import {
-  detectPathTraversal,
-  sanitizePath,
-  PathTraversalError,
-  securityAuditLogger,
-} from '../PathTraversalProtection.js';
-import type {
-  SupportedEncoding,
   EncodingInfo,
   ReadFileWithEncodingOptions,
+  SupportedEncoding,
   WriteFileWithEncodingOptions,
 } from '../EncodingUtils.js';
 import {
-  detectEncoding,
-  detectBOM,
-  getBOMBytes,
-  decodeBuffer,
-  encodeBuffer,
   convertBufferEncoding,
+  decodeBuffer,
+  detectBOM,
+  detectEncoding,
+  encodeBuffer,
+  getBOMBytes,
   isSupportedEncoding,
   normalizeEncoding,
 } from '../EncodingUtils.js';
+import { createSearch } from '../NativeSearch.js';
+import {
+  detectPathTraversal,
+  PathTraversalError,
+  sanitizePath,
+  securityAuditLogger,
+} from '../PathTraversalProtection.js';
+import type {
+  FileAttributes,
+  FileInfo,
+  FileLockInfo,
+  FileLockRetryOptions,
+  SearchMatch,
+  SetFileAttributesOptions,
+  SetFileAttributesResult,
+  WriteWithRetryResult,
+} from '../types.js';
+import { FileLockError } from '../types.js';
+import type {
+  DirectoryCreationError,
+  DirectoryTree,
+  EnsureDirectoryResult,
+  NativeFileSystemConfig,
+  PathDiagnosticLog,
+  PathValidationResult,
+  SymlinkType,
+  SymlinkWarning,
+  WatchEvent,
+  WriteFileOptions,
+} from './types.js';
+import { DEFAULT_BLOCKED_PATHS } from './types.js';
 
 const execAsync = promisify(exec);
 
@@ -73,7 +72,9 @@ const execAsync = promisify(exec);
 // ============================================================
 
 export class NativeFileSystem {
-  private config: Required<Omit<NativeFileSystemConfig, 'onPathBlocked' | 'onSymlinkWarning' | 'onDirectoryCreated'>> & {
+  private config: Required<
+    Omit<NativeFileSystemConfig, 'onPathBlocked' | 'onSymlinkWarning' | 'onDirectoryCreated'>
+  > & {
     onPathBlocked?: (path: string, reason: string) => void;
     onSymlinkWarning?: (warning: SymlinkWarning) => void;
     onDirectoryCreated?: (dirPath: string, createdDirs: string[]) => void;
@@ -99,7 +100,7 @@ export class NativeFileSystem {
       followSymlinks: config.followSymlinks ?? true,
       onSymlinkWarning: config.onSymlinkWarning,
       verboseLogging: config.verboseLogging ?? false,
-      onDirectoryCreated: config.onDirectoryCreated
+      onDirectoryCreated: config.onDirectoryCreated,
     };
   }
 
@@ -124,7 +125,7 @@ export class NativeFileSystem {
     }
 
     // Normalize separators to platform-specific
-    let normalized = inputPath.trim().replace(/[\/\\]/g, path.sep);
+    const normalized = inputPath.trim().replace(/[/\\]/g, path.sep);
 
     // Check if path is absolute
     const isAbsolute = path.isAbsolute(normalized);
@@ -157,7 +158,7 @@ export class NativeFileSystem {
    */
   isAbsolutePath(inputPath: string): boolean {
     if (!inputPath) return false;
-    const normalized = inputPath.replace(/[\/\\]/g, path.sep);
+    const normalized = inputPath.replace(/[/\\]/g, path.sep);
     return path.isAbsolute(normalized) || /^[a-zA-Z]:/.test(normalized);
   }
 
@@ -166,7 +167,7 @@ export class NativeFileSystem {
    */
   normalizeSeparators(inputPath: string): string {
     if (!inputPath) return '';
-    return inputPath.replace(/[\/\\]/g, path.sep);
+    return inputPath.replace(/[/\\]/g, path.sep);
   }
 
   /**
@@ -197,12 +198,16 @@ export class NativeFileSystem {
         additionalInfo: {
           categories: traversalCheck.categories,
           rootDir: this.config.rootDir,
-          operation: 'validatePath'
-        }
+          operation: 'validatePath',
+        },
       });
 
       // Always block path traversal attempts - throw a clear error
-      throw new PathTraversalError(inputPath, traversalCheck.patterns, traversalCheck.severity || 'HIGH');
+      throw new PathTraversalError(
+        inputPath,
+        traversalCheck.patterns,
+        traversalCheck.severity || 'HIGH',
+      );
     }
 
     // ============================================================
@@ -216,13 +221,13 @@ export class NativeFileSystem {
 
     // If path is absolute and outside root, check if it's explicitly allowed
     if (!isWithinRoot) {
-      const isAllowed = this.config.allowedPaths.some(allowed => {
+      const isAllowed = this.config.allowedPaths.some((allowed) => {
         const normalizedAllowed = path.normalize(allowed);
         return resolved.startsWith(normalizedAllowed) || resolved === normalizedAllowed;
       });
 
       // Also check dynamic allowed paths
-      const isDynamicallyAllowed = Array.from(this.dynamicAllowedPaths).some(allowed => {
+      const isDynamicallyAllowed = Array.from(this.dynamicAllowedPaths).some((allowed) => {
         const normalizedAllowed = path.normalize(allowed);
         return resolved.startsWith(normalizedAllowed) || resolved === normalizedAllowed;
       });
@@ -246,9 +251,10 @@ export class NativeFileSystem {
 
       if (resolved.includes(blockedPattern) || resolved.endsWith(endsWithBlocked)) {
         // Check if specifically allowed to override block
-        const isExplicitlyAllowed = this.config.allowedPaths.some(allowed => {
-          return resolved.startsWith(path.normalize(allowed));
-        }) || this.dynamicAllowedPaths.has(resolved);
+        const isExplicitlyAllowed =
+          this.config.allowedPaths.some((allowed) => {
+            return resolved.startsWith(path.normalize(allowed));
+          }) || this.dynamicAllowedPaths.has(resolved);
 
         if (!isExplicitlyAllowed) {
           const reason = `Path is blocked (${blocked})`;
@@ -361,7 +367,11 @@ export class NativeFileSystem {
     this.config.blockedPaths = [...DEFAULT_BLOCKED_PATHS];
     this.dynamicAllowedPaths.clear();
     if (this.config.logBlocking) {
-      console.log(chalk.cyan(`[NativeFileSystem] Blocked paths reset to defaults: ${DEFAULT_BLOCKED_PATHS.join(', ')}`));
+      console.log(
+        chalk.cyan(
+          `[NativeFileSystem] Blocked paths reset to defaults: ${DEFAULT_BLOCKED_PATHS.join(', ')}`,
+        ),
+      );
     }
   }
 
@@ -378,9 +388,10 @@ export class NativeFileSystem {
       // Check if outside root
       if (!resolved.startsWith(normalizedRoot)) {
         // Check if explicitly allowed
-        const isAllowed = this.config.allowedPaths.some(allowed =>
-          resolved.startsWith(path.normalize(allowed))
-        ) || this.dynamicAllowedPaths.has(resolved);
+        const isAllowed =
+          this.config.allowedPaths.some((allowed) =>
+            resolved.startsWith(path.normalize(allowed)),
+          ) || this.dynamicAllowedPaths.has(resolved);
 
         if (!isAllowed) {
           return { allowed: false, reason: 'Path outside root directory and not in allowed paths' };
@@ -389,10 +400,14 @@ export class NativeFileSystem {
 
       // Check blocked paths
       for (const blocked of this.config.blockedPaths) {
-        if (resolved.includes(path.sep + blocked + path.sep) || resolved.endsWith(path.sep + blocked)) {
-          const isExplicitlyAllowed = this.config.allowedPaths.some(allowed =>
-            resolved.startsWith(path.normalize(allowed))
-          ) || this.dynamicAllowedPaths.has(resolved);
+        if (
+          resolved.includes(path.sep + blocked + path.sep) ||
+          resolved.endsWith(path.sep + blocked)
+        ) {
+          const isExplicitlyAllowed =
+            this.config.allowedPaths.some((allowed) =>
+              resolved.startsWith(path.normalize(allowed)),
+            ) || this.dynamicAllowedPaths.has(resolved);
 
           if (!isExplicitlyAllowed) {
             return { allowed: false, reason: `Path contains blocked segment: "${blocked}"` };
@@ -430,13 +445,16 @@ export class NativeFileSystem {
     let blockedBy: string | undefined;
 
     // Check if explicitly allowed (overrides block)
-    const isExplicitlyAllowed = this.config.allowedPaths.some(allowed =>
-      resolved.startsWith(path.normalize(allowed))
-    ) || this.dynamicAllowedPaths.has(resolved);
+    const isExplicitlyAllowed =
+      this.config.allowedPaths.some((allowed) => resolved.startsWith(path.normalize(allowed))) ||
+      this.dynamicAllowedPaths.has(resolved);
 
     if (!isExplicitlyAllowed) {
       for (const blocked of this.config.blockedPaths) {
-        if (resolved.includes(path.sep + blocked + path.sep) || resolved.endsWith(path.sep + blocked)) {
+        if (
+          resolved.includes(path.sep + blocked + path.sep) ||
+          resolved.endsWith(path.sep + blocked)
+        ) {
           isBlocked = true;
           blockedBy = blocked;
           break;
@@ -468,8 +486,8 @@ export class NativeFileSystem {
         isOutsideRoot,
         isBlocked,
         containsTraversal,
-        isAbsolute
-      }
+        isAbsolute,
+      },
     };
   }
 
@@ -486,7 +504,7 @@ export class NativeFileSystem {
     resolvedPath: string,
     allowed: boolean,
     reason: string,
-    durationMs?: number
+    durationMs?: number,
   ): void {
     if (!this.config.enableDiagnostics) return;
 
@@ -497,7 +515,7 @@ export class NativeFileSystem {
       resolvedPath,
       allowed,
       reason,
-      durationMs
+      durationMs,
     };
 
     this.diagnosticLogs.push(entry);
@@ -510,11 +528,11 @@ export class NativeFileSystem {
     const duration = durationMs !== undefined ? chalk.gray(` (${durationMs}ms)`) : '';
     console.log(
       chalk.gray(`[NativeFS] ${status} ${operation}: `) +
-      chalk.yellow(inputPath) +
-      chalk.gray(' -> ') +
-      chalk.cyan(resolvedPath) +
-      chalk.gray(` | ${reason}`) +
-      duration
+        chalk.yellow(inputPath) +
+        chalk.gray(' -> ') +
+        chalk.cyan(resolvedPath) +
+        chalk.gray(` | ${reason}`) +
+        duration,
     );
   }
 
@@ -529,11 +547,11 @@ export class NativeFileSystem {
     let logs = [...this.diagnosticLogs];
 
     if (options?.onlyBlocked) {
-      logs = logs.filter(log => !log.allowed);
+      logs = logs.filter((log) => !log.allowed);
     }
 
     if (options?.operation) {
-      logs = logs.filter(log => log.operation === options.operation);
+      logs = logs.filter((log) => log.operation === options.operation);
     }
 
     if (options?.limit && options.limit > 0) {
@@ -567,10 +585,13 @@ export class NativeFileSystem {
   /**
    * Dynamically change the root directory
    */
-  async setRootDir(newRootDir: string, options?: {
-    validateExists?: boolean;
-    stopWatchers?: boolean;
-  }): Promise<{
+  async setRootDir(
+    newRootDir: string,
+    options?: {
+      validateExists?: boolean;
+      stopWatchers?: boolean;
+    },
+  ): Promise<{
     previousRoot: string;
     newRoot: string;
     watchersStopped: number;
@@ -584,16 +605,16 @@ export class NativeFileSystem {
         if (!stats.isDirectory()) {
           throw new Error(
             `Cannot set root directory: Path is not a directory\n` +
-            `  Attempted path: ${resolvedNewRoot}\n` +
-            `  Path type: file`
+              `  Attempted path: ${resolvedNewRoot}\n` +
+              `  Path type: file`,
           );
         }
       } catch (err: any) {
         if (err.code === 'ENOENT') {
           throw new Error(
             `Cannot set root directory: Path does not exist\n` +
-            `  Attempted path: ${resolvedNewRoot}\n` +
-            `  Hint: Create the directory first or use { validateExists: false }`
+              `  Attempted path: ${resolvedNewRoot}\n` +
+              `  Hint: Create the directory first or use { validateExists: false }`,
           );
         }
         throw err;
@@ -614,13 +635,13 @@ export class NativeFileSystem {
       newRootDir,
       resolvedNewRoot,
       true,
-      `Root changed from ${previousRoot} to ${resolvedNewRoot}`
+      `Root changed from ${previousRoot} to ${resolvedNewRoot}`,
     );
 
     return {
       previousRoot,
       newRoot: resolvedNewRoot,
-      watchersStopped
+      watchersStopped,
     };
   }
 
@@ -660,14 +681,21 @@ export class NativeFileSystem {
     if (createdDirs.length === 0) return;
 
     if (this.config.verboseLogging) {
-      console.log(chalk.green(`[NativeFS] Created ${createdDirs.length} director${createdDirs.length === 1 ? 'y' : 'ies'}:`));
+      console.log(
+        chalk.green(
+          `[NativeFS] Created ${createdDirs.length} director${createdDirs.length === 1 ? 'y' : 'ies'}:`,
+        ),
+      );
       for (const dir of createdDirs) {
         console.log(chalk.gray(`  + ${this.toRelative(dir)}`));
       }
     }
 
     if (this.config.onDirectoryCreated) {
-      this.config.onDirectoryCreated(dirPath, createdDirs.map(d => this.toRelative(d)));
+      this.config.onDirectoryCreated(
+        dirPath,
+        createdDirs.map((d) => this.toRelative(d)),
+      );
     }
   }
 
@@ -737,11 +765,13 @@ export class NativeFileSystem {
         return {
           existed: true,
           createdDirs: [],
-          absolutePath: resolved
+          absolutePath: resolved,
         };
       } else {
         // Path exists but is not a directory
-        const error = new Error(`Path exists but is not a directory: ${dirPath}`) as DirectoryCreationError;
+        const error = new Error(
+          `Path exists but is not a directory: ${dirPath}`,
+        ) as DirectoryCreationError;
         error.code = 'ENOTDIR';
         error.path = resolved;
         throw error;
@@ -771,8 +801,8 @@ export class NativeFileSystem {
 
     return {
       existed: false,
-      createdDirs: missingDirs.map(d => this.toRelative(d)),
-      absolutePath: resolved
+      createdDirs: missingDirs.map((d) => this.toRelative(d)),
+      absolutePath: resolved,
     };
   }
 
@@ -839,7 +869,7 @@ export class NativeFileSystem {
         } catch (error: any) {
           results.set(p, error);
         }
-      })
+      }),
     );
 
     return results;
@@ -876,7 +906,11 @@ export class NativeFileSystem {
    * await fs.writeFile('existing/file.txt', 'content', { createDirs: false });
    * ```
    */
-  async writeFile(filePath: string, content: string | Buffer, options?: WriteFileOptions): Promise<void> {
+  async writeFile(
+    filePath: string,
+    content: string | Buffer,
+    options?: WriteFileOptions,
+  ): Promise<void> {
     const resolved = this.validatePath(filePath);
     const createDirs = options?.createDirs !== false;
 
@@ -897,15 +931,19 @@ export class NativeFileSystem {
     }
 
     await fs.writeFile(resolved, content, {
-      encoding: typeof content === 'string' ? (options?.encoding || this.config.encoding) : undefined,
-      mode: options?.mode
+      encoding: typeof content === 'string' ? options?.encoding || this.config.encoding : undefined,
+      mode: options?.mode,
     });
   }
 
   /**
    * Append to file (creates parent directories if needed)
    */
-  async appendFile(filePath: string, content: string, options?: { createDirs?: boolean }): Promise<void> {
+  async appendFile(
+    filePath: string,
+    content: string,
+    options?: { createDirs?: boolean },
+  ): Promise<void> {
     const resolved = this.validatePath(filePath);
     const createDirs = options?.createDirs !== false;
 
@@ -929,17 +967,24 @@ export class NativeFileSystem {
   /**
    * Write JSON file
    */
-  async writeJson(filePath: string, data: any, options?: { pretty?: boolean; createDirs?: boolean }): Promise<void> {
-    const content = options?.pretty !== false
-      ? JSON.stringify(data, null, 2)
-      : JSON.stringify(data);
+  async writeJson(
+    filePath: string,
+    data: any,
+    options?: { pretty?: boolean; createDirs?: boolean },
+  ): Promise<void> {
+    const content =
+      options?.pretty !== false ? JSON.stringify(data, null, 2) : JSON.stringify(data);
     await this.writeFile(filePath, content, { createDirs: options?.createDirs });
   }
 
   /**
    * Stream write (for large files)
    */
-  async streamWrite(filePath: string, source: NodeJS.ReadableStream, options?: { createDirs?: boolean }): Promise<void> {
+  async streamWrite(
+    filePath: string,
+    source: NodeJS.ReadableStream,
+    options?: { createDirs?: boolean },
+  ): Promise<void> {
     const resolved = this.validatePath(filePath);
     const createDirs = options?.createDirs !== false;
 
@@ -968,12 +1013,15 @@ export class NativeFileSystem {
   /**
    * List directory contents
    */
-  async listDirectory(dirPath: string, options?: {
-    recursive?: boolean;
-    includeHidden?: boolean;
-    filesOnly?: boolean;
-    dirsOnly?: boolean;
-  }): Promise<FileInfo[]> {
+  async listDirectory(
+    dirPath: string,
+    options?: {
+      recursive?: boolean;
+      includeHidden?: boolean;
+      filesOnly?: boolean;
+      dirsOnly?: boolean;
+    },
+  ): Promise<FileInfo[]> {
     const resolved = this.validatePath(dirPath);
     const entries: FileInfo[] = [];
 
@@ -990,7 +1038,7 @@ export class NativeFileSystem {
         const fullPath = path.join(dir, item.name);
         const relativePath = this.toRelative(fullPath);
 
-        if (this.config.blockedPaths.some(b => relativePath.includes(b))) {
+        if (this.config.blockedPaths.some((b) => relativePath.includes(b))) {
           continue;
         }
 
@@ -1007,7 +1055,7 @@ export class NativeFileSystem {
           modified: stats.mtime,
           accessed: stats.atime,
           mode: stats.mode,
-          extension: item.isFile() ? path.extname(item.name).slice(1) : undefined
+          extension: item.isFile() ? path.extname(item.name).slice(1) : undefined,
         };
 
         // Filter by type
@@ -1030,10 +1078,13 @@ export class NativeFileSystem {
   /**
    * Get directory tree
    */
-  async getDirectoryTree(dirPath: string, options?: {
-    maxDepth?: number;
-    includeSize?: boolean;
-  }): Promise<DirectoryTree> {
+  async getDirectoryTree(
+    dirPath: string,
+    options?: {
+      maxDepth?: number;
+      includeSize?: boolean;
+    },
+  ): Promise<DirectoryTree> {
     const resolved = this.validatePath(dirPath);
     const maxDepth = options?.maxDepth ?? 5;
 
@@ -1046,7 +1097,7 @@ export class NativeFileSystem {
           name,
           path: this.toRelative(dir),
           type: 'file',
-          size: options?.includeSize ? stats.size : undefined
+          size: options?.includeSize ? stats.size : undefined,
         };
       }
 
@@ -1054,7 +1105,7 @@ export class NativeFileSystem {
         name,
         path: this.toRelative(dir),
         type: 'directory',
-        children: []
+        children: [],
       };
 
       if (depth < maxDepth) {
@@ -1065,7 +1116,7 @@ export class NativeFileSystem {
           if (this.config.blockedPaths.includes(item.name)) continue;
 
           const childPath = path.join(dir, item.name);
-          tree.children!.push(await buildTree(childPath, depth + 1));
+          tree.children?.push(await buildTree(childPath, depth + 1));
         }
       }
 
@@ -1127,14 +1178,18 @@ export class NativeFileSystem {
       modified: stats.mtime,
       accessed: stats.atime,
       mode: stats.mode,
-      extension: stats.isFile() ? path.extname(resolved).slice(1) : undefined
+      extension: stats.isFile() ? path.extname(resolved).slice(1) : undefined,
     };
   }
 
   /**
    * Copy file (creates destination directories if needed)
    */
-  async copyFile(source: string, destination: string, options?: { createDirs?: boolean }): Promise<void> {
+  async copyFile(
+    source: string,
+    destination: string,
+    options?: { createDirs?: boolean },
+  ): Promise<void> {
     const srcResolved = this.validatePath(source);
     const destResolved = this.validatePath(destination);
     const createDirs = options?.createDirs !== false;
@@ -1159,7 +1214,11 @@ export class NativeFileSystem {
   /**
    * Move/rename file (creates destination directories if needed)
    */
-  async moveFile(source: string, destination: string, options?: { createDirs?: boolean }): Promise<void> {
+  async moveFile(
+    source: string,
+    destination: string,
+    options?: { createDirs?: boolean },
+  ): Promise<void> {
     const srcResolved = this.validatePath(source);
     const destResolved = this.validatePath(destination);
     const createDirs = options?.createDirs !== false;
@@ -1249,11 +1308,7 @@ export class NativeFileSystem {
    * @param linkPath Where to create the symlink
    * @param type Type of link: 'file', 'dir', or 'junction' (default: auto-detect)
    */
-  async createSymlink(
-    target: string,
-    linkPath: string,
-    type?: SymlinkType
-  ): Promise<void> {
+  async createSymlink(target: string, linkPath: string, type?: SymlinkType): Promise<void> {
     const resolvedLink = this.validatePath(linkPath);
     const resolvedTarget = path.resolve(this.config.rootDir, target);
 
@@ -1289,7 +1344,7 @@ export class NativeFileSystem {
       if (process.platform === 'win32' && error.code === 'EPERM') {
         throw new Error(
           `Permission denied creating symlink. On Windows, try using 'junction' type for directories, ` +
-            `or enable Developer Mode in Windows Settings. Original error: ${error.message}`
+            `or enable Developer Mode in Windows Settings. Original error: ${error.message}`,
         );
       }
       throw error;
@@ -1333,7 +1388,7 @@ export class NativeFileSystem {
         type: 'symlink_outside_root',
         symlinkPath: this.toRelative(symlinkPath),
         targetPath: targetPath,
-        message: `Symlink target is outside root directory: ${targetPath}`
+        message: `Symlink target is outside root directory: ${targetPath}`,
       };
 
       // Emit warning via callback
@@ -1357,7 +1412,7 @@ export class NativeFileSystem {
           type: 'symlink_to_blocked',
           symlinkPath: this.toRelative(symlinkPath),
           targetPath: targetPath,
-          message: `Symlink target is in blocked path (${blocked}): ${targetPath}`
+          message: `Symlink target is in blocked path (${blocked}): ${targetPath}`,
         };
 
         if (this.config.onSymlinkWarning) {
@@ -1381,7 +1436,7 @@ export class NativeFileSystem {
    */
   async validatePathWithSymlink(
     inputPath: string,
-    validateTarget: boolean = this.config.followSymlinks
+    validateTarget: boolean = this.config.followSymlinks,
   ): Promise<string> {
     const resolved = this.validatePath(inputPath);
 
@@ -1407,7 +1462,7 @@ export class NativeFileSystem {
               type: 'broken_symlink',
               symlinkPath: this.toRelative(resolved),
               targetPath: absoluteTarget,
-              message: `Broken symlink - target does not exist: ${absoluteTarget}`
+              message: `Broken symlink - target does not exist: ${absoluteTarget}`,
             };
 
             if (this.config.onSymlinkWarning) {
@@ -1494,7 +1549,7 @@ export class NativeFileSystem {
         targetExists,
         isOutsideRoot,
         isTargetBlocked,
-        type: targetType
+        type: targetType,
       };
     } catch {
       return { isSymlink: false };
@@ -1531,14 +1586,16 @@ export class NativeFileSystem {
 
       // attrib output format: "  A    R    H    S    path"
       // Attributes are in fixed positions at the start of the line
-      const attributePart = output.substring(0, output.lastIndexOf(resolvedPath.charAt(0) === '\\' ? '\\' : resolvedPath[0])).trim();
+      const attributePart = output
+        .substring(0, output.lastIndexOf(resolvedPath.charAt(0) === '\\' ? '\\' : resolvedPath[0]))
+        .trim();
 
       return {
         readonly: attributePart.includes('R'),
         hidden: attributePart.includes('H'),
         system: attributePart.includes('S'),
         archive: attributePart.includes('A'),
-        raw: attributePart
+        raw: attributePart,
       };
     } catch (error: any) {
       throw new Error(`Failed to get file attributes: ${error.message}`);
@@ -1565,7 +1622,7 @@ export class NativeFileSystem {
         hidden: isHidden,
         system: false, // No system attribute on Unix
         archive: false, // No archive attribute on Unix
-        raw: `mode=${stats.mode.toString(8)}`
+        raw: `mode=${stats.mode.toString(8)}`,
       };
     } catch (error: any) {
       throw new Error(`Failed to get file attributes: ${error.message}`);
@@ -1577,7 +1634,10 @@ export class NativeFileSystem {
    * On Windows: uses `attrib` command
    * On Unix/Mac: uses fs.chmod for readonly, rename for hidden
    */
-  async setFileAttributes(filePath: string, attributes: SetFileAttributesOptions): Promise<SetFileAttributesResult> {
+  async setFileAttributes(
+    filePath: string,
+    attributes: SetFileAttributesOptions,
+  ): Promise<SetFileAttributesResult> {
     const resolved = this.validatePath(filePath);
     const isWindows = process.platform === 'win32';
 
@@ -1595,12 +1655,12 @@ export class NativeFileSystem {
       return {
         success: true,
         previousAttributes,
-        newAttributes
+        newAttributes,
       };
     } catch (error: any) {
       return {
         success: false,
-        error: error.message
+        error: error.message,
       };
     }
   }
@@ -1608,7 +1668,10 @@ export class NativeFileSystem {
   /**
    * Set Windows file attributes using `attrib` command
    */
-  private async setWindowsFileAttributes(resolvedPath: string, attributes: SetFileAttributesOptions): Promise<void> {
+  private async setWindowsFileAttributes(
+    resolvedPath: string,
+    attributes: SetFileAttributesOptions,
+  ): Promise<void> {
     const args: string[] = [];
 
     // Build attrib command arguments
@@ -1637,7 +1700,10 @@ export class NativeFileSystem {
    * Set Unix/Mac file attributes using chmod
    * Note: hidden attribute requires renaming the file (adding/removing dot prefix)
    */
-  private async setUnixFileAttributes(resolvedPath: string, attributes: SetFileAttributesOptions): Promise<void> {
+  private async setUnixFileAttributes(
+    resolvedPath: string,
+    attributes: SetFileAttributesOptions,
+  ): Promise<void> {
     const stats = await fs.stat(resolvedPath);
 
     // Handle readonly attribute via chmod
@@ -1661,7 +1727,7 @@ export class NativeFileSystem {
 
       if (attributes.hidden && !isCurrentlyHidden) {
         // Make hidden: add dot prefix
-        const newPath = path.join(dirname, '.' + basename);
+        const newPath = path.join(dirname, `.${basename}`);
         await fs.rename(resolvedPath, newPath);
       } else if (!attributes.hidden && isCurrentlyHidden) {
         // Make visible: remove dot prefix
@@ -1680,9 +1746,12 @@ export class NativeFileSystem {
    * Check if file is readonly and optionally remove the readonly attribute
    * Returns true if file was readonly and attribute was successfully removed
    */
-  async ensureWritable(filePath: string, options?: {
-    autoRemoveReadonly?: boolean;
-  }): Promise<{ wasReadonly: boolean; isNowWritable: boolean; error?: string }> {
+  async ensureWritable(
+    filePath: string,
+    options?: {
+      autoRemoveReadonly?: boolean;
+    },
+  ): Promise<{ wasReadonly: boolean; isNowWritable: boolean; error?: string }> {
     try {
       const attrs = await this.getFileAttributes(filePath);
 
@@ -1695,20 +1764,21 @@ export class NativeFileSystem {
         return {
           wasReadonly: true,
           isNowWritable: result.success,
-          error: result.error
+          error: result.error,
         };
       }
 
       return {
         wasReadonly: true,
         isNowWritable: false,
-        error: 'File is readonly. Use autoRemoveReadonly option to automatically remove the attribute.'
+        error:
+          'File is readonly. Use autoRemoveReadonly option to automatically remove the attribute.',
       };
     } catch (error: any) {
       return {
         wasReadonly: false,
         isNowWritable: false,
-        error: error.message
+        error: error.message,
       };
     }
   }
@@ -1720,21 +1790,22 @@ export class NativeFileSystem {
   /**
    * Glob pattern search
    */
-  async globSearch(pattern: string, options?: {
-    cwd?: string;
-    ignore?: string[];
-  }): Promise<string[]> {
-    const cwd = options?.cwd
-      ? this.validatePath(options.cwd)
-      : this.config.rootDir;
+  async globSearch(
+    pattern: string,
+    options?: {
+      cwd?: string;
+      ignore?: string[];
+    },
+  ): Promise<string[]> {
+    const cwd = options?.cwd ? this.validatePath(options.cwd) : this.config.rootDir;
 
     const matches = await glob(pattern, {
       cwd,
-      ignore: [...this.config.blockedPaths.map(b => `**/${b}/**`), ...(options?.ignore || [])],
-      nodir: true
+      ignore: [...this.config.blockedPaths.map((b) => `**/${b}/**`), ...(options?.ignore || [])],
+      nodir: true,
     });
 
-    return matches.map(m => path.relative(this.config.rootDir, path.join(cwd, m)));
+    return matches.map((m) => path.relative(this.config.rootDir, path.join(cwd, m)));
   }
 
   /**
@@ -1754,15 +1825,18 @@ export class NativeFileSystem {
    * const results = await search.searchFiles({ pattern: 'pattern', glob: '*.ts' });
    * ```
    */
-  async searchContent(pattern: string | RegExp, options?: {
-    paths?: string[];
-    glob?: string;
-    maxResults?: number;
-    contextLines?: number;
-  }): Promise<SearchMatch[]> {
+  async searchContent(
+    pattern: string | RegExp,
+    options?: {
+      paths?: string[];
+      glob?: string;
+      maxResults?: number;
+      contextLines?: number;
+    },
+  ): Promise<SearchMatch[]> {
     // Delegate to NativeSearch for canonical implementation
     const search = createSearch(this.config.rootDir, {
-      defaultIgnore: this.config.blockedPaths
+      defaultIgnore: this.config.blockedPaths,
     });
 
     const results = await search.searchFiles({
@@ -1770,20 +1844,26 @@ export class NativeFileSystem {
       paths: options?.paths,
       glob: options?.glob || '**/*',
       maxResults: options?.maxResults || 100,
-      contextLines: options?.contextLines || 0
+      contextLines: options?.contextLines || 0,
     });
 
     // Convert NativeSearch results to match legacy format (context as string)
-    return results.map(result => ({
+    return results.map((result) => ({
       file: result.file,
       line: result.line,
       column: result.column,
       content: result.content.trim(),
       matchedText: result.matchedText,
-      context: result.context ? {
-        before: Array.isArray(result.context.before) ? result.context.before.join('\n') : result.context.before,
-        after: Array.isArray(result.context.after) ? result.context.after.join('\n') : result.context.after
-      } : undefined
+      context: result.context
+        ? {
+            before: Array.isArray(result.context.before)
+              ? result.context.before.join('\n')
+              : result.context.before,
+            after: Array.isArray(result.context.after)
+              ? result.context.after.join('\n')
+              : result.context.after,
+          }
+        : undefined,
     }));
   }
 
@@ -1807,18 +1887,18 @@ export class NativeFileSystem {
         const event: WatchEvent = {
           type: eventType === 'rename' ? 'change' : 'change',
           path: relativePath,
-          timestamp: new Date()
+          timestamp: new Date(),
         };
 
         const callbacks = this.watchCallbacks.get(resolved) || [];
-        callbacks.forEach(cb => cb(event));
+        callbacks.forEach((cb) => cb(event));
       });
 
       this.watchers.set(resolved, watcher);
       this.watchCallbacks.set(resolved, []);
     }
 
-    this.watchCallbacks.get(resolved)!.push(callback);
+    this.watchCallbacks.get(resolved)?.push(callback);
 
     // Return unsubscribe function
     return () => {
@@ -1869,7 +1949,7 @@ export class NativeFileSystem {
     const baseLockInfo: FileLockInfo = {
       isLocked: false,
       filePath: resolved,
-      detectedAt: new Date()
+      detectedAt: new Date(),
     };
 
     try {
@@ -1889,7 +1969,7 @@ export class NativeFileSystem {
     } catch (error: any) {
       return {
         ...baseLockInfo,
-        error: `Lock detection failed: ${error.message}`
+        error: `Lock detection failed: ${error.message}`,
       };
     }
   }
@@ -1897,27 +1977,32 @@ export class NativeFileSystem {
   /**
    * Check file lock on Windows using exclusive open attempt
    */
-  private async checkFileLockWindows(filePath: string, baseLockInfo: FileLockInfo): Promise<FileLockInfo> {
+  private async checkFileLockWindows(
+    filePath: string,
+    baseLockInfo: FileLockInfo,
+  ): Promise<FileLockInfo> {
     return new Promise((resolve) => {
       // Try to open file with exclusive access
       fsSync.open(filePath, fsSync.constants.O_RDWR | fsSync.constants.O_EXCL, (err, fd) => {
         if (err) {
           // File is locked - try to get process info
-          this.getWindowsLockingProcess(filePath).then(processInfo => {
-            resolve({
-              ...baseLockInfo,
-              isLocked: true,
-              lockType: 'exclusive',
-              ...processInfo
+          this.getWindowsLockingProcess(filePath)
+            .then((processInfo) => {
+              resolve({
+                ...baseLockInfo,
+                isLocked: true,
+                lockType: 'exclusive',
+                ...processInfo,
+              });
+            })
+            .catch(() => {
+              resolve({
+                ...baseLockInfo,
+                isLocked: true,
+                lockType: 'unknown',
+                error: err.message,
+              });
             });
-          }).catch(() => {
-            resolve({
-              ...baseLockInfo,
-              isLocked: true,
-              lockType: 'unknown',
-              error: err.message
-            });
-          });
         } else {
           // File is not locked, close the handle
           fsSync.close(fd, () => {
@@ -1955,16 +2040,19 @@ export class NativeFileSystem {
         }
       `;
 
-      const { stdout } = await execAsync(`powershell -NoProfile -Command "${psCommand.replace(/"/g, '\\"')}"`, {
-        timeout: 5000
-      });
+      const { stdout } = await execAsync(
+        `powershell -NoProfile -Command "${psCommand.replace(/"/g, '\\"')}"`,
+        {
+          timeout: 5000,
+        },
+      );
 
       if (stdout.trim()) {
         const [pid, name, cmdLine] = stdout.trim().split('|');
         return {
           processId: parseInt(pid, 10) || undefined,
           processName: name || undefined,
-          commandLine: cmdLine || undefined
+          commandLine: cmdLine || undefined,
         };
       }
     } catch {
@@ -1973,12 +2061,15 @@ export class NativeFileSystem {
 
     // Alternative: Try using handle.exe from Sysinternals if available
     try {
-      const { stdout } = await execAsync(`handle.exe "${filePath}"`, { timeout: 5000, windowsHide: true });
+      const { stdout } = await execAsync(`handle.exe "${filePath}"`, {
+        timeout: 5000,
+        windowsHide: true,
+      });
       const match = stdout.match(/(\w+\.exe)\s+pid:\s*(\d+)/i);
       if (match) {
         return {
           processName: match[1],
-          processId: parseInt(match[2], 10)
+          processId: parseInt(match[2], 10),
         };
       }
     } catch {
@@ -1991,7 +2082,10 @@ export class NativeFileSystem {
   /**
    * Check file lock on Unix (Linux/Mac) using lsof or fuser
    */
-  private async checkFileLockUnix(filePath: string, baseLockInfo: FileLockInfo): Promise<FileLockInfo> {
+  private async checkFileLockUnix(
+    filePath: string,
+    baseLockInfo: FileLockInfo,
+  ): Promise<FileLockInfo> {
     try {
       // Try lsof first (more common and detailed)
       const { stdout } = await execAsync(`lsof "${filePath}" 2>/dev/null`, { timeout: 5000 });
@@ -2007,7 +2101,9 @@ export class NativeFileSystem {
           // Get command line
           let commandLine: string | undefined;
           try {
-            const { stdout: cmdStdout } = await execAsync(`ps -p ${processId} -o args=`, { timeout: 2000 });
+            const { stdout: cmdStdout } = await execAsync(`ps -p ${processId} -o args=`, {
+              timeout: 2000,
+            });
             commandLine = cmdStdout.trim();
           } catch {
             // Command line not available
@@ -2019,7 +2115,7 @@ export class NativeFileSystem {
             processId,
             processName,
             commandLine,
-            lockType: 'unknown'
+            lockType: 'unknown',
           };
         }
       }
@@ -2032,11 +2128,13 @@ export class NativeFileSystem {
       const { stdout } = await execAsync(`fuser "${filePath}" 2>/dev/null`, { timeout: 5000 });
       if (stdout.trim()) {
         const pid = parseInt(stdout.trim().split(/\s+/)[0], 10);
-        if (!isNaN(pid)) {
+        if (!Number.isNaN(pid)) {
           // Get process name
           let processName: string | undefined;
           try {
-            const { stdout: nameStdout } = await execAsync(`ps -p ${pid} -o comm=`, { timeout: 2000 });
+            const { stdout: nameStdout } = await execAsync(`ps -p ${pid} -o comm=`, {
+              timeout: 2000,
+            });
             processName = nameStdout.trim();
           } catch {
             // Process name not available
@@ -2047,7 +2145,7 @@ export class NativeFileSystem {
             isLocked: true,
             processId: pid,
             processName,
-            lockType: 'unknown'
+            lockType: 'unknown',
           };
         }
       }
@@ -2085,18 +2183,19 @@ export class NativeFileSystem {
       mode?: number;
       createDirs?: boolean;
       retry?: FileLockRetryOptions;
-    }
+    },
   ): Promise<WriteWithRetryResult> {
     const resolved = this.validatePath(filePath);
     const startTime = Date.now();
 
-    const retryOptions: Required<Omit<FileLockRetryOptions, 'onRetry' | 'throwOnFinalFailure'>> & Pick<FileLockRetryOptions, 'onRetry' | 'throwOnFinalFailure'> = {
+    const retryOptions: Required<Omit<FileLockRetryOptions, 'onRetry' | 'throwOnFinalFailure'>> &
+      Pick<FileLockRetryOptions, 'onRetry' | 'throwOnFinalFailure'> = {
       maxRetries: options?.retry?.maxRetries ?? 5,
       initialDelayMs: options?.retry?.initialDelayMs ?? 100,
       maxDelayMs: options?.retry?.maxDelayMs ?? 5000,
       backoffMultiplier: options?.retry?.backoffMultiplier ?? 2,
       onRetry: options?.retry?.onRetry,
-      throwOnFinalFailure: options?.retry?.throwOnFinalFailure ?? false
+      throwOnFinalFailure: options?.retry?.throwOnFinalFailure ?? false,
     };
 
     let attempt = 0;
@@ -2129,7 +2228,7 @@ export class NativeFileSystem {
           // Calculate next delay with exponential backoff
           currentDelay = Math.min(
             currentDelay * retryOptions.backoffMultiplier,
-            retryOptions.maxDelayMs
+            retryOptions.maxDelayMs,
           );
 
           continue;
@@ -2141,16 +2240,16 @@ export class NativeFileSystem {
         }
 
         await fs.writeFile(resolved, content, {
-          encoding: typeof content === 'string' ? (options?.encoding || this.config.encoding) : undefined,
-          mode: options?.mode
+          encoding:
+            typeof content === 'string' ? options?.encoding || this.config.encoding : undefined,
+          mode: options?.mode,
         });
 
         return {
           success: true,
           attempts: attempt,
-          totalTimeMs: Date.now() - startTime
+          totalTimeMs: Date.now() - startTime,
         };
-
       } catch (error: any) {
         lastError = error;
 
@@ -2160,7 +2259,7 @@ export class NativeFileSystem {
             isLocked: true,
             filePath: resolved,
             detectedAt: new Date(),
-            error: error.message
+            error: error.message,
           };
 
           if (attempt > retryOptions.maxRetries) {
@@ -2178,7 +2277,7 @@ export class NativeFileSystem {
           // Calculate next delay with exponential backoff
           currentDelay = Math.min(
             currentDelay * retryOptions.backoffMultiplier,
-            retryOptions.maxDelayMs
+            retryOptions.maxDelayMs,
           );
 
           continue;
@@ -2195,7 +2294,7 @@ export class NativeFileSystem {
       attempts: attempt,
       totalTimeMs: Date.now() - startTime,
       lockInfo: lastLockInfo,
-      error: lastError || new Error('File is locked and all retry attempts exhausted')
+      error: lastError || new Error('File is locked and all retry attempts exhausted'),
     };
 
     if (retryOptions.throwOnFinalFailure) {
@@ -2204,8 +2303,8 @@ export class NativeFileSystem {
         lastLockInfo || {
           isLocked: true,
           filePath: resolved,
-          detectedAt: new Date()
-        }
+          detectedAt: new Date(),
+        },
       );
     }
 
@@ -2227,7 +2326,7 @@ export class NativeFileSystem {
       encoding?: BufferEncoding;
       mode?: number;
       createDirs?: boolean;
-    }
+    },
   ): Promise<void> {
     const lockInfo = await this.isFileLocked(filePath);
 
@@ -2237,7 +2336,7 @@ export class NativeFileSystem {
         : '';
       throw new FileLockError(
         `Cannot write to "${filePath}": file is locked${processInfo}`,
-        lockInfo
+        lockInfo,
       );
     }
 
@@ -2248,7 +2347,7 @@ export class NativeFileSystem {
    * Helper method to wait/sleep for given milliseconds
    */
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   // ============================================================
@@ -2279,7 +2378,10 @@ export class NativeFileSystem {
    * @param options - Read options
    * @returns File content as string
    */
-  async readFileWithEncoding(filePath: string, options?: ReadFileWithEncodingOptions): Promise<string> {
+  async readFileWithEncoding(
+    filePath: string,
+    options?: ReadFileWithEncodingOptions,
+  ): Promise<string> {
     const resolved = this.validatePath(filePath);
     const stats = await fs.stat(resolved);
     if (stats.size > this.config.maxFileSize) {
@@ -2306,12 +2408,16 @@ export class NativeFileSystem {
    * @param content - Content to write
    * @param options - Write options
    */
-  async writeFileWithEncoding(filePath: string, content: string, options?: WriteFileWithEncodingOptions): Promise<void> {
+  async writeFileWithEncoding(
+    filePath: string,
+    content: string,
+    options?: WriteFileWithEncodingOptions,
+  ): Promise<void> {
     const resolved = this.validatePath(filePath);
     const encoding: SupportedEncoding = options?.encoding
-      ? (isSupportedEncoding(options.encoding as string)
-          ? (options.encoding as SupportedEncoding)
-          : normalizeEncoding(options.encoding as string))
+      ? isSupportedEncoding(options.encoding as string)
+        ? (options.encoding as SupportedEncoding)
+        : normalizeEncoding(options.encoding as string)
       : 'utf-8';
     const buffer = encodeBuffer(content, encoding, options?.writeBOM ?? false);
     if (options?.createDirs !== false) {
@@ -2334,19 +2440,37 @@ export class NativeFileSystem {
     destPath: string,
     fromEncoding: SupportedEncoding | 'auto',
     toEncoding: SupportedEncoding,
-    options?: { writeBOM?: boolean }
-  ): Promise<{ fromEncoding: SupportedEncoding; toEncoding: SupportedEncoding; bytesRead: number; bytesWritten: number }> {
+    options?: { writeBOM?: boolean },
+  ): Promise<{
+    fromEncoding: SupportedEncoding;
+    toEncoding: SupportedEncoding;
+    bytesRead: number;
+    bytesWritten: number;
+  }> {
     const sourceBuffer = await this.readFileBuffer(sourcePath);
-    const actualFromEncoding = fromEncoding === 'auto' ? detectEncoding(sourceBuffer).encoding : fromEncoding;
-    const destBuffer = convertBufferEncoding(sourceBuffer, actualFromEncoding, toEncoding, options?.writeBOM ?? false);
+    const actualFromEncoding =
+      fromEncoding === 'auto' ? detectEncoding(sourceBuffer).encoding : fromEncoding;
+    const destBuffer = convertBufferEncoding(
+      sourceBuffer,
+      actualFromEncoding,
+      toEncoding,
+      options?.writeBOM ?? false,
+    );
     await this.writeFile(destPath, destBuffer);
-    return { fromEncoding: actualFromEncoding, toEncoding, bytesRead: sourceBuffer.length, bytesWritten: destBuffer.length };
+    return {
+      fromEncoding: actualFromEncoding,
+      toEncoding,
+      bytesRead: sourceBuffer.length,
+      bytesWritten: destBuffer.length,
+    };
   }
 
   /**
    * Check if file has a BOM (Byte Order Mark)
    */
-  async checkFileBOM(filePath: string): Promise<{ encoding: SupportedEncoding; bomLength: number } | null> {
+  async checkFileBOM(
+    filePath: string,
+  ): Promise<{ encoding: SupportedEncoding; bomLength: number } | null> {
     const resolved = this.validatePath(filePath);
     const fd = await fs.open(resolved, 'r');
     try {
@@ -2372,7 +2496,11 @@ export class NativeFileSystem {
   /**
    * Add BOM to file
    */
-  async addFileBOM(filePath: string, encoding: 'utf-8' | 'utf-16le' | 'utf-16be', outputPath?: string): Promise<boolean> {
+  async addFileBOM(
+    filePath: string,
+    encoding: 'utf-8' | 'utf-16le' | 'utf-16be',
+    outputPath?: string,
+  ): Promise<boolean> {
     const buffer = await this.readFileBuffer(filePath);
     if (detectBOM(buffer)) return false;
     const bomBytes = getBOMBytes(encoding);
@@ -2405,7 +2533,9 @@ export class NativeFileSystem {
   printStatus(): void {
     console.log(chalk.cyan('\n=== Native FileSystem ===\n'));
     console.log(chalk.gray(`  Root: ${this.config.rootDir}`));
-    console.log(chalk.gray(`  Max File Size: ${(this.config.maxFileSize / 1024 / 1024).toFixed(1)}MB`));
+    console.log(
+      chalk.gray(`  Max File Size: ${(this.config.maxFileSize / 1024 / 1024).toFixed(1)}MB`),
+    );
     console.log(chalk.gray(`  Encoding: ${this.config.encoding}`));
     console.log(chalk.gray(`  Verbose Logging: ${this.config.verboseLogging}`));
     console.log(chalk.gray(`  Active Watchers: ${this.watchers.size}`));
@@ -2416,6 +2546,9 @@ export class NativeFileSystem {
 // Factory Function
 // ============================================================
 
-export function createFileSystem(rootDir: string, options?: Partial<NativeFileSystemConfig>): NativeFileSystem {
+export function createFileSystem(
+  rootDir: string,
+  options?: Partial<NativeFileSystemConfig>,
+): NativeFileSystem {
   return new NativeFileSystem({ rootDir, ...options });
 }

@@ -3,7 +3,7 @@
  */
 
 import { vi } from 'vitest';
-import type { Agent, AgentRole, Message, ExecutionPlan, Settings } from '../../src/types';
+import type { Agent, AgentRole, ExecutionPlan, Message, Settings } from '../../src/types';
 
 export interface MockAppState {
   // Agents

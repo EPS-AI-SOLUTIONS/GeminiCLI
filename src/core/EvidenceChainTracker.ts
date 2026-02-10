@@ -13,8 +13,8 @@
  * - Integration-ready for GraphProcessor.ts
  */
 
+import crypto from 'node:crypto';
 import chalk from 'chalk';
-import crypto from 'crypto';
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -24,11 +24,11 @@ import crypto from 'crypto';
  * Types of evidence that can support a claim
  */
 export type EvidenceType =
-  | 'file_read'      // Evidence from reading a file
-  | 'file_write'     // Evidence from writing/modifying a file
-  | 'command'        // Evidence from executing a shell command
-  | 'mcp_call'       // Evidence from an MCP tool invocation
-  | 'agent_output';  // Evidence from another agent's verified output
+  | 'file_read' // Evidence from reading a file
+  | 'file_write' // Evidence from writing/modifying a file
+  | 'command' // Evidence from executing a shell command
+  | 'mcp_call' // Evidence from an MCP tool invocation
+  | 'agent_output'; // Evidence from another agent's verified output
 
 /**
  * A single piece of evidence supporting a claim
@@ -149,7 +149,7 @@ const DEFAULT_CONFIG: Required<EvidenceChainTrackerConfig> = {
   enableDetailedAnalysis: true,
   debug: false,
   maxChainAge: 300000, // 5 minutes
-  autoExtractClaims: true
+  autoExtractClaims: true,
 };
 
 // =============================================================================
@@ -186,7 +186,7 @@ export class EvidenceChainTracker {
       subClaims: [],
       createdAt: now,
       updatedAt: now,
-      validated: false
+      validated: false,
     };
 
     this.chains.set(chainId, chain);
@@ -221,7 +221,7 @@ export class EvidenceChainTracker {
     // Add content hash for integrity verification
     const evidenceWithHash: Evidence = {
       ...evidence,
-      contentHash: this.hashContent(evidence.content)
+      contentHash: this.hashContent(evidence.content),
     };
 
     chain.evidence.push(evidenceWithHash);
@@ -236,7 +236,9 @@ export class EvidenceChainTracker {
 
     if (this.config.debug) {
       console.log(chalk.cyan(`[EvidenceChain] Added ${evidence.type} evidence to ${chainId}`));
-      console.log(chalk.gray(`  Agent: ${evidence.agentId}, Content length: ${evidence.content.length}`));
+      console.log(
+        chalk.gray(`  Agent: ${evidence.agentId}, Content length: ${evidence.content.length}`),
+      );
     }
   }
 
@@ -252,7 +254,7 @@ export class EvidenceChainTracker {
         isComplete: false,
         evidenceCount: 0,
         gaps: ['Chain not found'],
-        trustScore: 0
+        trustScore: 0,
       };
     }
 
@@ -261,11 +263,13 @@ export class EvidenceChainTracker {
 
     // Check for minimum evidence
     if (chain.evidence.length < this.config.minEvidenceRequired) {
-      gaps.push(`Insufficient evidence: ${chain.evidence.length}/${this.config.minEvidenceRequired} required`);
+      gaps.push(
+        `Insufficient evidence: ${chain.evidence.length}/${this.config.minEvidenceRequired} required`,
+      );
     }
 
     // Check for evidence types coverage
-    const evidenceTypes = new Set(chain.evidence.map(e => e.type));
+    const _evidenceTypes = new Set(chain.evidence.map((e) => e.type));
 
     // Check main claim coverage
     const mainClaimCovered = this.isClaimCoveredByEvidence(chain.claim, chain.evidence);
@@ -288,7 +292,7 @@ export class EvidenceChainTracker {
     }
 
     // Check for agent diversity (single-agent chains may be less reliable)
-    const uniqueAgents = new Set(chain.evidence.map(e => e.agentId));
+    const uniqueAgents = new Set(chain.evidence.map((e) => e.agentId));
     if (chain.evidence.length > 3 && uniqueAgents.size === 1) {
       warnings.push('All evidence from single agent - consider cross-verification');
     }
@@ -309,7 +313,7 @@ export class EvidenceChainTracker {
       evidenceCount: chain.evidence.length,
       gaps,
       trustScore,
-      details
+      details,
     };
 
     // Cache validation result
@@ -435,7 +439,7 @@ export class EvidenceChainTracker {
       totalEvidence,
       averageTrustScore: this.chains.size > 0 ? totalTrustScore / this.chains.size : 0,
       chainsByTask: this.taskChainMap.size,
-      incompleteChains
+      incompleteChains,
     };
   }
 
@@ -475,11 +479,7 @@ export class EvidenceChainTracker {
    * Hash content for integrity verification
    */
   private hashContent(content: string): string {
-    return crypto
-      .createHash('sha256')
-      .update(content)
-      .digest('hex')
-      .substring(0, 16);
+    return crypto.createHash('sha256').update(content).digest('hex').substring(0, 16);
   }
 
   /**
@@ -492,7 +492,7 @@ export class EvidenceChainTracker {
     if (claimKeywords.length === 0) return evidence.length > 0;
 
     // Check if evidence content covers claim keywords
-    const allEvidenceContent = evidence.map(e => e.content.toLowerCase()).join(' ');
+    const allEvidenceContent = evidence.map((e) => e.content.toLowerCase()).join(' ');
 
     let matchedKeywords = 0;
     for (const keyword of claimKeywords) {
@@ -511,23 +511,97 @@ export class EvidenceChainTracker {
   private extractKeywords(text: string): string[] {
     // Remove common words and extract significant terms
     const stopWords = new Set([
-      'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
-      'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
-      'should', 'may', 'might', 'must', 'shall', 'can', 'need', 'dare',
-      'to', 'of', 'in', 'for', 'on', 'with', 'at', 'by', 'from', 'as',
-      'into', 'through', 'during', 'before', 'after', 'above', 'below',
-      'between', 'under', 'again', 'further', 'then', 'once', 'here',
-      'there', 'when', 'where', 'why', 'how', 'all', 'each', 'few',
-      'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not',
-      'only', 'own', 'same', 'so', 'than', 'too', 'very', 'just',
-      'and', 'but', 'if', 'or', 'because', 'until', 'while', 'this', 'that'
+      'the',
+      'a',
+      'an',
+      'is',
+      'are',
+      'was',
+      'were',
+      'be',
+      'been',
+      'being',
+      'have',
+      'has',
+      'had',
+      'do',
+      'does',
+      'did',
+      'will',
+      'would',
+      'could',
+      'should',
+      'may',
+      'might',
+      'must',
+      'shall',
+      'can',
+      'need',
+      'dare',
+      'to',
+      'of',
+      'in',
+      'for',
+      'on',
+      'with',
+      'at',
+      'by',
+      'from',
+      'as',
+      'into',
+      'through',
+      'during',
+      'before',
+      'after',
+      'above',
+      'below',
+      'between',
+      'under',
+      'again',
+      'further',
+      'then',
+      'once',
+      'here',
+      'there',
+      'when',
+      'where',
+      'why',
+      'how',
+      'all',
+      'each',
+      'few',
+      'more',
+      'most',
+      'other',
+      'some',
+      'such',
+      'no',
+      'nor',
+      'not',
+      'only',
+      'own',
+      'same',
+      'so',
+      'than',
+      'too',
+      'very',
+      'just',
+      'and',
+      'but',
+      'if',
+      'or',
+      'because',
+      'until',
+      'while',
+      'this',
+      'that',
     ]);
 
     const words = text
       .toLowerCase()
       .replace(/[^a-z0-9\s]/g, ' ')
       .split(/\s+/)
-      .filter(word => word.length > 2 && !stopWords.has(word));
+      .filter((word) => word.length > 2 && !stopWords.has(word));
 
     // Return unique keywords
     return [...new Set(words)];
@@ -544,7 +618,7 @@ export class EvidenceChainTracker {
       /(?:found|discovered|detected|identified)\s+(.+?)(?:\.|$)/gi,
       /(?:the file|the function|the class)\s+['"`]?(\S+)['"`]?\s+(?:contains|has|includes)/gi,
       /(?:created|modified|updated|deleted)\s+(.+?)(?:\.|$)/gi,
-      /(?:verified|confirmed|validated)\s+that\s+(.+?)(?:\.|$)/gi
+      /(?:verified|confirmed|validated)\s+that\s+(.+?)(?:\.|$)/gi,
     ];
 
     for (const pattern of patterns) {
@@ -570,11 +644,11 @@ export class EvidenceChainTracker {
     score -= gaps.length * 0.15;
 
     // Reward evidence diversity
-    const evidenceTypes = new Set(chain.evidence.map(e => e.type));
+    const evidenceTypes = new Set(chain.evidence.map((e) => e.type));
     score += (evidenceTypes.size - 1) * 0.05; // Bonus for multiple types
 
     // Reward multiple agents
-    const uniqueAgents = new Set(chain.evidence.map(e => e.agentId));
+    const uniqueAgents = new Set(chain.evidence.map((e) => e.agentId));
     score += (uniqueAgents.size - 1) * 0.05; // Bonus for cross-agent evidence
 
     // Penalize stale chains
@@ -590,7 +664,7 @@ export class EvidenceChainTracker {
 
     // Bonus for file-based evidence (most concrete)
     const fileEvidence = chain.evidence.filter(
-      e => e.type === 'file_read' || e.type === 'file_write'
+      (e) => e.type === 'file_read' || e.type === 'file_write',
     );
     if (fileEvidence.length > 0) {
       score += 0.1;
@@ -605,51 +679,49 @@ export class EvidenceChainTracker {
    */
   private buildDetailedAnalysis(
     chain: EvidenceChain,
-    gaps: string[],
-    warnings: string[]
+    _gaps: string[],
+    warnings: string[],
   ): ChainAnalysisDetails {
     const evidenceByType: Record<EvidenceType, number> = {
       file_read: 0,
       file_write: 0,
       command: 0,
       mcp_call: 0,
-      agent_output: 0
+      agent_output: 0,
     };
 
     for (const evidence of chain.evidence) {
       evidenceByType[evidence.type]++;
     }
 
-    const timestamps = chain.evidence.map(e => e.timestamp);
-    const timeSpan = timestamps.length > 1
-      ? Math.max(...timestamps) - Math.min(...timestamps)
-      : 0;
+    const timestamps = chain.evidence.map((e) => e.timestamp);
+    const timeSpan = timestamps.length > 1 ? Math.max(...timestamps) - Math.min(...timestamps) : 0;
 
     const claimStatus: ClaimEvidenceStatus[] = [
       {
         claim: chain.claim,
         hasEvidence: this.isClaimCoveredByEvidence(chain.claim, chain.evidence),
-        supportingEvidence: chain.evidence.filter(e =>
-          this.isClaimCoveredByEvidence(chain.claim, [e])
+        supportingEvidence: chain.evidence.filter((e) =>
+          this.isClaimCoveredByEvidence(chain.claim, [e]),
         ),
-        confidence: this.isClaimCoveredByEvidence(chain.claim, chain.evidence) ? 0.8 : 0.2
+        confidence: this.isClaimCoveredByEvidence(chain.claim, chain.evidence) ? 0.8 : 0.2,
       },
-      ...chain.subClaims.map(subClaim => ({
+      ...chain.subClaims.map((subClaim) => ({
         claim: subClaim,
         hasEvidence: this.isClaimCoveredByEvidence(subClaim, chain.evidence),
-        supportingEvidence: chain.evidence.filter(e =>
-          this.isClaimCoveredByEvidence(subClaim, [e])
+        supportingEvidence: chain.evidence.filter((e) =>
+          this.isClaimCoveredByEvidence(subClaim, [e]),
         ),
-        confidence: this.isClaimCoveredByEvidence(subClaim, chain.evidence) ? 0.7 : 0.1
-      }))
+        confidence: this.isClaimCoveredByEvidence(subClaim, chain.evidence) ? 0.7 : 0.1,
+      })),
     ];
 
     return {
-      uniqueAgents: new Set(chain.evidence.map(e => e.agentId)).size,
+      uniqueAgents: new Set(chain.evidence.map((e) => e.agentId)).size,
       timeSpan,
       evidenceByType,
       claimStatus,
-      warnings
+      warnings,
     };
   }
 
@@ -717,14 +789,14 @@ export function getTaskEvidenceTrustScore(taskId: number): number {
 export function createFileReadEvidence(
   agentId: string,
   filePath: string,
-  content: string
+  content: string,
 ): Evidence {
   return {
     type: 'file_read',
     content: `Read file: ${filePath}\nContent preview: ${content.substring(0, 500)}...`,
     timestamp: Date.now(),
     agentId,
-    filePath
+    filePath,
   };
 }
 
@@ -734,48 +806,40 @@ export function createFileReadEvidence(
 export function createFileWriteEvidence(
   agentId: string,
   filePath: string,
-  content: string
+  content: string,
 ): Evidence {
   return {
     type: 'file_write',
     content: `Wrote to file: ${filePath}\nContent preview: ${content.substring(0, 500)}...`,
     timestamp: Date.now(),
     agentId,
-    filePath
+    filePath,
   };
 }
 
 /**
  * Create evidence from a command execution
  */
-export function createCommandEvidence(
-  agentId: string,
-  command: string,
-  output: string
-): Evidence {
+export function createCommandEvidence(agentId: string, command: string, output: string): Evidence {
   return {
     type: 'command',
     content: `Executed: ${command}\nOutput: ${output.substring(0, 1000)}`,
     timestamp: Date.now(),
     agentId,
-    command
+    command,
   };
 }
 
 /**
  * Create evidence from an MCP tool call
  */
-export function createMcpCallEvidence(
-  agentId: string,
-  toolName: string,
-  result: string
-): Evidence {
+export function createMcpCallEvidence(agentId: string, toolName: string, result: string): Evidence {
   return {
     type: 'mcp_call',
     content: `MCP tool: ${toolName}\nResult: ${result.substring(0, 1000)}`,
     timestamp: Date.now(),
     agentId,
-    mcpTool: toolName
+    mcpTool: toolName,
   };
 }
 
@@ -785,13 +849,13 @@ export function createMcpCallEvidence(
 export function createAgentOutputEvidence(
   agentId: string,
   sourceAgentId: string,
-  output: string
+  output: string,
 ): Evidence {
   return {
     type: 'agent_output',
     content: `Agent ${sourceAgentId} output: ${output.substring(0, 1000)}`,
     timestamp: Date.now(),
-    agentId
+    agentId,
   };
 }
 

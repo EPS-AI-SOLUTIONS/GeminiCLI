@@ -56,7 +56,12 @@ const MOCK_MEMORIES: AgentMemory[] = [
  */
 const MOCK_KNOWLEDGE_GRAPH: KnowledgeGraphData = {
   nodes: [
-    { id: 'n1', type: 'concept', label: 'Wolf Swarm', data: { description: 'System multi-agentowy' } },
+    {
+      id: 'n1',
+      type: 'concept',
+      label: 'Wolf Swarm',
+      data: { description: 'System multi-agentowy' },
+    },
     { id: 'n2', type: 'agent', label: 'Geralt', data: { role: 'Security/VETO' } },
     { id: 'n3', type: 'agent', label: 'Dijkstra', data: { role: 'Strategist' } },
     { id: 'n4', type: 'task', label: 'Ostatnie zadanie', data: { status: 'completed' } },

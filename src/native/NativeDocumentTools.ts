@@ -9,16 +9,16 @@
  * All tools follow the NativeToolDefinition pattern from NativeSerenaTools.ts
  */
 
-import { Document, Packer, Paragraph, HeadingLevel, TextRun } from 'docx';
+import { createWriteStream } from 'node:fs';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { Document, HeadingLevel, Packer, Paragraph, TextRun } from 'docx';
 import ExcelJS from 'exceljs';
-import PDFDocument from 'pdfkit';
-// @ts-ignore — mammoth has no TypeScript declarations
+// @ts-expect-error — mammoth has no TypeScript declarations
 import mammoth from 'mammoth';
-import fs from 'fs/promises';
-import { createWriteStream } from 'fs';
-import path from 'path';
-import os from 'os';
-import { NativeToolDefinition } from './NativeSerenaTools.js';
+import PDFDocument from 'pdfkit';
+import type { NativeToolDefinition } from './NativeSerenaTools.js';
 
 // ============================================================
 // Helpers
@@ -80,12 +80,14 @@ function resolveFilepath(filepath: string): string {
   // Layer 3: Defense-in-depth - reject paths with '..' traversal sequences
   // This catches attempts even if they would resolve to an allowed dir
   const normalizedForCheck = sanitized.replace(/\\/g, '/');
-  if (normalizedForCheck.includes('/../') ||
-      normalizedForCheck.startsWith('../') ||
-      normalizedForCheck.endsWith('/..') ||
-      normalizedForCheck === '..') {
+  if (
+    normalizedForCheck.includes('/../') ||
+    normalizedForCheck.startsWith('../') ||
+    normalizedForCheck.endsWith('/..') ||
+    normalizedForCheck === '..'
+  ) {
     throw new Error(
-      `Path traversal rejected: "${filepath}" contains directory traversal sequences (..)`
+      `Path traversal rejected: "${filepath}" contains directory traversal sequences (..)`,
     );
   }
 
@@ -94,7 +96,7 @@ function resolveFilepath(filepath: string): string {
 
   // Layer 5: Verify resolved path is within allowed directories
   const allowedDirs = getAllowedBaseDirs();
-  const isAllowed = allowedDirs.some(baseDir => {
+  const isAllowed = allowedDirs.some((baseDir) => {
     const normalizedBase = path.resolve(baseDir) + path.sep;
     const normalizedResolved = resolved + path.sep;
     return normalizedResolved.startsWith(normalizedBase) || resolved === path.resolve(baseDir);
@@ -103,7 +105,7 @@ function resolveFilepath(filepath: string): string {
   if (!isAllowed) {
     throw new Error(
       `Path traversal detected: "${filepath}" resolves to "${resolved}" which is outside allowed directories. ` +
-      `Allowed base directories: ${allowedDirs.join(', ')}`
+        `Allowed base directories: ${allowedDirs.join(', ')}`,
     );
   }
 
@@ -116,24 +118,24 @@ function resolveFilepath(filepath: string): string {
 
 function textToParagraphs(content: string): Paragraph[] {
   const lines = content.split('\n');
-  return lines.map(line => {
+  return lines.map((line) => {
     // Detect headings (markdown-style)
     if (line.startsWith('### ')) {
       return new Paragraph({
         text: line.slice(4),
-        heading: HeadingLevel.HEADING_3
+        heading: HeadingLevel.HEADING_3,
       });
     }
     if (line.startsWith('## ')) {
       return new Paragraph({
         text: line.slice(3),
-        heading: HeadingLevel.HEADING_2
+        heading: HeadingLevel.HEADING_2,
       });
     }
     if (line.startsWith('# ')) {
       return new Paragraph({
         text: line.slice(2),
-        heading: HeadingLevel.HEADING_1
+        heading: HeadingLevel.HEADING_1,
       });
     }
     // Empty line = empty paragraph
@@ -142,7 +144,7 @@ function textToParagraphs(content: string): Paragraph[] {
     }
     // Regular paragraph
     return new Paragraph({
-      children: [new TextRun(line)]
+      children: [new TextRun(line)],
     });
   });
 }
@@ -155,7 +157,7 @@ function parseExcelContent(content: string): any[][] {
   // Try JSON first
   try {
     const parsed = JSON.parse(content);
-    if (Array.isArray(parsed) && parsed.every(row => Array.isArray(row))) {
+    if (Array.isArray(parsed) && parsed.every((row) => Array.isArray(row))) {
       return parsed;
     }
     // If it's an object with sheet names, return first sheet
@@ -171,7 +173,7 @@ function parseExcelContent(content: string): any[][] {
 
   // Parse as CSV-like string
   const lines = content.trim().split('\n');
-  return lines.map(line => {
+  return lines.map((line) => {
     // Handle quoted fields
     const fields: string[] = [];
     let current = '';
@@ -191,9 +193,9 @@ function parseExcelContent(content: string): any[][] {
     fields.push(current.trim());
 
     // Convert numeric strings to numbers
-    return fields.map(f => {
+    return fields.map((f) => {
       const num = Number(f);
-      return !isNaN(num) && f !== '' ? num : f;
+      return !Number.isNaN(num) && f !== '' ? num : f;
     });
   });
 }
@@ -209,28 +211,36 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
     // ========================================================
     {
       name: 'create_word_document',
-      description: 'Create a new Microsoft Word (.docx) document with text content. Supports markdown-style headings (# H1, ## H2, ### H3).',
+      description:
+        'Create a new Microsoft Word (.docx) document with text content. Supports markdown-style headings (# H1, ## H2, ### H3).',
       inputSchema: {
         type: 'object',
         properties: {
           filepath: {
             type: 'string',
-            description: 'Absolute path where to save the .docx file'
+            description: 'Absolute path where to save the .docx file',
           },
           content: {
             type: 'string',
-            description: 'Text content for the document. Lines starting with # are headings. Newlines separate paragraphs.'
-          }
+            description:
+              'Text content for the document. Lines starting with # are headings. Newlines separate paragraphs.',
+          },
         },
-        required: ['filepath', 'content']
+        required: ['filepath', 'content'],
       },
       handler: async (params) => {
         try {
           if (!params.filepath || typeof params.filepath !== 'string') {
-            return { success: false, error: 'Missing or invalid "filepath" parameter (expected a non-empty string).' };
+            return {
+              success: false,
+              error: 'Missing or invalid "filepath" parameter (expected a non-empty string).',
+            };
           }
           if (!params.content || typeof params.content !== 'string') {
-            return { success: false, error: 'Missing or invalid "content" parameter (expected a non-empty string).' };
+            return {
+              success: false,
+              error: 'Missing or invalid "content" parameter (expected a non-empty string).',
+            };
           }
 
           const filepath = resolveFilepath(params.filepath);
@@ -238,10 +248,12 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
 
           const paragraphs = textToParagraphs(params.content);
           const doc = new Document({
-            sections: [{
-              properties: {},
-              children: paragraphs
-            }]
+            sections: [
+              {
+                properties: {},
+                children: paragraphs,
+              },
+            ],
           });
 
           const buffer = await Packer.toBuffer(doc);
@@ -250,13 +262,13 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
           return {
             success: true,
             filepath,
-            message: `Word document created: ${filepath}`
+            message: `Word document created: ${filepath}`,
           };
         } catch (error: any) {
           const safeMessage = error.message || 'Unknown error';
           return { success: false, error: `Failed to create Word document: ${safeMessage}` };
         }
-      }
+      },
     },
 
     // ========================================================
@@ -264,25 +276,30 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
     // ========================================================
     {
       name: 'edit_word_document',
-      description: 'Edit an existing Word document using operations: add_paragraph, add_heading, edit_paragraph, delete_paragraph. Reads existing content, applies operations, and writes a new document.',
+      description:
+        'Edit an existing Word document using operations: add_paragraph, add_heading, edit_paragraph, delete_paragraph. Reads existing content, applies operations, and writes a new document.',
       inputSchema: {
         type: 'object',
         properties: {
           filepath: {
             type: 'string',
-            description: 'Path to the Word document to edit'
+            description: 'Path to the Word document to edit',
           },
           operations: {
             type: 'array',
-            description: 'List of operations. Each: {type: "add_paragraph"|"add_heading"|"edit_paragraph"|"delete_paragraph", text?: string, level?: number, index?: number}'
-          }
+            description:
+              'List of operations. Each: {type: "add_paragraph"|"add_heading"|"edit_paragraph"|"delete_paragraph", text?: string, level?: number, index?: number}',
+          },
         },
-        required: ['filepath', 'operations']
+        required: ['filepath', 'operations'],
       },
       handler: async (params) => {
         try {
           if (!params.filepath || typeof params.filepath !== 'string') {
-            return { success: false, error: 'Missing or invalid "filepath" parameter (expected a non-empty string).' };
+            return {
+              success: false,
+              error: 'Missing or invalid "filepath" parameter (expected a non-empty string).',
+            };
           }
           if (!params.operations) {
             return { success: false, error: 'Missing "operations" parameter.' };
@@ -307,14 +324,21 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
             } catch (parseErr: any) {
               return {
                 success: false,
-                error: `Invalid JSON in "operations" parameter: ${parseErr.message}. Expected a JSON array of operations.`
+                error: `Invalid JSON in "operations" parameter: ${parseErr.message}. Expected a JSON array of operations.`,
               };
             }
             if (!Array.isArray(ops)) {
-              return { success: false, error: 'The "operations" parameter must be a JSON array, not a single object.' };
+              return {
+                success: false,
+                error: 'The "operations" parameter must be a JSON array, not a single object.',
+              };
             }
           } else {
-            return { success: false, error: 'The "operations" parameter must be an array or a JSON string representing an array.' };
+            return {
+              success: false,
+              error:
+                'The "operations" parameter must be an array or a JSON string representing an array.',
+            };
           }
 
           for (const op of ops) {
@@ -341,10 +365,12 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
           // Rebuild document
           const docParagraphs = textToParagraphs(paragraphs.join('\n'));
           const doc = new Document({
-            sections: [{
-              properties: {},
-              children: docParagraphs
-            }]
+            sections: [
+              {
+                properties: {},
+                children: docParagraphs,
+              },
+            ],
           });
 
           const buffer = await Packer.toBuffer(doc);
@@ -353,13 +379,13 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
           return {
             success: true,
             filepath,
-            message: `Word document edited: ${filepath} (${ops.length} operations applied)`
+            message: `Word document edited: ${filepath} (${ops.length} operations applied)`,
           };
         } catch (error: any) {
           const safeMessage = error.message || 'Unknown error';
           return { success: false, error: `Failed to edit Word document: ${safeMessage}` };
         }
-      }
+      },
     },
 
     // ========================================================
@@ -373,22 +399,28 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
         properties: {
           source_path: {
             type: 'string',
-            description: 'Path to the source .txt file'
+            description: 'Path to the source .txt file',
           },
           target_path: {
             type: 'string',
-            description: 'Path where to save the .docx file'
-          }
+            description: 'Path where to save the .docx file',
+          },
         },
-        required: ['source_path', 'target_path']
+        required: ['source_path', 'target_path'],
       },
       handler: async (params) => {
         try {
           if (!params.source_path || typeof params.source_path !== 'string') {
-            return { success: false, error: 'Missing or invalid "source_path" parameter (expected a non-empty string).' };
+            return {
+              success: false,
+              error: 'Missing or invalid "source_path" parameter (expected a non-empty string).',
+            };
           }
           if (!params.target_path || typeof params.target_path !== 'string') {
-            return { success: false, error: 'Missing or invalid "target_path" parameter (expected a non-empty string).' };
+            return {
+              success: false,
+              error: 'Missing or invalid "target_path" parameter (expected a non-empty string).',
+            };
           }
 
           const sourcePath = resolveFilepath(params.source_path);
@@ -399,10 +431,12 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
           const paragraphs = textToParagraphs(content);
 
           const doc = new Document({
-            sections: [{
-              properties: {},
-              children: paragraphs
-            }]
+            sections: [
+              {
+                properties: {},
+                children: paragraphs,
+              },
+            ],
           });
 
           const buffer = await Packer.toBuffer(doc);
@@ -411,13 +445,13 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
           return {
             success: true,
             filepath: targetPath,
-            message: `Converted text file to Word document`
+            message: `Converted text file to Word document`,
           };
         } catch (error: any) {
           const safeMessage = error.message || 'Unknown error';
           return { success: false, error: `Failed to convert TXT to Word: ${safeMessage}` };
         }
-      }
+      },
     },
 
     // ========================================================
@@ -425,28 +459,35 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
     // ========================================================
     {
       name: 'create_excel_file',
-      description: 'Create a new Excel (.xlsx) file. Content can be a JSON 2D array (e.g., [["Name","Age"],["Alice",30]]) or CSV-like text.',
+      description:
+        'Create a new Excel (.xlsx) file. Content can be a JSON 2D array (e.g., [["Name","Age"],["Alice",30]]) or CSV-like text.',
       inputSchema: {
         type: 'object',
         properties: {
           filepath: {
             type: 'string',
-            description: 'Path where to save the .xlsx file'
+            description: 'Path where to save the .xlsx file',
           },
           content: {
             type: 'string',
-            description: 'Data content: JSON 2D array string or CSV-like text'
-          }
+            description: 'Data content: JSON 2D array string or CSV-like text',
+          },
         },
-        required: ['filepath', 'content']
+        required: ['filepath', 'content'],
       },
       handler: async (params) => {
         try {
           if (!params.filepath || typeof params.filepath !== 'string') {
-            return { success: false, error: 'Missing or invalid "filepath" parameter (expected a non-empty string).' };
+            return {
+              success: false,
+              error: 'Missing or invalid "filepath" parameter (expected a non-empty string).',
+            };
           }
           if (!params.content || typeof params.content !== 'string') {
-            return { success: false, error: 'Missing or invalid "content" parameter (expected a non-empty string).' };
+            return {
+              success: false,
+              error: 'Missing or invalid "content" parameter (expected a non-empty string).',
+            };
           }
 
           const filepath = resolveFilepath(params.filepath);
@@ -475,13 +516,13 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
           return {
             success: true,
             filepath,
-            message: `Excel file created: ${filepath} (${data.length} rows)`
+            message: `Excel file created: ${filepath} (${data.length} rows)`,
           };
         } catch (error: any) {
           const safeMessage = error.message || 'Unknown error';
           return { success: false, error: `Failed to create Excel file: ${safeMessage}` };
         }
-      }
+      },
     },
 
     // ========================================================
@@ -489,25 +530,30 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
     // ========================================================
     {
       name: 'edit_excel_file',
-      description: 'Edit an existing Excel file. Operations: update_cell, update_range, delete_row, delete_column, add_sheet, delete_sheet.',
+      description:
+        'Edit an existing Excel file. Operations: update_cell, update_range, delete_row, delete_column, add_sheet, delete_sheet.',
       inputSchema: {
         type: 'object',
         properties: {
           filepath: {
             type: 'string',
-            description: 'Path to the Excel file'
+            description: 'Path to the Excel file',
           },
           operations: {
             type: 'array',
-            description: 'List of operations: {type: "update_cell", sheet?: string, cell: "A1", value: "..."} | {type: "update_range", sheet?: string, start: "A1", data: [[...]]} | {type: "delete_row", sheet?: string, row: 1} | {type: "delete_column", sheet?: string, column: 1} | {type: "add_sheet", name: "Sheet2"} | {type: "delete_sheet", name: "Sheet2"}'
-          }
+            description:
+              'List of operations: {type: "update_cell", sheet?: string, cell: "A1", value: "..."} | {type: "update_range", sheet?: string, start: "A1", data: [[...]]} | {type: "delete_row", sheet?: string, row: 1} | {type: "delete_column", sheet?: string, column: 1} | {type: "add_sheet", name: "Sheet2"} | {type: "delete_sheet", name: "Sheet2"}',
+          },
         },
-        required: ['filepath', 'operations']
+        required: ['filepath', 'operations'],
       },
       handler: async (params) => {
         try {
           if (!params.filepath || typeof params.filepath !== 'string') {
-            return { success: false, error: 'Missing or invalid "filepath" parameter (expected a non-empty string).' };
+            return {
+              success: false,
+              error: 'Missing or invalid "filepath" parameter (expected a non-empty string).',
+            };
           }
           if (!params.operations) {
             return { success: false, error: 'Missing "operations" parameter.' };
@@ -527,14 +573,21 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
             } catch (parseErr: any) {
               return {
                 success: false,
-                error: `Invalid JSON in "operations" parameter: ${parseErr.message}. Expected a JSON array of operations.`
+                error: `Invalid JSON in "operations" parameter: ${parseErr.message}. Expected a JSON array of operations.`,
               };
             }
             if (!Array.isArray(ops)) {
-              return { success: false, error: 'The "operations" parameter must be a JSON array, not a single object.' };
+              return {
+                success: false,
+                error: 'The "operations" parameter must be a JSON array, not a single object.',
+              };
             }
           } else {
-            return { success: false, error: 'The "operations" parameter must be an array or a JSON string representing an array.' };
+            return {
+              success: false,
+              error:
+                'The "operations" parameter must be an array or a JSON string representing an array.',
+            };
           }
 
           for (const op of ops) {
@@ -544,7 +597,10 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
               case 'update_cell': {
                 const ws = workbook.getWorksheet(sheetName);
                 if (!ws) {
-                  return { success: false, error: `Sheet not found: "${sheetName}". Available sheets can be listed by reading the file.` };
+                  return {
+                    success: false,
+                    error: `Sheet not found: "${sheetName}". Available sheets can be listed by reading the file.`,
+                  };
                 }
                 ws.getCell(op.cell).value = op.value;
                 break;
@@ -563,14 +619,21 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
                   } catch (parseErr: any) {
                     return {
                       success: false,
-                      error: `Invalid JSON in "data" field of update_range operation: ${parseErr.message}. Expected a 2D array.`
+                      error: `Invalid JSON in "data" field of update_range operation: ${parseErr.message}. Expected a 2D array.`,
                     };
                   }
                   if (!Array.isArray(data)) {
-                    return { success: false, error: 'The "data" field in update_range must be a 2D array.' };
+                    return {
+                      success: false,
+                      error: 'The "data" field in update_range must be a 2D array.',
+                    };
                   }
                 } else {
-                  return { success: false, error: 'The "data" field in update_range must be an array or a JSON string representing a 2D array.' };
+                  return {
+                    success: false,
+                    error:
+                      'The "data" field in update_range must be an array or a JSON string representing a 2D array.',
+                  };
                 }
                 const startCell = ws.getCell(op.start);
                 const startRow = startCell.row;
@@ -609,7 +672,10 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
                 break;
               }
               default: {
-                return { success: false, error: `Unknown operation type: "${op.type}". Supported: update_cell, update_range, delete_row, delete_column, add_sheet, delete_sheet.` };
+                return {
+                  success: false,
+                  error: `Unknown operation type: "${op.type}". Supported: update_cell, update_range, delete_row, delete_column, add_sheet, delete_sheet.`,
+                };
               }
             }
           }
@@ -619,13 +685,13 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
           return {
             success: true,
             filepath,
-            message: `Excel file edited: ${filepath} (${ops.length} operations applied)`
+            message: `Excel file edited: ${filepath} (${ops.length} operations applied)`,
           };
         } catch (error: any) {
           const safeMessage = error.message || 'Unknown error';
           return { success: false, error: `Failed to edit Excel file: ${safeMessage}` };
         }
-      }
+      },
     },
 
     // ========================================================
@@ -639,22 +705,28 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
         properties: {
           source_path: {
             type: 'string',
-            description: 'Path to the source .csv file'
+            description: 'Path to the source .csv file',
           },
           target_path: {
             type: 'string',
-            description: 'Path where to save the .xlsx file'
-          }
+            description: 'Path where to save the .xlsx file',
+          },
         },
-        required: ['source_path', 'target_path']
+        required: ['source_path', 'target_path'],
       },
       handler: async (params) => {
         try {
           if (!params.source_path || typeof params.source_path !== 'string') {
-            return { success: false, error: 'Missing or invalid "source_path" parameter (expected a non-empty string).' };
+            return {
+              success: false,
+              error: 'Missing or invalid "source_path" parameter (expected a non-empty string).',
+            };
           }
           if (!params.target_path || typeof params.target_path !== 'string') {
-            return { success: false, error: 'Missing or invalid "target_path" parameter (expected a non-empty string).' };
+            return {
+              success: false,
+              error: 'Missing or invalid "target_path" parameter (expected a non-empty string).',
+            };
           }
 
           const sourcePath = resolveFilepath(params.source_path);
@@ -686,13 +758,13 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
           return {
             success: true,
             filepath: targetPath,
-            message: `Converted CSV to Excel file (${data.length} rows)`
+            message: `Converted CSV to Excel file (${data.length} rows)`,
           };
         } catch (error: any) {
           const safeMessage = error.message || 'Unknown error';
           return { success: false, error: `Failed to convert CSV to Excel: ${safeMessage}` };
         }
-      }
+      },
     },
 
     // ========================================================
@@ -706,22 +778,28 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
         properties: {
           filepath: {
             type: 'string',
-            description: 'Path where to save the PDF file'
+            description: 'Path where to save the PDF file',
           },
           content: {
             type: 'string',
-            description: 'Text content for the PDF'
-          }
+            description: 'Text content for the PDF',
+          },
         },
-        required: ['filepath', 'content']
+        required: ['filepath', 'content'],
       },
       handler: async (params) => {
         try {
           if (!params.filepath || typeof params.filepath !== 'string') {
-            return { success: false, error: 'Missing or invalid "filepath" parameter (expected a non-empty string).' };
+            return {
+              success: false,
+              error: 'Missing or invalid "filepath" parameter (expected a non-empty string).',
+            };
           }
           if (!params.content || typeof params.content !== 'string') {
-            return { success: false, error: 'Missing or invalid "content" parameter (expected a non-empty string).' };
+            return {
+              success: false,
+              error: 'Missing or invalid "content" parameter (expected a non-empty string).',
+            };
           }
 
           const filepath = resolveFilepath(params.filepath);
@@ -731,7 +809,7 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
             try {
               const doc = new PDFDocument({
                 margin: 50,
-                size: 'A4'
+                size: 'A4',
               });
 
               const stream = createWriteStream(filepath);
@@ -762,19 +840,19 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
                 resolve({
                   success: true,
                   filepath,
-                  message: `PDF created: ${filepath}`
+                  message: `PDF created: ${filepath}`,
                 });
               });
               stream.on('error', (err: Error) => {
                 resolve({
                   success: false,
-                  error: `Failed to write PDF stream: ${err.message}`
+                  error: `Failed to write PDF stream: ${err.message}`,
                 });
               });
             } catch (innerErr: any) {
               resolve({
                 success: false,
-                error: `Failed to generate PDF content: ${innerErr.message}`
+                error: `Failed to generate PDF content: ${innerErr.message}`,
               });
             }
           });
@@ -782,7 +860,7 @@ export function createDocumentToolDefinitions(): NativeToolDefinition[] {
           const safeMessage = error.message || 'Unknown error';
           return { success: false, error: `Failed to create PDF file: ${safeMessage}` };
         }
-      }
-    }
+      },
+    },
   ];
 }

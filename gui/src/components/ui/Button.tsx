@@ -2,8 +2,8 @@
  * Button Component - Matrix Glass Theme
  */
 
-import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { clsx } from 'clsx';
+import { type ButtonHTMLAttributes, forwardRef, type ReactNode } from 'react';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 type ButtonSize = 'sm' | 'md' | 'lg';
@@ -42,7 +42,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       children,
       ...props
     },
-    ref
+    ref,
   ) => {
     return (
       <button
@@ -53,7 +53,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           sizeClasses[size],
           isLoading && 'opacity-70 cursor-wait',
           (disabled || isLoading) && 'pointer-events-none opacity-50',
-          className
+          className,
         )}
         disabled={disabled || isLoading}
         {...props}
@@ -86,7 +86,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {!isLoading && rightIcon}
       </button>
     );
-  }
+  },
 );
 
 Button.displayName = 'Button';

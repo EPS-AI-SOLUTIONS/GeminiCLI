@@ -11,15 +11,14 @@
  */
 
 import type {
-  AgentRole,
-  SwarmTask,
-  SwarmPlan,
   AgentResult,
-  TranscriptStep,
-  SwarmTranscript,
+  AgentRole,
   ComplexityLevel,
+  SwarmPlan,
+  SwarmTask,
+  SwarmTranscript,
+  TaskPriority,
   TaskStatus,
-  TaskPriority
 } from '../../types/swarm.js';
 
 /**
@@ -128,43 +127,43 @@ export const PROTOCOL_STEPS: Record<ProtocolStep, StepConfig> = {
     agent: 'regis',
     description: 'Gather research context and background information',
     required: false,
-    canSkip: true
+    canSkip: true,
   },
   plan: {
     name: 'plan',
     agent: 'dijkstra',
     description: 'Create execution plan and assign tasks to agents',
     required: true,
-    canSkip: false
+    canSkip: false,
   },
   execute: {
     name: 'execute',
     agent: 'geralt', // Default, actual agents assigned by plan
     description: 'Execute tasks via assigned agents',
     required: true,
-    canSkip: false
+    canSkip: false,
   },
   synthesize: {
     name: 'synthesize',
     agent: 'yennefer',
     description: 'Merge and synthesize execution results',
     required: true,
-    canSkip: false
+    canSkip: false,
   },
   log: {
     name: 'log',
     agent: 'jaskier',
     description: 'Create session summary and documentation',
     required: false,
-    canSkip: true
+    canSkip: true,
   },
   archive: {
     name: 'archive',
     agent: 'jaskier',
     description: 'Save transcript to file',
     required: false,
-    canSkip: true
-  }
+    canSkip: true,
+  },
 };
 
 /**
@@ -195,11 +194,25 @@ export const STEP_PRECONDITIONS = {
       throw new StepValidationError('execute', 'Task description must be a non-empty string');
     }
     const validAgents: AgentRole[] = [
-      'geralt', 'yennefer', 'triss', 'jaskier', 'vesemir', 'ciri',
-      'eskel', 'lambert', 'zoltan', 'regis', 'dijkstra', 'philippa', 'serena'
+      'geralt',
+      'yennefer',
+      'triss',
+      'jaskier',
+      'vesemir',
+      'ciri',
+      'eskel',
+      'lambert',
+      'zoltan',
+      'regis',
+      'dijkstra',
+      'philippa',
+      'serena',
     ];
     if (!validAgents.includes(agent)) {
-      throw new StepValidationError('execute', `Unknown agent "${agent}". Valid: ${validAgents.join(', ')}`);
+      throw new StepValidationError(
+        'execute',
+        `Unknown agent "${agent}". Valid: ${validAgents.join(', ')}`,
+      );
     }
   },
 
@@ -211,7 +224,10 @@ export const STEP_PRECONDITIONS = {
       throw new StepValidationError('synthesize', 'Results must be an array');
     }
     if (results.length === 0) {
-      throw new StepValidationError('synthesize', 'Results array must not be empty - no execution results to synthesize');
+      throw new StepValidationError(
+        'synthesize',
+        'Results array must not be empty - no execution results to synthesize',
+      );
     }
   },
 
@@ -225,7 +241,7 @@ export const STEP_PRECONDITIONS = {
     if (!transcript.sessionId) {
       throw new StepValidationError('log', 'Transcript must have a sessionId');
     }
-  }
+  },
 };
 
 /**
@@ -335,7 +351,7 @@ Respond ONLY with the JSON plan, no additional text.
       jaskier: `You are Jaskier, the Bard. Focus on documentation and communication.`,
       dijkstra: `You are Dijkstra, the Spymaster. Focus on strategy and planning.`,
       // Code Intelligence Agent
-      serena: `You are Serena, the Code Intelligence Agent. Focus on code navigation, symbol search, and semantic analysis using LSP.`
+      serena: `You are Serena, the Code Intelligence Agent. Focus on code navigation, symbol search, and semantic analysis using LSP.`,
     };
 
     return `
@@ -357,8 +373,8 @@ Complete this task according to your expertise. Be thorough but concise.
   synthesize: (query: string, results: AgentResult[]) => {
     STEP_PRECONDITIONS.synthesize(query, results);
     const resultsText = results
-      .filter(r => r.success && r.response)
-      .map(r => `### ${r.agent} (Task ${r.taskId})\n${r.response}`)
+      .filter((r) => r.success && r.response)
+      .map((r) => `### ${r.agent} (Task ${r.taskId})\n${r.response}`)
       .join('\n\n');
 
     return `
@@ -393,14 +409,16 @@ Your synthesis should directly answer the original query while incorporating ins
     const stepsSummary = [];
 
     if (transcript.steps.speculate?.response) {
-      stepsSummary.push(`**Speculation:** ${transcript.steps.speculate.response.substring(0, 200)}...`);
+      stepsSummary.push(
+        `**Speculation:** ${transcript.steps.speculate.response.substring(0, 200)}...`,
+      );
     }
     if (transcript.steps.plan?.parsedPlan) {
       const plan = transcript.steps.plan.parsedPlan;
       stepsSummary.push(`**Plan:** ${plan.tasks.length} tasks, complexity: ${plan.complexity}`);
     }
     if (transcript.steps.execute) {
-      const executed = transcript.steps.execute.filter(r => r.success).length;
+      const executed = transcript.steps.execute.filter((r) => r.success).length;
       const total = transcript.steps.execute.length;
       stepsSummary.push(`**Execution:** ${executed}/${total} tasks completed`);
     }
@@ -431,14 +449,17 @@ Please create a concise summary (2-3 sentences) that:
 
 Keep it brief and informative.
 `;
-  }
+  },
 };
 
 /**
  * Error thrown when plan validation fails
  */
 export class PlanValidationError extends Error {
-  constructor(message: string, public readonly details: string[]) {
+  constructor(
+    message: string,
+    public readonly details: string[],
+  ) {
     super(message);
     this.name = 'PlanValidationError';
   }
@@ -472,7 +493,7 @@ function validatePlanStructure(parsed: unknown): {
     } else {
       errors.push(
         `Plan must be an array or an object with a "tasks" array property. ` +
-        `Got object with keys: [${Object.keys(container).join(', ')}]`
+          `Got object with keys: [${Object.keys(container).join(', ')}]`,
       );
       throw new PlanValidationError('Invalid plan structure', errors);
     }
@@ -544,10 +565,7 @@ function validatePlanStructure(parsed: unknown): {
   }
 
   if (errors.length > 0) {
-    throw new PlanValidationError(
-      `Plan validation failed with ${errors.length} error(s)`,
-      errors
-    );
+    throw new PlanValidationError(`Plan validation failed with ${errors.length} error(s)`, errors);
   }
 
   return { container, rawTasks: validatedTasks };
@@ -565,8 +583,7 @@ function validatePlanStructure(parsed: unknown): {
 export function parsePlan(response: string): SwarmPlan | null {
   // Extract JSON from response (may be wrapped in markdown code block)
   const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```/) ||
-                    response.match(/```\s*([\s\S]*?)\s*```/) ||
-                    [null, response];
+    response.match(/```\s*([\s\S]*?)\s*```/) || [null, response];
 
   const jsonStr = (jsonMatch[1] || response).trim();
 
@@ -588,24 +605,24 @@ export function parsePlan(response: string): SwarmPlan | null {
     agent: (t.agent as string) ?? 'geralt',
     task: ((t.task ?? t.description) as string) ?? '',
     dependencies: Array.isArray(t.dependencies)
-      ? (t.dependencies as (string | number)[]).map(d => typeof d === 'number' ? d : Number(d))
+      ? (t.dependencies as (string | number)[]).map((d) => (typeof d === 'number' ? d : Number(d)))
       : [],
     status: 'pending' as TaskStatus,
     priority: (t.priority ?? 'medium') as TaskPriority,
-    context: t.context as string | undefined
+    context: t.context as string | undefined,
   }));
 
   // Normalize parallel groups
   const parallelGroups: number[][] = Array.isArray(container.parallelGroups)
-    ? container.parallelGroups as number[][]
-    : [tasks.map(t => t.id)];
+    ? (container.parallelGroups as number[][])
+    : [tasks.map((t) => t.id)];
 
   return {
     objective: (container.objective as string) ?? tasks[0]?.task ?? 'Unknown objective',
     complexity: ((container.complexity as string) ?? 'Moderate') as ComplexityLevel,
     tasks,
     parallelGroups,
-    estimatedTime: container.estimatedTime as string | undefined
+    estimatedTime: container.estimatedTime as string | undefined,
   };
 }
 
@@ -623,10 +640,10 @@ export function createSimplePlan(query: string, agent: AgentRole = 'ciri'): Swar
         task: query,
         dependencies: [],
         status: 'pending',
-        priority: 'high'
-      }
+        priority: 'high',
+      },
     ],
-    parallelGroups: [[1]]
+    parallelGroups: [[1]],
   };
 }
 
@@ -642,9 +659,9 @@ export function getReadyTasks(plan: SwarmPlan, completedIds: number[]): SwarmTas
     throw new StepValidationError('getReadyTasks', 'completedIds must be an array');
   }
 
-  return plan.tasks.filter(task =>
-    task.status === 'pending' &&
-    task.dependencies.every(depId => completedIds.includes(depId))
+  return plan.tasks.filter(
+    (task) =>
+      task.status === 'pending' && task.dependencies.every((depId) => completedIds.includes(depId)),
   );
 }
 
@@ -653,24 +670,26 @@ export function getReadyTasks(plan: SwarmPlan, completedIds: number[]): SwarmTas
  * This synchronous version is kept for backward compatibility but is NOT safe
  * against race conditions when called concurrently.
  */
-export function getNextParallelGroup(
-  plan: SwarmPlan,
-  completedIds: number[]
-): number[] | null {
+export function getNextParallelGroup(plan: SwarmPlan, completedIds: number[]): number[] | null {
   if (!plan.parallelGroups) return null;
   for (const group of plan.parallelGroups) {
     // Check if all tasks in group are ready
-    const allReady = group.every(taskId => {
-      const task = plan.tasks.find(t => t.id === taskId);
+    const allReady = group.every((taskId) => {
+      const task = plan.tasks.find((t) => t.id === taskId);
       if (!task) return false;
       if (completedIds.includes(taskId)) return false; // Already done
       // Also skip tasks already claimed by another caller (Fix #13)
       if (taskClaimManager.isClaimed(taskId)) return false;
-      return task.dependencies.every(depId => completedIds.includes(depId));
+      return task.dependencies.every((depId) => completedIds.includes(depId));
     });
 
-    if (allReady && group.some(id => !completedIds.includes(id) && !taskClaimManager.isClaimed(id))) {
-      const unclaimed = group.filter(id => !completedIds.includes(id) && !taskClaimManager.isClaimed(id));
+    if (
+      allReady &&
+      group.some((id) => !completedIds.includes(id) && !taskClaimManager.isClaimed(id))
+    ) {
+      const unclaimed = group.filter(
+        (id) => !completedIds.includes(id) && !taskClaimManager.isClaimed(id),
+      );
       if (unclaimed.length > 0) {
         // Claim synchronously (best-effort for sync callers)
         taskClaimManager.claim(unclaimed);
@@ -689,7 +708,7 @@ export function getNextParallelGroup(
  */
 export async function getNextParallelGroupSafe(
   plan: SwarmPlan,
-  completedIds: number[]
+  completedIds: number[],
 ): Promise<number[] | null> {
   if (!plan.parallelGroups) return null;
 
@@ -697,12 +716,12 @@ export async function getNextParallelGroupSafe(
   try {
     for (const group of plan.parallelGroups) {
       // Filter to tasks that are not completed AND not already claimed
-      const candidates = group.filter(taskId => {
+      const candidates = group.filter((taskId) => {
         if (completedIds.includes(taskId)) return false;
         if (taskClaimManager.isClaimed(taskId)) return false;
-        const task = plan.tasks.find(t => t.id === taskId);
+        const task = plan.tasks.find((t) => t.id === taskId);
         if (!task) return false;
-        return task.dependencies.every(depId => completedIds.includes(depId));
+        return task.dependencies.every((depId) => completedIds.includes(depId));
       });
 
       if (candidates.length > 0) {
@@ -723,32 +742,32 @@ export async function getNextParallelGroupSafe(
 /**
  * Update task status in plan
  */
-export function updateTaskStatus(
-  plan: SwarmPlan,
-  taskId: number,
-  status: TaskStatus
-): SwarmPlan {
+export function updateTaskStatus(plan: SwarmPlan, taskId: number, status: TaskStatus): SwarmPlan {
   // Precondition checks (Fix #28)
   if (!plan || !Array.isArray(plan.tasks)) {
     throw new StepValidationError('updateTaskStatus', 'Plan must have a valid tasks array');
   }
-  if (typeof taskId !== 'number' || isNaN(taskId)) {
-    throw new StepValidationError('updateTaskStatus', `taskId must be a valid number, got: ${taskId}`);
+  if (typeof taskId !== 'number' || Number.isNaN(taskId)) {
+    throw new StepValidationError(
+      'updateTaskStatus',
+      `taskId must be a valid number, got: ${taskId}`,
+    );
   }
   const validStatuses: TaskStatus[] = ['pending', 'running', 'completed', 'failed'];
   if (!validStatuses.includes(status)) {
-    throw new StepValidationError('updateTaskStatus', `Invalid status "${status}". Valid: ${validStatuses.join(', ')}`);
+    throw new StepValidationError(
+      'updateTaskStatus',
+      `Invalid status "${status}". Valid: ${validStatuses.join(', ')}`,
+    );
   }
-  const taskExists = plan.tasks.some(t => t.id === taskId);
+  const taskExists = plan.tasks.some((t) => t.id === taskId);
   if (!taskExists) {
     throw new StepValidationError('updateTaskStatus', `Task with id ${taskId} not found in plan`);
   }
 
   return {
     ...plan,
-    tasks: plan.tasks.map(task =>
-      task.id === taskId ? { ...task, status } : task
-    )
+    tasks: plan.tasks.map((task) => (task.id === taskId ? { ...task, status } : task)),
   };
 }
 
@@ -761,19 +780,13 @@ export function isPlanComplete(plan: SwarmPlan): boolean {
     throw new StepValidationError('isPlanComplete', 'Plan must have a valid tasks array');
   }
 
-  return plan.tasks.every(task =>
-    task.status === 'completed' || task.status === 'failed'
-  );
+  return plan.tasks.every((task) => task.status === 'completed' || task.status === 'failed');
 }
 
 /**
  * Create empty transcript
  */
-export function createTranscript(
-  sessionId: string,
-  query: string,
-  mode: string
-): SwarmTranscript {
+export function createTranscript(sessionId: string, query: string, mode: string): SwarmTranscript {
   // Precondition checks (Fix #28)
   if (!sessionId || typeof sessionId !== 'string' || sessionId.trim().length === 0) {
     throw new StepValidationError('createTranscript', 'sessionId must be a non-empty string');
@@ -790,7 +803,7 @@ export function createTranscript(
     query,
     mode,
     startTime: new Date().toISOString(),
-    steps: {}
+    steps: {},
   };
 }
 
@@ -834,7 +847,9 @@ export function formatTranscriptMarkdown(transcript: SwarmTranscript): string {
       lines.push('');
       lines.push('### Tasks');
       for (const task of plan.tasks) {
-        lines.push(`- [${task.status === 'completed' ? 'x' : ' '}] **${task.agent}**: ${task.task}`);
+        lines.push(
+          `- [${task.status === 'completed' ? 'x' : ' '}] **${task.agent}**: ${task.task}`,
+        );
       }
     } else {
       lines.push(transcript.steps.plan.result.response || '_No plan generated_');

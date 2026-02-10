@@ -8,9 +8,8 @@
 
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-
-import pl from './locales/pl.json';
 import en from './locales/en.json';
+import pl from './locales/pl.json';
 
 // Get stored language preference or default to Polish
 const getStoredLanguage = (): string => {
@@ -25,22 +24,20 @@ const getStoredLanguage = (): string => {
   return 'pl'; // Default to Polish
 };
 
-i18n
-  .use(initReactI18next)
-  .init({
-    resources: {
-      pl: { translation: pl },
-      en: { translation: en },
-    },
-    lng: getStoredLanguage(),
-    fallbackLng: 'en',
-    interpolation: {
-      escapeValue: false, // React already handles XSS
-    },
-    react: {
-      useSuspense: false, // Disable suspense for better error handling
-    },
-  });
+i18n.use(initReactI18next).init({
+  resources: {
+    pl: { translation: pl },
+    en: { translation: en },
+  },
+  lng: getStoredLanguage(),
+  fallbackLng: 'en',
+  interpolation: {
+    escapeValue: false, // React already handles XSS
+  },
+  react: {
+    useSuspense: false, // Disable suspense for better error handling
+  },
+});
 
 // Helper to change language and persist preference
 export const changeLanguage = (lang: 'pl' | 'en'): void => {

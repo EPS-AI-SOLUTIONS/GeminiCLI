@@ -3,12 +3,11 @@
  * Provides common functionality for persistence, serialization, and lifecycle management
  */
 
-import fs from 'fs/promises';
-import path from 'path';
-import os from 'os';
-import crypto from 'crypto';
-import { loadFromFile, saveToFile, fileExists } from '../native/persistence.js';
+import crypto from 'node:crypto';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import { GEMINIHYDRA_DIR } from '../config/paths.config.js';
+import { loadFromFile, saveToFile } from '../native/persistence.js';
 
 // ============================================================================
 // Interfaces
@@ -75,10 +74,7 @@ export function jsonDateReplacer(_key: string, value: unknown): unknown {
  * @param dateFields - Array of field names that should be converted to Date
  * @returns Transformed object with Date fields
  */
-export function reviveDates<T extends Record<string, unknown>>(
-  obj: T,
-  dateFields: string[]
-): T {
+export function reviveDates<T extends Record<string, unknown>>(obj: T, dateFields: string[]): T {
   if (!obj || typeof obj !== 'object') return obj;
 
   const result = { ...obj } as T;
@@ -117,11 +113,11 @@ export function deserializeFromJson<T>(data: string): T | null {
  */
 export function deserializeArrayWithDates<T extends Record<string, unknown>>(
   data: string,
-  dateFields: string[]
+  dateFields: string[],
 ): T[] {
   const parsed = deserializeFromJson<T[]>(data);
   if (!Array.isArray(parsed)) return [];
-  return parsed.map(item => reviveDates(item, dateFields));
+  return parsed.map((item) => reviveDates(item, dateFields));
 }
 
 /**
@@ -132,7 +128,7 @@ export function deserializeArrayWithDates<T extends Record<string, unknown>>(
  */
 export function deserializeObjectWithDates<T extends Record<string, unknown>>(
   data: string,
-  dateFields: string[]
+  dateFields: string[],
 ): T | null {
   const parsed = deserializeFromJson<T>(data);
   if (!parsed || typeof parsed !== 'object') return null;
@@ -175,16 +171,18 @@ export function estimateSize(data: unknown): number {
 /**
  * Prune old entries based on age
  */
-export function pruneOldEntries<T extends { timestamp?: Date; created?: Date; lastAccessed?: Date }>(
+export function pruneOldEntries<
+  T extends { timestamp?: Date; created?: Date; lastAccessed?: Date },
+>(
   entries: T[],
   maxAgeDays: number,
-  dateField: 'timestamp' | 'created' | 'lastAccessed' = 'timestamp'
+  dateField: 'timestamp' | 'created' | 'lastAccessed' = 'timestamp',
 ): T[] {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - maxAgeDays);
   const cutoffTime = cutoffDate.getTime();
 
-  return entries.filter(entry => {
+  return entries.filter((entry) => {
     const entryDate = entry[dateField];
     if (!entryDate) return true; // Keep entries without dates
     const date = entryDate instanceof Date ? entryDate : new Date(entryDate);
@@ -204,7 +202,7 @@ export function sortByImportance<T extends { importance?: number }>(entries: T[]
  */
 export function extractTags(content: string): string[] {
   const matches = content.match(/#(\w+)/g) || [];
-  return [...new Set(matches.map(t => t.slice(1).toLowerCase()))];
+  return [...new Set(matches.map((t) => t.slice(1).toLowerCase()))];
 }
 
 /**
@@ -222,7 +220,7 @@ export function getDefaultBaseDir(): string {
  * Abstract base class for all memory systems
  * Provides common functionality for persistence and lifecycle management
  */
-export abstract class BaseMemory<TData = unknown> {
+export abstract class BaseMemory<_TData = unknown> {
   // Common properties
   protected persistPath: string;
   protected maxEntries: number;
@@ -262,7 +260,7 @@ export abstract class BaseMemory<TData = unknown> {
    */
   protected deserializeData<T extends Record<string, unknown>>(
     data: string,
-    dateFields?: string[]
+    dateFields?: string[],
   ): T | null {
     return deserializeObjectWithDates<T>(data, dateFields || this.dateFields);
   }
@@ -273,7 +271,7 @@ export abstract class BaseMemory<TData = unknown> {
    */
   protected deserializeArrayData<T extends Record<string, unknown>>(
     data: string,
-    dateFields?: string[]
+    dateFields?: string[],
   ): T[] {
     return deserializeArrayWithDates<T>(data, dateFields || this.dateFields);
   }
@@ -463,7 +461,7 @@ export abstract class TypedBaseMemory<TEntry extends MemoryEntry> extends BaseMe
    * Remove an entry by ID
    */
   protected removeEntry(id: string): boolean {
-    const index = this.entries.findIndex(e => e.id === id);
+    const index = this.entries.findIndex((e) => e.id === id);
     if (index === -1) return false;
 
     this.entries.splice(index, 1);
@@ -475,7 +473,7 @@ export abstract class TypedBaseMemory<TEntry extends MemoryEntry> extends BaseMe
    * Find an entry by ID
    */
   protected findEntry(id: string): TEntry | undefined {
-    return this.entries.find(e => e.id === id);
+    return this.entries.find((e) => e.id === id);
   }
 
   /**
@@ -490,9 +488,7 @@ export abstract class TypedBaseMemory<TEntry extends MemoryEntry> extends BaseMe
    */
   protected getEntriesByTag(tag: string): TEntry[] {
     const normalizedTag = tag.toLowerCase();
-    return this.entries.filter(e =>
-      e.tags.some(t => t.toLowerCase() === normalizedTag)
-    );
+    return this.entries.filter((e) => e.tags.some((t) => t.toLowerCase() === normalizedTag));
   }
 
   /**
@@ -500,28 +496,28 @@ export abstract class TypedBaseMemory<TEntry extends MemoryEntry> extends BaseMe
    */
   protected searchEntries(query: string, limit: number = 10): TEntry[] {
     const queryLower = query.toLowerCase();
-    const queryWords = queryLower.split(/\s+/).filter(w => w.length > 2);
+    const queryWords = queryLower.split(/\s+/).filter((w) => w.length > 2);
 
     if (queryWords.length === 0) {
       return this.entries.slice(0, limit);
     }
 
-    const scored = this.entries.map(entry => {
+    const scored = this.entries.map((entry) => {
       const contentLower = entry.content.toLowerCase();
       const tagsLower = entry.tags.join(' ').toLowerCase();
-      const combined = contentLower + ' ' + tagsLower;
+      const combined = `${contentLower} ${tagsLower}`;
 
-      const matchCount = queryWords.filter(w => combined.includes(w)).length;
+      const matchCount = queryWords.filter((w) => combined.includes(w)).length;
       const score = (matchCount / queryWords.length) * 0.7 + entry.importance * 0.3;
 
       return { entry, score };
     });
 
     return scored
-      .filter(s => s.score > 0)
+      .filter((s) => s.score > 0)
       .sort((a, b) => b.score - a.score)
       .slice(0, limit)
-      .map(s => s.entry);
+      .map((s) => s.entry);
   }
 
   /**
@@ -538,7 +534,7 @@ export abstract class TypedBaseMemory<TEntry extends MemoryEntry> extends BaseMe
 
     // Filter by importance
     if (minImportance !== undefined) {
-      this.entries = this.entries.filter(e => e.importance >= minImportance);
+      this.entries = this.entries.filter((e) => e.importance >= minImportance);
     }
 
     // Enforce max entries
@@ -558,8 +554,8 @@ export abstract class TypedBaseMemory<TEntry extends MemoryEntry> extends BaseMe
 
   getStats(): MemoryStats {
     const timestamps = this.entries
-      .map(e => e.timestamp)
-      .filter(t => t instanceof Date)
+      .map((e) => e.timestamp)
+      .filter((t) => t instanceof Date)
       .sort((a, b) => a.getTime() - b.getTime());
 
     return {
@@ -584,7 +580,9 @@ export abstract class TypedBaseMemory<TEntry extends MemoryEntry> extends BaseMe
   }
 
   deserialize(data: string): void {
-    this.entries = this.deserializeArrayData<TEntry & Record<string, unknown>>(data, ['timestamp']) as TEntry[];
+    this.entries = this.deserializeArrayData<TEntry & Record<string, unknown>>(data, [
+      'timestamp',
+    ]) as TEntry[];
   }
 
   protected initializeEmpty(): void {

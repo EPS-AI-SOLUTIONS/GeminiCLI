@@ -10,8 +10,8 @@
  * - Environment variable $CWD expansion
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 // ============================================================================
 // CWD Types
@@ -81,7 +81,7 @@ export class CwdManager {
     this._options = {
       syncWithProcess: options.syncWithProcess ?? false,
       maxHistorySize: options.maxHistorySize ?? 50,
-      validateOnChange: options.validateOnChange ?? true
+      validateOnChange: options.validateOnChange ?? true,
     };
 
     // Initialize with process.cwd() or fallback
@@ -110,9 +110,7 @@ export class CwdManager {
    */
   setCwd(newPath: string): { success: boolean; error?: string } {
     // Resolve path (handle relative paths)
-    const resolvedPath = path.isAbsolute(newPath)
-      ? newPath
-      : path.resolve(this._cwd, newPath);
+    const resolvedPath = path.isAbsolute(newPath) ? newPath : path.resolve(this._cwd, newPath);
 
     // Normalize path
     const normalizedPath = path.normalize(resolvedPath);
@@ -150,7 +148,7 @@ export class CwdManager {
     this._notifyListeners({
       previousCwd,
       newCwd: normalizedPath,
-      timestamp: new Date()
+      timestamp: new Date(),
     });
 
     return { success: true };
@@ -164,7 +162,7 @@ export class CwdManager {
       valid: false,
       exists: false,
       isDirectory: false,
-      isAccessible: false
+      isAccessible: false,
     };
 
     try {
@@ -206,9 +204,7 @@ export class CwdManager {
    */
   pushd(newPath: string): { success: boolean; error?: string; stackSize: number } {
     // Resolve the new path
-    const resolvedPath = path.isAbsolute(newPath)
-      ? newPath
-      : path.resolve(this._cwd, newPath);
+    const resolvedPath = path.isAbsolute(newPath) ? newPath : path.resolve(this._cwd, newPath);
 
     // Validate the new path
     if (this._options.validateOnChange) {
@@ -221,7 +217,7 @@ export class CwdManager {
     // Push current directory onto stack
     this._cwdStack.push({
       path: this._cwd,
-      timestamp: new Date()
+      timestamp: new Date(),
     });
 
     // Limit stack size
@@ -248,7 +244,7 @@ export class CwdManager {
       return {
         success: false,
         error: 'Directory stack is empty',
-        stackSize: 0
+        stackSize: 0,
       };
     }
 
@@ -262,7 +258,7 @@ export class CwdManager {
           success: false,
           error: `Cannot return to ${entry.path}: ${validation.error}`,
           poppedPath: entry.path,
-          stackSize: this._cwdStack.length
+          stackSize: this._cwdStack.length,
         };
       }
     }
@@ -272,7 +268,7 @@ export class CwdManager {
     return {
       ...result,
       poppedPath: entry.path,
-      stackSize: this._cwdStack.length
+      stackSize: this._cwdStack.length,
     };
   }
 
@@ -363,7 +359,7 @@ export class CwdManager {
     this._notifyListeners({
       previousCwd,
       newCwd: resolvedPath,
-      timestamp: new Date()
+      timestamp: new Date(),
     });
 
     return { success: true };
@@ -378,7 +374,7 @@ export class CwdManager {
 
     this._history.push({
       path: dirPath,
-      timestamp: new Date()
+      timestamp: new Date(),
     });
 
     // Limit history size
@@ -421,7 +417,7 @@ export class CwdManager {
   getEnvironment(): Record<string, string> {
     const env: Record<string, string> = {
       CWD: this._cwd,
-      PWD: this._cwd
+      PWD: this._cwd,
     };
 
     if (this._history.length >= 2) {
@@ -575,7 +571,7 @@ export class CwdManager {
   getDisplayPath(): string {
     const homeDir = process.env.HOME || process.env.USERPROFILE || '';
     if (homeDir && this._cwd.startsWith(homeDir)) {
-      return '~' + this._cwd.slice(homeDir.length);
+      return `~${this._cwd.slice(homeDir.length)}`;
     }
     return this._cwd;
   }
@@ -595,7 +591,7 @@ export class CwdManager {
       displayPath: this.getDisplayPath(),
       stackSize: this._cwdStack.length,
       historySize: this._history.length,
-      options: this._options
+      options: this._options,
     };
   }
 }

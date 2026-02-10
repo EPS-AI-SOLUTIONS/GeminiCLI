@@ -2,15 +2,15 @@
  * Tests for Connection Pool and Rate Limiter
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { PoolExhaustedError, TimeoutError } from '../../src/core/errors.js';
 import {
   ConnectionPool,
-  RateLimiter,
-  ManagedPool,
   DEFAULT_POOL_CONFIG,
   DEFAULT_RATE_LIMIT_CONFIG,
+  ManagedPool,
+  RateLimiter,
 } from '../../src/core/pool.js';
-import { PoolExhaustedError, TimeoutError } from '../../src/core/errors.js';
 
 describe('ConnectionPool', () => {
   let pool: ConnectionPool;
@@ -70,7 +70,9 @@ describe('ConnectionPool', () => {
       pool = new ConnectionPool({ maxConcurrent: 1, acquireTimeout: 5000 });
 
       let resolve1: () => void;
-      const promise1 = new Promise<void>(r => { resolve1 = r; });
+      const promise1 = new Promise<void>((r) => {
+        resolve1 = r;
+      });
 
       const exec1 = pool.execute(async () => {
         await promise1;
@@ -86,7 +88,7 @@ describe('ConnectionPool', () => {
       expect(pool.getStatus().queued).toBe(1);
 
       // Resolve first
-      resolve1!();
+      resolve1?.();
       await exec1;
 
       // Second should complete
@@ -99,7 +101,7 @@ describe('ConnectionPool', () => {
 
       // Fill capacity
       const blocking = pool.execute(async () => {
-        await new Promise(r => setTimeout(r, 100));
+        await new Promise((r) => setTimeout(r, 100));
         return 'blocking';
       });
       pendingPromises.push(blocking);
@@ -109,16 +111,17 @@ describe('ConnectionPool', () => {
       pendingPromises.push(queued);
 
       // Third should fail
-      await expect(pool.execute(async () => 'overflow'))
-        .rejects.toThrow(PoolExhaustedError);
+      await expect(pool.execute(async () => 'overflow')).rejects.toThrow(PoolExhaustedError);
     });
 
     it('should handle execution errors', async () => {
       pool = new ConnectionPool();
 
-      await expect(pool.execute(async () => {
-        throw new Error('Test error');
-      })).rejects.toThrow('Test error');
+      await expect(
+        pool.execute(async () => {
+          throw new Error('Test error');
+        }),
+      ).rejects.toThrow('Test error');
 
       // Pool should still work after error
       const result = await pool.execute(async () => 'success');
@@ -132,7 +135,7 @@ describe('ConnectionPool', () => {
 
       // Block the pool with a long-running task
       const blockingPromise = localPool.execute(async () => {
-        await new Promise(r => setTimeout(r, 5000));
+        await new Promise((r) => setTimeout(r, 5000));
         return 'blocking';
       });
 
@@ -170,7 +173,7 @@ describe('ConnectionPool', () => {
 
       // Fill active slots
       const blocking = pool.execute(async () => {
-        await new Promise(r => setTimeout(r, 100));
+        await new Promise((r) => setTimeout(r, 100));
       });
       pendingPromises.push(blocking);
 
@@ -182,7 +185,7 @@ describe('ConnectionPool', () => {
 
       // Fill active slots
       const exec1 = pool.execute(async () => {
-        await new Promise(r => setTimeout(r, 100));
+        await new Promise((r) => setTimeout(r, 100));
       });
       pendingPromises.push(exec1);
 
@@ -212,7 +215,11 @@ describe('ConnectionPool', () => {
 
       await pool.execute(async () => 'success');
       await pool.execute(async () => 'success');
-      await expect(pool.execute(async () => { throw new Error('fail'); })).rejects.toThrow();
+      await expect(
+        pool.execute(async () => {
+          throw new Error('fail');
+        }),
+      ).rejects.toThrow();
 
       const status = pool.getStatus();
       expect(status.totalExecuted).toBe(2);
@@ -235,9 +242,15 @@ describe('ConnectionPool', () => {
       pool = new ConnectionPool({ maxConcurrent: 3 });
 
       const promises = [
-        pool.execute(async () => { await new Promise(r => setTimeout(r, 50)); }),
-        pool.execute(async () => { await new Promise(r => setTimeout(r, 50)); }),
-        pool.execute(async () => { await new Promise(r => setTimeout(r, 50)); }),
+        pool.execute(async () => {
+          await new Promise((r) => setTimeout(r, 50));
+        }),
+        pool.execute(async () => {
+          await new Promise((r) => setTimeout(r, 50));
+        }),
+        pool.execute(async () => {
+          await new Promise((r) => setTimeout(r, 50));
+        }),
       ];
 
       await Promise.all(promises);
@@ -267,7 +280,7 @@ describe('ConnectionPool', () => {
 
       // Block the pool
       const blocking = pool.execute(async () => {
-        await new Promise(r => setTimeout(r, 1000));
+        await new Promise((r) => setTimeout(r, 1000));
       });
       pendingPromises.push(blocking);
 
@@ -298,7 +311,9 @@ describe('ConnectionPool', () => {
 
       const order: number[] = [];
       let resolve1: () => void;
-      const promise1 = new Promise<void>(r => { resolve1 = r; });
+      const promise1 = new Promise<void>((r) => {
+        resolve1 = r;
+      });
 
       const exec1 = pool.execute(async () => {
         await promise1;
@@ -306,12 +321,16 @@ describe('ConnectionPool', () => {
       });
       pendingPromises.push(exec1);
 
-      const exec2 = pool.execute(async () => { order.push(2); });
+      const exec2 = pool.execute(async () => {
+        order.push(2);
+      });
       pendingPromises.push(exec2);
-      const exec3 = pool.execute(async () => { order.push(3); });
+      const exec3 = pool.execute(async () => {
+        order.push(3);
+      });
       pendingPromises.push(exec3);
 
-      resolve1!();
+      resolve1?.();
       await Promise.all([exec1, exec2, exec3]);
 
       expect(order).toEqual([1, 2, 3]);
@@ -322,7 +341,9 @@ describe('ConnectionPool', () => {
 
       const order: number[] = [];
       let resolve1: () => void;
-      const promise1 = new Promise<void>(r => { resolve1 = r; });
+      const promise1 = new Promise<void>((r) => {
+        resolve1 = r;
+      });
 
       const exec1 = pool.execute(async () => {
         await promise1;
@@ -330,12 +351,16 @@ describe('ConnectionPool', () => {
       });
       pendingPromises.push(exec1);
 
-      const exec2 = pool.execute(async () => { order.push(2); });
+      const exec2 = pool.execute(async () => {
+        order.push(2);
+      });
       pendingPromises.push(exec2);
-      const exec3 = pool.execute(async () => { order.push(3); });
+      const exec3 = pool.execute(async () => {
+        order.push(3);
+      });
       pendingPromises.push(exec3);
 
-      resolve1!();
+      resolve1?.();
       await Promise.all([exec1, exec2, exec3]);
 
       expect(order).toEqual([1, 3, 2]);
@@ -405,7 +430,7 @@ describe('RateLimiter', () => {
       limiter = new RateLimiter({
         maxBurst: 1,
         tokensPerInterval: 1,
-        interval: 100
+        interval: 100,
       });
 
       // Consume the token
@@ -444,7 +469,7 @@ describe('RateLimiter', () => {
       limiter = new RateLimiter({
         maxBurst: 10,
         tokensPerInterval: 2,
-        interval: 100
+        interval: 100,
       });
 
       // Consume all tokens
@@ -467,7 +492,7 @@ describe('RateLimiter', () => {
       limiter = new RateLimiter({
         maxBurst: 5,
         tokensPerInterval: 10,
-        interval: 100
+        interval: 100,
       });
 
       // Advance time significantly
@@ -507,10 +532,7 @@ describe('ManagedPool', () => {
 
   describe('constructor', () => {
     it('should create pool and rate limiter', () => {
-      managedPool = new ManagedPool(
-        { maxConcurrent: 3 },
-        { maxBurst: 10 }
-      );
+      managedPool = new ManagedPool({ maxConcurrent: 3 }, { maxBurst: 10 });
 
       const status = managedPool.getStatus();
       expect(status.pool.maxConcurrent).toBe(3);
@@ -520,10 +542,7 @@ describe('ManagedPool', () => {
 
   describe('execute', () => {
     it('should apply both rate limiting and pooling', async () => {
-      managedPool = new ManagedPool(
-        { maxConcurrent: 2 },
-        { maxBurst: 5, enabled: true }
-      );
+      managedPool = new ManagedPool({ maxConcurrent: 2 }, { maxBurst: 5, enabled: true });
 
       const result = await managedPool.execute(async () => 'result');
       expect(result).toBe('result');
@@ -537,7 +556,7 @@ describe('ManagedPool', () => {
     it('should return combined status', () => {
       managedPool = new ManagedPool(
         { maxConcurrent: 3, maxQueueSize: 50 },
-        { maxBurst: 10, enabled: true }
+        { maxBurst: 10, enabled: true },
       );
 
       const status = managedPool.getStatus();
@@ -566,7 +585,7 @@ describe('ManagedPool', () => {
 
       // Fill the pool with a blocking task
       const blocking = managedPool.execute(async () => {
-        await new Promise(r => setTimeout(r, 1000));
+        await new Promise((r) => setTimeout(r, 1000));
       });
       managedPendingPromises.push(blocking);
 
@@ -575,7 +594,7 @@ describe('ManagedPool', () => {
       managedPendingPromises.push(queued);
 
       // Small delay to ensure the second task gets queued
-      await new Promise(r => setTimeout(r, 10));
+      await new Promise((r) => setTimeout(r, 10));
 
       const drained = managedPool.drain();
       expect(drained).toBe(1);

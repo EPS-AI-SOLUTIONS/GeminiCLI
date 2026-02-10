@@ -3,10 +3,10 @@
  * Ported from AgentSwarm.psm1 lines 240-312
  */
 
-import { spawn, ChildProcess, exec } from 'child_process';
-import { promisify } from 'util';
+import { type ChildProcess, exec, spawn } from 'node:child_process';
+import path from 'node:path';
+import { promisify } from 'node:util';
 import chalk from 'chalk';
-import path from 'path';
 
 const execAsync = promisify(exec);
 
@@ -20,10 +20,10 @@ interface OllamaConfig {
 
 const DEFAULT_CONFIG: OllamaConfig = {
   keepAlive: '24h',
-  numParallel: 8,  // Increased for Phase B parallel agent execution
+  numParallel: 8, // Increased for Phase B parallel agent execution
   flashAttention: true,
   host: 'localhost',
-  port: 11434
+  port: 11434,
 };
 
 // Models to warmup on startup
@@ -84,7 +84,9 @@ class OllamaManager {
 
     if (alive) {
       if (this.consecutiveFailures > 0) {
-        console.log(chalk.green(`[Ollama Monitor] ✓ Recovered after ${this.consecutiveFailures} failures`));
+        console.log(
+          chalk.green(`[Ollama Monitor] ✓ Recovered after ${this.consecutiveFailures} failures`),
+        );
       }
       this.consecutiveFailures = 0;
       return;
@@ -92,7 +94,11 @@ class OllamaManager {
 
     // Server not responding
     this.consecutiveFailures++;
-    console.log(chalk.yellow(`[Ollama Monitor] ⚠ Health check failed (${this.consecutiveFailures} consecutive)`));
+    console.log(
+      chalk.yellow(
+        `[Ollama Monitor] ⚠ Health check failed (${this.consecutiveFailures} consecutive)`,
+      ),
+    );
 
     // Auto-restart after 2 consecutive failures
     if (this.consecutiveFailures >= 2) {
@@ -109,7 +115,11 @@ class OllamaManager {
     this.isRestarting = true;
     this.totalRestarts++;
 
-    console.log(chalk.magenta(`[Ollama Monitor] 🔄 Auto-restarting server (restart #${this.totalRestarts})...`));
+    console.log(
+      chalk.magenta(
+        `[Ollama Monitor] 🔄 Auto-restarting server (restart #${this.totalRestarts})...`,
+      ),
+    );
 
     try {
       await this.killExisting();
@@ -137,7 +147,6 @@ class OllamaManager {
       if (!this.isAlive) {
         console.log(chalk.red('[Ollama Monitor] ✗ Auto-restart failed - server not responding'));
       }
-
     } catch (error: any) {
       console.log(chalk.red(`[Ollama Monitor] ✗ Auto-restart error: ${error.message}`));
     } finally {
@@ -162,7 +171,7 @@ class OllamaManager {
       totalRestarts: this.totalRestarts,
       lastHealthCheck: this.lastHealthCheck,
       isAlive: this.isAlive,
-      isRestarting: this.isRestarting
+      isRestarting: this.isRestarting,
     };
   }
 
@@ -175,10 +184,9 @@ class OllamaManager {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 5000);
 
-      const response = await fetch(
-        `http://${this.config.host}:${this.config.port}/api/tags`,
-        { signal: controller.signal }
-      );
+      const response = await fetch(`http://${this.config.host}:${this.config.port}/api/tags`, {
+        signal: controller.signal,
+      });
 
       clearTimeout(timeout);
       this.isAlive = response.ok;
@@ -218,7 +226,7 @@ class OllamaManager {
       OLLAMA_KEEP_ALIVE: this.config.keepAlive,
       OLLAMA_NUM_PARALLEL: String(this.config.numParallel),
       OLLAMA_FLASH_ATTENTION: this.config.flashAttention ? '1' : '0',
-      OLLAMA_HOST: `${this.config.host}:${this.config.port}`
+      OLLAMA_HOST: `${this.config.host}:${this.config.port}`,
     };
 
     // Find Ollama executable
@@ -232,7 +240,7 @@ class OllamaManager {
       env,
       detached: true,
       stdio: 'ignore',
-      windowsHide: true
+      windowsHide: true,
     });
 
     this.process.unref();
@@ -249,23 +257,23 @@ class OllamaManager {
       'ollama', // In PATH
       path.join(process.cwd(), 'bin', 'ollama.exe'),
       path.join(process.cwd(), 'bin', 'ollama'),
-      'C:\\Users\\' + process.env.USERNAME + '\\AppData\\Local\\Programs\\Ollama\\ollama.exe',
+      `C:\\Users\\${process.env.USERNAME}\\AppData\\Local\\Programs\\Ollama\\ollama.exe`,
       '/usr/local/bin/ollama',
-      '/usr/bin/ollama'
+      '/usr/bin/ollama',
     ];
 
     for (const p of possiblePaths) {
       try {
         if (p === 'ollama') {
           // Check if in PATH
-          const { stdout } = await execAsync(process.platform === 'win32' ? 'where ollama' : 'which ollama');
+          const { stdout } = await execAsync(
+            process.platform === 'win32' ? 'where ollama' : 'which ollama',
+          );
           if (stdout.trim()) return 'ollama';
         }
         // For explicit paths, we'd need to check file exists
         // For simplicity, just try 'ollama' command
-      } catch {
-        continue;
-      }
+      } catch {}
     }
 
     return 'ollama'; // Fallback to hoping it's in PATH
@@ -290,9 +298,9 @@ class OllamaManager {
             model,
             prompt: 'hi',
             stream: false,
-            options: { num_predict: 1 }
+            options: { num_predict: 1 },
           }),
-          signal: controller.signal
+          signal: controller.signal,
         });
 
         clearTimeout(timeout);
@@ -349,9 +357,7 @@ class OllamaManager {
    */
   async listModels(): Promise<string[]> {
     try {
-      const response = await fetch(
-        `http://${this.config.host}:${this.config.port}/api/tags`
-      );
+      const response = await fetch(`http://${this.config.host}:${this.config.port}/api/tags`);
 
       if (!response.ok) return [];
 
@@ -367,7 +373,7 @@ class OllamaManager {
    */
   async hasModel(modelName: string): Promise<boolean> {
     const models = await this.listModels();
-    return models.some(m => m.includes(modelName));
+    return models.some((m) => m.includes(modelName));
   }
 
   /**
@@ -376,12 +382,12 @@ class OllamaManager {
   getStatus(): { alive: boolean; config: OllamaConfig } {
     return {
       alive: this.isAlive,
-      config: this.config
+      config: this.config,
     };
   }
 
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 

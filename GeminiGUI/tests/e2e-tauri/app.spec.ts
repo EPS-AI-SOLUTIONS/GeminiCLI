@@ -63,7 +63,7 @@ describe('GeminiGUI - Real Tauri App', () => {
           const val = await textarea.getValue();
           return val === '';
         },
-        { timeout: 5000, timeoutMsg: 'Input did not clear after sending' }
+        { timeout: 5000, timeoutMsg: 'Input did not clear after sending' },
       );
     });
   });
@@ -99,7 +99,7 @@ describe('GeminiGUI - Real Tauri App', () => {
           const afterSessions = await $$('[class*="cursor-pointer"]');
           return afterSessions.length > beforeCount;
         },
-        { timeout: 5000, timeoutMsg: 'New session was not created' }
+        { timeout: 5000, timeoutMsg: 'New session was not created' },
       );
     });
   });
@@ -142,7 +142,7 @@ describe('GeminiGUI - Real Tauri App', () => {
           if (!(await modal.isExisting())) return true;
           return !(await modal.isDisplayed());
         },
-        { timeout: 5000, timeoutMsg: 'Settings modal did not close' }
+        { timeout: 5000, timeoutMsg: 'Settings modal did not close' },
       );
     });
   });
@@ -155,7 +155,7 @@ describe('GeminiGUI - Real Tauri App', () => {
     it('should toggle between dark and light theme', async () => {
       // Ensure no modal is blocking
       const overlay = await $('.fixed.inset-0');
-      if (await overlay.isExisting() && await overlay.isDisplayed()) {
+      if ((await overlay.isExisting()) && (await overlay.isDisplayed())) {
         await browser.keys('Escape');
         await browser.pause(500);
       }

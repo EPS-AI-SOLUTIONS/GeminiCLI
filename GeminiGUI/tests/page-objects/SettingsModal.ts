@@ -4,9 +4,9 @@
  * Handles settings modal interactions.
  */
 
-import { Page, Locator, expect } from '@playwright/test';
-import { BasePage } from './BasePage';
+import { expect, type Locator, type Page } from '@playwright/test';
 import { SELECTORS, SHORTCUTS, TIMEOUTS, UI_TEXTS } from '../fixtures/test-data';
+import { BasePage } from './BasePage';
 
 export class SettingsModal extends BasePage {
   // Locators

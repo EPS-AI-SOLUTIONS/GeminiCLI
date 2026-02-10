@@ -10,46 +10,68 @@
  * @module cli/nativecommands/helpers
  */
 
+import { exec } from 'node:child_process';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { promisify } from 'node:util';
 import chalk from 'chalk';
-import fs from 'fs/promises';
-import path from 'path';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import { commandRegistry, success, error, CommandResult } from '../CommandRegistry.js';
+import {
+  createDiagnostics,
+  type DiagnosticResult,
+  FileSystemDiagnostics,
+} from '../../native/FileSystemDiagnostics.js';
 import {
   getProjectTools,
   initProjectTools,
-  NativeTools,
-  ShellManager,
-  ShellConfigProfile,
-  SHELL_PROFILES
+  type NativeTools,
+  SHELL_PROFILES,
+  type ShellConfigProfile,
+  type ShellManager,
 } from '../../native/index.js';
+import { createShellDiagnostics, ShellDiagnostics } from '../../native/ShellDiagnostics.js';
+import type { FileAttributes } from '../../native/types.js';
+import { createFailedMessage, formatError } from '../../utils/errorHandling.js';
 import {
+  box,
+  formatBytes,
+  formatDuration,
+  highlightMatch,
+  Spinner,
+  truncate,
+} from '../CommandHelpers.js';
+import { type CommandResult, commandRegistry, error, success } from '../CommandRegistry.js';
+
+// ── Re-exports for use by other modules ──
+export {
+  chalk,
+  fs,
+  path,
+  exec,
+  promisify,
+  commandRegistry,
+  success,
+  error,
+  type CommandResult,
+  getProjectTools,
+  initProjectTools,
+  type NativeTools,
+  type ShellManager,
+  type ShellConfigProfile,
+  SHELL_PROFILES,
   formatBytes,
   formatDuration,
   truncate,
   box,
   Spinner,
-  highlightMatch
-} from '../CommandHelpers.js';
-import { createFailedMessage, formatError } from '../../utils/errorHandling.js';
-import type { FileAttributes } from '../../native/types.js';
-import { createDiagnostics, FileSystemDiagnostics, type DiagnosticResult } from '../../native/FileSystemDiagnostics.js';
-import { createShellDiagnostics, ShellDiagnostics } from '../../native/ShellDiagnostics.js';
-
-// ── Re-exports for use by other modules ──
-export {
-  chalk, fs, path, exec, promisify,
-  commandRegistry, success, error,
-  type CommandResult,
-  getProjectTools, initProjectTools,
-  type NativeTools, type ShellManager, type ShellConfigProfile,
-  SHELL_PROFILES,
-  formatBytes, formatDuration, truncate, box, Spinner, highlightMatch,
-  createFailedMessage, formatError,
+  highlightMatch,
+  createFailedMessage,
+  formatError,
   type FileAttributes,
-  createDiagnostics, FileSystemDiagnostics, type DiagnosticResult,
-  createShellDiagnostics, ShellDiagnostics
+  createDiagnostics,
+  FileSystemDiagnostics,
+  type DiagnosticResult,
+  createShellDiagnostics,
+  ShellDiagnostics,
 };
 
 // ============================================================
@@ -63,7 +85,7 @@ export function getShellDiagnostics(): ShellDiagnostics {
     const tools = getProjectTools();
     shellDiagnostics = createShellDiagnostics({
       shell: tools?.shell,
-      maxHistorySize: 1000
+      maxHistorySize: 1000,
     });
   }
   return shellDiagnostics;
@@ -129,20 +151,45 @@ export async function detectFileEncoding(filePath: string): Promise<{
   const bytes = new Uint8Array(buffer);
 
   // Check for BOM (Byte Order Mark)
-  if (bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) {
-    return { encoding: 'utf-8', confidence: 100, bom: 'UTF-8 BOM', details: 'UTF-8 with BOM detected' };
+  if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
+    return {
+      encoding: 'utf-8',
+      confidence: 100,
+      bom: 'UTF-8 BOM',
+      details: 'UTF-8 with BOM detected',
+    };
   }
-  if (bytes[0] === 0xFE && bytes[1] === 0xFF) {
-    return { encoding: 'utf-16be', confidence: 100, bom: 'UTF-16 BE BOM', details: 'UTF-16 Big Endian with BOM' };
+  if (bytes[0] === 0xfe && bytes[1] === 0xff) {
+    return {
+      encoding: 'utf-16be',
+      confidence: 100,
+      bom: 'UTF-16 BE BOM',
+      details: 'UTF-16 Big Endian with BOM',
+    };
   }
-  if (bytes[0] === 0xFF && bytes[1] === 0xFE) {
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) {
     if (bytes[2] === 0x00 && bytes[3] === 0x00) {
-      return { encoding: 'utf-32le', confidence: 100, bom: 'UTF-32 LE BOM', details: 'UTF-32 Little Endian with BOM' };
+      return {
+        encoding: 'utf-32le',
+        confidence: 100,
+        bom: 'UTF-32 LE BOM',
+        details: 'UTF-32 Little Endian with BOM',
+      };
     }
-    return { encoding: 'utf-16le', confidence: 100, bom: 'UTF-16 LE BOM', details: 'UTF-16 Little Endian with BOM' };
+    return {
+      encoding: 'utf-16le',
+      confidence: 100,
+      bom: 'UTF-16 LE BOM',
+      details: 'UTF-16 Little Endian with BOM',
+    };
   }
-  if (bytes[0] === 0x00 && bytes[1] === 0x00 && bytes[2] === 0xFE && bytes[3] === 0xFF) {
-    return { encoding: 'utf-32be', confidence: 100, bom: 'UTF-32 BE BOM', details: 'UTF-32 Big Endian with BOM' };
+  if (bytes[0] === 0x00 && bytes[1] === 0x00 && bytes[2] === 0xfe && bytes[3] === 0xff) {
+    return {
+      encoding: 'utf-32be',
+      confidence: 100,
+      bom: 'UTF-32 BE BOM',
+      details: 'UTF-32 Big Endian with BOM',
+    };
   }
 
   // Analyze content for encoding hints
@@ -155,25 +202,29 @@ export async function detectFileEncoding(filePath: string): Promise<{
     const byte = bytes[i];
 
     if (byte === 0x00) nullBytes++;
-    if (byte > 0x7F) highBytes++;
+    if (byte > 0x7f) highBytes++;
 
     // Check for valid UTF-8 multi-byte sequences
-    if (byte >= 0xC0 && byte <= 0xDF && i + 1 < bytes.length) {
-      if ((bytes[i + 1] & 0xC0) === 0x80) {
+    if (byte >= 0xc0 && byte <= 0xdf && i + 1 < bytes.length) {
+      if ((bytes[i + 1] & 0xc0) === 0x80) {
         utf8Sequences++;
         i++;
       } else {
         invalidUtf8++;
       }
-    } else if (byte >= 0xE0 && byte <= 0xEF && i + 2 < bytes.length) {
-      if ((bytes[i + 1] & 0xC0) === 0x80 && (bytes[i + 2] & 0xC0) === 0x80) {
+    } else if (byte >= 0xe0 && byte <= 0xef && i + 2 < bytes.length) {
+      if ((bytes[i + 1] & 0xc0) === 0x80 && (bytes[i + 2] & 0xc0) === 0x80) {
         utf8Sequences++;
         i += 2;
       } else {
         invalidUtf8++;
       }
-    } else if (byte >= 0xF0 && byte <= 0xF7 && i + 3 < bytes.length) {
-      if ((bytes[i + 1] & 0xC0) === 0x80 && (bytes[i + 2] & 0xC0) === 0x80 && (bytes[i + 3] & 0xC0) === 0x80) {
+    } else if (byte >= 0xf0 && byte <= 0xf7 && i + 3 < bytes.length) {
+      if (
+        (bytes[i + 1] & 0xc0) === 0x80 &&
+        (bytes[i + 2] & 0xc0) === 0x80 &&
+        (bytes[i + 3] & 0xc0) === 0x80
+      ) {
         utf8Sequences++;
         i += 3;
       } else {
@@ -184,7 +235,12 @@ export async function detectFileEncoding(filePath: string): Promise<{
 
   // Determine encoding based on analysis
   if (nullBytes > bytes.length * 0.1) {
-    return { encoding: 'binary', confidence: 90, bom: null, details: 'Binary file (many null bytes)' };
+    return {
+      encoding: 'binary',
+      confidence: 90,
+      bom: null,
+      details: 'Binary file (many null bytes)',
+    };
   }
 
   if (highBytes === 0) {
@@ -193,14 +249,29 @@ export async function detectFileEncoding(filePath: string): Promise<{
 
   if (utf8Sequences > 0 && invalidUtf8 === 0) {
     const confidence = Math.min(95, 70 + utf8Sequences * 2);
-    return { encoding: 'utf-8', confidence, bom: null, details: `UTF-8 (${utf8Sequences} multi-byte sequences)` };
+    return {
+      encoding: 'utf-8',
+      confidence,
+      bom: null,
+      details: `UTF-8 (${utf8Sequences} multi-byte sequences)`,
+    };
   }
 
   if (invalidUtf8 > 0) {
-    return { encoding: 'iso-8859-1', confidence: 60, bom: null, details: 'Likely ISO-8859-1 or Windows-1252' };
+    return {
+      encoding: 'iso-8859-1',
+      confidence: 60,
+      bom: null,
+      details: 'Likely ISO-8859-1 or Windows-1252',
+    };
   }
 
-  return { encoding: 'utf-8', confidence: 70, bom: null, details: 'Assumed UTF-8 (no BOM, mostly ASCII)' };
+  return {
+    encoding: 'utf-8',
+    confidence: 70,
+    bom: null,
+    details: 'Assumed UTF-8 (no BOM, mostly ASCII)',
+  };
 }
 
 /**
@@ -214,7 +285,7 @@ export async function getFileAttributes(filePath: string): Promise<FileAttribute
     readonly: (stats.mode & 0o200) === 0, // No write permission
     hidden: path.basename(filePath).startsWith('.'),
     system: false,
-    archive: false
+    archive: false,
   };
 
   // On Windows, try to get actual attributes
@@ -239,10 +310,13 @@ export async function getFileAttributes(filePath: string): Promise<FileAttribute
 /**
  * Set file attributes (primarily for removing readonly)
  */
-export async function setFileAttributes(filePath: string, options: {
-  readonly?: boolean;
-  hidden?: boolean;
-}): Promise<{ success: boolean; error?: string }> {
+export async function setFileAttributes(
+  filePath: string,
+  options: {
+    readonly?: boolean;
+    hidden?: boolean;
+  },
+): Promise<{ success: boolean; error?: string }> {
   try {
     if (process.platform === 'win32') {
       const flags: string[] = [];

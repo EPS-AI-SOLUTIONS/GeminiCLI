@@ -4,8 +4,8 @@
  */
 
 import type { FastifyReply } from 'fastify';
-import type { SSEEventType } from '../types/index.js';
 import { API_CONFIG } from '../config/index.js';
+import type { SSEEventType } from '../types/index.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SSE Writer
@@ -111,7 +111,7 @@ export class SSEWriter {
 
 export function createKeepAlive(
   writer: SSEWriter,
-  intervalMs: number = API_CONFIG.monitoring.keepAliveIntervalMs
+  intervalMs: number = API_CONFIG.monitoring.keepAliveIntervalMs,
 ): NodeJS.Timeout {
   return setInterval(() => {
     if (!writer.isClosed()) {

@@ -3,7 +3,7 @@
  * Factory functions for creating SSE events and stream data
  */
 
-import type { SSEEventType, ExecutePlan } from '../types/index.js';
+import type { ExecutePlan, SSEEventType } from '../types/index.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Types
@@ -125,7 +125,7 @@ export function serializeDone(): string {
  */
 export async function* arrayToEventStream<T>(
   items: T[],
-  transformer: (item: T) => SSEEvent
+  transformer: (item: T) => SSEEvent,
 ): AsyncGenerator<SSEEvent> {
   for (const item of items) {
     yield transformer(item);
@@ -136,7 +136,7 @@ export async function* arrayToEventStream<T>(
  * Create an async generator that transforms chunks to events
  */
 export async function* chunksToEvents(
-  chunks: AsyncIterable<string>
+  chunks: AsyncIterable<string>,
 ): AsyncGenerator<SSEEvent<ChunkEventData>> {
   for await (const chunk of chunks) {
     yield createChunkEvent(chunk);

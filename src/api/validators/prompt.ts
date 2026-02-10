@@ -3,8 +3,8 @@
  * Validators for prompt strings
  */
 
-import { ValidationError } from '../middleware/index.js';
 import { NUMERIC_RANGES, VALIDATION_ERRORS } from '../constants/index.js';
+import { ValidationError } from '../middleware/index.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Prompt Validator

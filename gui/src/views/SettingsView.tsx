@@ -4,9 +4,9 @@
 
 import { motion } from 'framer-motion';
 import { RotateCcw } from 'lucide-react';
-import { Button, Card, Badge } from '../components/ui';
-import { useAppStore } from '../stores/appStore';
+import { Badge, Button, Card } from '../components/ui';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAppStore } from '../stores/appStore';
 import type { Settings } from '../types';
 
 interface SettingRowProps {
@@ -21,9 +21,7 @@ function SettingRow({ label, description, children }: SettingRowProps) {
       <div>
         <p className="text-sm font-medium text-[var(--matrix-text)]">{label}</p>
         {description && (
-          <p className="text-xs text-[var(--matrix-text-dim)] mt-0.5">
-            {description}
-          </p>
+          <p className="text-xs text-[var(--matrix-text-dim)] mt-0.5">{description}</p>
         )}
       </div>
       <div>{children}</div>
@@ -104,12 +102,8 @@ export function SettingsView() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-[var(--matrix-text)]">
-            Ustawienia
-          </h2>
-          <p className="text-sm text-[var(--matrix-text-dim)] mt-1">
-            Konfiguracja GeminiHydra
-          </p>
+          <h2 className="text-xl font-semibold text-[var(--matrix-text)]">Ustawienia</h2>
+          <p className="text-sm text-[var(--matrix-text-dim)] mt-1">Konfiguracja GeminiHydra</p>
         </div>
         <Button
           variant="ghost"
@@ -122,15 +116,10 @@ export function SettingsView() {
       </div>
 
       {/* General Settings */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
         <Card variant="solid">
           <div className="px-4 py-3 border-b border-[var(--matrix-border)]">
-            <h3 className="text-sm font-semibold text-[var(--matrix-text)]">
-              Ogólne
-            </h3>
+            <h3 className="text-sm font-semibold text-[var(--matrix-text)]">Ogólne</h3>
           </div>
           <div className="px-4">
             <SettingRow label="Motyw" description="Wybierz jasny lub ciemny motyw">
@@ -153,19 +142,13 @@ export function SettingsView() {
                 ]}
               />
             </SettingRow>
-            <SettingRow
-              label="Streaming"
-              description="Wyświetlaj odpowiedzi w czasie rzeczywistym"
-            >
+            <SettingRow label="Streaming" description="Wyświetlaj odpowiedzi w czasie rzeczywistym">
               <ToggleSwitch
                 checked={settings.streaming}
                 onChange={(v) => updateSettings({ streaming: v })}
               />
             </SettingRow>
-            <SettingRow
-              label="Verbose"
-              description="Pokaż szczegółowe logi agentów"
-            >
+            <SettingRow label="Verbose" description="Pokaż szczegółowe logi agentów">
               <ToggleSwitch
                 checked={settings.verbose}
                 onChange={(v) => updateSettings({ verbose: v })}
@@ -183,9 +166,7 @@ export function SettingsView() {
       >
         <Card variant="solid">
           <div className="px-4 py-3 border-b border-[var(--matrix-border)]">
-            <h3 className="text-sm font-semibold text-[var(--matrix-text)]">
-              Model
-            </h3>
+            <h3 className="text-sm font-semibold text-[var(--matrix-text)]">Model</h3>
           </div>
           <div className="px-4">
             <SettingRow label="Model" description="Wybierz model Gemini">
@@ -198,10 +179,7 @@ export function SettingsView() {
                 ]}
               />
             </SettingRow>
-            <SettingRow
-              label="Temperatura"
-              description="Kreatywność modelu (0.0 - 2.0)"
-            >
+            <SettingRow label="Temperatura" description="Kreatywność modelu (0.0 - 2.0)">
               <div className="flex items-center gap-2">
                 <input
                   type="range"
@@ -209,21 +187,16 @@ export function SettingsView() {
                   max="2"
                   step="0.1"
                   value={settings.temperature}
-                  onChange={(e) =>
-                    updateSettings({ temperature: parseFloat(e.target.value) })
-                  }
+                  onChange={(e) => updateSettings({ temperature: parseFloat(e.target.value) })}
                   className="w-24 accent-[var(--matrix-accent)]"
                 />
                 <Badge variant="accent">{settings.temperature.toFixed(1)}</Badge>
               </div>
             </SettingRow>
-            <SettingRow
-              label="Max Tokens"
-              description="Maksymalna długość odpowiedzi"
-            >
+            <SettingRow label="Max Tokens" description="Maksymalna długość odpowiedzi">
               <Select
                 value={settings.maxTokens.toString()}
-                onChange={(v) => updateSettings({ maxTokens: parseInt(v) })}
+                onChange={(v) => updateSettings({ maxTokens: parseInt(v, 10) })}
                 options={[
                   { value: '2048', label: '2048' },
                   { value: '4096', label: '4096' },
@@ -246,14 +219,10 @@ export function SettingsView() {
         <Card variant="glass" className="p-4">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-[var(--matrix-accent)] flex items-center justify-center">
-              <span className="text-[var(--matrix-bg-primary)] font-bold font-mono">
-                GH
-              </span>
+              <span className="text-[var(--matrix-bg-primary)] font-bold font-mono">GH</span>
             </div>
             <div>
-              <p className="text-sm font-semibold text-[var(--matrix-text)]">
-                GeminiHydra GUI
-              </p>
+              <p className="text-sm font-semibold text-[var(--matrix-text)]">GeminiHydra GUI</p>
               <p className="text-xs text-[var(--matrix-text-dim)]">
                 Wersja 0.1.0 • React 19 + TypeScript + Vite
               </p>

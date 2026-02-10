@@ -25,35 +25,33 @@
 // CORE: Base classes, session state, persistent storage
 // =============================================================================
 
-// BaseMemory - Abstract base class and shared utilities for all memory modules
-export {
-  BaseMemory,
-  TypedBaseMemory,
-  generateId,
-  generateNumericId,
-  estimateSize,
-  pruneOldEntries,
-  sortByImportance,
-  extractTags,
-  getDefaultBaseDir
-} from './BaseMemory.js';
-
 export type {
   MemoryEntry,
   MemoryOptions,
   MemoryStats,
-  PruneOptions
+  PruneOptions,
 } from './BaseMemory.js';
-
-// SessionMemory - Short-lived conversational context within a single session
-export { SessionMemory, sessionMemory } from './SessionMemory.js';
+// BaseMemory - Abstract base class and shared utilities for all memory modules
+export {
+  BaseMemory,
+  estimateSize,
+  extractTags,
+  generateId,
+  generateNumericId,
+  getDefaultBaseDir,
+  pruneOldEntries,
+  sortByImportance,
+  TypedBaseMemory,
+} from './BaseMemory.js';
+export type {
+  MemoryEntry as PersistentMemoryEntry,
+  MemorySearchOptions,
+} from './PersistentMemory.js';
 
 // PersistentMemory - JSON-based durable storage that survives restarts
 export { PersistentMemory, persistentMemory } from './PersistentMemory.js';
-export type {
-  MemoryEntry as PersistentMemoryEntry,
-  MemorySearchOptions
-} from './PersistentMemory.js';
+// SessionMemory - Short-lived conversational context within a single session
+export { SessionMemory, sessionMemory } from './SessionMemory.js';
 
 // =============================================================================
 // AGENT: Per-agent memory and long-term learning
@@ -61,61 +59,60 @@ export type {
 
 // AgentMemory - Isolated memory scope for individual swarm agents
 export { AgentMemory, agentMemory } from './AgentMemory.js';
-
+export type { MemoryCategory } from './LongTermMemory.js';
 // LongTermMemory - Cross-session learning and knowledge retention
 export { LongTermMemory, longTermMemory } from './LongTermMemory.js';
-export type { MemoryCategory } from './LongTermMemory.js';
 
 // =============================================================================
 // PROJECT: Codebase analysis and project-level knowledge
 // =============================================================================
 
-// ProjectMemory - High-level project metadata and configuration memory
-export { ProjectMemory, projectMemory } from './ProjectMemory.js';
+export type {
+  CodebaseAnalysis,
+  ContextEnrichment,
+  FileInfo,
+  ProjectStructure,
+} from './CodebaseMemory.js';
 
 // CodebaseMemory - Source code analysis, file structure, and context enrichment
 export { CodebaseMemory, codebaseMemory } from './CodebaseMemory.js';
-export type {
-  FileInfo,
-  ProjectStructure,
-  CodebaseAnalysis,
-  ContextEnrichment
-} from './CodebaseMemory.js';
+// ProjectMemory - High-level project metadata and configuration memory
+export { ProjectMemory, projectMemory } from './ProjectMemory.js';
 
 // =============================================================================
 // ADVANCED: Semantic search, knowledge graph, prompt library
 // =============================================================================
 
-// VectorStore - Vector-based memory for swarm agents (JSON + JSONL storage)
-export { VectorStore, AgentVectorMemory, agentVectorMemory } from './VectorStore.js';
+export type {
+  Entity,
+  EntityType,
+  GraphSearchResult,
+  GraphStats,
+  Observation,
+  Relation,
+  RelationType,
+  TraversalOptions,
+} from './GraphMemory.js';
 
 // GraphMemory - Native knowledge graph with entities, relations, and traversal
 export { GraphMemory, getGraphMemory, graphMemory } from './GraphMemory.js';
 export type {
-  EntityType,
-  RelationType,
-  Entity,
-  Relation,
-  Observation,
-  GraphSearchResult,
-  TraversalOptions,
-  GraphStats
-} from './GraphMemory.js';
+  PromptCategory,
+  PromptSearchOptions,
+  PromptSuggestion,
+  PromptVariable,
+  SavedPrompt,
+} from './PromptMemory.js';
 
 // PromptMemory - Saved prompts library with categories and variables
 export { PromptMemory, promptMemory } from './PromptMemory.js';
-export type {
-  SavedPrompt,
-  PromptCategory,
-  PromptVariable,
-  PromptSearchOptions,
-  PromptSuggestion
-} from './PromptMemory.js';
+// VectorStore - Vector-based memory for swarm agents (JSON + JSONL storage)
+export { AgentVectorMemory, agentVectorMemory, VectorStore } from './VectorStore.js';
 
 // =============================================================================
 // CACHE: Fast in-memory caching with disk persistence
 // =============================================================================
 
+export type { SessionCacheConfig } from './SessionCache.js';
 // SessionCache - L1 in-memory cache with auto-save for objectives and chronicles
 export { SessionCache, sessionCache } from './SessionCache.js';
-export type { SessionCacheConfig } from './SessionCache.js';

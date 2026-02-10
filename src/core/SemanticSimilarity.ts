@@ -51,7 +51,7 @@ interface ExtractedConcept {
   term: string;
   type: 'noun' | 'verb' | 'technical' | 'action' | 'entity';
   importance: number; // 0.0 - 1.0
-  position: number;   // Original position in text
+  position: number; // Original position in text
 }
 
 /**
@@ -81,24 +81,177 @@ export interface SimilarityConfig {
  */
 const STOP_WORDS = new Set([
   // English
-  'a', 'an', 'the', 'and', 'or', 'but', 'is', 'are', 'was', 'were', 'be', 'been',
-  'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
-  'should', 'may', 'might', 'must', 'can', 'of', 'at', 'by', 'for', 'with',
-  'about', 'against', 'between', 'into', 'through', 'during', 'before', 'after',
-  'above', 'below', 'to', 'from', 'up', 'down', 'in', 'out', 'on', 'off', 'over',
-  'under', 'again', 'further', 'then', 'once', 'here', 'there', 'when', 'where',
-  'why', 'how', 'all', 'each', 'few', 'more', 'most', 'other', 'some', 'such',
-  'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 'just',
-  'it', 'its', 'this', 'that', 'these', 'those', 'i', 'me', 'my', 'myself', 'we',
-  'our', 'ours', 'ourselves', 'you', 'your', 'yours', 'yourself', 'he', 'him',
-  'his', 'himself', 'she', 'her', 'hers', 'herself', 'they', 'them', 'their',
-  'theirs', 'themselves', 'what', 'which', 'who', 'whom', 'if', 'as',
+  'a',
+  'an',
+  'the',
+  'and',
+  'or',
+  'but',
+  'is',
+  'are',
+  'was',
+  'were',
+  'be',
+  'been',
+  'being',
+  'have',
+  'has',
+  'had',
+  'do',
+  'does',
+  'did',
+  'will',
+  'would',
+  'could',
+  'should',
+  'may',
+  'might',
+  'must',
+  'can',
+  'of',
+  'at',
+  'by',
+  'for',
+  'with',
+  'about',
+  'against',
+  'between',
+  'into',
+  'through',
+  'during',
+  'before',
+  'after',
+  'above',
+  'below',
+  'to',
+  'from',
+  'up',
+  'down',
+  'in',
+  'out',
+  'on',
+  'off',
+  'over',
+  'under',
+  'again',
+  'further',
+  'then',
+  'once',
+  'here',
+  'there',
+  'when',
+  'where',
+  'why',
+  'how',
+  'all',
+  'each',
+  'few',
+  'more',
+  'most',
+  'other',
+  'some',
+  'such',
+  'no',
+  'nor',
+  'not',
+  'only',
+  'own',
+  'same',
+  'so',
+  'than',
+  'too',
+  'very',
+  'just',
+  'it',
+  'its',
+  'this',
+  'that',
+  'these',
+  'those',
+  'i',
+  'me',
+  'my',
+  'myself',
+  'we',
+  'our',
+  'ours',
+  'ourselves',
+  'you',
+  'your',
+  'yours',
+  'yourself',
+  'he',
+  'him',
+  'his',
+  'himself',
+  'she',
+  'her',
+  'hers',
+  'herself',
+  'they',
+  'them',
+  'their',
+  'theirs',
+  'themselves',
+  'what',
+  'which',
+  'who',
+  'whom',
+  'if',
+  'as',
   // Polish
-  'i', 'w', 'z', 'na', 'do', 'od', 'po', 'o', 'za', 'nie', 'to', 'jest', 'ale',
-  'jak', 'co', 'sie', 'ten', 'ta', 'te', 'tym', 'tej', 'tego', 'dla', 'ze',
-  'przy', 'by', 'czy', 'lub', 'oraz', 'bez', 'pod', 'nad', 'przed', 'miedzy',
-  'przez', 'podczas', 'po', 'az', 'tylko', 'tez', 'juz', 'jeszcze', 'bardzo',
-  'tak', 'wiec', 'jednak', 'ze', 'kiedy', 'gdzie', 'bo', 'gdyz', 'poniewaz'
+  'i',
+  'w',
+  'z',
+  'na',
+  'do',
+  'od',
+  'po',
+  'o',
+  'za',
+  'nie',
+  'to',
+  'jest',
+  'ale',
+  'jak',
+  'co',
+  'sie',
+  'ten',
+  'ta',
+  'te',
+  'tym',
+  'tej',
+  'tego',
+  'dla',
+  'ze',
+  'przy',
+  'by',
+  'czy',
+  'lub',
+  'oraz',
+  'bez',
+  'pod',
+  'nad',
+  'przed',
+  'miedzy',
+  'przez',
+  'podczas',
+  'po',
+  'az',
+  'tylko',
+  'tez',
+  'juz',
+  'jeszcze',
+  'bardzo',
+  'tak',
+  'wiec',
+  'jednak',
+  'ze',
+  'kiedy',
+  'gdzie',
+  'bo',
+  'gdyz',
+  'poniewaz',
 ]);
 
 /**
@@ -122,7 +275,7 @@ const TECHNICAL_PATTERNS = [
   // Code patterns
   /\b(?:function|class|interface|type|const|let|var|async|await|import|export)\b/gi,
   // Architecture
-  /\b(?:component|module|service|controller|model|view|repository|factory|singleton)\b/gi
+  /\b(?:component|module|service|controller|model|view|repository|factory|singleton)\b/gi,
 ];
 
 /**
@@ -134,7 +287,7 @@ const ACTION_PATTERNS = [
   /\b(?:analyze|check|verify|validate|test|review|examine|inspect|audit)\b/gi,
   /\b(?:install|configure|setup|deploy|build|compile|run|start|stop|restart)\b/gi,
   /\b(?:stworz|dodaj|usun|zaktualizuj|zmodyfikuj|napraw|rozwiaz|przeczytaj)\b/gi,
-  /\b(?:zapisz|wczytaj|pobierz|wyslij|przetworz|wykonaj|sprawdz|zweryfikuj)\b/gi
+  /\b(?:zapisz|wczytaj|pobierz|wyslij|przetworz|wykonaj|sprawdz|zweryfikuj)\b/gi,
 ];
 
 /**
@@ -142,7 +295,7 @@ const ACTION_PATTERNS = [
  */
 const ENTITY_PATTERNS = [
   // File paths
-  /(?:[\w\-]+\/)+[\w\-]+\.[\w]+/g,
+  /(?:[\w-]+\/)+[\w-]+\.[\w]+/g,
   // URLs
   /https?:\/\/[^\s]+/g,
   // CamelCase/PascalCase identifiers
@@ -150,7 +303,7 @@ const ENTITY_PATTERNS = [
   // snake_case identifiers
   /\b[a-z]+(?:_[a-z]+)+\b/g,
   // Package names
-  /\b@[\w\-]+\/[\w\-]+\b/g
+  /\b@[\w-]+\/[\w-]+\b/g,
 ];
 
 // =============================================================================
@@ -163,8 +316,6 @@ const ENTITY_PATTERNS = [
  */
 export class SemanticSimilarityChecker {
   private config: SimilarityConfig;
-  private idfCache: Map<string, number> = new Map();
-  private documentCount: number = 0;
 
   constructor(config: Partial<SimilarityConfig> = {}) {
     this.config = {
@@ -173,7 +324,7 @@ export class SemanticSimilarityChecker {
       tfidfWeight: config.tfidfWeight ?? 0.25,
       phraseWeight: config.phraseWeight ?? 0.25,
       orderWeight: config.orderWeight ?? 0.15,
-      verbose: config.verbose ?? false
+      verbose: config.verbose ?? false,
     };
   }
 
@@ -194,11 +345,11 @@ export class SemanticSimilarityChecker {
 
     // Calculate weighted final score
     const weightedScore =
-      (conceptMatchResult.score * this.config.conceptWeight) +
-      (tfidfScore * this.config.tfidfWeight) +
-      (phraseMatchScore * this.config.phraseWeight) +
-      (orderScore * this.config.orderWeight) -
-      (irrelevancePenalty * 0.1);
+      conceptMatchResult.score * this.config.conceptWeight +
+      tfidfScore * this.config.tfidfWeight +
+      phraseMatchScore * this.config.phraseWeight +
+      orderScore * this.config.orderWeight -
+      irrelevancePenalty * 0.1;
 
     // Clamp score to [0, 1]
     const finalScore = Math.max(0, Math.min(1, weightedScore));
@@ -213,8 +364,8 @@ export class SemanticSimilarityChecker {
         tfidfScore: Math.round(tfidfScore * 100) / 100,
         phraseMatchScore: Math.round(phraseMatchScore * 100) / 100,
         orderScore: Math.round(orderScore * 100) / 100,
-        irrelevancePenalty: Math.round(irrelevancePenalty * 100) / 100
-      }
+        irrelevancePenalty: Math.round(irrelevancePenalty * 100) / 100,
+      },
     };
 
     if (this.config.verbose) {
@@ -230,7 +381,7 @@ export class SemanticSimilarityChecker {
   private extractConcepts(text: string): ExtractedConcept[] {
     const concepts: ExtractedConcept[] = [];
     const seen = new Set<string>();
-    let position = 0;
+    const position = 0;
 
     // 1. Extract technical terms
     for (const pattern of TECHNICAL_PATTERNS) {
@@ -244,7 +395,7 @@ export class SemanticSimilarityChecker {
             term,
             type: 'technical',
             importance: 0.9,
-            position: match.index
+            position: match.index,
           });
         }
       }
@@ -262,7 +413,7 @@ export class SemanticSimilarityChecker {
             term,
             type: 'action',
             importance: 0.85,
-            position: match.index
+            position: match.index,
           });
         }
       }
@@ -280,7 +431,7 @@ export class SemanticSimilarityChecker {
             term,
             type: 'entity',
             importance: 0.8,
-            position: match.index
+            position: match.index,
           });
         }
       }
@@ -299,7 +450,9 @@ export class SemanticSimilarityChecker {
       // - Nouns often follow articles or adjectives
       // - Verbs often start sentences or follow pronouns
       const prevWord = i > 0 ? words[i - 1] : '';
-      const isLikelyNoun = ['the', 'a', 'an', 'this', 'that', 'my', 'your', 'our'].includes(prevWord);
+      const isLikelyNoun = ['the', 'a', 'an', 'this', 'that', 'my', 'your', 'our'].includes(
+        prevWord,
+      );
       const isLikelyVerb = ['i', 'we', 'you', 'they', 'he', 'she', 'it', 'to'].includes(prevWord);
 
       if (isLikelyNoun) {
@@ -308,7 +461,7 @@ export class SemanticSimilarityChecker {
           term: word,
           type: 'noun',
           importance: 0.6,
-          position: position + i
+          position: position + i,
         });
       } else if (isLikelyVerb) {
         seen.add(word);
@@ -316,7 +469,7 @@ export class SemanticSimilarityChecker {
           term: word,
           type: 'verb',
           importance: 0.65,
-          position: position + i
+          position: position + i,
         });
       } else if (word.length >= 4) {
         // Unknown but significant word
@@ -325,7 +478,7 @@ export class SemanticSimilarityChecker {
           term: word,
           type: 'noun', // Default to noun
           importance: 0.4,
-          position: position + i
+          position: position + i,
         });
       }
     }
@@ -339,13 +492,13 @@ export class SemanticSimilarityChecker {
    */
   private calculateConceptMatch(
     taskConcepts: ExtractedConcept[],
-    responseConcepts: ExtractedConcept[]
+    responseConcepts: ExtractedConcept[],
   ): { score: number; matched: string[]; missing: string[] } {
     if (taskConcepts.length === 0) {
       return { score: 1.0, matched: [], missing: [] };
     }
 
-    const responseTerms = new Set(responseConcepts.map(c => c.term));
+    const responseTerms = new Set(responseConcepts.map((c) => c.term));
     const matched: string[] = [];
     const missing: string[] = [];
     let totalWeight = 0;
@@ -407,7 +560,9 @@ export class SemanticSimilarityChecker {
   private levenshteinDistance(str1: string, str2: string): number {
     const m = str1.length;
     const n = str2.length;
-    const dp: number[][] = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+    const dp: number[][] = Array(m + 1)
+      .fill(null)
+      .map(() => Array(n + 1).fill(0));
 
     for (let i = 0; i <= m; i++) dp[i][0] = i;
     for (let j = 0; j <= n; j++) dp[0][j] = j;
@@ -474,10 +629,11 @@ export class SemanticSimilarityChecker {
    * Tokenize text into terms
    */
   private tokenize(text: string): string[] {
-    return text.toLowerCase()
+    return text
+      .toLowerCase()
       .split(/\s+/)
-      .map(word => word.replace(/[^a-z0-9\u0080-\u024F]/gi, ''))
-      .filter(word => word.length >= 2 && !STOP_WORDS.has(word));
+      .map((word) => word.replace(/[^a-z0-9\u0080-\u024F]/gi, ''))
+      .filter((word) => word.length >= 2 && !STOP_WORDS.has(word));
   }
 
   /**
@@ -578,19 +734,20 @@ export class SemanticSimilarityChecker {
     const trigramScore = taskTrigrams.length > 0 ? matchedTrigrams / taskTrigrams.length : 0;
 
     // Weight trigrams higher (more specific)
-    return (bigramScore * 0.4) + (trigramScore * 0.6);
+    return bigramScore * 0.4 + trigramScore * 0.6;
   }
 
   /**
    * Generate n-grams from text
    */
   private getNGrams(text: string, n: number): string[] {
-    const words = text.split(/\s+/).filter(w => w.length >= 2);
+    const words = text.split(/\s+/).filter((w) => w.length >= 2);
     const ngrams: string[] = [];
 
     for (let i = 0; i <= words.length - n; i++) {
       const ngram = words.slice(i, i + n).join(' ');
-      if (ngram.length >= n * 2) { // Minimum meaningful length
+      if (ngram.length >= n * 2) {
+        // Minimum meaningful length
         ngrams.push(ngram);
       }
     }
@@ -603,24 +760,24 @@ export class SemanticSimilarityChecker {
    */
   private calculateOrderSimilarity(
     taskConcepts: ExtractedConcept[],
-    responseConcepts: ExtractedConcept[]
+    responseConcepts: ExtractedConcept[],
   ): number {
     if (taskConcepts.length < 2 || responseConcepts.length < 2) {
       return 0.5; // Neutral score for short texts
     }
 
     // Get ordered terms from task that appear in response
-    const responseTermSet = new Set(responseConcepts.map(c => c.term));
+    const responseTermSet = new Set(responseConcepts.map((c) => c.term));
     const commonTaskTerms = taskConcepts
-      .filter(c => responseTermSet.has(c.term))
-      .map(c => c.term);
+      .filter((c) => responseTermSet.has(c.term))
+      .map((c) => c.term);
 
     if (commonTaskTerms.length < 2) {
       return 0.3; // Low score if few common terms
     }
 
     // Check if order is preserved in response
-    const responseTermList = responseConcepts.map(c => c.term);
+    const responseTermList = responseConcepts.map((c) => c.term);
     let preservedPairs = 0;
     let totalPairs = 0;
 
@@ -649,18 +806,18 @@ export class SemanticSimilarityChecker {
    */
   private calculateIrrelevancePenalty(
     taskConcepts: ExtractedConcept[],
-    responseConcepts: ExtractedConcept[]
+    responseConcepts: ExtractedConcept[],
   ): number {
     if (responseConcepts.length === 0) {
       return 0;
     }
 
-    const taskTerms = new Set(taskConcepts.map(c => c.term));
+    const taskTerms = new Set(taskConcepts.map((c) => c.term));
     let irrelevantCount = 0;
-    let totalImportance = 0;
+    let _totalImportance = 0;
 
     for (const concept of responseConcepts) {
-      totalImportance += concept.importance;
+      _totalImportance += concept.importance;
       if (!taskTerms.has(concept.term) && concept.importance > 0.5) {
         // Check if it's a fuzzy match
         let isFuzzy = false;
@@ -677,7 +834,7 @@ export class SemanticSimilarityChecker {
     }
 
     // Penalty based on proportion of irrelevant high-importance terms
-    const highImportanceCount = responseConcepts.filter(c => c.importance > 0.5).length;
+    const highImportanceCount = responseConcepts.filter((c) => c.importance > 0.5).length;
     return highImportanceCount > 0 ? irrelevantCount / highImportanceCount : 0;
   }
 
@@ -687,26 +844,52 @@ export class SemanticSimilarityChecker {
   private logResult(task: string, response: string, result: SimilarityResult): void {
     console.log(chalk.cyan('\n[SemanticSimilarity] Analysis Results:'));
     console.log(chalk.gray(`  Task (${task.length} chars): "${task.substring(0, 50)}..."`));
-    console.log(chalk.gray(`  Response (${response.length} chars): "${response.substring(0, 50)}..."`));
+    console.log(
+      chalk.gray(`  Response (${response.length} chars): "${response.substring(0, 50)}..."`),
+    );
     console.log(chalk.white(`  Score: ${(result.score * 100).toFixed(1)}%`));
-    console.log(result.isRelevant
-      ? chalk.green(`  Relevant: YES`)
-      : chalk.yellow(`  Relevant: NO`));
+    console.log(
+      result.isRelevant ? chalk.green(`  Relevant: YES`) : chalk.yellow(`  Relevant: NO`),
+    );
 
     if (result.scoreBreakdown) {
       console.log(chalk.gray('  Breakdown:'));
-      console.log(chalk.gray(`    - Concept Match: ${(result.scoreBreakdown.conceptMatchScore * 100).toFixed(1)}%`));
-      console.log(chalk.gray(`    - TF-IDF: ${(result.scoreBreakdown.tfidfScore * 100).toFixed(1)}%`));
-      console.log(chalk.gray(`    - Phrase Match: ${(result.scoreBreakdown.phraseMatchScore * 100).toFixed(1)}%`));
-      console.log(chalk.gray(`    - Order: ${(result.scoreBreakdown.orderScore * 100).toFixed(1)}%`));
-      console.log(chalk.gray(`    - Irrelevance Penalty: ${(result.scoreBreakdown.irrelevancePenalty * 100).toFixed(1)}%`));
+      console.log(
+        chalk.gray(
+          `    - Concept Match: ${(result.scoreBreakdown.conceptMatchScore * 100).toFixed(1)}%`,
+        ),
+      );
+      console.log(
+        chalk.gray(`    - TF-IDF: ${(result.scoreBreakdown.tfidfScore * 100).toFixed(1)}%`),
+      );
+      console.log(
+        chalk.gray(
+          `    - Phrase Match: ${(result.scoreBreakdown.phraseMatchScore * 100).toFixed(1)}%`,
+        ),
+      );
+      console.log(
+        chalk.gray(`    - Order: ${(result.scoreBreakdown.orderScore * 100).toFixed(1)}%`),
+      );
+      console.log(
+        chalk.gray(
+          `    - Irrelevance Penalty: ${(result.scoreBreakdown.irrelevancePenalty * 100).toFixed(1)}%`,
+        ),
+      );
     }
 
     if (result.matchedConcepts.length > 0) {
-      console.log(chalk.green(`  Matched (${result.matchedConcepts.length}): ${result.matchedConcepts.slice(0, 10).join(', ')}`));
+      console.log(
+        chalk.green(
+          `  Matched (${result.matchedConcepts.length}): ${result.matchedConcepts.slice(0, 10).join(', ')}`,
+        ),
+      );
     }
     if (result.missingConcepts.length > 0) {
-      console.log(chalk.yellow(`  Missing (${result.missingConcepts.length}): ${result.missingConcepts.slice(0, 10).join(', ')}`));
+      console.log(
+        chalk.yellow(
+          `  Missing (${result.missingConcepts.length}): ${result.missingConcepts.slice(0, 10).join(', ')}`,
+        ),
+      );
     }
   }
 
@@ -744,9 +927,7 @@ export function checkSimilarity(task: string, response: string): SimilarityResul
  */
 export function isResponseRelevant(task: string, response: string, threshold?: number): boolean {
   const result = semanticSimilarityChecker.checkSimilarity(task, response);
-  return threshold !== undefined
-    ? result.score >= threshold
-    : result.isRelevant;
+  return threshold !== undefined ? result.score >= threshold : result.isRelevant;
 }
 
 /**
@@ -764,7 +945,7 @@ export function getMissingConcepts(task: string, response: string): string[] {
 export function validateAgentResponse(
   task: string,
   response: string,
-  agentName?: string
+  agentName?: string,
 ): {
   isValid: boolean;
   score: number;
@@ -791,20 +972,26 @@ export function validateAgentResponse(
   }
 
   if (agentName) {
-    console.log(chalk.gray(`[SemanticSimilarity] ${agentName}: ${result.isRelevant ? 'PASS' : 'WARN'} (${(result.score * 100).toFixed(0)}%)`));
+    console.log(
+      chalk.gray(
+        `[SemanticSimilarity] ${agentName}: ${result.isRelevant ? 'PASS' : 'WARN'} (${(result.score * 100).toFixed(0)}%)`,
+      ),
+    );
   }
 
   return {
     isValid: result.isRelevant,
     score: result.score,
     feedback,
-    missingConcepts: result.missingConcepts
+    missingConcepts: result.missingConcepts,
   };
 }
 
 /**
  * Create a new SemanticSimilarityChecker with custom config
  */
-export function createSimilarityChecker(config?: Partial<SimilarityConfig>): SemanticSimilarityChecker {
+export function createSimilarityChecker(
+  config?: Partial<SimilarityConfig>,
+): SemanticSimilarityChecker {
   return new SemanticSimilarityChecker(config);
 }

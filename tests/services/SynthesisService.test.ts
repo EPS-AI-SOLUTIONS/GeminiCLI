@@ -2,7 +2,7 @@
  * Tests for Synthesis Service
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { SynthesisService, synthesisService } from '../../src/services/SynthesisService.js';
 import type { ExecutionResult } from '../../src/types/index.js';
 
@@ -14,11 +14,7 @@ describe('SynthesisService', () => {
   });
 
   // Helper to create execution result
-  function createResult(
-    id: number,
-    success: boolean,
-    content: string
-  ): ExecutionResult {
+  function createResult(id: number, success: boolean, content: string): ExecutionResult {
     return {
       id,
       agent: 'geralt',
@@ -38,9 +34,7 @@ describe('SynthesisService', () => {
     });
 
     it('should return true for single successful result with short content', () => {
-      const results = [
-        createResult(1, true, 'Short'),
-      ];
+      const results = [createResult(1, true, 'Short')];
 
       expect(service.needsSynthesis(results)).toBe(true);
     });
@@ -55,9 +49,7 @@ describe('SynthesisService', () => {
     });
 
     it('should return true for no successful results', () => {
-      const results = [
-        createResult(1, false, ''),
-      ];
+      const results = [createResult(1, false, '')];
 
       expect(service.needsSynthesis(results)).toBe(true);
     });
@@ -122,9 +114,7 @@ describe('SynthesisService', () => {
     });
 
     it('should include success markers', () => {
-      const results = [
-        createResult(1, true, 'Success content'),
-      ];
+      const results = [createResult(1, true, 'Success content')];
 
       const prompt = service.buildPrompt('Test', results);
 
@@ -133,9 +123,7 @@ describe('SynthesisService', () => {
     });
 
     it('should include failure markers', () => {
-      const results = [
-        createResult(1, false, 'Failed content'),
-      ];
+      const results = [createResult(1, false, 'Failed content')];
 
       const prompt = service.buildPrompt('Test', results);
 

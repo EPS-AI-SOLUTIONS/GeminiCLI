@@ -65,16 +65,16 @@ export interface InjectionDetail {
  * Types of injection attacks
  */
 export type InjectionType =
-  | 'instruction_override'    // "ignore previous instructions"
+  | 'instruction_override' // "ignore previous instructions"
   | 'system_prompt_injection' // "new system prompt"
-  | 'role_switching'          // "you are now"
-  | 'jailbreak_attempt'       // jailbreak patterns
-  | 'hidden_instruction'      // hidden in markdown/comments
-  | 'encoded_payload'         // base64, unicode obfuscation
-  | 'delimiter_attack'        // breaking out of context
-  | 'context_manipulation'    // manipulating conversation context
-  | 'privilege_escalation'    // attempting admin/system access
-  | 'data_exfiltration';      // attempting to extract data
+  | 'role_switching' // "you are now"
+  | 'jailbreak_attempt' // jailbreak patterns
+  | 'hidden_instruction' // hidden in markdown/comments
+  | 'encoded_payload' // base64, unicode obfuscation
+  | 'delimiter_attack' // breaking out of context
+  | 'context_manipulation' // manipulating conversation context
+  | 'privilege_escalation' // attempting admin/system access
+  | 'data_exfiltration'; // attempting to extract data
 
 /**
  * Configuration for the detector
@@ -131,7 +131,7 @@ const DEFAULT_INJECTION_PATTERNS: InjectionPattern[] = [
     type: 'instruction_override',
     severity: 'high',
     description: 'Attempt to override previous instructions',
-    riskScore: 80
+    riskScore: 80,
   },
   {
     name: 'disregard_above',
@@ -139,7 +139,7 @@ const DEFAULT_INJECTION_PATTERNS: InjectionPattern[] = [
     type: 'instruction_override',
     severity: 'high',
     description: 'Attempt to disregard prior context',
-    riskScore: 80
+    riskScore: 80,
   },
   {
     name: 'forget_instructions',
@@ -147,15 +147,16 @@ const DEFAULT_INJECTION_PATTERNS: InjectionPattern[] = [
     type: 'instruction_override',
     severity: 'high',
     description: 'Attempt to make AI forget instructions',
-    riskScore: 85
+    riskScore: 85,
   },
   {
     name: 'override_directive',
-    pattern: /override\s+(all\s+)?(safety|security|previous)\s+(measures?|directives?|protocols?)/gi,
+    pattern:
+      /override\s+(all\s+)?(safety|security|previous)\s+(measures?|directives?|protocols?)/gi,
     type: 'instruction_override',
     severity: 'critical',
     description: 'Explicit override attempt',
-    riskScore: 95
+    riskScore: 95,
   },
   {
     name: 'new_instructions',
@@ -163,7 +164,7 @@ const DEFAULT_INJECTION_PATTERNS: InjectionPattern[] = [
     type: 'instruction_override',
     severity: 'high',
     description: 'Attempt to inject new instructions',
-    riskScore: 85
+    riskScore: 85,
   },
 
   // === SYSTEM PROMPT INJECTION (CRITICAL SEVERITY) ===
@@ -173,7 +174,7 @@ const DEFAULT_INJECTION_PATTERNS: InjectionPattern[] = [
     type: 'system_prompt_injection',
     severity: 'critical',
     description: 'Fake system prompt marker',
-    riskScore: 90
+    riskScore: 90,
   },
   {
     name: 'system_colon',
@@ -181,7 +182,7 @@ const DEFAULT_INJECTION_PATTERNS: InjectionPattern[] = [
     type: 'system_prompt_injection',
     severity: 'high',
     description: 'System role injection attempt',
-    riskScore: 85
+    riskScore: 85,
   },
   {
     name: 'developer_mode',
@@ -189,7 +190,7 @@ const DEFAULT_INJECTION_PATTERNS: InjectionPattern[] = [
     type: 'system_prompt_injection',
     severity: 'critical',
     description: 'Developer mode activation attempt',
-    riskScore: 95
+    riskScore: 95,
   },
   {
     name: 'system_override',
@@ -197,7 +198,7 @@ const DEFAULT_INJECTION_PATTERNS: InjectionPattern[] = [
     type: 'system_prompt_injection',
     severity: 'critical',
     description: 'System override tag',
-    riskScore: 100
+    riskScore: 100,
   },
 
   // === ROLE SWITCHING (HIGH SEVERITY) ===
@@ -207,7 +208,7 @@ const DEFAULT_INJECTION_PATTERNS: InjectionPattern[] = [
     type: 'role_switching',
     severity: 'high',
     description: 'Role switching attempt',
-    riskScore: 75
+    riskScore: 75,
   },
   {
     name: 'act_as',
@@ -215,7 +216,7 @@ const DEFAULT_INJECTION_PATTERNS: InjectionPattern[] = [
     type: 'role_switching',
     severity: 'medium',
     description: 'Role acting instruction',
-    riskScore: 60
+    riskScore: 60,
   },
   {
     name: 'pretend_to_be',
@@ -223,7 +224,7 @@ const DEFAULT_INJECTION_PATTERNS: InjectionPattern[] = [
     type: 'role_switching',
     severity: 'medium',
     description: 'Pretend instruction',
-    riskScore: 55
+    riskScore: 55,
   },
   {
     name: 'roleplay_as',
@@ -231,7 +232,7 @@ const DEFAULT_INJECTION_PATTERNS: InjectionPattern[] = [
     type: 'role_switching',
     severity: 'medium',
     description: 'Roleplay instruction',
-    riskScore: 50
+    riskScore: 50,
   },
   {
     name: 'assume_identity',
@@ -239,7 +240,7 @@ const DEFAULT_INJECTION_PATTERNS: InjectionPattern[] = [
     type: 'role_switching',
     severity: 'high',
     description: 'Identity assumption attempt',
-    riskScore: 70
+    riskScore: 70,
   },
 
   // === JAILBREAK ATTEMPTS (CRITICAL) ===
@@ -249,7 +250,7 @@ const DEFAULT_INJECTION_PATTERNS: InjectionPattern[] = [
     type: 'jailbreak_attempt',
     severity: 'critical',
     description: 'DAN jailbreak pattern',
-    riskScore: 100
+    riskScore: 100,
   },
   {
     name: 'jailbreak_keyword',
@@ -257,7 +258,7 @@ const DEFAULT_INJECTION_PATTERNS: InjectionPattern[] = [
     type: 'jailbreak_attempt',
     severity: 'critical',
     description: 'Explicit jailbreak mention',
-    riskScore: 95
+    riskScore: 95,
   },
   {
     name: 'unlock_abilities',
@@ -265,15 +266,16 @@ const DEFAULT_INJECTION_PATTERNS: InjectionPattern[] = [
     type: 'jailbreak_attempt',
     severity: 'high',
     description: 'Capability unlock attempt',
-    riskScore: 80
+    riskScore: 80,
   },
   {
     name: 'no_restrictions',
-    pattern: /(?:without|ignore|bypass|disable)\s+(?:any\s+)?(?:restrictions?|limitations?|filters?|safeguards?)/gi,
+    pattern:
+      /(?:without|ignore|bypass|disable)\s+(?:any\s+)?(?:restrictions?|limitations?|filters?|safeguards?)/gi,
     type: 'jailbreak_attempt',
     severity: 'critical',
     description: 'Restriction bypass attempt',
-    riskScore: 90
+    riskScore: 90,
   },
 
   // === HIDDEN INSTRUCTIONS ===
@@ -283,7 +285,7 @@ const DEFAULT_INJECTION_PATTERNS: InjectionPattern[] = [
     type: 'hidden_instruction',
     severity: 'high',
     description: 'Hidden instruction in HTML comment',
-    riskScore: 75
+    riskScore: 75,
   },
   {
     name: 'markdown_hidden',
@@ -291,7 +293,7 @@ const DEFAULT_INJECTION_PATTERNS: InjectionPattern[] = [
     type: 'hidden_instruction',
     severity: 'high',
     description: 'Hidden markdown reference',
-    riskScore: 70
+    riskScore: 70,
   },
   {
     name: 'zero_width_chars',
@@ -299,15 +301,16 @@ const DEFAULT_INJECTION_PATTERNS: InjectionPattern[] = [
     type: 'hidden_instruction',
     severity: 'medium',
     description: 'Zero-width characters detected',
-    riskScore: 50
+    riskScore: 50,
   },
   {
     name: 'invisible_text',
-    pattern: /<span[^>]*(?:display\s*:\s*none|visibility\s*:\s*hidden|font-size\s*:\s*0)[^>]*>.*?<\/span>/gis,
+    pattern:
+      /<span[^>]*(?:display\s*:\s*none|visibility\s*:\s*hidden|font-size\s*:\s*0)[^>]*>.*?<\/span>/gis,
     type: 'hidden_instruction',
     severity: 'high',
     description: 'Invisible text in HTML',
-    riskScore: 75
+    riskScore: 75,
   },
 
   // === ENCODED PAYLOADS ===
@@ -317,7 +320,7 @@ const DEFAULT_INJECTION_PATTERNS: InjectionPattern[] = [
     type: 'encoded_payload',
     severity: 'high',
     description: 'Base64 encoded instruction',
-    riskScore: 80
+    riskScore: 80,
   },
   {
     name: 'unicode_escape',
@@ -325,7 +328,7 @@ const DEFAULT_INJECTION_PATTERNS: InjectionPattern[] = [
     type: 'encoded_payload',
     severity: 'medium',
     description: 'Unicode escape sequence chain',
-    riskScore: 55
+    riskScore: 55,
   },
   {
     name: 'hex_encoded',
@@ -333,7 +336,7 @@ const DEFAULT_INJECTION_PATTERNS: InjectionPattern[] = [
     type: 'encoded_payload',
     severity: 'medium',
     description: 'Hex encoded data',
-    riskScore: 50
+    riskScore: 50,
   },
 
   // === DELIMITER ATTACKS ===
@@ -343,7 +346,7 @@ const DEFAULT_INJECTION_PATTERNS: InjectionPattern[] = [
     type: 'delimiter_attack',
     severity: 'high',
     description: 'Code block delimiter attack',
-    riskScore: 70
+    riskScore: 70,
   },
   {
     name: 'prompt_delimiter',
@@ -351,7 +354,7 @@ const DEFAULT_INJECTION_PATTERNS: InjectionPattern[] = [
     type: 'delimiter_attack',
     severity: 'high',
     description: 'Prompt delimiter injection',
-    riskScore: 75
+    riskScore: 75,
   },
   {
     name: 'xml_tag_injection',
@@ -359,7 +362,7 @@ const DEFAULT_INJECTION_PATTERNS: InjectionPattern[] = [
     type: 'delimiter_attack',
     severity: 'high',
     description: 'XML tag injection for context manipulation',
-    riskScore: 80
+    riskScore: 80,
   },
 
   // === CONTEXT MANIPULATION ===
@@ -369,25 +372,27 @@ const DEFAULT_INJECTION_PATTERNS: InjectionPattern[] = [
     type: 'context_manipulation',
     severity: 'medium',
     description: 'Conversation reset attempt',
-    riskScore: 60
+    riskScore: 60,
   },
   {
     name: 'start_over',
-    pattern: /(?:let's\s+)?start\s+(?:over|fresh|anew)\s+(?:with\s+)?(?:new\s+)?(?:instructions?)?/gi,
+    pattern:
+      /(?:let's\s+)?start\s+(?:over|fresh|anew)\s+(?:with\s+)?(?:new\s+)?(?:instructions?)?/gi,
     type: 'context_manipulation',
     severity: 'medium',
     description: 'Context restart attempt',
-    riskScore: 55
+    riskScore: 55,
   },
 
   // === PRIVILEGE ESCALATION ===
   {
     name: 'admin_access',
-    pattern: /(?:give|grant)\s+(?:me\s+)?(?:admin|root|superuser|elevated)\s+(?:access|privileges?|permissions?)/gi,
+    pattern:
+      /(?:give|grant)\s+(?:me\s+)?(?:admin|root|superuser|elevated)\s+(?:access|privileges?|permissions?)/gi,
     type: 'privilege_escalation',
     severity: 'critical',
     description: 'Admin privilege request',
-    riskScore: 90
+    riskScore: 90,
   },
   {
     name: 'sudo_mode',
@@ -395,17 +400,18 @@ const DEFAULT_INJECTION_PATTERNS: InjectionPattern[] = [
     type: 'privilege_escalation',
     severity: 'critical',
     description: 'Sudo mode activation',
-    riskScore: 95
+    riskScore: 95,
   },
 
   // === DATA EXFILTRATION ===
   {
     name: 'reveal_prompt',
-    pattern: /(?:reveal|show|tell|display|output)\s+(?:me\s+)?(?:your\s+)?(?:system\s+)?(?:prompt|instructions?|rules?)/gi,
+    pattern:
+      /(?:reveal|show|tell|display|output)\s+(?:me\s+)?(?:your\s+)?(?:system\s+)?(?:prompt|instructions?|rules?)/gi,
     type: 'data_exfiltration',
     severity: 'high',
     description: 'System prompt reveal request',
-    riskScore: 75
+    riskScore: 75,
   },
   {
     name: 'extract_training',
@@ -413,7 +419,7 @@ const DEFAULT_INJECTION_PATTERNS: InjectionPattern[] = [
     type: 'data_exfiltration',
     severity: 'high',
     description: 'Training data extraction attempt',
-    riskScore: 80
+    riskScore: 80,
   },
   {
     name: 'repeat_everything',
@@ -421,8 +427,8 @@ const DEFAULT_INJECTION_PATTERNS: InjectionPattern[] = [
     type: 'data_exfiltration',
     severity: 'medium',
     description: 'Information dump request',
-    riskScore: 60
-  }
+    riskScore: 60,
+  },
 ];
 
 // ============================================================================
@@ -440,7 +446,7 @@ const DEFAULT_CONFIG: DetectorConfig = {
     delimiter_attack: true,
     context_manipulation: true,
     privilege_escalation: true,
-    data_exfiltration: true
+    data_exfiltration: true,
   },
   minSeverity: 'low',
   customPatterns: [],
@@ -449,8 +455,8 @@ const DEFAULT_CONFIG: DetectorConfig = {
   thresholds: {
     warn: 40,
     block: 70,
-    quarantine: 90
-  }
+    quarantine: 90,
+  },
 };
 
 // ============================================================================
@@ -512,7 +518,7 @@ export class PromptInjectionDetector {
           matchedContent: match[0],
           position: { start: match.index, end: match.index + match[0].length },
           severity: patternDef.severity,
-          description: patternDef.description
+          description: patternDef.description,
         });
 
         matchedPatterns.push(patternDef.name);
@@ -528,7 +534,10 @@ export class PromptInjectionDetector {
     // Additional checks
     const additionalDetails = this.performAdditionalChecks(content);
     details.push(...additionalDetails);
-    totalRiskScore += additionalDetails.reduce((sum, d) => sum + this.getSeverityScore(d.severity), 0);
+    totalRiskScore += additionalDetails.reduce(
+      (sum, d) => sum + this.getSeverityScore(d.severity),
+      0,
+    );
 
     // Determine overall severity
     const severity = this.calculateOverallSeverity(details);
@@ -546,7 +555,7 @@ export class PromptInjectionDetector {
       sanitizedContent,
       details,
       riskScore: Math.min(100, totalRiskScore),
-      action
+      action,
     };
 
     // Log detection if enabled
@@ -588,7 +597,7 @@ export class PromptInjectionDetector {
           break;
         case 'medium':
           // Replace with placeholder
-          sanitized = before + '[REDACTED]' + after;
+          sanitized = `${before}[REDACTED]${after}`;
           break;
         case 'low':
           // Escape/neutralize
@@ -615,10 +624,10 @@ export class PromptInjectionDetector {
       /\[system\]/i,
       /you\s+are\s+now/i,
       /jailbreak/i,
-      /DAN/
+      /DAN/,
     ];
 
-    return !quickPatterns.some(p => p.test(content));
+    return !quickPatterns.some((p) => p.test(content));
   }
 
   /**
@@ -655,7 +664,12 @@ export class PromptInjectionDetector {
   } {
     const allDetections = Array.from(this.detectionHistory.values()).flat();
     const byType: Record<InjectionType, number> = {} as any;
-    const bySeverity: Record<InjectionSeverity, number> = { low: 0, medium: 0, high: 0, critical: 0 };
+    const bySeverity: Record<InjectionSeverity, number> = {
+      low: 0,
+      medium: 0,
+      high: 0,
+      critical: 0,
+    };
 
     for (const detection of allDetections) {
       for (const detail of detection.details) {
@@ -668,7 +682,7 @@ export class PromptInjectionDetector {
       totalDetections: allDetections.length,
       byType,
       bySeverity,
-      recentDetections: allDetections.slice(-10)
+      recentDetections: allDetections.slice(-10),
     };
   }
 
@@ -684,7 +698,7 @@ export class PromptInjectionDetector {
       sanitizedContent: content,
       details: [],
       riskScore: 0,
-      action: 'allow'
+      action: 'allow',
     };
   }
 
@@ -694,7 +708,7 @@ export class PromptInjectionDetector {
   }
 
   private isWhitelisted(content: string): boolean {
-    return this.config.whitelist.some(pattern => pattern.test(content));
+    return this.config.whitelist.some((pattern) => pattern.test(content));
   }
 
   private performAdditionalChecks(content: string): InjectionDetail[] {
@@ -722,11 +736,14 @@ export class PromptInjectionDetector {
     // EXCLUDING common formatting characters used in reports:
     // - Box drawing: ═ ─ │ ┌ ┐ └ ┘ ├ ┤ ┬ ┴ ┼ (Unicode U+2500-U+257F)
     // - Horizontal lines commonly used in markdown/ASCII art
-    const repeatedChars = /([#*_`~]{10,})/g;  // Removed = and - which are common in reports
+    const repeatedChars = /([#*_`~]{10,})/g; // Removed = and - which are common in reports
     let match;
     while ((match = repeatedChars.exec(content)) !== null) {
       // Additional check: skip if it looks like a markdown header or separator
-      const context = content.substring(Math.max(0, match.index - 5), match.index + match[0].length + 5);
+      const context = content.substring(
+        Math.max(0, match.index - 5),
+        match.index + match[0].length + 5,
+      );
       const isMarkdownFormatting = /^[\s\n]*(#{1,6}\s|[-=]{3,}\s*$)/m.test(context);
 
       if (!isMarkdownFormatting) {
@@ -736,7 +753,7 @@ export class PromptInjectionDetector {
           matchedContent: match[0],
           position: { start: match.index, end: match.index + match[0].length },
           severity: 'low',
-          description: 'Repeated special characters (potential delimiter attack)'
+          description: 'Repeated special characters (potential delimiter attack)',
         });
       }
     }
@@ -760,10 +777,10 @@ export class PromptInjectionDetector {
           details.push({
             type: 'encoded_payload',
             pattern: 'base64_hidden_injection',
-            matchedContent: match[0].substring(0, 50) + '...',
+            matchedContent: `${match[0].substring(0, 50)}...`,
             position: { start: match.index, end: match.index + match[0].length },
             severity: 'high',
-            description: 'Base64 encoded content contains potential injection'
+            description: 'Base64 encoded content contains potential injection',
           });
         }
       } catch {
@@ -797,7 +814,7 @@ export class PromptInjectionDetector {
           matchedContent: `Cyrillic '${char}' instead of Latin '${latin}'`,
           position: { start: index, end: index + 1 },
           severity: 'medium',
-          description: 'Homoglyph character detected (potential obfuscation)'
+          description: 'Homoglyph character detected (potential obfuscation)',
         });
       }
     }
@@ -808,7 +825,7 @@ export class PromptInjectionDetector {
   private calculateOverallSeverity(details: InjectionDetail[]): InjectionSeverity {
     if (details.length === 0) return 'low';
 
-    const severities = details.map(d => d.severity);
+    const severities = details.map((d) => d.severity);
 
     if (severities.includes('critical')) return 'critical';
     if (severities.includes('high')) return 'high';
@@ -818,10 +835,14 @@ export class PromptInjectionDetector {
 
   private getSeverityScore(severity: InjectionSeverity): number {
     switch (severity) {
-      case 'critical': return 40;
-      case 'high': return 25;
-      case 'medium': return 15;
-      case 'low': return 5;
+      case 'critical':
+        return 40;
+      case 'high':
+        return 25;
+      case 'medium':
+        return 15;
+      case 'low':
+        return 5;
     }
   }
 
@@ -851,7 +872,7 @@ export class PromptInjectionDetector {
 
   private sanitizeEncodedContent(content: string): string {
     // Normalize unicode escape sequences
-    return content.replace(/\\u([0-9a-fA-F]{4})/g, (match, code) => {
+    return content.replace(/\\u([0-9a-fA-F]{4})/g, (_match, code) => {
       const charCode = parseInt(code, 16);
       // Only allow printable ASCII range
       if (charCode >= 32 && charCode <= 126) {
@@ -866,20 +887,21 @@ export class PromptInjectionDetector {
       low: chalk.yellow,
       medium: chalk.hex('#FFA500'),
       high: chalk.red,
-      critical: chalk.bgRed.white
+      critical: chalk.bgRed.white,
     };
 
-    console.log(severityColor[result.severity](
-      `[PromptInjectionDetector] ${result.severity.toUpperCase()} - ` +
-      `Detected ${result.details.length} potential injection(s), ` +
-      `Risk Score: ${result.riskScore}, Action: ${result.action}`
-    ));
+    console.log(
+      severityColor[result.severity](
+        `[PromptInjectionDetector] ${result.severity.toUpperCase()} - ` +
+          `Detected ${result.details.length} potential injection(s), ` +
+          `Risk Score: ${result.riskScore}, Action: ${result.action}`,
+      ),
+    );
 
     for (const detail of result.details) {
-      console.log(chalk.gray(
-        `  - ${detail.type}: ${detail.description} ` +
-        `(pattern: ${detail.pattern})`
-      ));
+      console.log(
+        chalk.gray(`  - ${detail.type}: ${detail.description} ` + `(pattern: ${detail.pattern})`),
+      );
     }
 
     // Store in history
@@ -946,21 +968,21 @@ export function processAgentResponse(response: string): {
       return {
         safe: true,
         content: response,
-        warning: `Low-risk injection patterns detected (risk: ${result.riskScore})`
+        warning: `Low-risk injection patterns detected (risk: ${result.riskScore})`,
       };
 
     case 'block':
       return {
         safe: false,
         content: result.sanitizedContent,
-        warning: `Injection attempt blocked (risk: ${result.riskScore})`
+        warning: `Injection attempt blocked (risk: ${result.riskScore})`,
       };
 
     case 'quarantine':
       return {
         safe: false,
         content: '[Content quarantined due to critical injection attempt]',
-        warning: `Critical injection attempt quarantined (risk: ${result.riskScore})`
+        warning: `Critical injection attempt quarantined (risk: ${result.riskScore})`,
       };
   }
 }
@@ -975,5 +997,5 @@ export default {
   detectInjection,
   sanitizeInjection,
   isContentSafe,
-  processAgentResponse
+  processAgentResponse,
 };

@@ -39,11 +39,7 @@ export class AppError extends Error {
   }
 
   /** Convenience: create from an unknown catch value */
-  static from(
-    err: unknown,
-    code: string,
-    context?: Record<string, unknown>,
-  ): AppError {
+  static from(err: unknown, code: string, context?: Record<string, unknown>): AppError {
     if (err instanceof AppError) {
       return err;
     }
@@ -88,10 +84,7 @@ export interface RetryOptions {
  * On each failure the delay doubles: baseDelay, baseDelay*2, baseDelay*4 ...
  * After exhausting all retries the last error is re-thrown as an `AppError`.
  */
-export async function withRetry<T>(
-  fn: () => Promise<T>,
-  options: RetryOptions,
-): Promise<T> {
+export async function withRetry<T>(fn: () => Promise<T>, options: RetryOptions): Promise<T> {
   const { maxRetries = 3, baseDelay = 1000, operationName, shouldRetry } = options;
 
   let lastError: unknown;
@@ -108,7 +101,7 @@ export async function withRetry<T>(
       }
 
       if (attempt < maxRetries) {
-        const delay = baseDelay * Math.pow(2, attempt);
+        const delay = baseDelay * 2 ** attempt;
         logger.warn(
           `[${operationName}] Attempt ${attempt + 1}/${maxRetries + 1} failed, retrying in ${delay}ms...`,
         );
@@ -175,5 +168,5 @@ export function logServiceWarning(
 // ---------------------------------------------------------------------------
 
 function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

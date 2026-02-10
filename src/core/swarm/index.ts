@@ -13,21 +13,18 @@
  * @module core/swarm/index
  */
 
-// Types and config
-export type { YoloConfig } from './types.js';
-export { DEFAULT_CONFIG } from './types.js';
-
 // Utility
 export { BoundedResultStore } from './BoundedResultStore.js';
-
 // Helpers
 export {
   buildMcpContext,
-  generateNextStepSuggestions,
   checkMultiAgentConsensus,
+  cleanJson,
+  generateNextStepSuggestions,
   validateAgentResults,
-  cleanJson
 } from './helpers.js';
-
 // Main class and factory
-export { Swarm, createSwarm } from './Swarm.js';
+export { createSwarm, Swarm } from './Swarm.js';
+// Types and config
+export type { YoloConfig } from './types.js';
+export { DEFAULT_CONFIG } from './types.js';

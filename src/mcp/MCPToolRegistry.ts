@@ -5,8 +5,8 @@
  * Handles registration, lookup, and validation of MCP capabilities.
  */
 
-import { MCPTool, MCPPrompt, MCPResource, MCPValidationResult } from './MCPTypes.js';
 import { resolveAlias } from './MCPAliases.js';
+import type { MCPPrompt, MCPResource, MCPTool, MCPValidationResult } from './MCPTypes.js';
 
 // ============================================================
 // Types
@@ -38,7 +38,7 @@ export class MCPToolRegistry {
     const parts = fullName.split('__');
     return {
       serverName: parts[0],
-      itemName: parts.slice(1).join('__')
+      itemName: parts.slice(1).join('__'),
     };
   }
 
@@ -172,9 +172,10 @@ export class MCPToolRegistry {
     const warnings: string[] = [];
 
     const resolved = resolveAlias(toolName);
-    const tool = this.getTool(resolved) ||
-      this.getAllTools().find(t =>
-        this.formatGlobalName(t.serverName, t.name) === resolved || t.name === resolved
+    const tool =
+      this.getTool(resolved) ||
+      this.getAllTools().find(
+        (t) => this.formatGlobalName(t.serverName, t.name) === resolved || t.name === resolved,
       );
 
     if (!tool) {
@@ -227,7 +228,7 @@ export class MCPToolRegistry {
   // ============================================================
 
   getToolDefinitionsForGemini(): any[] {
-    return this.getAllTools().map(tool => ({
+    return this.getAllTools().map((tool) => ({
       name: `mcp__${tool.serverName}__${tool.name}`,
       description: `[MCP:${tool.serverName}] ${tool.description}`,
       parameters: tool.inputSchema,

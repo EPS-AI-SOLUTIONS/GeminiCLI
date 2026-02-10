@@ -110,7 +110,7 @@ export function createActionError(action: string, target: string, error: unknown
 export async function withErrorLogging<T>(
   section: string,
   action: string,
-  fn: () => Promise<T>
+  fn: () => Promise<T>,
 ): Promise<T> {
   try {
     return await fn();

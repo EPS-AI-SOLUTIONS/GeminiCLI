@@ -2,51 +2,49 @@
  * Store Slices - Re-export all slice modules
  */
 
-// UI Slice
+// Chat Slice
 export {
-  createUISlice,
-  initialUIState,
-  selectTheme,
-  selectCount,
-  selectProvider,
-  type UIState,
-  type UIActions,
-  type UISlice,
-} from './uiSlice';
+  type ChatActions,
+  type ChatSlice,
+  type ChatState,
+  createChatSlice,
+  initialChatState,
+  selectChatHistory,
+  selectCurrentMessages,
+  selectHasMessages,
+  selectMessageCount,
+} from './chatSlice';
 
 // Session Slice
 export {
   createSessionSlice,
   initialSessionState,
-  selectSessions,
-  selectCurrentSessionId,
-  selectSessionById,
-  type SessionState,
   type SessionActions,
   type SessionSlice,
+  type SessionState,
+  selectCurrentSessionId,
+  selectSessionById,
+  selectSessions,
 } from './sessionSlice';
-
-// Chat Slice
-export {
-  createChatSlice,
-  initialChatState,
-  selectChatHistory,
-  selectCurrentMessages,
-  selectMessageCount,
-  selectHasMessages,
-  type ChatState,
-  type ChatActions,
-  type ChatSlice,
-} from './chatSlice';
-
 // Settings Slice
 export {
   createSettingsSlice,
   initialSettingsState,
-  selectSettings,
-  selectIsApiKeySet,
-  selectUseSwarm,
-  type SettingsState,
   type SettingsActions,
   type SettingsSlice,
+  type SettingsState,
+  selectIsApiKeySet,
+  selectSettings,
+  selectUseSwarm,
 } from './settingsSlice';
+// UI Slice
+export {
+  createUISlice,
+  initialUIState,
+  selectCount,
+  selectProvider,
+  selectTheme,
+  type UIActions,
+  type UISlice,
+  type UIState,
+} from './uiSlice';

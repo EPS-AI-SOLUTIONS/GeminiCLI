@@ -24,10 +24,7 @@ class ContextWindowManager {
   }
 
   private pruneIfNeeded(): void {
-    const totalTokens = this.messages.reduce(
-      (sum, m) => sum + this.estimateTokens(m.content),
-      0
-    );
+    const totalTokens = this.messages.reduce((sum, m) => sum + this.estimateTokens(m.content), 0);
 
     if (totalTokens <= this.maxTokens) return;
 
@@ -35,13 +32,13 @@ class ContextWindowManager {
     const scored = this.messages.map((m, i) => ({
       message: m,
       index: i,
-      score: m.importance * 0.6 + (i / this.messages.length) * 0.4
+      score: m.importance * 0.6 + (i / this.messages.length) * 0.4,
     }));
 
     scored.sort((a, b) => b.score - a.score);
 
     // Keep highest scored messages up to limit
-    let kept: typeof scored = [];
+    const kept: typeof scored = [];
     let tokens = 0;
 
     for (const item of scored) {
@@ -54,11 +51,11 @@ class ContextWindowManager {
 
     // Restore chronological order
     kept.sort((a, b) => a.index - b.index);
-    this.messages = kept.map(k => k.message);
+    this.messages = kept.map((k) => k.message);
   }
 
   getContext(): string {
-    return this.messages.map(m => `[${m.role}]: ${m.content}`).join('\n\n');
+    return this.messages.map((m) => `[${m.role}]: ${m.content}`).join('\n\n');
   }
 
   getMessages(): ContextMessage[] {

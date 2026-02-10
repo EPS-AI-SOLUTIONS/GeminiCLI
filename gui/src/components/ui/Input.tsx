@@ -2,8 +2,8 @@
  * Input Component - Matrix Glass Theme
  */
 
-import { forwardRef, type InputHTMLAttributes, type ReactNode } from 'react';
 import { clsx } from 'clsx';
+import { forwardRef, type InputHTMLAttributes, type ReactNode } from 'react';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -40,7 +40,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               leftIcon && 'pl-10',
               rightIcon && 'pr-10',
               error && 'border-[var(--matrix-error)] focus:border-[var(--matrix-error)]',
-              className
+              className,
             )}
             {...props}
           />
@@ -50,12 +50,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             </div>
           )}
         </div>
-        {error && (
-          <p className="mt-1 text-xs text-[var(--matrix-error)]">{error}</p>
-        )}
+        {error && <p className="mt-1 text-xs text-[var(--matrix-error)]">{error}</p>}
       </div>
     );
-  }
+  },
 );
 
 Input.displayName = 'Input';

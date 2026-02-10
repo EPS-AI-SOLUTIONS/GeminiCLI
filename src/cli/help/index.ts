@@ -4,66 +4,61 @@
  * @module help
  */
 
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import chalk from 'chalk';
-import fs from 'fs/promises';
-import path from 'path';
+import { getBooleanFlag, getStringFlag, parseArgs } from '../CommandHelpers.js';
 import {
-  commandRegistry,
   type CommandContext,
   type CommandResult,
-  success,
+  commandRegistry,
   error,
+  success,
 } from '../CommandRegistry.js';
-import {
-  parseArgs,
-  getBooleanFlag,
-  getStringFlag,
-} from '../CommandHelpers.js';
 
-// Re-export all types
-export type {
-  CommandExample,
-  CommandHelpMeta,
-  CategoryConfig,
-  ExportFormat,
-} from './types.js';
-
-// Re-export registry and config
-export {
-  helpMetaRegistry,
-  categoryConfig,
-  getCategoryDisplay,
-} from './HelpMetaRegistry.js';
-
+// Re-export exporters
+export { exportToJSON, exportToMarkdown } from './exporters.js';
 // Re-export formatting
 export { formatArg, formatSignature } from './formatting.js';
-
 // Re-export generators
 export {
-  generateOverview,
+  generateCategoryHelp,
   generateCommandHelp,
   generateFullReference,
-  generateCategoryHelp,
+  generateOverview,
   searchHelp,
 } from './generators.js';
+// Re-export registry and config
+export {
+  categoryConfig,
+  getCategoryDisplay,
+  helpMetaRegistry,
+} from './HelpMetaRegistry.js';
 
 // Re-export interactive
 export { runInteractiveHelp } from './interactive.js';
+// Re-export all types
+export type {
+  CategoryConfig,
+  CommandExample,
+  CommandHelpMeta,
+  ExportFormat,
+} from './types.js';
 
-// Re-export exporters
-export { exportToMarkdown, exportToJSON } from './exporters.js';
-
-// Local imports for handler (needed because re-exports don't create local bindings)
-import { helpMetaRegistry } from './HelpMetaRegistry.js';
 import {
-  generateOverview as _generateOverview,
+  exportToJSON as _exportToJSON,
+  exportToMarkdown as _exportToMarkdown,
+} from './exporters.js';
+import {
+  generateCategoryHelp as _generateCategoryHelp,
   generateCommandHelp as _generateCommandHelp,
   generateFullReference as _generateFullReference,
-  generateCategoryHelp as _generateCategoryHelp,
+  generateOverview as _generateOverview,
   searchHelp as _searchHelp,
 } from './generators.js';
+// Local imports for handler (needed because re-exports don't create local bindings)
+import { helpMetaRegistry } from './HelpMetaRegistry.js';
 import { runInteractiveHelp as _runInteractiveHelp } from './interactive.js';
-import { exportToMarkdown as _exportToMarkdown, exportToJSON as _exportToJSON } from './exporters.js';
 import type { CommandExample } from './types.js';
 
 // ============================================================
@@ -80,9 +75,11 @@ async function helpHandler(ctx: CommandContext): Promise<CommandResult> {
 
   if (getBooleanFlag(flags, 'export', 'e') || getStringFlag(flags, 'export')) {
     const format = getStringFlag(flags, 'format', 'f') || 'markdown';
-    const filename = typeof flags.export === 'string'
-      ? flags.export
-      : getStringFlag(flags, 'output', 'o') || `help-reference.${format === 'json' ? 'json' : 'md'}`;
+    const filename =
+      typeof flags.export === 'string'
+        ? flags.export
+        : getStringFlag(flags, 'output', 'o') ||
+          `help-reference.${format === 'json' ? 'json' : 'md'}`;
 
     let content: string;
     if (format === 'json') {
@@ -144,10 +141,10 @@ export function registerHelpCommand(): void {
       {
         name: 'command',
         description: 'Command name to get help for',
-        required: false
-      }
+        required: false,
+      },
     ],
-    handler: helpHandler
+    handler: helpHandler,
   });
 
   initializeHelpMetadata();
@@ -163,7 +160,7 @@ export function addCommandExamples(commandName: string, examples: CommandExample
   const existing = helpMetaRegistry.get(commandName);
   if (existing?.examples) {
     helpMetaRegistry.register(commandName, {
-      examples: [...existing.examples, ...examples]
+      examples: [...existing.examples, ...examples],
     });
   } else {
     helpMetaRegistry.register(commandName, { examples });
@@ -174,7 +171,7 @@ export function addCommandNotes(commandName: string, notes: string[]): void {
   const existing = helpMetaRegistry.get(commandName);
   if (existing?.notes) {
     helpMetaRegistry.register(commandName, {
-      notes: [...existing.notes, ...notes]
+      notes: [...existing.notes, ...notes],
     });
   } else {
     helpMetaRegistry.register(commandName, { notes });
@@ -188,7 +185,8 @@ export function setCommandSeeAlso(commandName: string, seeAlso: string[]): void 
 export function deprecateCommand(commandName: string, message?: string): void {
   helpMetaRegistry.register(commandName, {
     deprecated: true,
-    deprecatedMessage: message || 'This command is deprecated and may be removed in future versions'
+    deprecatedMessage:
+      message || 'This command is deprecated and may be removed in future versions',
   });
 }
 
@@ -205,14 +203,14 @@ function initializeHelpMetadata(): void {
       { command: '/help --category ai', description: 'Show AI-related commands' },
       { command: '/help --search file', description: 'Search for file-related commands' },
       { command: '/help --interactive', description: 'Open interactive help browser' },
-      { command: '/help --export docs/commands.md', description: 'Export help to markdown file' }
+      { command: '/help --export docs/commands.md', description: 'Export help to markdown file' },
     ],
     notes: [
       'Use Tab for command autocompletion',
       'Commands starting with / are CLI commands',
-      'Regular text is sent to the AI model'
+      'Regular text is sent to the AI model',
     ],
-    seeAlso: ['sessions', 'history', 'fs', 'shell']
+    seeAlso: ['sessions', 'history', 'fs', 'shell'],
   });
 
   helpMetaRegistry.register('sessions', {
@@ -221,13 +219,10 @@ function initializeHelpMetadata(): void {
       { command: '/sessions new "My Project"', description: 'Create new named session' },
       { command: '/sessions switch abc123', description: 'Switch to session by ID' },
       { command: '/sessions branch "experiment"', description: 'Fork current session' },
-      { command: '/sessions export --format json', description: 'Export session to JSON' }
+      { command: '/sessions export --format json', description: 'Export session to JSON' },
     ],
-    notes: [
-      'Sessions are automatically saved',
-      'Use /resume to quickly continue last session'
-    ],
-    seeAlso: ['history', 'resume']
+    notes: ['Sessions are automatically saved', 'Use /resume to quickly continue last session'],
+    seeAlso: ['history', 'resume'],
   });
 
   helpMetaRegistry.register('fs', {
@@ -236,14 +231,14 @@ function initializeHelpMetadata(): void {
       { command: '/fs ls src --recursive', description: 'List directory recursively' },
       { command: '/fs write output.txt "Hello World"', description: 'Write to file' },
       { command: '/fs diagnose path/to/file', description: 'Diagnose path issues' },
-      { command: '/fs encoding file.txt', description: 'Detect file encoding' }
+      { command: '/fs encoding file.txt', description: 'Detect file encoding' },
     ],
     notes: [
       'Use --force to write to readonly files',
       'Use --encoding to specify file encoding',
-      'Path diagnostics help troubleshoot access issues'
+      'Path diagnostics help troubleshoot access issues',
     ],
-    seeAlso: ['shell', 'search']
+    seeAlso: ['shell', 'search'],
   });
 
   helpMetaRegistry.register('shell', {
@@ -252,13 +247,13 @@ function initializeHelpMetadata(): void {
       { command: '/shell bg npm run dev', description: 'Start dev server in background' },
       { command: '/shell ps', description: 'List running processes' },
       { command: '/shell kill 1234', description: 'Kill process by PID' },
-      { command: '/shell sysinfo', description: 'Show system information' }
+      { command: '/shell sysinfo', description: 'Show system information' },
     ],
     notes: [
       'Background processes continue after command returns',
-      'Use /shell output <pid> to get process output'
+      'Use /shell output <pid> to get process output',
     ],
-    seeAlso: ['fs', 'native']
+    seeAlso: ['fs', 'native'],
   });
 
   helpMetaRegistry.register('search', {
@@ -266,13 +261,10 @@ function initializeHelpMetadata(): void {
       { command: '/search grep "TODO" "**/*.ts"', description: 'Search for TODO comments' },
       { command: '/search symbol useState', description: 'Find symbol definitions' },
       { command: '/search file app', description: 'Fuzzy find files' },
-      { command: '/search refs handleClick', description: 'Find references to function' }
+      { command: '/search refs handleClick', description: 'Find references to function' },
     ],
-    notes: [
-      'grep search is text-based',
-      'For LSP-powered semantic search, use /serena search'
-    ],
-    seeAlso: ['fs', 'serena', 'grep']
+    notes: ['grep search is text-based', 'For LSP-powered semantic search, use /serena search'],
+    seeAlso: ['fs', 'serena', 'grep'],
   });
 
   helpMetaRegistry.register('mem', {
@@ -281,43 +273,40 @@ function initializeHelpMetadata(): void {
       { command: '/mem get api_key', description: 'Retrieve a value' },
       { command: '/mem entity User class', description: 'Create entity' },
       { command: '/mem observe User "Has email field"', description: 'Add observation' },
-      { command: '/mem relate User uses Database', description: 'Create relation' }
+      { command: '/mem relate User uses Database', description: 'Create relation' },
     ],
-    notes: [
-      'Memory is persisted across sessions',
-      'Use /mem save to force save to disk'
-    ],
-    seeAlso: ['context', 'analyze']
+    notes: ['Memory is persisted across sessions', 'Use /mem save to force save to disk'],
+    seeAlso: ['context', 'analyze'],
   });
 
   helpMetaRegistry.register('history', {
     examples: [
       { command: '/history show 20', description: 'Show last 20 messages' },
       { command: '/history search "error"', description: 'Search in history' },
-      { command: '/history stats', description: 'Show session statistics' }
+      { command: '/history stats', description: 'Show session statistics' },
     ],
-    seeAlso: ['sessions', 'resume']
+    seeAlso: ['sessions', 'resume'],
   });
 
   helpMetaRegistry.register('resume', {
     examples: [
       { command: '/resume', description: 'Resume last session' },
-      { command: '/resume abc123', description: 'Resume specific session' }
+      { command: '/resume abc123', description: 'Resume specific session' },
     ],
-    seeAlso: ['sessions', 'history']
+    seeAlso: ['sessions', 'history'],
   });
 
   helpMetaRegistry.register('ollama', {
     examples: [
       { command: '/ollama', description: 'Show Ollama status' },
       { command: '/ollama-restart', description: 'Restart Ollama server' },
-      { command: '/ollama-monitor start', description: 'Start health monitoring' }
+      { command: '/ollama-monitor start', description: 'Start health monitoring' },
     ],
     notes: [
       'Ollama provides local AI model inference',
-      'Health monitoring auto-restarts on failures'
+      'Health monitoring auto-restarts on failures',
     ],
-    seeAlso: ['ollama-restart', 'ollama-monitor']
+    seeAlso: ['ollama-restart', 'ollama-monitor'],
   });
 
   helpMetaRegistry.register('cmd', {
@@ -327,41 +316,47 @@ function initializeHelpMetadata(): void {
       { command: '/cmd info fs', description: 'Show detailed info for /fs command' },
       { command: '/cmd diagnostics', description: 'Run full diagnostics' },
       { command: '/cmd diag validate', description: 'Validate registry consistency' },
-      { command: '/cmd diag stats', description: 'Show command statistics' }
+      { command: '/cmd diag stats', description: 'Show command statistics' },
     ],
     notes: [
       'Use diagnostics to find issues with command registration',
-      'Useful for debugging alias conflicts'
+      'Useful for debugging alias conflicts',
     ],
-    seeAlso: ['help']
+    seeAlso: ['help'],
   });
 
   helpMetaRegistry.register('native', {
     examples: [
       { command: '/native init', description: 'Initialize native tools for current directory' },
-      { command: '/native init /path/to/project', description: 'Initialize for specific directory' },
+      {
+        command: '/native init /path/to/project',
+        description: 'Initialize for specific directory',
+      },
       { command: '/native status', description: 'Show native tools status' },
-      { command: '/native shutdown', description: 'Cleanup and shutdown tools' }
+      { command: '/native shutdown', description: 'Cleanup and shutdown tools' },
     ],
     notes: [
       'Native tools must be initialized before using /fs, /shell, /search, /mem',
-      'Tools are initialized automatically on first use'
+      'Tools are initialized automatically on first use',
     ],
-    seeAlso: ['fs', 'shell', 'search', 'mem']
+    seeAlso: ['fs', 'shell', 'search', 'mem'],
   });
 
   helpMetaRegistry.register('grep', {
     examples: [
       { command: '/grep "TODO"', description: 'Find all TODO comments' },
-      { command: '/grep "import.*React" "**/*.tsx"', description: 'Find React imports in TSX files' },
-      { command: '/grep "function" "src/**/*.ts"', description: 'Find functions in source files' }
+      {
+        command: '/grep "import.*React" "**/*.tsx"',
+        description: 'Find React imports in TSX files',
+      },
+      { command: '/grep "function" "src/**/*.ts"', description: 'Find functions in source files' },
     ],
     notes: [
       'Uses ripgrep for fast searching when available',
       'Supports glob patterns for file filtering',
-      'For semantic code search, use /serena search'
+      'For semantic code search, use /serena search',
     ],
-    seeAlso: ['search', 'fs search', 'serena']
+    seeAlso: ['search', 'fs search', 'serena'],
   });
 
   helpMetaRegistry.register('serena', {
@@ -370,14 +365,14 @@ function initializeHelpMetadata(): void {
       { command: '/serena symbols', description: 'List all symbols in project' },
       { command: '/serena search "handleClick"', description: 'Semantic search for symbol' },
       { command: '/serena refs useState', description: 'Find all references to useState' },
-      { command: '/serena definition App', description: 'Go to definition of App' }
+      { command: '/serena definition App', description: 'Go to definition of App' },
     ],
     notes: [
       'Serena provides LSP-powered code intelligence',
       'Requires Language Server Protocol support for your language',
-      'Much more accurate than text-based search for code'
+      'Much more accurate than text-based search for code',
     ],
-    seeAlso: ['search', 'analyze', 'context']
+    seeAlso: ['search', 'analyze', 'context'],
   });
 
   helpMetaRegistry.register('context', {
@@ -385,13 +380,13 @@ function initializeHelpMetadata(): void {
       { command: '/context show', description: 'Show current context' },
       { command: '/context add src/App.tsx', description: 'Add file to context' },
       { command: '/context clear', description: 'Clear all context' },
-      { command: '/context files', description: 'List files in context' }
+      { command: '/context files', description: 'List files in context' },
     ],
     notes: [
       'Context helps the AI understand your codebase better',
-      'Add relevant files before asking about specific code'
+      'Add relevant files before asking about specific code',
     ],
-    seeAlso: ['analyze', 'memory']
+    seeAlso: ['analyze', 'memory'],
   });
 
   helpMetaRegistry.register('analyze', {
@@ -399,26 +394,26 @@ function initializeHelpMetadata(): void {
       { command: '/analyze', description: 'Analyze current directory' },
       { command: '/analyze src/', description: 'Analyze specific directory' },
       { command: '/analyze --deep', description: 'Run deep analysis' },
-      { command: '/analyze --refresh', description: 'Refresh analysis cache' }
+      { command: '/analyze --refresh', description: 'Refresh analysis cache' },
     ],
     notes: [
       'Creates a knowledge graph of your codebase',
       'Analysis results are cached for performance',
-      'Use --refresh to update after code changes'
+      'Use --refresh to update after code changes',
     ],
-    seeAlso: ['context', 'memory', 'serena']
+    seeAlso: ['context', 'memory', 'serena'],
   });
 
   helpMetaRegistry.register('mcpstatus', {
     examples: [
       { command: '/mcpstatus', description: 'Show all MCP server status' },
-      { command: '/mcp', description: 'Alias for /mcpstatus' }
+      { command: '/mcp', description: 'Alias for /mcpstatus' },
     ],
     notes: [
       'Most MCP servers have native replacements',
-      'Use /fs, /shell, /search, /mem for native operations'
+      'Use /fs, /shell, /search, /mem for native operations',
     ],
-    seeAlso: ['ollama', 'serena', 'native']
+    seeAlso: ['ollama', 'serena', 'native'],
   });
 }
 

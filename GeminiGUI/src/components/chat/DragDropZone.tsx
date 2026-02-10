@@ -5,8 +5,8 @@
  * Overlay for drag & drop file uploads.
  */
 
-import { memo, useState, useCallback, type DragEvent, type ReactNode } from 'react';
 import { Paperclip } from 'lucide-react';
+import { type DragEvent, memo, type ReactNode, useCallback, useState } from 'react';
 
 // ============================================================================
 // TYPES
@@ -58,7 +58,7 @@ export const DragDropZone = memo<DragDropZoneProps>(
         e.stopPropagation();
         setIsDragActive(false);
 
-        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        if (e.dataTransfer.files?.[0]) {
           const file = e.dataTransfer.files[0];
           const maxSize = maxFileSizeMB * 1024 * 1024;
 
@@ -87,12 +87,12 @@ export const DragDropZone = memo<DragDropZoneProps>(
           }
         }
       },
-      [onImageDrop, onTextDrop, maxFileSizeMB]
+      [onImageDrop, onTextDrop, maxFileSizeMB],
     );
 
     return (
       <section
-        className="flex flex-col h-full min-h-0 relative"
+        className="flex flex-col w-full h-full min-h-0 relative"
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
         onDragOver={handleDrag}
@@ -102,7 +102,7 @@ export const DragDropZone = memo<DragDropZoneProps>(
         {children}
       </section>
     );
-  }
+  },
 );
 
 DragDropZone.displayName = 'DragDropZone';

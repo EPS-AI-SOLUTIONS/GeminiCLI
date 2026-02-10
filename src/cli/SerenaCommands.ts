@@ -17,13 +17,13 @@
  * - /grep = Alias for /fs search (simple text search, NOT LSP)
  */
 
+import * as path from 'node:path';
 import chalk from 'chalk';
-import * as path from 'path';
-import { commandRegistry, CommandResult, success, error } from './CommandRegistry.js';
 import { nativeCodeIntelligence } from '../native/NativeCodeIntelligence.js';
 import { nativeLSP } from '../native/NativeLSP.js';
-import { truncate, box } from './CommandHelpers.js';
 import { createFailedMessage } from '../utils/errorHandling.js';
+import { box, truncate } from './CommandHelpers.js';
+import { type CommandResult, commandRegistry, error, success } from './CommandRegistry.js';
 
 // ============================================================
 // Command Handlers
@@ -154,7 +154,7 @@ async function handleSearch(args: string[]): Promise<CommandResult> {
   console.log(chalk.cyan(`Searching for: ${pattern}...`));
 
   const results = await nativeCodeIntelligence.searchPattern(pattern, {
-    maxResults: 50
+    maxResults: 50,
   });
 
   if (!results || results.length === 0) {
@@ -207,8 +207,8 @@ async function handleList(args: string[]): Promise<CommandResult> {
   try {
     const entries = await nativeCodeIntelligence.listDir(relativePath);
 
-    const dirs = entries.filter(e => e.type === 'directory').map(e => e.name);
-    const files = entries.filter(e => e.type === 'file').map(e => e.name);
+    const dirs = entries.filter((e) => e.type === 'directory').map((e) => e.name);
+    const files = entries.filter((e) => e.type === 'file').map((e) => e.name);
 
     console.log(chalk.cyan(`\nDirectory: ${relativePath}\n`));
 
@@ -347,7 +347,9 @@ async function handleSymbols(args: string[]): Promise<CommandResult> {
       for (const sym of syms) {
         const kindColor = getKindColor(sym.kind);
         const prefix = '  '.repeat(indent);
-        console.log(`${prefix}${kindColor(sym.kind.padEnd(12))} ${chalk.white(sym.name)} ${chalk.gray(`(line ${sym.line})`)}`);
+        console.log(
+          `${prefix}${kindColor(sym.kind.padEnd(12))} ${chalk.white(sym.name)} ${chalk.gray(`(line ${sym.line})`)}`,
+        );
         if (sym.children) {
           printSymbols(sym.children, indent + 1);
         }
@@ -427,8 +429,6 @@ async function handleSerenaCommand(args: string[]): Promise<CommandResult> {
     case 'read':
     case 'cat':
       return handleReadFile(args.slice(1));
-
-    case 'help':
     default:
       printHelp();
       return success(null);
@@ -451,13 +451,32 @@ function getKindColor(kind: string): (text: string) => string {
 
 function getSymbolKindName(kind: number): string {
   const names: Record<number, string> = {
-    1: 'File', 2: 'Module', 3: 'Namespace', 4: 'Package',
-    5: 'Class', 6: 'Method', 7: 'Property', 8: 'Field',
-    9: 'Constructor', 10: 'Enum', 11: 'Interface', 12: 'Function',
-    13: 'Variable', 14: 'Constant', 15: 'String', 16: 'Number',
-    17: 'Boolean', 18: 'Array', 19: 'Object', 20: 'Key',
-    21: 'Null', 22: 'EnumMember', 23: 'Struct', 24: 'Event',
-    25: 'Operator', 26: 'TypeParameter'
+    1: 'File',
+    2: 'Module',
+    3: 'Namespace',
+    4: 'Package',
+    5: 'Class',
+    6: 'Method',
+    7: 'Property',
+    8: 'Field',
+    9: 'Constructor',
+    10: 'Enum',
+    11: 'Interface',
+    12: 'Function',
+    13: 'Variable',
+    14: 'Constant',
+    15: 'String',
+    16: 'Number',
+    17: 'Boolean',
+    18: 'Array',
+    19: 'Object',
+    20: 'Key',
+    21: 'Null',
+    22: 'EnumMember',
+    23: 'Struct',
+    24: 'Event',
+    25: 'Operator',
+    26: 'TypeParameter',
   };
   return names[kind] || 'Unknown';
 }
@@ -499,7 +518,7 @@ export function registerSerenaCommands(): void {
     description: 'Code intelligence commands (native LSP-powered)',
     usage: '/serena <subcommand> [args]',
     category: 'code',
-    handler: async (ctx) => handleSerenaCommand(ctx.args)
+    handler: async (ctx) => handleSerenaCommand(ctx.args),
   });
 
   // Quick /code command (alias for /serena find)
@@ -510,7 +529,7 @@ export function registerSerenaCommands(): void {
     description: 'Quick LSP symbol search (alias for /serena find)',
     usage: '/code <symbol-pattern>',
     category: 'code',
-    handler: async (ctx) => handleFindSymbol(ctx.args)
+    handler: async (ctx) => handleFindSymbol(ctx.args),
   });
 
   // NOTE: /grep and /search are registered in NativeCommands.ts as simple text search
@@ -531,5 +550,5 @@ export const serenaCommands = {
   list: handleList,
   memory: handleMemory,
   symbols: handleSymbols,
-  readFile: handleReadFile
+  readFile: handleReadFile,
 };

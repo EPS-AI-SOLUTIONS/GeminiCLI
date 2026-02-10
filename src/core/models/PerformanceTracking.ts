@@ -23,7 +23,7 @@ class ModelPerformanceTracker {
         totalLatency: 0,
         avgLatency: 0,
         lastUsed: new Date(),
-        qualityScores: []
+        qualityScores: [],
       });
     }
 
@@ -54,7 +54,7 @@ class ModelPerformanceTracker {
 
   getAllMetrics(): Record<string, ModelMetrics> {
     const result: Record<string, ModelMetrics> = {};
-    this.metrics.forEach((v, k) => result[k] = v);
+    this.metrics.forEach((v, k) => (result[k] = v));
     return result;
   }
 

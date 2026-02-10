@@ -10,27 +10,32 @@
  * - MCP tool integration
  */
 
-import { Agent, AGENT_PERSONAS } from './agent/Agent.js';
-import { SwarmTask, ExecutionResult, AgentRole } from '../types/index.js';
-import { ollamaSemaphore, withRetry } from './TrafficControl.js';
-import { getPlatformPromptPrefix, loadGrimoires, getFewShotExamples, mapTaskTypeToExampleCategory, getEnhancedFewShotExamples, getAgentSpecificExamples } from './PromptSystem.js';
-import { mcpManager } from '../mcp/index.js';
-import { sanitizer } from './SecuritySystem.js';
-import { NativeFileSystem } from '../native/nativefilesystem/NativeFileSystem.js';
-import { logger } from './LiveLogger.js';
+import { exec } from 'node:child_process';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { promisify } from 'node:util';
+import chalk from 'chalk';
 import pLimit from 'p-limit';
+import { mcpManager } from '../mcp/index.js';
+import { NativeFileSystem } from '../native/nativefilesystem/NativeFileSystem.js';
+import {
+  type AgentRole,
+  type ExecutionResult,
+  resolveAgentRoleSafe,
+  type SwarmTask,
+} from '../types/index.js';
 
 // Anti-hallucination solutions (Solutions 27-29)
 // DISABLED: TaskScopeLimiter removed - causes false positives
 // import { taskScopeLimiter } from './TaskScopeLimiter.js';
 import { getAgentMemoryIsolation } from './AgentMemoryIsolation.js';
+import { AGENT_PERSONAS, Agent } from './agent/Agent.js';
+import { AggregateHydraError } from './errors.js';
 import { factualGroundingChecker } from './FactualGrounding.js';
-import ora from 'ora';
-import chalk from 'chalk';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import path from 'path';
-import fs from 'fs/promises';
+import { logger } from './LiveLogger.js';
+import { loadGrimoires } from './PromptSystem.js';
+import { sanitizer } from './SecuritySystem.js';
+import { withRetry } from './TrafficControl.js';
 
 const execAsync = promisify(exec);
 
@@ -38,29 +43,29 @@ const execAsync = promisify(exec);
  * Configuration for GraphProcessor
  */
 export interface GraphProcessorConfig {
-  yolo?: boolean;           // High concurrency mode
-  maxConcurrency?: number;  // Override concurrency
-  taskTimeout?: number;     // Timeout per task (ms)
-  maxRetries?: number;      // Retry attempts
-  silentExec?: boolean;     // Silent EXEC mode
-  enableMcp?: boolean;      // MCP tool support
-  preferredModel?: string;  // Override model for execution (from PRE-A classification)
-  rootDir?: string;         // Project root directory for path validation
-  forceOllama?: boolean;    // Force all agents to use Ollama (Phase B optimization)
-  ollamaModel?: string;     // Specific Ollama model for forceOllama mode
+  yolo?: boolean; // High concurrency mode
+  maxConcurrency?: number; // Override concurrency
+  taskTimeout?: number; // Timeout per task (ms)
+  maxRetries?: number; // Retry attempts
+  silentExec?: boolean; // Silent EXEC mode
+  enableMcp?: boolean; // MCP tool support
+  preferredModel?: string; // Override model for execution (from PRE-A classification)
+  rootDir?: string; // Project root directory for path validation
+  forceOllama?: boolean; // Force all agents to use Ollama (Phase B optimization)
+  ollamaModel?: string; // Specific Ollama model for forceOllama mode
 }
 
 const DEFAULT_CONFIG: GraphProcessorConfig = {
   yolo: false,
   maxConcurrency: undefined,
   taskTimeout: 300000, // BUG-005 FIX: 5 minutes for Ollama parallel execution (was 3 min)
-  maxRetries: 2,       // 2 retries (reduced from 3)
+  maxRetries: 2, // 2 retries (reduced from 3)
   silentExec: true,
   enableMcp: true,
   preferredModel: undefined,
-  rootDir: process.cwd(),  // Default to current working directory
-  forceOllama: false,      // Default: respect agent personas
-  ollamaModel: 'qwen3:4b'  // Default model when forceOllama is true (Qwen3)
+  rootDir: process.cwd(), // Default to current working directory
+  forceOllama: false, // Default: respect agent personas
+  ollamaModel: 'qwen3:4b', // Default model when forceOllama is true (Qwen3)
 };
 
 /**
@@ -83,7 +88,15 @@ interface DetailedTaskSpec {
 
   // Task description
   taskDescription: string;
-  taskType: 'code_write' | 'code_read' | 'code_modify' | 'analysis' | 'test' | 'build' | 'documentation' | 'other';
+  taskType:
+    | 'code_write'
+    | 'code_read'
+    | 'code_modify'
+    | 'analysis'
+    | 'test'
+    | 'build'
+    | 'documentation'
+    | 'other';
 
   // File context
   projectRoot: string;
@@ -128,8 +141,8 @@ export class GraphProcessor {
   private limit: ReturnType<typeof pLimit>;
   private completedTasks: Map<number, boolean> = new Map();
   private results: Map<number, ExecutionResult> = new Map();
-  private taskOutputs: Map<number, string> = new Map();  // Store outputs for context injection
-  private rootDir: string;  // Project root directory for path validation
+  private taskOutputs: Map<number, string> = new Map(); // Store outputs for context injection
+  private rootDir: string; // Project root directory for path validation
 
   // NAPRAWKA: Cache odczytanych plików - żeby nie czytać tego samego pliku wielokrotnie
   private fileCache: Map<string, { content: string; timestamp: number }> = new Map();
@@ -143,19 +156,23 @@ export class GraphProcessor {
 
     // Security warning if using default cwd
     if (!config.rootDir) {
-      console.warn(chalk.yellow(
-        '[SECURITY] No rootDir specified, using process.cwd(). ' +
-        'Specify rootDir explicitly for better security.'
-      ));
+      console.warn(
+        chalk.yellow(
+          '[SECURITY] No rootDir specified, using process.cwd(). ' +
+            'Specify rootDir explicitly for better security.',
+        ),
+      );
     }
 
     // Determine concurrency
-    const concurrency = this.config.maxConcurrency
-      ?? (this.config.yolo ? 12 : 6);
+    const concurrency = this.config.maxConcurrency ?? (this.config.yolo ? 12 : 6);
 
     this.limit = pLimit(concurrency);
 
-    logger.system(`GraphProcessor initialized: Concurrency ${concurrency} ${this.config.yolo ? '(YOLO)' : ''}`, 'info');
+    logger.system(
+      `GraphProcessor initialized: Concurrency ${concurrency} ${this.config.yolo ? '(YOLO)' : ''}`,
+      'info',
+    );
     logger.system(`Root directory: ${this.rootDir}`, 'debug');
     if (this.config.forceOllama) {
       logger.system(`🦙 Force Ollama mode: ${this.config.ollamaModel || 'qwen3:4b'}`, 'info');
@@ -170,7 +187,7 @@ export class GraphProcessor {
 
     // Check cache
     const cached = this.fileCache.get(filePath);
-    if (cached && (now - cached.timestamp) < this.FILE_CACHE_TTL) {
+    if (cached && now - cached.timestamp < this.FILE_CACHE_TTL) {
       console.log(chalk.gray(`│ [Cache] ✓ Hit: ${path.basename(filePath)}`));
       return cached.content;
     }
@@ -179,7 +196,9 @@ export class GraphProcessor {
     try {
       const content = await fs.readFile(filePath, 'utf-8');
       this.fileCache.set(filePath, { content, timestamp: now });
-      console.log(chalk.gray(`│ [Cache] Miss: ${path.basename(filePath)} (${content.length} chars)`));
+      console.log(
+        chalk.gray(`│ [Cache] Miss: ${path.basename(filePath)} (${content.length} chars)`),
+      );
       return content;
     } catch (error: any) {
       console.log(chalk.yellow(`│ [Cache] Error reading ${filePath}: ${error.message}`));
@@ -213,13 +232,17 @@ export class GraphProcessor {
     // Przykłady: "path/file.ts)" lub "path/file.ts (new file)" lub "C:\path)"
     let cleanPath = inputPath.trim();
     cleanPath = cleanPath.replace(/\s*\([^)]*\)\s*$/, ''); // Remove "(something)" at end
-    cleanPath = cleanPath.replace(/\)\s*$/, '');           // Remove trailing ")"
-    cleanPath = cleanPath.replace(/\(\s*$/, '');           // Remove trailing "("
+    cleanPath = cleanPath.replace(/\)\s*$/, ''); // Remove trailing ")"
+    cleanPath = cleanPath.replace(/\(\s*$/, ''); // Remove trailing "("
     cleanPath = cleanPath.trim();
 
     // Skip validation for URLs and external resources - they don't need local path checking
     if (this.isUrlOrExternalResource(cleanPath)) {
-      console.log(chalk.gray(`│ [PATH] URL/external resource detected, skipping path validation: ${cleanPath}`));
+      console.log(
+        chalk.gray(
+          `│ [PATH] URL/external resource detected, skipping path validation: ${cleanPath}`,
+        ),
+      );
       return cleanPath; // Return URL as-is
     }
 
@@ -254,75 +277,6 @@ export class GraphProcessor {
   }
 
   /**
-   * Solution 11: Validate that files mentioned in response exist
-   * Extracts file paths from response and checks their existence
-   */
-  private async validateMentionedFiles(response: string): Promise<{
-    valid: boolean;
-    existingFiles: string[];
-    missingFiles: string[];
-    warnings: string[];
-  }> {
-    const warnings: string[] = [];
-    const existingFiles: string[] = [];
-    const missingFiles: string[] = [];
-
-    // Extract potential file paths from response
-    const filePathPatterns = [
-      // Absolute Windows paths
-      /[A-Z]:\\(?:[^\\/:*?"<>|\r\n]+\\)*[^\\/:*?"<>|\r\n]+\.\w+/gi,
-      // Relative paths with extensions
-      /(?:\.\.?\/)?(?:[\w-]+\/)*[\w-]+\.(ts|js|tsx|jsx|json|md|css|scss|html|py|java|go|rs|c|cpp|h|hpp)/gi,
-      // src/ paths
-      /src\/(?:[\w-]+\/)*[\w-]+\.\w+/gi,
-    ];
-
-    const mentionedPaths = new Set<string>();
-
-    for (const pattern of filePathPatterns) {
-      const matches = response.match(pattern);
-      if (matches) {
-        matches.forEach(m => mentionedPaths.add(m));
-      }
-    }
-
-    // Check each path
-    for (const filePath of mentionedPaths) {
-      // Skip obvious examples/placeholders
-      if (/file\d+|example|sample|path\/to/i.test(filePath)) {
-        warnings.push(`Pomijam placeholder: ${filePath}`);
-        continue;
-      }
-
-      const normalizedPath = this.validateAndNormalizePath(filePath);
-      if (!normalizedPath) {
-        warnings.push(`Nieprawidłowa ścieżka: ${filePath}`);
-        continue;
-      }
-
-      try {
-        const fs = await import('fs/promises');
-        await fs.access(normalizedPath);
-        existingFiles.push(filePath);
-      } catch {
-        missingFiles.push(filePath);
-      }
-    }
-
-    // Warn if many missing files
-    if (missingFiles.length > existingFiles.length && missingFiles.length > 2) {
-      warnings.push(`Większość wymienionych plików nie istnieje (${missingFiles.length}/${mentionedPaths.size})`);
-    }
-
-    return {
-      valid: missingFiles.length === 0 || missingFiles.length <= existingFiles.length,
-      existingFiles,
-      missingFiles,
-      warnings
-    };
-  }
-
-  /**
    * Check if a path/URL should skip path validation (URLs, external resources)
    */
   private isUrlOrExternalResource(input: string): boolean {
@@ -330,17 +284,17 @@ export class GraphProcessor {
 
     // URL patterns - these should skip local path validation
     const urlPatterns = [
-      /^https?:\/\//i,           // http:// or https://
-      /^ftp:\/\//i,              // ftp://
-      /^file:\/\//i,             // file://
-      /^localhost(:\d+)?/i,      // localhost or localhost:port
-      /^127\.0\.0\.1(:\d+)?/i,   // 127.0.0.1 or 127.0.0.1:port
-      /^0\.0\.0\.0(:\d+)?/i,     // 0.0.0.0 or 0.0.0.0:port
-      /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/,  // Any IP address
-      /^[a-z0-9-]+\.([a-z]{2,})/i,  // Domain names like example.com
+      /^https?:\/\//i, // http:// or https://
+      /^ftp:\/\//i, // ftp://
+      /^file:\/\//i, // file://
+      /^localhost(:\d+)?/i, // localhost or localhost:port
+      /^127\.0\.0\.1(:\d+)?/i, // 127.0.0.1 or 127.0.0.1:port
+      /^0\.0\.0\.0(:\d+)?/i, // 0.0.0.0 or 0.0.0.0:port
+      /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/, // Any IP address
+      /^[a-z0-9-]+\.([a-z]{2,})/i, // Domain names like example.com
     ];
 
-    return urlPatterns.some(pattern => pattern.test(input));
+    return urlPatterns.some((pattern) => pattern.test(input));
   }
 
   /**
@@ -351,39 +305,39 @@ export class GraphProcessor {
     // If content looks like valid JSON data (files, entities, etc.), it's NOT an error
     // These patterns indicate successful responses that should NOT be flagged as errors
     const successPatterns = [
-      /^\s*\{\s*"files"\s*:/i,           // {"files": [...]} - file listing
-      /^\s*\{\s*"entities"\s*:/i,        // {"entities": [...]} - memory response
-      /^\s*\{\s*"relations"\s*:/i,       // {"relations": [...]} - graph response
-      /^\s*\{\s*"results"\s*:/i,         // {"results": [...]} - search results
-      /^\s*\{\s*"content"\s*:/i,         // {"content": ...} - file content
-      /^\s*\{\s*"success"\s*:\s*true/i,  // {"success": true, ...}
-      /^\s*\[\s*\{/,                     // [{...}] - array of objects (valid data)
+      /^\s*\{\s*"files"\s*:/i, // {"files": [...]} - file listing
+      /^\s*\{\s*"entities"\s*:/i, // {"entities": [...]} - memory response
+      /^\s*\{\s*"relations"\s*:/i, // {"relations": [...]} - graph response
+      /^\s*\{\s*"results"\s*:/i, // {"results": [...]} - search results
+      /^\s*\{\s*"content"\s*:/i, // {"content": ...} - file content
+      /^\s*\{\s*"success"\s*:\s*true/i, // {"success": true, ...}
+      /^\s*\[\s*\{/, // [{...}] - array of objects (valid data)
     ];
 
-    if (successPatterns.some(pattern => pattern.test(content))) {
+    if (successPatterns.some((pattern) => pattern.test(content))) {
       return false; // This is valid data, not an error
     }
 
     // Only flag as error if there are EXPLICIT error indicators
     // These are actual error messages, not incidental words in content
     const errorPatterns = [
-      /^error:/i,                        // Starts with "error:"
-      /^Error:/,                         // Starts with "Error:" (case sensitive)
-      /MCP error/i,                      // Explicit MCP error
-      /ENOENT/i,                         // File not found error code
-      /EACCES/i,                         // Permission denied error code
-      /EPERM/i,                          // Permission error code
-      /permission denied/i,              // Explicit permission denied
-      /access denied/i,                  // Explicit access denied
-      /outside allowed/i,                // Path outside allowed directories
-      /Invalid arguments for/i,          // MCP validation error
-      /Input validation error/i,         // MCP input validation error
-      /failed to connect/i,              // Connection failure
-      /connection refused/i,             // Connection refused
-      /timeout/i,                        // Timeout errors
+      /^error:/i, // Starts with "error:"
+      /^Error:/, // Starts with "Error:" (case sensitive)
+      /MCP error/i, // Explicit MCP error
+      /ENOENT/i, // File not found error code
+      /EACCES/i, // Permission denied error code
+      /EPERM/i, // Permission error code
+      /permission denied/i, // Explicit permission denied
+      /access denied/i, // Explicit access denied
+      /outside allowed/i, // Path outside allowed directories
+      /Invalid arguments for/i, // MCP validation error
+      /Input validation error/i, // MCP input validation error
+      /failed to connect/i, // Connection failure
+      /connection refused/i, // Connection refused
+      /timeout/i, // Timeout errors
     ];
 
-    return errorPatterns.some(pattern => pattern.test(content));
+    return errorPatterns.some((pattern) => pattern.test(content));
   }
 
   /**
@@ -393,11 +347,13 @@ export class GraphProcessor {
     logger.phaseStart('B', `EXECUTION (${tasks.length} tasks)`);
 
     // Show task queue
-    logger.taskQueue(tasks.map(t => ({
-      id: t.id,
-      agent: t.agent,
-      description: t.task
-    })));
+    logger.taskQueue(
+      tasks.map((t) => ({
+        id: t.id,
+        agent: t.agent,
+        description: t.task,
+      })),
+    );
 
     // Reset state
     this.completedTasks.clear();
@@ -406,7 +362,7 @@ export class GraphProcessor {
 
     // Fix self-dependencies (PS1 lines 519-530)
     for (const task of tasks) {
-      task.dependencies = task.dependencies.filter(d => d !== task.id);
+      task.dependencies = task.dependencies.filter((d) => d !== task.id);
     }
 
     let remaining = [...tasks];
@@ -420,17 +376,17 @@ export class GraphProcessor {
       loopGuard++;
 
       // Find executable tasks (all dependencies completed)
-      const executable = remaining.filter(task =>
-        task.dependencies.every(depId => this.completedTasks.has(depId))
+      const executable = remaining.filter((task) =>
+        task.dependencies.every((depId) => this.completedTasks.has(depId)),
       );
 
       // Deadlock detection
       if (executable.length === 0 && remaining.length > 0) {
         logger.system(`Deadlock detected! ${remaining.length} tasks stuck`, 'warn');
-        logger.system(`Stuck tasks: ${remaining.map(t => `#${t.id}`).join(', ')}`, 'debug');
+        logger.system(`Stuck tasks: ${remaining.map((t) => `#${t.id}`).join(', ')}`, 'debug');
 
         // Force clear dependencies to recover (PS1 behavior)
-        remaining.forEach(t => {
+        remaining.forEach((t) => {
           logger.system(`Clearing deps for task #${t.id}`, 'debug');
           t.dependencies = [];
         });
@@ -443,7 +399,7 @@ export class GraphProcessor {
       }
 
       // Execute batch in parallel - with context from dependencies
-      const promises = executable.map(task => {
+      const promises = executable.map((task) => {
         // Collect outputs from dependency tasks for DYNAMIC CONTEXT INJECTION
         const dependencyContext = this.buildDependencyContext(task.dependencies);
         return this.limit(() => this.executeTask(task, dependencyContext));
@@ -465,7 +421,7 @@ export class GraphProcessor {
             id: task.id,
             success: false,
             error: result.reason?.message || 'Unknown error',
-            logs: [`EXECUTION FAILED: ${result.reason?.message}`]
+            logs: [`EXECUTION FAILED: ${result.reason?.message}`],
           };
         }
 
@@ -481,7 +437,7 @@ export class GraphProcessor {
         }
 
         // Remove from remaining
-        remaining = remaining.filter(t => t.id !== task.id);
+        remaining = remaining.filter((t) => t.id !== task.id);
 
         // Log completion with progress
         const completed = tasks.length - remaining.length;
@@ -504,9 +460,39 @@ export class GraphProcessor {
     const elapsed = Date.now() - processStart;
     logger.phaseEnd('B', {
       tasks: tasks.length,
-      success: totalFailed === 0
+      success: totalFailed === 0,
     });
-    logger.system(`Phase B complete: ${totalSuccess} success, ${totalFailed} failed in ${(elapsed/1000).toFixed(1)}s`, 'info');
+    logger.system(
+      `Phase B complete: ${totalSuccess} success, ${totalFailed} failed in ${(elapsed / 1000).toFixed(1)}s`,
+      'info',
+    );
+
+    // (#25) Aggregate errors for failed tasks - enables Phase C healing with full context
+    if (totalFailed > 0) {
+      const failedErrors = Array.from(this.results.values())
+        .filter((r) => !r.success)
+        .map((r) => new Error(`Task ${r.id}: ${r.error || 'Unknown failure'}`));
+
+      const aggregate = new AggregateHydraError(
+        `Phase B: ${totalFailed}/${tasks.length} tasks failed`,
+        failedErrors,
+        {
+          context: {
+            totalTasks: tasks.length,
+            succeeded: totalSuccess,
+            failed: totalFailed,
+            durationMs: elapsed,
+          },
+          recoverable: true,
+          retryable: totalFailed < tasks.length, // partial failures are retryable
+        },
+      );
+      // Log but don't throw - Phase C will handle healing
+      logger.system(
+        `[AggregateError] ${aggregate.message} (${aggregate.errors.length} errors aggregated)`,
+        'warn',
+      );
+    }
 
     return Array.from(this.results.values());
   }
@@ -522,9 +508,8 @@ export class GraphProcessor {
       const output = this.taskOutputs.get(depId);
       if (output) {
         // Truncate long outputs to prevent context overflow
-        const truncated = output.length > 2000
-          ? output.substring(0, 2000) + '\n... (skrócono)'
-          : output;
+        const truncated =
+          output.length > 2000 ? `${output.substring(0, 2000)}\n... (skrócono)` : output;
         contexts.push(`=== WYNIK ZADANIA #${depId} ===\n${truncated}`);
       }
     }
@@ -537,28 +522,31 @@ export class GraphProcessor {
   /**
    * Execute a single task
    */
-  private async executeTask(task: ExtendedTask, dependencyContext: string = ''): Promise<ExecutionResult> {
+  private async executeTask(
+    task: ExtendedTask,
+    dependencyContext: string = '',
+  ): Promise<ExecutionResult> {
     // Enhanced task start logging
     logger.taskStart(task.id, task.agent, task.task);
     if (task.dependencies.length > 0) {
       logger.agentThinking(task.agent, `Dependencies: ${task.dependencies.join(', ')}`);
     }
 
-    const spinner = logger.spin(`task-${task.id}`, `[${task.agent}] Executing task #${task.id}...`);
+    const _spinner = logger.spin(
+      `task-${task.id}`,
+      `[${task.agent}] Executing task #${task.id}...`,
+    );
     const startTime = Date.now();
 
     try {
-      const result = await withRetry(
-        () => this.executeTaskInner(task, dependencyContext),
-        {
-          maxRetries: this.config.maxRetries,
-          baseDelay: 1000,
-          onRetry: (attempt, error) => {
-            logger.spinUpdate(`task-${task.id}`, `[${task.agent}] Retry ${attempt}...`);
-            logger.agentRetry(task.agent, attempt, this.config.maxRetries || 2, error.message);
-          }
-        }
-      );
+      const result = await withRetry(() => this.executeTaskInner(task, dependencyContext), {
+        maxRetries: this.config.maxRetries,
+        baseDelay: 1000,
+        onRetry: (attempt, error) => {
+          logger.spinUpdate(`task-${task.id}`, `[${task.agent}] Retry ${attempt}...`);
+          logger.agentRetry(task.agent, attempt, this.config.maxRetries || 2, error.message);
+        },
+      });
 
       const duration = Date.now() - startTime;
 
@@ -567,13 +555,16 @@ export class GraphProcessor {
         logger.spinSuccess(`task-${task.id}`, `[${task.agent}] Task #${task.id} complete`);
         logger.agentSuccess(task.agent, {
           chars: result.logs?.[0]?.length || 0,
-          time: duration
+          time: duration,
         });
 
         // Show result preview
-        if (result.logs && result.logs[0]) {
+        if (result.logs?.[0]) {
           const preview = result.logs[0].substring(0, 150).replace(/\n/g, ' ');
-          logger.agentThinking(task.agent, `Result: ${preview}${result.logs[0].length > 150 ? '...' : ''}`);
+          logger.agentThinking(
+            task.agent,
+            `Result: ${preview}${result.logs[0].length > 150 ? '...' : ''}`,
+          );
         }
       } else {
         logger.spinFail(`task-${task.id}`, `[${task.agent}] Task #${task.id} failed`);
@@ -581,9 +572,8 @@ export class GraphProcessor {
       }
 
       return result;
-
     } catch (error: any) {
-      const duration = Date.now() - startTime;
+      const _duration = Date.now() - startTime;
       logger.spinFail(`task-${task.id}`, `[${task.agent}] Task #${task.id} failed`);
       logger.agentError(task.agent, error.message, false);
       console.log(chalk.cyan(`└${'─'.repeat(50)}`));
@@ -592,7 +582,7 @@ export class GraphProcessor {
         id: task.id,
         success: false,
         error: error.message,
-        logs: [`FAILED: ${error.message}`]
+        logs: [`FAILED: ${error.message}`],
       };
     }
   }
@@ -600,7 +590,10 @@ export class GraphProcessor {
   /**
    * Inner task execution logic
    */
-  private async executeTaskInner(task: ExtendedTask, dependencyContext: string = ''): Promise<ExecutionResult> {
+  private async executeTaskInner(
+    task: ExtendedTask,
+    dependencyContext: string = '',
+  ): Promise<ExecutionResult> {
     // Determine model: forceOllama > preferredModel > default
     let modelOverride: string;
     if (this.config.forceOllama) {
@@ -610,7 +603,7 @@ export class GraphProcessor {
       modelOverride = this.config.preferredModel || 'gemini-3-pro-preview';
     }
 
-    const agentRole = task.agent as AgentRole;
+    const agentRole = resolveAgentRoleSafe(task.agent);
     const agent = new Agent(agentRole, modelOverride);
     const persona = AGENT_PERSONAS[agentRole];
 
@@ -639,7 +632,7 @@ export class GraphProcessor {
       /Użyj MCP\s+(\S+)/i,
       /MCP\s+(filesystem__\w+|memory__\w+)/i,
       /filesystem__(list_directory|read_file|write_file|read_multiple_files|directory_tree|search_files)/i,
-      /memory__(create_entities|search_nodes|read_graph)/i
+      /memory__(create_entities|search_nodes|read_graph)/i,
     ];
 
     for (const pattern of mcpPatterns) {
@@ -666,8 +659,12 @@ export class GraphProcessor {
           if (filePath) {
             const content = await this.readFileWithCache(filePath);
             if (content) {
-              results.push(`=== ${file.path} ===\n${content.substring(0, 3000)}${content.length > 3000 ? '\n... (truncated)' : ''}`);
-              console.log(chalk.green(`│ [Auto-Read] ✓ Odczytano: ${file.path} (${content.length} znaków)`));
+              results.push(
+                `=== ${file.path} ===\n${content.substring(0, 3000)}${content.length > 3000 ? '\n... (truncated)' : ''}`,
+              );
+              console.log(
+                chalk.green(`│ [Auto-Read] ✓ Odczytano: ${file.path} (${content.length} znaków)`),
+              );
             }
           }
         }
@@ -676,7 +673,7 @@ export class GraphProcessor {
             id: task.id,
             success: true,
             data: results.join('\n\n'),
-            logs: [`[Auto-Read] Odczytano ${results.length} plików natywnie`]
+            logs: [`[Auto-Read] Odczytano ${results.length} plików natywnie`],
           };
         }
       } catch (error: any) {
@@ -695,7 +692,13 @@ export class GraphProcessor {
       { pattern: /git log/i, cmd: 'git log --oneline -10' },
       { pattern: /tsc|typescript.*kompil/i, cmd: 'npx tsc --noEmit' },
       { pattern: /npm install|zainstaluj/i, cmd: 'npm install' },
-      { pattern: /wylistuj.*katalog|lista plik|listuj.*src/i, cmd: process.platform === 'win32' ? 'Get-ChildItem -Path src -Filter *.ts -Recurse -File | Select-Object -ExpandProperty FullName' : 'find src -name "*.ts"' },
+      {
+        pattern: /wylistuj.*katalog|lista plik|listuj.*src/i,
+        cmd:
+          process.platform === 'win32'
+            ? 'Get-ChildItem -Path src -Filter *.ts -Recurse -File | Select-Object -ExpandProperty FullName'
+            : 'find src -name "*.ts"',
+      },
     ];
 
     for (const { pattern, cmd } of autoExecCommands) {
@@ -708,7 +711,7 @@ export class GraphProcessor {
             : `cd "${this.rootDir}" && ${cmd}`;
 
           const { stdout, stderr } = await execAsync(fullCommand, {
-            timeout: this.config.taskTimeout || 120000
+            timeout: this.config.taskTimeout || 120000,
           });
 
           const output = `EXECUTION REPORT:\nCOMMAND: ${cmd}\nOUTPUT:\n${stdout}${stderr ? `\nSTDERR:\n${stderr}` : ''}`;
@@ -718,7 +721,7 @@ export class GraphProcessor {
             id: task.id,
             success: true,
             data: output,
-            logs: [output]
+            logs: [output],
           };
         } catch (error: any) {
           const errorOutput = `EXECUTION FAILED:\nCOMMAND: ${cmd}\nERROR: ${error.message}\n${error.stdout || ''}${error.stderr || ''}`;
@@ -728,18 +731,22 @@ export class GraphProcessor {
             id: task.id,
             success: false,
             error: error.message,
-            logs: [errorOutput]
+            logs: [errorOutput],
           };
         }
       }
     }
 
     // NAPRAWKA: Auto-read files for analysis/diagnostic tasks
-    if ((taskSpec.taskType === 'analysis' || taskSpec.taskType === 'other') &&
-        (taskLower.includes('przeanalizuj') || taskLower.includes('zidentyfikuj') ||
-         taskLower.includes('znajdź') || taskLower.includes('sprawdź') ||
-         taskLower.includes('zbadaj') || taskLower.includes('diagnoz'))) {
-
+    if (
+      (taskSpec.taskType === 'analysis' || taskSpec.taskType === 'other') &&
+      (taskLower.includes('przeanalizuj') ||
+        taskLower.includes('zidentyfikuj') ||
+        taskLower.includes('znajdź') ||
+        taskLower.includes('sprawdź') ||
+        taskLower.includes('zbadaj') ||
+        taskLower.includes('diagnoz'))
+    ) {
       // Try to find relevant files to read
       const filesToRead: string[] = [];
 
@@ -768,10 +775,13 @@ export class GraphProcessor {
       }
 
       if (filesToRead.length > 0) {
-        console.log(chalk.cyan(`│ [Auto-Analysis] Znaleziono ${filesToRead.length} plików do analizy`));
+        console.log(
+          chalk.cyan(`│ [Auto-Analysis] Znaleziono ${filesToRead.length} plików do analizy`),
+        );
         const fileContents: string[] = [];
 
-        for (const fileName of filesToRead.slice(0, 5)) { // Limit to 5 files
+        for (const fileName of filesToRead.slice(0, 5)) {
+          // Limit to 5 files
           try {
             // Try to resolve the file path
             let fullPath = fileName;
@@ -789,7 +799,9 @@ export class GraphProcessor {
                   await fs.access(p);
                   fullPath = p;
                   break;
-                } catch { /* continue */ }
+                } catch {
+                  /* continue */
+                }
               }
             }
 
@@ -797,11 +809,13 @@ export class GraphProcessor {
             if (validPath) {
               const content = await this.readFileWithCache(validPath);
               if (content) {
-                fileContents.push(`=== ${fileName} ===\n\`\`\`typescript\n${content.substring(0, 2000)}${content.length > 2000 ? '\n... (truncated)' : ''}\n\`\`\``);
+                fileContents.push(
+                  `=== ${fileName} ===\n\`\`\`typescript\n${content.substring(0, 2000)}${content.length > 2000 ? '\n... (truncated)' : ''}\n\`\`\``,
+                );
                 console.log(chalk.green(`│ [Auto-Analysis] ✓ Odczytano: ${fileName}`));
               }
             }
-          } catch (error: any) {
+          } catch (_error: any) {
             console.log(chalk.yellow(`│ [Auto-Analysis] Nie można odczytać: ${fileName}`));
           }
         }
@@ -826,7 +840,7 @@ INSTRUKCJE:
 
           // Let agent analyze real content
           const resultText = await agent.think(analysisPrompt, '', {
-            timeout: this.config.taskTimeout
+            timeout: this.config.taskTimeout,
           });
 
           // Process any code changes
@@ -841,27 +855,37 @@ INSTRUKCJE:
             id: task.id,
             success: true,
             data: resultText,
-            logs: [`[Auto-Analysis] Analiza wykonana z ${fileContents.length} plikami`, resultText]
+            logs: [`[Auto-Analysis] Analiza wykonana z ${fileContents.length} plikami`, resultText],
           };
         }
       }
     }
 
     // NAPRAWKA: Auto-read files for code_modify/code_write tasks before letting agent modify
-    if ((taskSpec.taskType === 'code_modify' || taskSpec.taskType === 'code_write') && taskSpec.targetFiles.length > 0) {
+    if (
+      (taskSpec.taskType === 'code_modify' || taskSpec.taskType === 'code_write') &&
+      taskSpec.targetFiles.length > 0
+    ) {
       console.log(chalk.cyan(`│ [Auto-Modify] Wczytuję pliki przed modyfikacją`));
 
       const existingContents: string[] = [];
-      for (const file of taskSpec.targetFiles.slice(0, 3)) { // Max 3 files
+      for (const file of taskSpec.targetFiles.slice(0, 3)) {
+        // Max 3 files
         try {
           const filePath = this.validateAndNormalizePath(file.path);
           if (filePath) {
             const content = await this.readFileWithCache(filePath);
             if (content) {
-              existingContents.push(`=== ISTNIEJĄCY PLIK: ${file.path} ===\n\`\`\`typescript\n${content.substring(0, 2500)}${content.length > 2500 ? '\n... (truncated)' : ''}\n\`\`\``);
-              console.log(chalk.green(`│ [Auto-Modify] ✓ Wczytano: ${file.path} (${content.length} znaków)`));
+              existingContents.push(
+                `=== ISTNIEJĄCY PLIK: ${file.path} ===\n\`\`\`typescript\n${content.substring(0, 2500)}${content.length > 2500 ? '\n... (truncated)' : ''}\n\`\`\``,
+              );
+              console.log(
+                chalk.green(`│ [Auto-Modify] ✓ Wczytano: ${file.path} (${content.length} znaków)`),
+              );
             } else {
-              existingContents.push(`=== NOWY PLIK: ${file.path} ===\n(plik nie istnieje - zostanie utworzony)`);
+              existingContents.push(
+                `=== NOWY PLIK: ${file.path} ===\n(plik nie istnieje - zostanie utworzony)`,
+              );
               console.log(chalk.yellow(`│ [Auto-Modify] Nowy plik: ${file.path}`));
             }
           }
@@ -898,7 +922,7 @@ ZASADY:
         console.log(chalk.cyan(`│ [Auto-Modify] Przekazuję kod do modyfikacji`));
 
         const resultText = await agent.think(modifyPrompt, '', {
-          timeout: this.config.taskTimeout
+          timeout: this.config.taskTimeout,
         });
 
         // Process code changes
@@ -913,7 +937,7 @@ ZASADY:
           id: task.id,
           success: true,
           data: resultText,
-          logs: [`[Auto-Modify] Modyfikacja wykonana`, resultText]
+          logs: [`[Auto-Modify] Modyfikacja wykonana`, resultText],
         };
       }
     }
@@ -926,18 +950,27 @@ ZASADY:
 
     // taskSpec already built above for auto-read check, reuse it
     // Log JSON spec for debugging (compact version)
-    console.log(chalk.magenta(`│ [JSON Spec] Type: ${taskSpec.taskType} | Files: ${taskSpec.targetFiles.length} | Deps: ${taskSpec.dependencies.length}`));
+    console.log(
+      chalk.magenta(
+        `│ [JSON Spec] Type: ${taskSpec.taskType} | Files: ${taskSpec.targetFiles.length} | Deps: ${taskSpec.dependencies.length}`,
+      ),
+    );
     if (taskSpec.targetFiles.length > 0) {
-      console.log(chalk.gray(`│ [JSON Spec] Targets: ${taskSpec.targetFiles.map(f => `${f.operation}:${path.basename(f.path)}`).join(', ')}`));
+      console.log(
+        chalk.gray(
+          `│ [JSON Spec] Targets: ${taskSpec.targetFiles.map((f) => `${f.operation}:${path.basename(f.path)}`).join(', ')}`,
+        ),
+      );
     }
 
     // Detect if using small Ollama model (needs compact prompt)
-    const isSmallModel = modelOverride.includes('qwen3:4b') ||
-                         modelOverride.includes('qwen3:1.7b') ||
-                         modelOverride.includes('qwen3:0.6b');
+    const isSmallModel =
+      modelOverride.includes('qwen3:4b') ||
+      modelOverride.includes('qwen3:1.7b') ||
+      modelOverride.includes('qwen3:0.6b');
 
     // Detect task type for specialized prompting (legacy, for backward compat)
-    const taskType = this.detectTaskType(task.task);
+    const _taskType = this.detectTaskType(task.task);
 
     // Build prompt based on model size
     let prompt: string;
@@ -945,27 +978,30 @@ ZASADY:
     if (isSmallModel) {
       // COMPACT PROMPT for small models (~1500 chars max)
       // NAPRAWKA: Dodano instrukcje o użyciu EXEC: dla odczytu plików
-      const filesInfo = taskSpec.targetFiles.length > 0
-        ? taskSpec.targetFiles.map(f => `${f.operation}: ${f.path}`).join('\n')
-        : `Dir: ${this.rootDir}`;
+      const filesInfo =
+        taskSpec.targetFiles.length > 0
+          ? taskSpec.targetFiles.map((f) => `${f.operation}: ${f.path}`).join('\n')
+          : `Dir: ${this.rootDir}`;
 
       // Detect if task requires file reading
-      const needsFileRead = taskSpec.taskType === 'code_read' ||
-                            task.task.toLowerCase().includes('odczytaj') ||
-                            task.task.toLowerCase().includes('przeczytaj') ||
-                            task.task.toLowerCase().includes('read');
+      const needsFileRead =
+        taskSpec.taskType === 'code_read' ||
+        task.task.toLowerCase().includes('odczytaj') ||
+        task.task.toLowerCase().includes('przeczytaj') ||
+        task.task.toLowerCase().includes('read');
 
       // Detect if task requires command execution
-      const needsExec = taskSpec.taskType === 'build' ||
-                        task.task.toLowerCase().includes('uruchom') ||
-                        task.task.toLowerCase().includes('npm') ||
-                        task.task.toLowerCase().includes('git');
+      const needsExec =
+        taskSpec.taskType === 'build' ||
+        task.task.toLowerCase().includes('uruchom') ||
+        task.task.toLowerCase().includes('npm') ||
+        task.task.toLowerCase().includes('git');
 
       let actionInstructions = '';
       if (needsFileRead) {
         actionInstructions = `
 AKCJA: Aby odczytać plik, użyj:
-EXEC: type "${taskSpec.targetFiles[0]?.path || this.rootDir + '\\\\src\\\\index.ts'}"
+EXEC: type "${taskSpec.targetFiles[0]?.path || `${this.rootDir}\\\\src\\\\index.ts`}"
 Zwróć PEŁNĄ zawartość pliku, nie wymyślaj!`;
       } else if (needsExec) {
         actionInstructions = `
@@ -998,14 +1034,20 @@ RULES:
       const compactSpec = {
         task: taskSpec.taskId,
         type: taskSpec.taskType,
-        files: taskSpec.targetFiles.map(f => `${f.operation}:${f.path}`),
+        files: taskSpec.targetFiles.map((f) => `${f.operation}:${f.path}`),
         output: taskSpec.expectedOutput.format,
-        deps: taskSpec.dependencies.length
+        deps: taskSpec.dependencies.length,
       };
 
-      const depsContext = taskSpec.dependencies.length > 0
-        ? taskSpec.dependencies.map(d => `#${d.taskId}: ${d.summary}${d.relevantData ? ` | ${d.relevantData.substring(0, 200)}` : ''}`).join('\n')
-        : '';
+      const depsContext =
+        taskSpec.dependencies.length > 0
+          ? taskSpec.dependencies
+              .map(
+                (d) =>
+                  `#${d.taskId}: ${d.summary}${d.relevantData ? ` | ${d.relevantData.substring(0, 200)}` : ''}`,
+              )
+              .join('\n')
+          : '';
 
       prompt = `[PHASE B] Agent: ${task.agent}
 ${persona?.description || ''}
@@ -1014,7 +1056,7 @@ SPEC: ${JSON.stringify(compactSpec)}
 
 ZADANIE: ${task.task}
 
-${taskSpec.targetFiles.length > 0 ? `PLIKI:\n${taskSpec.targetFiles.map(f => `- ${f.operation.toUpperCase()}: ${f.path}`).join('\n')}\n` : ''}
+${taskSpec.targetFiles.length > 0 ? `PLIKI:\n${taskSpec.targetFiles.map((f) => `- ${f.operation.toUpperCase()}: ${f.path}`).join('\n')}\n` : ''}
 ${depsContext ? `KONTEKST:\n${depsContext}\n` : ''}
 WYNIK: ${taskSpec.expectedOutput.description}
 
@@ -1031,7 +1073,7 @@ ${grimoireContent ? `\nNARZĘDZIA:\n${grimoireContent}` : ''}`;
 
     // Execute with timeout support
     const resultText = await agent.think(prompt, '', {
-      timeout: this.config.taskTimeout
+      timeout: this.config.taskTimeout,
     });
 
     // NAPRAWKA: Wykryj halucynacje (Ruby/Python w projekcie TypeScript) i retry z poprawionym promptem
@@ -1053,7 +1095,11 @@ ${grimoireContent ? `\nNARZĘDZIA:\n${grimoireContent}` : ''}`;
     }
 
     if (isHallucination) {
-      console.log(chalk.red(`│ [Hallucination] ⚠ Agent wygenerował kod ${hallucinatedLang} zamiast TypeScript!`));
+      console.log(
+        chalk.red(
+          `│ [Hallucination] ⚠ Agent wygenerował kod ${hallucinatedLang} zamiast TypeScript!`,
+        ),
+      );
       console.log(chalk.yellow(`│ [Hallucination] Retry z poprawionym promptem...`));
 
       // Retry z bardzo wyraźnym promptem
@@ -1084,7 +1130,7 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
 
       try {
         const retryResult = await agent.think(retryPrompt, '', {
-          timeout: this.config.taskTimeout
+          timeout: this.config.taskTimeout,
         });
 
         // Sprawdź czy retry też ma halucynację
@@ -1112,7 +1158,7 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
           return {
             id: task.id,
             success: true,
-            logs: [`[Retry po halucynacji] ${retryResult}`]
+            logs: [`[Retry po halucynacji] ${retryResult}`],
           };
         }
       } catch (retryError: any) {
@@ -1124,7 +1170,7 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
         id: task.id,
         success: false,
         error: `Halucynacja: Agent uporczywie generuje kod ${hallucinatedLang} zamiast TypeScript`,
-        logs: [`Agent nie może wygenerować prawidłowego kodu TypeScript po retry.`]
+        logs: [`Agent nie może wygenerować prawidłowego kodu TypeScript po retry.`],
       };
     }
 
@@ -1174,12 +1220,14 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
               }
             }
             if (results.length > 0) {
-              console.log(chalk.green(`│ [Auto-Fix] ✓ Odczytano ${results.length} plików natywnie`));
+              console.log(
+                chalk.green(`│ [Auto-Fix] ✓ Odczytano ${results.length} plików natywnie`),
+              );
               return {
                 id: task.id,
                 success: true,
                 data: results.join('\n\n'),
-                logs: [`[Auto-Fix] Zadanie wykonane natywnie`]
+                logs: [`[Auto-Fix] Zadanie wykonane natywnie`],
               };
             }
           } catch (e: any) {
@@ -1192,7 +1240,7 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
         id: task.id,
         success: false,
         error: validationResult.reason,
-        logs: [resultText, `\n⚠ Walidacja: ${validationResult.reason}`]
+        logs: [resultText, `\n⚠ Walidacja: ${validationResult.reason}`],
       };
     }
 
@@ -1200,14 +1248,14 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
     const validation = this.validateAgentResponse(resultText, task);
     if (validation.warnings.length > 0) {
       console.log(chalk.yellow(`│ [Validation] Warnings for task #${task.id}:`));
-      validation.warnings.forEach(w => console.log(chalk.yellow(`│   - ${w}`)));
+      validation.warnings.forEach((w) => console.log(chalk.yellow(`│   - ${w}`)));
     }
 
     // Solution 29: Validate factual grounding of the response
     const groundingResult = factualGroundingChecker.validateResponse(task.id, resultText);
     if (!groundingResult.isGrounded) {
       console.log(chalk.yellow(`│ [FactualGrounding] Task #${task.id} grounding issues:`));
-      groundingResult.issues.forEach(issue => {
+      groundingResult.issues.forEach((issue) => {
         console.log(chalk.yellow(`│   - ${issue}`));
       });
 
@@ -1221,7 +1269,7 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
           id: task.id,
           success: false,
           error: `Factual grounding failed: ${groundingResult.issues.join('; ')}`,
-          logs: [resultText, `\n⚠ Grounding: ${groundingResult.issues.join('; ')}`]
+          logs: [resultText, `\n⚠ Grounding: ${groundingResult.issues.join('; ')}`],
         };
       }
     } else {
@@ -1235,15 +1283,19 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
     return {
       id: task.id,
       success: true,
-      logs: [resultText]
+      logs: [resultText],
     };
   }
 
   /**
    * Validate agent response quality
    */
-  private validateResponse(response: string, taskText: string, spec: DetailedTaskSpec): { valid: boolean; reason?: string } {
-    const lower = response.toLowerCase();
+  private validateResponse(
+    response: string,
+    taskText: string,
+    spec: DetailedTaskSpec,
+  ): { valid: boolean; reason?: string } {
+    const _lower = response.toLowerCase();
     const taskLower = taskText.toLowerCase();
 
     // Check for empty or too short response
@@ -1258,17 +1310,20 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
       /^(nie mogę|nie jestem w stanie|niestety nie mogę)/,
       /^(cannot|i can't|i cannot|i'm unable|i am unable)/,
       /^(sorry,?\s*(but\s*)?i|przepraszam,?\s*(ale\s*)?)/,
-      /^(as an ai|jako ai|jako model)/
+      /^(as an ai|jako ai|jako model)/,
     ];
 
-    if (refusalPatterns.some(p => p.test(firstLine))) {
+    if (refusalPatterns.some((p) => p.test(firstLine))) {
       return { valid: false, reason: 'Agent odmówił wykonania zadania' };
     }
 
     // Check for wrong language files in TypeScript project
     if (/\.py['"]?\s*$|python|import\s+\w+\s*$/im.test(response) && !taskLower.includes('python')) {
       if (response.includes('===ZAPIS') && /\.py/.test(response)) {
-        return { valid: false, reason: 'Agent próbował utworzyć plik Python w projekcie TypeScript' };
+        return {
+          valid: false,
+          reason: 'Agent próbował utworzyć plik Python w projekcie TypeScript',
+        };
       }
     }
 
@@ -1278,8 +1333,16 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
       if (pathMatch) {
         const mentionedPath = pathMatch[1].trim();
         // Check if path looks valid (contains project root or is relative)
-        if (!mentionedPath.includes(this.rootDir) && !mentionedPath.startsWith('src/') && !mentionedPath.startsWith('./')) {
-          if (mentionedPath.includes('/home/') || mentionedPath.includes('/usr/') || mentionedPath.includes('C:\\Windows')) {
+        if (
+          !mentionedPath.includes(this.rootDir) &&
+          !mentionedPath.startsWith('src/') &&
+          !mentionedPath.startsWith('./')
+        ) {
+          if (
+            mentionedPath.includes('/home/') ||
+            mentionedPath.includes('/usr/') ||
+            mentionedPath.includes('C:\\Windows')
+          ) {
             return { valid: false, reason: `Nieprawidłowa ścieżka: ${mentionedPath}` };
           }
         }
@@ -1298,13 +1361,16 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
    * Solution 9: Validate agent response for hallucination indicators
    * Returns validation result with warnings
    */
-  private validateAgentResponse(response: string, task: SwarmTask): {
+  private validateAgentResponse(
+    response: string,
+    task: SwarmTask,
+  ): {
     valid: boolean;
     warnings: string[];
     cleanedResponse: string;
   } {
     const warnings: string[] = [];
-    let cleanedResponse = response;
+    const cleanedResponse = response;
 
     // Pattern 1: Agent says "I will do X" instead of actually doing it
     const futurePromisePatterns = [
@@ -1353,95 +1419,17 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
     }
 
     // Valid if no critical warnings
-    const criticalWarnings = warnings.filter(w =>
-      w.includes('ZROBI zamiast') ||
-      w.includes('generyczne nazwy') ||
-      w.includes('przykłady zamiast')
+    const criticalWarnings = warnings.filter(
+      (w) =>
+        w.includes('ZROBI zamiast') ||
+        w.includes('generyczne nazwy') ||
+        w.includes('przykłady zamiast'),
     );
 
     return {
       valid: criticalWarnings.length === 0,
       warnings,
-      cleanedResponse
-    };
-  }
-
-  /**
-   * Solution 19: Validate output length is appropriate for task
-   * Too short = incomplete, too long = possible hallucination padding
-   */
-  private validateOutputLength(
-    response: string,
-    task: SwarmTask
-  ): {
-    valid: boolean;
-    warning?: string;
-    recommendation: 'ok' | 'too_short' | 'too_long' | 'suspicious';
-  } {
-    const taskWords = task.task.split(/\s+/).length;
-    const responseWords = response.split(/\s+/).length;
-    const responseChars = response.length;
-
-    // Task complexity estimation
-    const isSimpleTask = taskWords < 15 || /\b(?:list|check|read|show|pokaż|sprawdź|wylistuj)\b/i.test(task.task);
-    const isComplexTask = taskWords > 40 || /\b(?:implement|create|build|refactor|zaimplementuj|stwórz|zbuduj|refaktoryzuj)\b/i.test(task.task);
-
-    // Expected ranges
-    let minWords: number, maxWords: number;
-
-    if (isSimpleTask) {
-      minWords = 5;
-      maxWords = 500;
-    } else if (isComplexTask) {
-      minWords = 50;
-      maxWords = 5000;
-    } else {
-      minWords = 20;
-      maxWords = 2000;
-    }
-
-    // Check for suspiciously short responses
-    if (responseWords < minWords) {
-      return {
-        valid: false,
-        warning: `Odpowiedź zbyt krótka (${responseWords} słów, min: ${minWords})`,
-        recommendation: 'too_short'
-      };
-    }
-
-    // Check for suspiciously long responses (possible padding)
-    if (responseWords > maxWords) {
-      // Check if it's legitimate (has code blocks)
-      const codeBlockChars = (response.match(/```[\s\S]*?```/g) || [])
-        .reduce((sum, block) => sum + block.length, 0);
-
-      const nonCodeRatio = (responseChars - codeBlockChars) / responseChars;
-
-      if (nonCodeRatio > 0.7 && responseWords > maxWords * 1.5) {
-        return {
-          valid: false,
-          warning: `Odpowiedź zbyt długa bez kodu (${responseWords} słów, max: ${maxWords})`,
-          recommendation: 'too_long'
-        };
-      }
-    }
-
-    // Check for repetitive content (hallucination indicator)
-    const sentences = response.split(/[.!?]+/);
-    const uniqueSentences = new Set(sentences.map(s => s.trim().toLowerCase()));
-    const repetitionRatio = sentences.length / uniqueSentences.size;
-
-    if (repetitionRatio > 2 && sentences.length > 5) {
-      return {
-        valid: false,
-        warning: `Wykryto powtarzającą się treść (ratio: ${repetitionRatio.toFixed(1)})`,
-        recommendation: 'suspicious'
-      };
-    }
-
-    return {
-      valid: true,
-      recommendation: 'ok'
+      cleanedResponse,
     };
   }
 
@@ -1455,32 +1443,32 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
 
     // EXCLUDE tasks that need agent reasoning (these should get JSON spec)
     const needsAgentReasoning = [
-      /analizuj|analiza|przeanalizuj|zbadaj|oceń|sprawdź/i,        // Analysis tasks
-      /napraw|popraw|zrefaktoruj|refaktoryzacja|fix|refactor/i,   // Repair/refactor tasks
-      /zidentyfikuj|znajdź.*błędy?|diagnoz/i,                     // Diagnostic tasks
-      /zaproponuj|sugestie|rekomendacj/i,                          // Suggestion tasks
-      /wyjaśnij|opisz|dokumentuj/i,                                // Documentation tasks
-      /zmodyfikuj.*kod|edytuj.*kod|update.*code/i,                 // Code modification (needs thinking)
-      /implementuj|napisz.*funkcj|stwórz.*klas/i,                  // Implementation tasks
-      /struktur.*plików|entry.*point|punkt.*wejści/i,              // Architecture analysis
-      /zależności|dependencies|weryfikacja/i,                       // Dependency analysis
+      /analizuj|analiza|przeanalizuj|zbadaj|oceń|sprawdź/i, // Analysis tasks
+      /napraw|popraw|zrefaktoruj|refaktoryzacja|fix|refactor/i, // Repair/refactor tasks
+      /zidentyfikuj|znajdź.*błędy?|diagnoz/i, // Diagnostic tasks
+      /zaproponuj|sugestie|rekomendacj/i, // Suggestion tasks
+      /wyjaśnij|opisz|dokumentuj/i, // Documentation tasks
+      /zmodyfikuj.*kod|edytuj.*kod|update.*code/i, // Code modification (needs thinking)
+      /implementuj|napisz.*funkcj|stwórz.*klas/i, // Implementation tasks
+      /struktur.*plików|entry.*point|punkt.*wejści/i, // Architecture analysis
+      /zależności|dependencies|weryfikacja/i, // Dependency analysis
     ];
 
-    if (needsAgentReasoning.some(pattern => pattern.test(lower))) {
+    if (needsAgentReasoning.some((pattern) => pattern.test(lower))) {
       return false; // Let agent handle with JSON spec
     }
 
     // ONLY intercept SIMPLE file operations (no reasoning needed)
     const simpleFileOps = [
       // Direct file content requests (not analysis)
-      /^(wylistuj|listuj)\s+(katalog|folder|pliki)/i,             // List directory
-      /^(pokaż|wyświetl)\s+(zawartość\s+)?(katalog|folder)/i,     // Show directory
-      /^(pobierz|przeczytaj|odczytaj)\s+zawartość\s+pliku/i,      // Get file content (explicit)
-      /^(utwórz|stwórz)\s+(pusty\s+)?plik/i,                      // Create file
-      /^zapisz\s+(do\s+)?pliku/i,                                  // Write to file
+      /^(wylistuj|listuj)\s+(katalog|folder|pliki)/i, // List directory
+      /^(pokaż|wyświetl)\s+(zawartość\s+)?(katalog|folder)/i, // Show directory
+      /^(pobierz|przeczytaj|odczytaj)\s+zawartość\s+pliku/i, // Get file content (explicit)
+      /^(utwórz|stwórz)\s+(pusty\s+)?plik/i, // Create file
+      /^zapisz\s+(do\s+)?pliku/i, // Write to file
     ];
 
-    return simpleFileOps.some(pattern => pattern.test(lower));
+    return simpleFileOps.some((pattern) => pattern.test(lower));
   }
 
   /**
@@ -1492,20 +1480,20 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
 
     // MCP tool patterns - these should NOT be treated as file paths
     const mcpPatterns = [
-      /^\/[a-z_]+$/i,                    // /add_observations, /read_file
-      /^[a-z_]+\/[a-z_]+$/i,             // memory/create_entities
-      /^[a-z_]+__[a-z_]+$/i,             // serena__find_symbol
-      /^mcp:[a-z_]+/i,                   // mcp:tool_name
-      /^(memory|serena|filesystem|brave-search|context7|puppeteer|playwright)[:\/]/i,  // Known MCP servers
+      /^\/[a-z_]+$/i, // /add_observations, /read_file
+      /^[a-z_]+\/[a-z_]+$/i, // memory/create_entities
+      /^[a-z_]+__[a-z_]+$/i, // serena__find_symbol
+      /^mcp:[a-z_]+/i, // mcp:tool_name
+      /^(memory|serena|filesystem|brave-search|context7|puppeteer|playwright)[:/]/i, // Known MCP servers
     ];
 
-    return mcpPatterns.some(pattern => pattern.test(input.trim()));
+    return mcpPatterns.some((pattern) => pattern.test(input.trim()));
   }
 
   /**
    * Auto-route task to appropriate MCP tool
    */
-  private async autoRouteMcpTask(task: ExtendedTask, agent: Agent): Promise<ExecutionResult> {
+  private async autoRouteMcpTask(task: ExtendedTask, _agent: Agent): Promise<ExecutionResult> {
     const taskLower = task.task.toLowerCase();
 
     // Extract path from task - try multiple patterns
@@ -1519,7 +1507,9 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
     const unixPathMatch = task.task.match(/["']?(\/[^"'\s()]+)["']?/i);
     // Pattern 3: Filename with extension (tsconfig.json, index.ts, etc.)
     // IMPORTANT: Order matters - longer extensions first (json before js, tsx before ts)
-    const fileNameMatch = task.task.match(/["']?([\w.-]+\.(json|yaml|yml|toml|tsx|jsx|ts|js|md|txt|css|html|py|java|cs|cpp|go|rs|rb|php|vue|svelte|sh|bat|ps1|xml|env|gitignore|dockerignore|config))(?:["'\s,;)]|$)/i);
+    const fileNameMatch = task.task.match(
+      /["']?([\w.-]+\.(json|yaml|yml|toml|tsx|jsx|ts|js|md|txt|css|html|py|java|cs|cpp|go|rs|rb|php|vue|svelte|sh|bat|ps1|xml|env|gitignore|dockerignore|config))(?:["'\s,;)]|$)/i,
+    );
     // Pattern 4: Relative path (src/index.ts, ./config/settings.json)
     const relativePathMatch = task.task.match(/["']?(\.?\.?\/[\w./-]+)["']?/i);
 
@@ -1529,13 +1519,17 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
       const potentialPath = unixPathMatch[1].replace(/["']/g, '');
       // NAPRAWKA: Sprawdź czy to nie jest nazwa MCP tool (np. /add_observations)
       if (this.isMcpToolName(potentialPath)) {
-        console.log(chalk.yellow(`│ [MCP Auto] Detected MCP tool name, skipping path validation: ${potentialPath}`));
+        console.log(
+          chalk.yellow(
+            `│ [MCP Auto] Detected MCP tool name, skipping path validation: ${potentialPath}`,
+          ),
+        );
         // Zwróć wynik wskazujący, że to zadanie powinno być obsłużone przez agenta
         return {
           id: task.id,
           success: false,
           error: `MCP_TOOL_DETECTED: ${potentialPath}`,
-          logs: [`Detected MCP tool reference, delegating to agent: ${potentialPath}`]
+          logs: [`Detected MCP tool reference, delegating to agent: ${potentialPath}`],
         };
       }
       extractedPath = potentialPath;
@@ -1543,12 +1537,16 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
       const potentialPath = relativePathMatch[1].replace(/["']/g, '');
       // NAPRAWKA: Sprawdź czy to nie jest nazwa MCP tool (np. memory/create_entities)
       if (this.isMcpToolName(potentialPath)) {
-        console.log(chalk.yellow(`│ [MCP Auto] Detected MCP tool name, skipping path validation: ${potentialPath}`));
+        console.log(
+          chalk.yellow(
+            `│ [MCP Auto] Detected MCP tool name, skipping path validation: ${potentialPath}`,
+          ),
+        );
         return {
           id: task.id,
           success: false,
           error: `MCP_TOOL_DETECTED: ${potentialPath}`,
-          logs: [`Detected MCP tool reference, delegating to agent: ${potentialPath}`]
+          logs: [`Detected MCP tool reference, delegating to agent: ${potentialPath}`],
         };
       }
       extractedPath = path.resolve(this.rootDir, potentialPath);
@@ -1565,8 +1563,8 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
     // NAPRAWKA: Usuń nawiasy i inne artefakty z końca ścieżki (AI hallucinations)
     // Przykłady: "path/file.ts)" lub "path/file.ts (new file)" lub "C:\path)"
     extractedPath = extractedPath.replace(/\s*\([^)]*\)\s*$/, ''); // Remove "(something)" at end
-    extractedPath = extractedPath.replace(/\)\s*$/, '');           // Remove trailing ")"
-    extractedPath = extractedPath.replace(/\(\s*$/, '');           // Remove trailing "("
+    extractedPath = extractedPath.replace(/\)\s*$/, ''); // Remove trailing ")"
+    extractedPath = extractedPath.replace(/\(\s*$/, ''); // Remove trailing "("
     extractedPath = extractedPath.trim();
 
     // Validate path is within project
@@ -1577,7 +1575,7 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
         id: task.id,
         success: false,
         error: `Invalid path: ${extractedPath} - must be within ${this.rootDir}`,
-        logs: [`MCP Auto-route failed: path outside project root`]
+        logs: [`MCP Auto-route failed: path outside project root`],
       };
     }
 
@@ -1601,37 +1599,44 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
       }
 
       // Determine operation based on task keywords AND path type
-      const wantsRead = taskLower.includes('read') || taskLower.includes('przeczytaj') || taskLower.includes('odczytaj') || taskLower.includes('pobierz zawartość') || taskLower.includes('konfiguracja');
-      const wantsTree = taskLower.includes('tree') || taskLower.includes('struktur') || taskLower.includes('drzewo');
-      const wantsSearch = taskLower.includes('search') || taskLower.includes('szukaj') || taskLower.includes('znajdź');
+      const wantsRead =
+        taskLower.includes('read') ||
+        taskLower.includes('przeczytaj') ||
+        taskLower.includes('odczytaj') ||
+        taskLower.includes('pobierz zawartość') ||
+        taskLower.includes('konfiguracja');
+      const wantsTree =
+        taskLower.includes('tree') ||
+        taskLower.includes('struktur') ||
+        taskLower.includes('drzewo');
+      const wantsSearch =
+        taskLower.includes('search') ||
+        taskLower.includes('szukaj') ||
+        taskLower.includes('znajdź');
 
       if (isFile || (wantsRead && !isDir)) {
         // Read file
         console.log(chalk.gray(`│ [Native FS] Czytam plik: ${validatedPath}`));
         result = await fs.readFile(validatedPath, 'utf-8');
         console.log(chalk.green(`│ [Native FS] ✓ Przeczytano ${result.length} znaków`));
-
       } else if (wantsTree) {
         console.log(chalk.gray(`│ [Native FS] Struktura: ${validatedPath}`));
         const nativeFs = new NativeFileSystem({ rootDir: this.rootDir });
         const tree = await nativeFs.getDirectoryTree(validatedPath, { maxDepth: 3 });
         result = JSON.stringify(tree, null, 2);
         console.log(chalk.green(`│ [Native FS] ✓ Drzewo wygenerowane`));
-
       } else if (wantsSearch) {
         console.log(chalk.gray(`│ [Native FS] Szukam w: ${validatedPath}`));
         const nativeFs = new NativeFileSystem({ rootDir: this.rootDir });
         const files = await nativeFs.listDirectory(validatedPath);
-        result = files.map(f => `${f.type === 'directory' ? '📁' : '📄'} ${f.name}`).join('\n');
+        result = files.map((f) => `${f.type === 'directory' ? '📁' : '📄'} ${f.name}`).join('\n');
         console.log(chalk.green(`│ [Native FS] ✓ Znaleziono ${files.length} elementów`));
-
       } else if (isDir) {
         // Default for directories: list
         console.log(chalk.gray(`│ [Native FS] Listowanie: ${validatedPath}`));
         const entries = await fs.readdir(validatedPath, { withFileTypes: true });
-        result = entries.map(e => `${e.isDirectory() ? '📁' : '📄'} ${e.name}`).join('\n');
+        result = entries.map((e) => `${e.isDirectory() ? '📁' : '📄'} ${e.name}`).join('\n');
         console.log(chalk.green(`│ [Native FS] ✓ Znaleziono ${entries.length} elementów`));
-
       } else {
         // Default for files: read
         console.log(chalk.gray(`│ [Native FS] Czytam: ${validatedPath}`));
@@ -1643,16 +1648,15 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
         id: task.id,
         success: true,
         data: result,
-        logs: [`[Native FS] Operacja zakończona pomyślnie`]
+        logs: [`[Native FS] Operacja zakończona pomyślnie`],
       };
-
     } catch (error: any) {
       console.log(chalk.red(`│ [Native FS] BŁĄD: ${error.message}`));
       return {
         id: task.id,
         success: false,
         error: error.message,
-        logs: [`[Native FS] Error: ${error.message}`]
+        logs: [`[Native FS] Error: ${error.message}`],
       };
     }
   }
@@ -1664,7 +1668,7 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
   private buildDetailedTaskSpec(
     task: ExtendedTask,
     dependencyContext: string,
-    persona: typeof AGENT_PERSONAS[AgentRole]
+    persona: (typeof AGENT_PERSONAS)[AgentRole],
   ): DetailedTaskSpec {
     // Determine task type
     const taskType = this.detectDetailedTaskType(task.task);
@@ -1682,12 +1686,12 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
     const availableTools = [
       'Native FS: readFile, writeFile, listDirectory, directoryTree',
       'EXEC: git, npm, npx, tsc, eslint (tylko narzędzia systemowe)',
-      '===ZAPIS=== protocol dla zmian w kodzie'
+      '===ZAPIS=== protocol dla zmian w kodzie',
     ];
 
     return {
       taskId: task.id,
-      agent: task.agent as AgentRole,
+      agent: resolveAgentRoleSafe(task.agent),
       agentDescription: persona?.description || `Agent ${task.agent}`,
 
       taskDescription: task.task,
@@ -1705,8 +1709,8 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
       constraints: {
         timeout: this.config.taskTimeout || 180000,
         maxRetries: this.config.maxRetries || 2,
-        mustUseNativeFs: true
-      }
+        mustUseNativeFs: true,
+      },
     };
   }
 
@@ -1722,7 +1726,9 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
     if (/przeczytaj|wczytaj|odczytaj|pobierz.*zawartość|read.*file|load.*file/i.test(lower)) {
       return 'code_read';
     }
-    if (/napraw|zmodyfikuj|popraw|zrefaktoruj|zaktualizuj|fix|modify|update|refactor/i.test(lower)) {
+    if (
+      /napraw|zmodyfikuj|popraw|zrefaktoruj|zaktualizuj|fix|modify|update|refactor/i.test(lower)
+    ) {
       return 'code_modify';
     }
     if (/test|spec|sprawdź.*działanie|verify|validate/i.test(lower)) {
@@ -1748,38 +1754,44 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
     const files: DetailedTaskSpec['targetFiles'] = [];
 
     // Pattern 1: Full Windows paths
-    const winPaths = taskText.matchAll(/([A-Z]:\\[^\s"']+\.(ts|js|tsx|jsx|json|yaml|yml|md|txt|css|html|py|java|cs|go|rs))/gi);
+    const winPaths = taskText.matchAll(
+      /([A-Z]:\\[^\s"']+\.(ts|js|tsx|jsx|json|yaml|yml|md|txt|css|html|py|java|cs|go|rs))/gi,
+    );
     for (const match of winPaths) {
       files.push({
         path: match[1],
         operation: this.detectFileOperation(taskText),
-        description: `Plik: ${path.basename(match[1])}`
+        description: `Plik: ${path.basename(match[1])}`,
       });
     }
 
     // Pattern 2: Relative paths (src/..., ./...)
     // Order extensions: longer first (json before js, tsx before ts)
-    const relativePaths = taskText.matchAll(/((?:\.\.?\/)?(?:src|lib|test|config|scripts)\/[\w./-]+\.(json|yaml|yml|tsx|jsx|ts|js|md|txt|css|html))/gi);
+    const relativePaths = taskText.matchAll(
+      /((?:\.\.?\/)?(?:src|lib|test|config|scripts)\/[\w./-]+\.(json|yaml|yml|tsx|jsx|ts|js|md|txt|css|html))/gi,
+    );
     for (const match of relativePaths) {
       const fullPath = path.resolve(this.rootDir, match[1]);
       files.push({
         path: fullPath,
         operation: this.detectFileOperation(taskText),
-        description: `Plik: ${match[1]}`
+        description: `Plik: ${match[1]}`,
       });
     }
 
     // Pattern 3: Simple filenames (tsconfig.json, index.ts)
     // Order extensions: longer first (json before js, tsx before ts)
-    const simpleFiles = taskText.matchAll(/(?:^|\s|["'])(\w[\w.-]*\.(json|yaml|yml|toml|tsx|jsx|ts|js|md|txt|css|html|config))(?:\s|["']|$)/gi);
+    const simpleFiles = taskText.matchAll(
+      /(?:^|\s|["'])(\w[\w.-]*\.(json|yaml|yml|toml|tsx|jsx|ts|js|md|txt|css|html|config))(?:\s|["']|$)/gi,
+    );
     for (const match of simpleFiles) {
       // Avoid duplicates
       const fileName = match[1];
-      if (!files.some(f => f.path.endsWith(fileName))) {
+      if (!files.some((f) => f.path.endsWith(fileName))) {
         files.push({
           path: path.resolve(this.rootDir, fileName),
           operation: this.detectFileOperation(taskText),
-          description: `Plik: ${fileName} (w katalogu projektu)`
+          description: `Plik: ${fileName} (w katalogu projektu)`,
         });
       }
     }
@@ -1796,7 +1808,8 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
     if (/utwórz|stwórz|create|new file/i.test(lower)) return 'create';
     if (/usuń|delete|remove/i.test(lower)) return 'delete';
     if (/napisz|zapisz|write|save/i.test(lower)) return 'write';
-    if (/napraw|zmodyfikuj|popraw|zaktualizuj|fix|modify|update|change/i.test(lower)) return 'modify';
+    if (/napraw|zmodyfikuj|popraw|zaktualizuj|fix|modify|update|change/i.test(lower))
+      return 'modify';
 
     return 'read';
   }
@@ -1804,7 +1817,10 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
   /**
    * Determine expected output format
    */
-  private determineExpectedOutput(taskText: string, taskType: DetailedTaskSpec['taskType']): DetailedTaskSpec['expectedOutput'] {
+  private determineExpectedOutput(
+    taskText: string,
+    taskType: DetailedTaskSpec['taskType'],
+  ): DetailedTaskSpec['expectedOutput'] {
     const lower = taskText.toLowerCase();
 
     // Code output
@@ -1812,7 +1828,7 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
       return {
         format: 'code',
         description: 'Kod źródłowy z blokiem ===ZAPIS=== dla zmian w plikach',
-        example: '===ZAPIS: src/example.ts===\n// kod tutaj\n===KONIEC==='
+        example: '===ZAPIS: src/example.ts===\n// kod tutaj\n===KONIEC===',
       };
     }
 
@@ -1821,7 +1837,7 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
       return {
         format: 'json',
         description: 'Dane w formacie JSON',
-        example: '{"key": "value"}'
+        example: '{"key": "value"}',
       };
     }
 
@@ -1830,7 +1846,7 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
       return {
         format: 'list',
         description: 'Lista ponumerowana lub wypunktowana',
-        example: '1. Pierwszy element\n2. Drugi element'
+        example: '1. Pierwszy element\n2. Drugi element',
       };
     }
 
@@ -1839,13 +1855,13 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
       return {
         format: 'structured',
         description: 'Strukturalna analiza z sekcjami',
-        example: '## Analiza\n### Główne wnioski\n...'
+        example: '## Analiza\n### Główne wnioski\n...',
       };
     }
 
     return {
       format: 'text',
-      description: 'Odpowiedź tekstowa'
+      description: 'Odpowiedź tekstowa',
     };
   }
 
@@ -1854,7 +1870,7 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
    */
   private parseDependencyContext(
     dependencyIds: number[],
-    rawContext: string
+    _rawContext: string,
   ): DetailedTaskSpec['dependencies'] {
     const dependencies: DetailedTaskSpec['dependencies'] = [];
 
@@ -1867,7 +1883,7 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
           taskId: depId,
           agent: 'unknown', // Could be enriched with task info
           summary: result.success ? 'Zakończone pomyślnie' : `Błąd: ${result.error || 'nieznany'}`,
-          relevantData: output?.substring(0, 500) // Limit to prevent token overflow
+          relevantData: output?.substring(0, 500), // Limit to prevent token overflow
         });
       }
     }
@@ -1882,14 +1898,20 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
     const lower = taskText.toLowerCase();
 
     // List detection (numbers, items, points)
-    if (/\d+\s*(ulepszeń|propozycji|punktów|elementów|kroków|rzeczy|pozycji|items)/i.test(lower) ||
-        /lista|wypisz|wymień|wylicz|ponumeruj/i.test(lower)) {
+    if (
+      /\d+\s*(ulepszeń|propozycji|punktów|elementów|kroków|rzeczy|pozycji|items)/i.test(lower) ||
+      /lista|wypisz|wymień|wylicz|ponumeruj/i.test(lower)
+    ) {
       return 'list';
     }
 
     // Code detection
-    if (/kod|implementuj|napraw|zrefaktoruj|funkcj[aę]|metod[aę]|klas[aę]|fix|bug|błąd/i.test(lower) ||
-        /typescript|javascript|python|java|css|html/i.test(lower)) {
+    if (
+      /kod|implementuj|napraw|zrefaktoruj|funkcj[aę]|metod[aę]|klas[aę]|fix|bug|błąd/i.test(
+        lower,
+      ) ||
+      /typescript|javascript|python|java|css|html/i.test(lower)
+    ) {
       return 'code';
     }
 
@@ -1907,104 +1929,6 @@ Teraz wykonaj zadanie PRAWIDŁOWO w TypeScript:`;
   }
 
   /**
-   * Get task-type-specific instruction with Few-Shot Examples
-   * Integrates examples from PromptSystem for better AI understanding
-   */
-  private getTaskTypeInstruction(taskType: string, taskText: string): string {
-    // Extract number if present (e.g., "50 ulepszen" -> 50)
-    const numberMatch = taskText.match(/(\d+)\s*(ulepszen|propozycji|punktow|elementow|krokow|rzeczy|pozycji|items)/i);
-    const count = numberMatch ? parseInt(numberMatch[1]) : null;
-
-    // Get few-shot examples for this task type
-    const exampleCategory = mapTaskTypeToExampleCategory(taskType);
-    const fewShotExamples = exampleCategory ? getFewShotExamples(exampleCategory, 1) : '';
-
-    let instruction = '';
-
-    switch (taskType) {
-      case 'list':
-        instruction = `INSTRUKCJA - ZADANIE TYPU LISTA:
-- Zwroc PONUMEROWANA LISTE${count ? ` z DOKLADNIE ${count} pozycjami` : ''}
-- Format: "1. [Tytul] - [Opis]" dla kazdego elementu
-- Kazdy element musi byc KONKRETNY i WYKONALNY
-- NIE pisz wstepu ani podsumowania - OD RAZU lista
-- ${count && count >= 20 ? `UWAGA: Lista ma miec ${count} pozycji - nie skracaj!` : ''}`;
-        break;
-
-      case 'code':
-        instruction = `INSTRUKCJA - ZADANIE TYPU KOD (BARDZO WAZNE):
-- Zwroc DZIALAJACY KOD gotowy do uzycia
-- Uzyj odpowiedniego jezyka programowania
-- Dodaj krotkie komentarze wyjasniajace kluczowe czesci
-- NIE opisuj co kod robi - NAPISZ KOD
-
-JESLI NAPRAWIASZ ISTNIEJACY KOD - UZYJ BLOKU ZAPISU:
-===ZAPIS===
-PLIK: ${this.rootDir}\\[nazwa_pliku_lub_sciezka_wzgledna]
-KOD:
-\`\`\`
-[kompletna zawartosc pliku po zmianach]
-\`\`\`
-===KONIEC_ZAPISU===
-
-KRYTYCZNE: Sciezka MUSI zaczynac sie od ${this.rootDir}
-To spowoduje AUTOMATYCZNY ZAPIS zmian do pliku!`;
-        break;
-
-      case 'proposal':
-        instruction = `INSTRUKCJA - ZADANIE TYPU PROPOZYCJE:
-- Zwroc KONKRETNE propozycje z opisem implementacji
-- Kazda propozycja: [Nazwa] - [Co robi] - [Jak zaimplementowac]
-- Skup sie na praktycznych, wykonalnych rozwiazaniach`;
-        break;
-
-      case 'analysis':
-        instruction = `INSTRUKCJA - ZADANIE ANALITYCZNE (WAZNE):
-- UWAGA: Nie tylko analizuj - NAPRAW PROBLEMY!
-- Dla kazdego znalezionego problemu:
-  1. Opisz problem krotko
-  2. NAPISZ POPRAWIONY KOD uzywajac bloku ZAPIS:
-
-===ZAPIS===
-PLIK: ${this.rootDir}\\[nazwa_pliku_lub_sciezka_wzgledna]
-KOD:
-\`\`\`
-[kompletna zawartosc pliku po naprawach]
-\`\`\`
-===KONIEC_ZAPISU===
-
-KRYTYCZNE: Sciezka MUSI zaczynac sie od ${this.rootDir}
-NIE pisz "nalezaloby naprawic" - PO PROSTU NAPRAW uzywajac bloku ZAPIS!`;
-        break;
-
-      default:
-        instruction = `INSTRUKCJA WYKONANIA:
-- WYKONAJ zadanie i zwroc KONKRETNY WYNIK
-- Jesli zadanie wymaga listy - NAPISZ TE LISTE
-- Jesli zadanie wymaga kodu - NAPISZ TEN KOD
-- Jesli zadanie wymaga propozycji - NAPISZ TE PROPOZYCJE
-- Jesli zadanie wymaga NAPRAWY/MODYFIKACJI pliku, uzyj bloku ZAPIS:
-
-===ZAPIS===
-PLIK: ${this.rootDir}\\[nazwa_pliku_lub_sciezka_wzgledna]
-KOD:
-\`\`\`
-[kompletna zawartosc pliku]
-\`\`\`
-===KONIEC_ZAPISU===
-
-KRYTYCZNE: Sciezka MUSI zaczynac sie od ${this.rootDir}`;
-    }
-
-    // Append few-shot examples if available
-    if (fewShotExamples) {
-      instruction += `\n${fewShotExamples}`;
-    }
-
-    return instruction;
-  }
-
-  /**
    * Normalize MCP tool name to correct format (serverName__toolName)
    */
   private normalizeMcpToolName(toolName: string): string {
@@ -2016,9 +1940,9 @@ KRYTYCZNE: Sciezka MUSI zaczynac sie od ${this.rootDir}`;
     //   "mcp__filesystem__read_file" -> "filesystem__read_file"
 
     let normalized = toolName
-      .replace(/\s+with\s+params:.*$/i, '')  // Remove "with params: {...}" suffix
-      .replace(/^mcp__/i, '')                 // Remove "mcp__" prefix if present
-      .replace(/\s*\{.*\}\s*$/s, '')          // Remove JSON params at end
+      .replace(/\s+with\s+params:.*$/i, '') // Remove "with params: {...}" suffix
+      .replace(/^mcp__/i, '') // Remove "mcp__" prefix if present
+      .replace(/\s*\{.*\}\s*$/s, '') // Remove JSON params at end
       .trim();
 
     // Convert slash to double underscore
@@ -2039,15 +1963,27 @@ KRYTYCZNE: Sciezka MUSI zaczynac sie od ${this.rootDir}`;
     // If no server prefix, try to infer from tool name
     if (!normalized.includes('__')) {
       // Filesystem tools
-      if (normalized.match(/^(list_directory|read_file|write_file|read_multiple_files|directory_tree|search_files|get_file_info|create_directory|move_file|read_text_file|read_media_file|list_directory_with_sizes|list_allowed_directories|edit_file)$/i)) {
+      if (
+        normalized.match(
+          /^(list_directory|read_file|write_file|read_multiple_files|directory_tree|search_files|get_file_info|create_directory|move_file|read_text_file|read_media_file|list_directory_with_sizes|list_allowed_directories|edit_file)$/i,
+        )
+      ) {
         normalized = `filesystem__${normalized}`;
       }
       // Memory tools
-      else if (normalized.match(/^(create_entities|search_nodes|read_graph|add_observations|delete_entities|delete_observations|delete_relations|create_relations|open_nodes)$/i)) {
+      else if (
+        normalized.match(
+          /^(create_entities|search_nodes|read_graph|add_observations|delete_entities|delete_observations|delete_relations|create_relations|open_nodes)$/i,
+        )
+      ) {
         normalized = `memory__${normalized}`;
       }
       // Serena tools
-      else if (normalized.match(/^(find_symbol|get_symbols_overview|replace_symbol_body|insert_after_symbol|insert_before_symbol|rename_symbol|find_referencing_symbols|replace_content|search_for_pattern|find_file|list_dir|create_text_file|read_file|write_memory|read_memory|list_memories|delete_memory|edit_memory|execute_shell_command)$/i)) {
+      else if (
+        normalized.match(
+          /^(find_symbol|get_symbols_overview|replace_symbol_body|insert_after_symbol|insert_before_symbol|rename_symbol|find_referencing_symbols|replace_content|search_for_pattern|find_file|list_dir|create_text_file|read_file|write_memory|read_memory|list_memories|delete_memory|edit_memory|execute_shell_command)$/i,
+        )
+      ) {
         normalized = `serena__${normalized}`;
       }
     }
@@ -2068,7 +2004,7 @@ KRYTYCZNE: Sciezka MUSI zaczynac sie od ${this.rootDir}`;
       case 'serena':
         return this.mapToSerenaParams(toolName, params);
 
-      case 'brave-search':
+      case 'brave-search': {
         // brave-search expects: q (query), count (optional)
         // Remove 'path' parameter as it's not supported
         const braveParams: Record<string, any> = {};
@@ -2077,8 +2013,9 @@ KRYTYCZNE: Sciezka MUSI zaczynac sie od ${this.rootDir}`;
         if (params.count) braveParams.count = params.count;
         // Explicitly DO NOT include 'path' - brave-search doesn't support it
         return braveParams;
+      }
 
-      case 'context7':
+      case 'context7': {
         // context7 expects: libraryId, query (for query-docs)
         // OR: query (for resolve-library-id)
         const context7Params: Record<string, any> = {};
@@ -2091,8 +2028,9 @@ KRYTYCZNE: Sciezka MUSI zaczynac sie od ${this.rootDir}`;
         }
         // Do NOT include 'path' - context7 doesn't use local paths
         return context7Params;
+      }
 
-      case 'puppeteer':
+      case 'puppeteer': {
         // puppeteer uses 'url' parameter, not 'path'
         const puppeteerParams: Record<string, any> = { ...params };
         // Keep url as-is - it's supposed to be a URL
@@ -2100,16 +2038,18 @@ KRYTYCZNE: Sciezka MUSI zaczynac sie od ${this.rootDir}`;
           delete puppeteerParams.path; // Remove invalid 'path' parameter
         }
         return puppeteerParams;
+      }
 
-      case 'playwright':
+      case 'playwright': {
         // playwright uses 'url' parameter for navigation
         const playwrightParams: Record<string, any> = { ...params };
         if (playwrightParams.path) {
           delete playwrightParams.path; // Remove invalid 'path' parameter
         }
         return playwrightParams;
+      }
 
-      case 'github':
+      case 'github': {
         // github expects query strings, not file paths
         const githubParams: Record<string, any> = { ...params };
         if (githubParams.path) {
@@ -2121,14 +2061,16 @@ KRYTYCZNE: Sciezka MUSI zaczynac sie od ${this.rootDir}`;
           delete githubParams.q;
         }
         return githubParams;
+      }
 
-      case 'memory':
+      case 'memory': {
         // memory (knowledge graph) uses query for search, not path
         const memoryParams: Record<string, any> = { ...params };
         if (memoryParams.path) {
           delete memoryParams.path; // Remove invalid 'path' parameter
         }
         return memoryParams;
+      }
 
       case 'filesystem':
         // filesystem uses 'path' correctly - no changes needed
@@ -2138,7 +2080,7 @@ KRYTYCZNE: Sciezka MUSI zaczynac sie od ${this.rootDir}`;
         // desktop-commander uses 'path' correctly - no changes needed
         return params;
 
-      default:
+      default: {
         // For unknown servers, pass params as-is but remove 'path' if it looks problematic
         const defaultParams = { ...params };
         // Only keep path if it looks like a valid local path (not URL, not external)
@@ -2146,6 +2088,7 @@ KRYTYCZNE: Sciezka MUSI zaczynac sie od ${this.rootDir}`;
           delete defaultParams.path;
         }
         return defaultParams;
+      }
     }
   }
 
@@ -2201,7 +2144,11 @@ KRYTYCZNE: Sciezka MUSI zaczynac sie od ${this.rootDir}`;
           mapped.relative_path = params.file || params.filename;
         } else {
           // BUG-008: Log warning when path is missing
-          console.log(chalk.yellow(`│ [MCP] WARNING: read_file called without path, original params: ${JSON.stringify(params)}`));
+          console.log(
+            chalk.yellow(
+              `│ [MCP] WARNING: read_file called without path, original params: ${JSON.stringify(params)}`,
+            ),
+          );
         }
         break;
 
@@ -2215,18 +2162,19 @@ KRYTYCZNE: Sciezka MUSI zaczynac sie od ${this.rootDir}`;
         mapped.content = params.content || '';
         break;
 
-      case 'search_for_pattern':
+      case 'search_for_pattern': {
         // BUG-007 FIX: Serena MCP expects: substring_pattern (NOT pattern!), relative_path
         // Native tools use 'pattern' but real Serena MCP uses 'substring_pattern'
         const searchPattern = params.pattern || params.query || params.substring_pattern || '';
-        mapped.substring_pattern = searchPattern;  // Real Serena MCP parameter name
-        mapped.pattern = searchPattern;            // Also keep pattern for native tools
+        mapped.substring_pattern = searchPattern; // Real Serena MCP parameter name
+        mapped.pattern = searchPattern; // Also keep pattern for native tools
         if (params.path) {
           mapped.relative_path = this.toRelativePath(params.path);
         } else if (params.relative_path) {
           mapped.relative_path = params.relative_path;
         }
         break;
+      }
 
       default:
         // For other Serena tools, pass params as-is but map common aliases
@@ -2276,24 +2224,30 @@ KRYTYCZNE: Sciezka MUSI zaczynac sie od ${this.rootDir}`;
       if (paramsMatch) {
         try {
           params = JSON.parse(paramsMatch[1]);
-        } catch { }
+        } catch {}
       }
 
       // Extract path from task text if still no params
       if (!params.path) {
         // Match: "path '.'", "ścieżki '.'", "dla '.'", etc. (short paths like . or ..)
-        const shortPathMatch = task.task.match(/(?:path|ścieżk[ai]|dla|directory|katalogu?)\s*['"]?(\.\.?|~)['"]?/i);
+        const shortPathMatch = task.task.match(
+          /(?:path|ścieżk[ai]|dla|directory|katalogu?)\s*['"]?(\.\.?|~)['"]?/i,
+        );
         if (shortPathMatch) {
           // Resolve relative paths against rootDir
           params.path = path.resolve(this.rootDir, shortPathMatch[1]);
         }
         // Match: quoted paths like 'test.txt', "file.js", 'config.json'
         else {
-          const quotedPathMatch = task.task.match(/['"]([^'"]+\.[a-z0-9]+)['"]|['"]([^'"\/\\]+)['"](?=\s|,|$)/i);
+          const quotedPathMatch = task.task.match(
+            /['"]([^'"]+\.[a-z0-9]+)['"]|['"]([^'"/\\]+)['"](?=\s|,|$)/i,
+          );
           if (quotedPathMatch) {
             const extractedPath = quotedPathMatch[1] || quotedPathMatch[2];
             // Resolve relative paths against rootDir
-            params.path = path.isAbsolute(extractedPath) ? extractedPath : path.resolve(this.rootDir, extractedPath);
+            params.path = path.isAbsolute(extractedPath)
+              ? extractedPath
+              : path.resolve(this.rootDir, extractedPath);
           }
           // Match: absolute paths (Windows or Unix)
           else {
@@ -2303,7 +2257,9 @@ KRYTYCZNE: Sciezka MUSI zaczynac sie od ${this.rootDir}`;
             }
             // DEFAULT: If no path found, use rootDir (not process.cwd())
             else {
-              console.log(chalk.yellow(`│ [MCP] Brak ścieżki w zadaniu - używam rootDir: ${this.rootDir}`));
+              console.log(
+                chalk.yellow(`│ [MCP] Brak ścieżki w zadaniu - używam rootDir: ${this.rootDir}`),
+              );
               params.path = this.rootDir;
             }
           }
@@ -2312,7 +2268,9 @@ KRYTYCZNE: Sciezka MUSI zaczynac sie od ${this.rootDir}`;
 
       // Extract content param for write operations
       if (!params.content && toolName.includes('write')) {
-        const contentMatch = task.task.match(/(?:treści?ą?|content|tekst(?:em)?)\s*['"]([^'"]+)['"]/i);
+        const contentMatch = task.task.match(
+          /(?:treści?ą?|content|tekst(?:em)?)\s*['"]([^'"]+)['"]/i,
+        );
         if (contentMatch) {
           params.content = contentMatch[1];
         }
@@ -2328,7 +2286,7 @@ KRYTYCZNE: Sciezka MUSI zaczynac sie od ${this.rootDir}`;
           id: task.id,
           success: false,
           error: `Invalid path: ${params.path} - must be within project root: ${this.rootDir}`,
-          logs: [`MCP PATH ERROR: ${params.path} is outside project root`]
+          logs: [`MCP PATH ERROR: ${params.path} is outside project root`],
         };
       }
       params.path = validatedPath;
@@ -2347,9 +2305,9 @@ KRYTYCZNE: Sciezka MUSI zaczynac sie od ${this.rootDir}`;
       // Extract content
       let content = '';
       if (mcpResult.content && Array.isArray(mcpResult.content)) {
-        content = mcpResult.content.map((c: any) =>
-          c.type === 'text' ? c.text : JSON.stringify(c)
-        ).join('\n');
+        content = mcpResult.content
+          .map((c: any) => (c.type === 'text' ? c.text : JSON.stringify(c)))
+          .join('\n');
       } else {
         content = JSON.stringify(mcpResult);
       }
@@ -2362,13 +2320,15 @@ KRYTYCZNE: Sciezka MUSI zaczynac sie od ${this.rootDir}`;
           id: task.id,
           success: false,
           error: `MCP returned error: ${content.substring(0, 500)}`,
-          logs: [`MCP ERROR: ${toolName}\n${content}`]
+          logs: [`MCP ERROR: ${toolName}\n${content}`],
         };
       }
 
       // Pokaż podgląd wyniku MCP
       const contentPreview = content.substring(0, 300).replace(/\n/g, ' ');
-      console.log(chalk.green(`│ [MCP] Odpowiedź: ${contentPreview}${content.length > 300 ? '...' : ''}`));
+      console.log(
+        chalk.green(`│ [MCP] Odpowiedź: ${contentPreview}${content.length > 300 ? '...' : ''}`),
+      );
       console.log(chalk.gray(`│ [MCP] Rozmiar: ${content.length} znaków`));
 
       // Let agent process result and EXECUTE the actual task (with timeout)
@@ -2409,7 +2369,7 @@ KRYTYCZNE: Wszystkie ścieżki MUSZĄ zaczynać się od ${this.rootDir}
 NIGDY nie pisz "należałoby zrobić X" - PO PROSTU ZRÓB X!
 Odpowiadaj PO POLSKU z konkretnymi wynikami.`,
         '',
-        { timeout: this.config.taskTimeout }
+        { timeout: this.config.taskTimeout },
       );
 
       console.log(chalk.green(`│ [Agent] Zadanie wykonane`));
@@ -2423,16 +2383,15 @@ Odpowiadaj PO POLSKU z konkretnymi wynikami.`,
       return {
         id: task.id,
         success: true,
-        logs: [`MCP: ${toolName}\n${execution}`]
+        logs: [`MCP: ${toolName}\n${execution}`],
       };
-
     } catch (error: any) {
       console.log(chalk.red(`│ [MCP] BŁĄD: ${error.message}`));
       return {
         id: task.id,
         success: false,
         error: `MCP Tool Error: ${error.message}`,
-        logs: [`MCP FAILED: ${toolName} - ${error.message}`]
+        logs: [`MCP FAILED: ${toolName} - ${error.message}`],
       };
     }
   }
@@ -2443,12 +2402,17 @@ Odpowiadaj PO POLSKU z konkretnymi wynikami.`,
    * NOW WITH PATH VALIDATION - prevents writing outside project root
    * NOW WITH EXTENSION VALIDATION - prevents wrong file types
    */
-  private async processCodeChanges(agentResponse: string, taskId: number): Promise<ExecutionResult | null> {
+  private async processCodeChanges(
+    agentResponse: string,
+    taskId: number,
+  ): Promise<ExecutionResult | null> {
     // Pattern 1: Full format ===ZAPIS===\nPLIK:...\n===KONIEC_ZAPISU===
-    const savePattern1 = /===ZAPIS===\s*\n\s*PLIK:\s*(.+?)\s*\n\s*KOD:\s*\n```[\w]*\n([\s\S]*?)\n```\s*\n===KONIEC_ZAPISU===/gi;
+    const savePattern1 =
+      /===ZAPIS===\s*\n\s*PLIK:\s*(.+?)\s*\n\s*KOD:\s*\n```[\w]*\n([\s\S]*?)\n```\s*\n===KONIEC_ZAPISU===/gi;
 
     // Pattern 2: Compact format ===ZAPIS: path===\n```code```\n===KONIEC===
-    const savePattern2 = /===ZAPIS:\s*(.+?)===\s*\n```[\w]*\n([\s\S]*?)\n```\s*\n?===(?:KONIEC)?===/gi;
+    const savePattern2 =
+      /===ZAPIS:\s*(.+?)===\s*\n```[\w]*\n([\s\S]*?)\n```\s*\n?===(?:KONIEC)?===/gi;
 
     // Pattern 3: Inline format ===ZAPIS: path===\ncode\n===KONIEC===
     const savePattern3 = /===ZAPIS:\s*(.+?)===\s*\n([\s\S]*?)\n===(?:KONIEC)?===/gi;
@@ -2464,28 +2428,62 @@ Odpowiadaj PO POLSKU z konkretnymi wynikami.`,
     }
 
     // Valid extensions for this TypeScript/Node.js project
-    const validExtensions = ['.ts', '.tsx', '.js', '.jsx', '.json', '.md', '.yaml', '.yml', '.toml', '.css', '.html', '.sh', '.bat', '.ps1'];
-    const invalidExtensions = ['.py', '.java', '.cs', '.go', '.rs', '.rb', '.php', '.c', '.cpp', '.h'];
+    const _validExtensions = [
+      '.ts',
+      '.tsx',
+      '.js',
+      '.jsx',
+      '.json',
+      '.md',
+      '.yaml',
+      '.yml',
+      '.toml',
+      '.css',
+      '.html',
+      '.sh',
+      '.bat',
+      '.ps1',
+    ];
+    const invalidExtensions = [
+      '.py',
+      '.java',
+      '.cs',
+      '.go',
+      '.rs',
+      '.rb',
+      '.php',
+      '.c',
+      '.cpp',
+      '.h',
+    ];
 
     // Filter out invalid file types
-    const validMatches = allMatches.filter(match => {
+    const validMatches = allMatches.filter((match) => {
       const filePath = match[1].trim();
       const ext = path.extname(filePath).toLowerCase();
 
       if (invalidExtensions.includes(ext)) {
-        console.log(chalk.red(`│ [AUTO-WRITE] ODRZUCONO: ${filePath} - nieprawidłowe rozszerzenie ${ext} dla projektu TypeScript`));
+        console.log(
+          chalk.red(
+            `│ [AUTO-WRITE] ODRZUCONO: ${filePath} - nieprawidłowe rozszerzenie ${ext} dla projektu TypeScript`,
+          ),
+        );
         return false;
       }
       return true;
     });
 
     if (validMatches.length === 0) {
-      console.log(chalk.yellow(`│ [AUTO-WRITE] Brak prawidłowych plików do zapisu (odrzucono ${allMatches.length} z powodu rozszerzenia)`));
+      console.log(
+        chalk.yellow(
+          `│ [AUTO-WRITE] Brak prawidłowych plików do zapisu (odrzucono ${allMatches.length} z powodu rozszerzenia)`,
+        ),
+      );
       return {
         id: taskId,
         success: false,
         error: 'Agent próbował zapisać pliki z nieprawidłowym rozszerzeniem',
-        logs: [`❌ Odrzucono ${allMatches.length} plików z nieprawidłowym rozszerzeniem`]
+        logs: [`❌ Odrzucono ${allMatches.length} plików z nieprawidłowym rozszerzeniem`],
       };
     }
 
@@ -2540,11 +2538,7 @@ Odpowiadaj PO POLSKU z konkretnymi wynikami.`,
     return {
       id: taskId,
       success: allSuccess,
-      logs: [
-        cleanedResponse,
-        '\n📝 ZMIANY W PLIKACH:',
-        ...writeResults
-      ]
+      logs: [cleanedResponse, '\n📝 ZMIANY W PLIKACH:', ...writeResults],
     };
   }
 
@@ -2558,18 +2552,20 @@ Odpowiadaj PO POLSKU z konkretnymi wynikami.`,
       return {
         id: taskId,
         success: true,
-        logs: [resultText]
+        logs: [resultText],
       };
     }
 
     let cmd = match[1].trim();
 
     // Sanitize: remove leading garbage characters (common Ollama hallucination)
-    cmd = cmd.replace(/^[)\]\}>:;,]+\s*/, '');
+    cmd = cmd.replace(/^[)\]}>:;,]+\s*/, '');
 
     // Check if this is an MCP native tool call (not a shell command)
     if (cmd.startsWith('native/') || cmd.startsWith('mcp/') || cmd.startsWith('playwright/')) {
-      console.log(chalk.yellow(`  [EXEC] Detected MCP tool call in EXEC: ${cmd.substring(0, 40)}...`));
+      console.log(
+        chalk.yellow(`  [EXEC] Detected MCP tool call in EXEC: ${cmd.substring(0, 40)}...`),
+      );
       // Parse MCP tool call: native/tool_name "arg1" "arg2" or native/tool_name arg1 arg2
       const toolMatch = cmd.match(/^(native|mcp|playwright)\/(\w+)\s*(.*)/);
       if (toolMatch) {
@@ -2577,38 +2573,38 @@ Odpowiadaj PO POLSKU z konkretnymi wynikami.`,
         const fullToolName = `${prefix}/${toolName}`;
         // Parse arguments - handle quoted strings and simple args
         const args = argsStr.match(/"[^"]*"|\S+/g) || [];
-        const cleanArgs = args.map(a => a.replace(/^"|"$/g, ''));
+        const cleanArgs = args.map((a) => a.replace(/^"|"$/g, ''));
         console.log(chalk.gray(`  [MCP] Redirecting to: ${fullToolName}(${cleanArgs.join(', ')})`));
         try {
           const result = await mcpManager.callTool(fullToolName, {
             pattern: cleanArgs[0],
             directory: cleanArgs[1] || this.rootDir,
-            path: cleanArgs[1] || cleanArgs[0] || this.rootDir
+            path: cleanArgs[1] || cleanArgs[0] || this.rootDir,
           });
           return {
             id: taskId,
             success: true,
-            logs: [`[MCP:${fullToolName}] ${JSON.stringify(result).substring(0, 500)}`]
+            logs: [`[MCP:${fullToolName}] ${JSON.stringify(result).substring(0, 500)}`],
           };
         } catch (mcpError: any) {
           return {
             id: taskId,
             success: false,
             error: `MCP call failed: ${mcpError.message}`,
-            logs: [`[MCP:${fullToolName}] ERROR: ${mcpError.message}`]
+            logs: [`[MCP:${fullToolName}] ERROR: ${mcpError.message}`],
           };
         }
       }
     }
 
     // Validate command - reject obviously invalid shell commands
-    if (!cmd || cmd.length < 2 || /^[^a-zA-Z0-9\/\.\\]/.test(cmd)) {
+    if (!cmd || cmd.length < 2 || /^[^a-zA-Z0-9/.\\]/.test(cmd)) {
       console.log(chalk.yellow(`  [EXEC] Invalid command rejected: "${cmd.substring(0, 30)}..."`));
       return {
         id: taskId,
         success: false,
         error: `Invalid EXEC command format: ${cmd.substring(0, 50)}`,
-        logs: [`EXEC rejected - invalid format. Command must start with valid shell command.`]
+        logs: [`EXEC rejected - invalid format. Command must start with valid shell command.`],
       };
     }
 
@@ -2627,7 +2623,7 @@ Odpowiadaj PO POLSKU z konkretnymi wynikami.`,
       // Poprzednio był shell mismatch: powershell.exe uruchamiany przez cmd.exe
       const { stdout, stderr } = await execAsync(fullCommand, {
         timeout: this.config.taskTimeout,
-        windowsHide: this.config.silentExec
+        windowsHide: this.config.silentExec,
         // NIE ustawiamy shell - pozwalamy Node.js użyć domyślnej powłoki
       });
 
@@ -2640,15 +2636,14 @@ ${stderr ? `STDERR:\n${stderr}` : ''}`;
       return {
         id: taskId,
         success: true,
-        logs: [output]
+        logs: [output],
       };
-
     } catch (error: any) {
       return {
         id: taskId,
         success: false,
         error: `EXEC FAILED: ${error.message}`,
-        logs: [`EXEC FAILURE:\nCOMMAND: ${cmd}\nERROR: ${error.message}`]
+        logs: [`EXEC FAILURE:\nCOMMAND: ${cmd}\nERROR: ${error.message}`],
       };
     }
   }
@@ -2661,7 +2656,7 @@ ${stderr ? `STDERR:\n${stderr}` : ''}`;
     return {
       completed: results.length,
       total: this.completedTasks.size,
-      failed: results.filter(r => !r.success).length
+      failed: results.filter((r) => !r.success).length,
     };
   }
 }
@@ -2671,7 +2666,7 @@ ${stderr ? `STDERR:\n${stderr}` : ''}`;
  */
 export async function executeGraphTasks(
   tasks: SwarmTask[],
-  config?: GraphProcessorConfig
+  config?: GraphProcessorConfig,
 ): Promise<ExecutionResult[]> {
   const processor = new GraphProcessor(config);
   return processor.process(tasks);

@@ -8,36 +8,27 @@
  * - KnowledgeCommands: CLI interface
  */
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
-import fs from 'fs/promises';
-import path from 'path';
-import os from 'os';
-
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { knowledgeAgent } from '../../src/knowledge/KnowledgeAgent.js';
 // Import knowledge system
 import {
   KnowledgeBank,
-  knowledgeBank,
-  type KnowledgeEntry,
   type KnowledgeType,
+  knowledgeBank,
 } from '../../src/knowledge/KnowledgeBank.js';
-
+import { knowledgeCommands } from '../../src/knowledge/KnowledgeCommands.js';
 import {
-  KnowledgeAgent,
-  knowledgeAgent,
-} from '../../src/knowledge/KnowledgeAgent.js';
-
-import {
-  ModelTrainer,
-  modelTrainer,
   AVAILABLE_BASE_MODELS,
   DEFAULT_TRAINING_CONFIG,
+  modelTrainer,
 } from '../../src/knowledge/ModelTrainer.js';
-
-import { knowledgeCommands } from '../../src/knowledge/KnowledgeCommands.js';
 
 // Test directories
 const TEST_DIR = path.join(os.tmpdir(), 'geminihydra-knowledge-test');
-const TEST_KNOWLEDGE_FILE = path.join(TEST_DIR, 'test-knowledge.json');
+const _TEST_KNOWLEDGE_FILE = path.join(TEST_DIR, 'test-knowledge.json');
 
 // ============================================================
 // KnowledgeBank Tests
@@ -75,7 +66,10 @@ describe('KnowledgeBank', () => {
       await testBank.init();
       // Global bank uses ~/.geminihydra/knowledge
       const storageDir = path.join(os.homedir(), '.geminihydra', 'knowledge');
-      const exists = await fs.access(storageDir).then(() => true).catch(() => false);
+      const exists = await fs
+        .access(storageDir)
+        .then(() => true)
+        .catch(() => false);
       expect(exists).toBe(true);
     });
   });
@@ -91,7 +85,7 @@ describe('KnowledgeBank', () => {
         'code_pattern',
         'Singleton Pattern',
         'class Singleton { private static instance: Singleton; }',
-        { tags: ['pattern', 'singleton', 'typescript'], source: 'test' }
+        { tags: ['pattern', 'singleton', 'typescript'], source: 'test' },
       );
 
       expect(entry).toBeDefined();
@@ -112,17 +106,15 @@ describe('KnowledgeBank', () => {
         'lesson_learned',
         'api_reference',
         'config',
-        'workflow'
+        'workflow',
       ];
 
       const ids: string[] = [];
       for (const type of types) {
-        const entry = await testBank.add(
-          type,
-          `Test ${type}`,
-          `Content for ${type}`,
-          { tags: [type, 'test'], source: 'test' }
-        );
+        const entry = await testBank.add(type, `Test ${type}`, `Content for ${type}`, {
+          tags: [type, 'test'],
+          source: 'test',
+        });
         ids.push(entry.id);
         expect(entry).toBeDefined();
       }
@@ -137,16 +129,14 @@ describe('KnowledgeBank', () => {
       const entries: any[] = [];
 
       for (let i = 0; i < 10; i++) {
-        const entry = await testBank.add(
-          'code_pattern',
-          `Pattern ${i}`,
-          `Content ${i}`,
-          { tags: ['test'], source: 'test' }
-        );
+        const entry = await testBank.add('code_pattern', `Pattern ${i}`, `Content ${i}`, {
+          tags: ['test'],
+          source: 'test',
+        });
         entries.push(entry);
       }
 
-      const ids = entries.map(e => e.id);
+      const ids = entries.map((e) => e.id);
       const uniqueIds = new Set(ids);
       expect(uniqueIds.size).toBe(ids.length);
 
@@ -164,8 +154,8 @@ describe('KnowledgeBank', () => {
         {
           summary: 'Memory leak fix in event handlers',
           tags: ['bug', 'memory', 'events'],
-          source: 'test'
-        }
+          source: 'test',
+        },
       );
 
       expect(entry).toBeDefined();
@@ -188,14 +178,14 @@ describe('KnowledgeBank', () => {
         title: 'Observer Pattern',
         content: 'The observer pattern allows subscription to events',
         tags: ['pattern', 'observer'],
-        source: 'test'
+        source: 'test',
       });
       await testBank.add({
         type: 'architecture',
         title: 'Microservices',
         content: 'Microservices architecture splits app into services',
         tags: ['architecture', 'microservices'],
-        source: 'test'
+        source: 'test',
       });
     });
 
@@ -220,12 +210,12 @@ describe('KnowledgeBank', () => {
 
     it('should filter by type', () => {
       const patterns = testBank.list({ type: 'code_pattern' });
-      expect(patterns.every(e => e.type === 'code_pattern')).toBe(true);
+      expect(patterns.every((e) => e.type === 'code_pattern')).toBe(true);
     });
 
     it('should filter by source', () => {
       const testEntries = testBank.list({ source: 'test' });
-      expect(testEntries.every(e => e.source === 'test')).toBe(true);
+      expect(testEntries.every((e) => e.source === 'test')).toBe(true);
     });
 
     it('should limit results', () => {
@@ -242,24 +232,30 @@ describe('KnowledgeBank', () => {
       searchEntries = [];
 
       // Use correct API: add(type, title, content, options)
-      searchEntries.push(await testBank.add(
-        'code_pattern',
-        'Factory Pattern',
-        'Factory pattern creates objects without specifying exact class',
-        { tags: ['pattern', 'factory', 'creational'], source: 'test' }
-      ));
-      searchEntries.push(await testBank.add(
-        'code_pattern',
-        'Builder Pattern',
-        'Builder pattern constructs complex objects step by step',
-        { tags: ['pattern', 'builder', 'creational'], source: 'test' }
-      ));
-      searchEntries.push(await testBank.add(
-        'bug_fix',
-        'Fix Async Race Condition',
-        'Race condition in async operations fixed with mutex',
-        { tags: ['bug', 'async', 'race-condition'], source: 'test' }
-      ));
+      searchEntries.push(
+        await testBank.add(
+          'code_pattern',
+          'Factory Pattern',
+          'Factory pattern creates objects without specifying exact class',
+          { tags: ['pattern', 'factory', 'creational'], source: 'test' },
+        ),
+      );
+      searchEntries.push(
+        await testBank.add(
+          'code_pattern',
+          'Builder Pattern',
+          'Builder pattern constructs complex objects step by step',
+          { tags: ['pattern', 'builder', 'creational'], source: 'test' },
+        ),
+      );
+      searchEntries.push(
+        await testBank.add(
+          'bug_fix',
+          'Fix Async Race Condition',
+          'Race condition in async operations fixed with mutex',
+          { tags: ['bug', 'async', 'race-condition'], source: 'test' },
+        ),
+      );
     });
 
     afterEach(async () => {
@@ -282,9 +278,9 @@ describe('KnowledgeBank', () => {
 
     it('should return relevance scores', async () => {
       const results = await testBank.search('pattern');
-      expect(results.every(r => typeof r.score === 'number')).toBe(true);
+      expect(results.every((r) => typeof r.score === 'number')).toBe(true);
       // Scores should be non-negative (can be > 1 depending on scoring algorithm)
-      expect(results.every(r => r.score >= 0)).toBe(true);
+      expect(results.every((r) => r.score >= 0)).toBe(true);
     });
 
     it('should sort by relevance', async () => {
@@ -301,7 +297,7 @@ describe('KnowledgeBank', () => {
 
     it('should filter search by type', async () => {
       const results = await testBank.search('fix', { type: 'bug_fix' });
-      expect(results.every(r => r.entry.type === 'bug_fix')).toBe(true);
+      expect(results.every((r) => r.entry.type === 'bug_fix')).toBe(true);
     });
 
     it('should handle empty search', async () => {
@@ -323,14 +319,14 @@ describe('KnowledgeBank', () => {
         title: 'API Authentication',
         content: 'Authentication uses JWT tokens with 24h expiration',
         tags: ['api', 'auth', 'jwt'],
-        source: 'test'
+        source: 'test',
       });
       await testBank.add({
         type: 'code_pattern',
         title: 'Token Refresh Pattern',
         content: 'Implement token refresh before expiration using interceptors',
         tags: ['auth', 'token', 'pattern'],
-        source: 'test'
+        source: 'test',
       });
     });
 
@@ -360,12 +356,10 @@ describe('KnowledgeBank', () => {
     it('should update entry title', async () => {
       await testBank.init();
       // Create entry with correct API
-      const entry = await testBank.add(
-        'documentation',
-        'Original Title',
-        'Original content',
-        { tags: ['original'], source: 'test' }
-      );
+      const entry = await testBank.add('documentation', 'Original Title', 'Original content', {
+        tags: ['original'],
+        source: 'test',
+      });
 
       const updated = await testBank.update(entry.id, { title: 'Updated Title' });
       expect(updated).toBeDefined(); // Returns updated entry or null
@@ -380,12 +374,10 @@ describe('KnowledgeBank', () => {
 
     it('should update entry content', async () => {
       await testBank.init();
-      const entry = await testBank.add(
-        'documentation',
-        'Original Title',
-        'Original content',
-        { tags: ['original'], source: 'test' }
-      );
+      const entry = await testBank.add('documentation', 'Original Title', 'Original content', {
+        tags: ['original'],
+        source: 'test',
+      });
 
       const updated = await testBank.update(entry.id, { content: 'Updated content' });
       expect(updated).toBeDefined();
@@ -398,12 +390,10 @@ describe('KnowledgeBank', () => {
 
     it('should update entry tags', async () => {
       await testBank.init();
-      const entry = await testBank.add(
-        'documentation',
-        'Original Title',
-        'Original content',
-        { tags: ['original'], source: 'test' }
-      );
+      const entry = await testBank.add('documentation', 'Original Title', 'Original content', {
+        tags: ['original'],
+        source: 'test',
+      });
 
       const updated = await testBank.update(entry.id, { tags: ['updated', 'new-tag'] });
       expect(updated).toBeDefined();
@@ -425,12 +415,10 @@ describe('KnowledgeBank', () => {
     it('should delete entry', async () => {
       await testBank.init();
       // Create entry to delete - using correct API
-      const entry = await testBank.add(
-        'documentation',
-        'To Be Deleted',
-        'This will be deleted',
-        { tags: ['delete'], source: 'test' }
-      );
+      const entry = await testBank.add('documentation', 'To Be Deleted', 'This will be deleted', {
+        tags: ['delete'],
+        source: 'test',
+      });
 
       const deleted = await testBank.delete(entry.id);
       expect(deleted).toBe(true);
@@ -453,21 +441,21 @@ describe('KnowledgeBank', () => {
         title: 'Pattern 1',
         content: 'Content 1',
         tags: ['tag1', 'common'],
-        source: 'test'
+        source: 'test',
       });
       await testBank.add({
         type: 'code_pattern',
         title: 'Pattern 2',
         content: 'Content 2',
         tags: ['tag2', 'common'],
-        source: 'test'
+        source: 'test',
       });
       await testBank.add({
         type: 'bug_fix',
         title: 'Bug Fix 1',
         content: 'Fix content',
         tags: ['tag3', 'common'],
-        source: 'codebase'
+        source: 'codebase',
       });
     });
 
@@ -503,7 +491,7 @@ describe('KnowledgeBank', () => {
         title: 'Export Test Pattern',
         content: 'Content for export',
         tags: ['export', 'test'],
-        source: 'test'
+        source: 'test',
       });
     });
 
@@ -516,7 +504,10 @@ describe('KnowledgeBank', () => {
     it('should export to JSON', async () => {
       await testBank.exportToJSON(exportPath);
 
-      const exists = await fs.access(exportPath).then(() => true).catch(() => false);
+      const exists = await fs
+        .access(exportPath)
+        .then(() => true)
+        .catch(() => false);
       expect(exists).toBe(true);
     });
 
@@ -534,7 +525,7 @@ describe('KnowledgeBank', () => {
         'code_pattern',
         'Training Export Test',
         'This is content for training export test',
-        { tags: ['training', 'test'], source: 'test' }
+        { tags: ['training', 'test'], source: 'test' },
       );
 
       const trainingPath = path.join(TEST_DIR, 'training-export.jsonl');
@@ -542,7 +533,10 @@ describe('KnowledgeBank', () => {
 
       const content = await fs.readFile(trainingPath, 'utf-8');
       // JSONL format - each line is a JSON object
-      const lines = content.trim().split('\n').filter(l => l.length > 0);
+      const lines = content
+        .trim()
+        .split('\n')
+        .filter((l) => l.length > 0);
 
       if (lines.length > 0) {
         // Parse first line - should have instruction field
@@ -593,7 +587,7 @@ describe('KnowledgeAgent', () => {
     it('should build agent context', async () => {
       const context = await knowledgeAgent.buildContextForAgent({
         query: 'How to handle errors?',
-        agentName: 'test-agent'
+        agentName: 'test-agent',
       });
       expect(context).toBeDefined();
       expect(typeof context).toBe('string');
@@ -602,7 +596,7 @@ describe('KnowledgeAgent', () => {
     it('should return string from context builder', async () => {
       const context = await knowledgeAgent.buildContextForAgent({
         query: 'error handling patterns',
-        agentName: 'test-agent'
+        agentName: 'test-agent',
       });
       // May return empty string if no relevant knowledge found
       expect(typeof context).toBe('string');
@@ -611,7 +605,7 @@ describe('KnowledgeAgent', () => {
     it('should format context as string', async () => {
       const context = await knowledgeAgent.buildContextForAgent({
         query: 'test query',
-        agentName: 'test-agent'
+        agentName: 'test-agent',
       });
       expect(typeof context).toBe('string');
     });
@@ -637,8 +631,8 @@ describe('ModelTrainer', () => {
 
     it('should include common model families', () => {
       const modelKeys = Object.keys(AVAILABLE_BASE_MODELS);
-      expect(modelKeys.some(k => k.includes('qwen'))).toBe(true);
-      expect(modelKeys.some(k => k.includes('gemma'))).toBe(true);
+      expect(modelKeys.some((k) => k.includes('qwen'))).toBe(true);
+      expect(modelKeys.some((k) => k.includes('gemma'))).toBe(true);
     });
   });
 
@@ -715,10 +709,7 @@ describe('ModelTrainer', () => {
 
   describe('Training Time Estimation', () => {
     it('should estimate training time', () => {
-      const estimate = modelTrainer.estimateTrainingTime(
-        DEFAULT_TRAINING_CONFIG,
-        100
-      );
+      const estimate = modelTrainer.estimateTrainingTime(DEFAULT_TRAINING_CONFIG, 100);
       expect(typeof estimate).toBe('string');
       expect(estimate.includes('minute') || estimate.includes('hour')).toBe(true);
     });
@@ -748,27 +739,30 @@ describe('ModelTrainer', () => {
         title: 'Training Test Pattern',
         content: 'This is content for training data preparation test',
         tags: ['training', 'test'],
-        source: 'test'
+        source: 'test',
       });
     });
 
     it('should prepare training data in alpaca format', async () => {
       const dataPath = await modelTrainer.prepareTrainingData({
         format: 'alpaca',
-        maxSamples: 10
+        maxSamples: 10,
       });
 
       expect(dataPath).toBeDefined();
       expect(typeof dataPath).toBe('string');
 
-      const exists = await fs.access(dataPath).then(() => true).catch(() => false);
+      const exists = await fs
+        .access(dataPath)
+        .then(() => true)
+        .catch(() => false);
       expect(exists).toBe(true);
     });
 
     it('should create valid JSON training file', async () => {
       const dataPath = await modelTrainer.prepareTrainingData({
         format: 'alpaca',
-        maxSamples: 5
+        maxSamples: 5,
       });
 
       const content = await fs.readFile(dataPath, 'utf-8');
@@ -784,12 +778,12 @@ describe('ModelTrainer', () => {
         title: 'Format Test Entry',
         content: 'This is test content for format verification',
         tags: ['format', 'test'],
-        source: 'test'
+        source: 'test',
       });
 
       const dataPath = await modelTrainer.prepareTrainingData({
         format: 'alpaca',
-        maxSamples: 10
+        maxSamples: 10,
       });
 
       const content = await fs.readFile(dataPath, 'utf-8');
@@ -818,7 +812,7 @@ describe('KnowledgeCommands', () => {
     it('should show help', async () => {
       const result = await knowledgeCommands.knowledge({
         cwd: testCwd,
-        args: ['help']
+        args: ['help'],
       });
 
       expect(result).toContain('Knowledge Bank Commands');
@@ -828,7 +822,7 @@ describe('KnowledgeCommands', () => {
     it('should list all command categories', async () => {
       const result = await knowledgeCommands.knowledge({
         cwd: testCwd,
-        args: ['help']
+        args: ['help'],
       });
 
       expect(result).toContain('View & Search');
@@ -841,7 +835,7 @@ describe('KnowledgeCommands', () => {
     it('should show status', async () => {
       const result = await knowledgeCommands.knowledge({
         cwd: testCwd,
-        args: ['status']
+        args: ['status'],
       });
 
       expect(result).toContain('Knowledge Bank Status');
@@ -851,7 +845,7 @@ describe('KnowledgeCommands', () => {
     it('should show entry counts', async () => {
       const result = await knowledgeCommands.knowledge({
         cwd: testCwd,
-        args: ['status']
+        args: ['status'],
       });
 
       expect(result).toContain('By Type');
@@ -862,7 +856,7 @@ describe('KnowledgeCommands', () => {
     it('should list entries', async () => {
       const result = await knowledgeCommands.knowledge({
         cwd: testCwd,
-        args: ['list']
+        args: ['list'],
       });
 
       expect(typeof result).toBe('string');
@@ -871,7 +865,7 @@ describe('KnowledgeCommands', () => {
     it('should handle limit flag', async () => {
       const result = await knowledgeCommands.knowledge({
         cwd: testCwd,
-        args: ['list', '--limit', '5']
+        args: ['list', '--limit', '5'],
       });
 
       expect(typeof result).toBe('string');
@@ -882,7 +876,7 @@ describe('KnowledgeCommands', () => {
     it('should add knowledge entry', async () => {
       const result = await knowledgeCommands.knowledge({
         cwd: testCwd,
-        args: ['add', 'code_pattern', 'CLI Test Pattern', '--content', 'Test content from CLI']
+        args: ['add', 'code_pattern', 'CLI Test Pattern', '--content', 'Test content from CLI'],
       });
 
       expect(result.toLowerCase()).toContain('added');
@@ -891,7 +885,7 @@ describe('KnowledgeCommands', () => {
     it('should require content', async () => {
       const result = await knowledgeCommands.knowledge({
         cwd: testCwd,
-        args: ['add', 'code_pattern', 'No Content']
+        args: ['add', 'code_pattern', 'No Content'],
       });
 
       expect(result.toLowerCase()).toContain('content');
@@ -900,7 +894,15 @@ describe('KnowledgeCommands', () => {
     it('should accept tags', async () => {
       const result = await knowledgeCommands.knowledge({
         cwd: testCwd,
-        args: ['add', 'documentation', 'Tagged Entry', '--content', 'Content', '--tags', 'cli,test,tags']
+        args: [
+          'add',
+          'documentation',
+          'Tagged Entry',
+          '--content',
+          'Content',
+          '--tags',
+          'cli,test,tags',
+        ],
       });
 
       expect(result.toLowerCase()).toContain('added');
@@ -912,14 +914,20 @@ describe('KnowledgeCommands', () => {
       // Ensure we have searchable content
       await knowledgeCommands.knowledge({
         cwd: testCwd,
-        args: ['add', 'code_pattern', 'Searchable Pattern', '--content', 'Unique searchable content xyz123']
+        args: [
+          'add',
+          'code_pattern',
+          'Searchable Pattern',
+          '--content',
+          'Unique searchable content xyz123',
+        ],
       });
     });
 
     it('should search knowledge', async () => {
       const result = await knowledgeCommands.knowledge({
         cwd: testCwd,
-        args: ['search', 'pattern']
+        args: ['search', 'pattern'],
       });
 
       expect(typeof result).toBe('string');
@@ -928,7 +936,7 @@ describe('KnowledgeCommands', () => {
     it('should show results with scores', async () => {
       const result = await knowledgeCommands.knowledge({
         cwd: testCwd,
-        args: ['search', 'searchable']
+        args: ['search', 'searchable'],
       });
 
       // Should have some indication of search results
@@ -940,7 +948,7 @@ describe('KnowledgeCommands', () => {
     it('should show system status', async () => {
       const result = await knowledgeCommands.knowledge({
         cwd: testCwd,
-        args: ['train', '--status']
+        args: ['train', '--status'],
       });
 
       expect(result).toContain('System Status');
@@ -950,7 +958,7 @@ describe('KnowledgeCommands', () => {
     it('should list available models', async () => {
       const result = await knowledgeCommands.knowledge({
         cwd: testCwd,
-        args: ['train', '--models']
+        args: ['train', '--models'],
       });
 
       expect(result).toContain('Available Base Models');
@@ -960,7 +968,7 @@ describe('KnowledgeCommands', () => {
     it('should list trained models', async () => {
       const result = await knowledgeCommands.knowledge({
         cwd: testCwd,
-        args: ['train', '--trained']
+        args: ['train', '--trained'],
       });
 
       // Should return something (may be empty or list)
@@ -970,11 +978,15 @@ describe('KnowledgeCommands', () => {
     it('should check dependencies before training', async () => {
       const result = await knowledgeCommands.knowledge({
         cwd: testCwd,
-        args: ['train', '--name', 'test-model']
+        args: ['train', '--name', 'test-model'],
       });
 
       // Should either start training or report missing deps
-      expect(result.includes('Training') || result.includes('Missing') || result.includes('dependencies')).toBe(true);
+      expect(
+        result.includes('Training') ||
+          result.includes('Missing') ||
+          result.includes('dependencies'),
+      ).toBe(true);
     });
   });
 
@@ -992,7 +1004,7 @@ describe('KnowledgeCommands', () => {
 
       const result = await knowledgeCommands.knowledge({
         cwd: testCwd,
-        args: ['export', exportTestPath]
+        args: ['export', exportTestPath],
       });
 
       expect(result.toLowerCase()).toContain('export');
@@ -1003,10 +1015,11 @@ describe('KnowledgeCommands', () => {
     it('should handle non-existent entry', async () => {
       const result = await knowledgeCommands.knowledge({
         cwd: testCwd,
-        args: ['delete', 'non-existent-id-12345']
+        args: ['delete', 'non-existent-id-12345'],
       });
 
-      expect(result.toLowerCase()).toContain('not found') || expect(result.toLowerCase()).toContain('error');
+      expect(result.toLowerCase()).toContain('not found') ||
+        expect(result.toLowerCase()).toContain('error');
     });
   });
 
@@ -1014,7 +1027,7 @@ describe('KnowledgeCommands', () => {
     it('should handle unknown commands gracefully', async () => {
       const result = await knowledgeCommands.knowledge({
         cwd: testCwd,
-        args: ['unknowncommand']
+        args: ['unknowncommand'],
       });
 
       // Should show help or error message
@@ -1043,7 +1056,7 @@ describe('Knowledge System Integration', () => {
       title: 'Integration Test Doc',
       content: 'This is special integration test content for workflow verification',
       tags: ['integration', 'test', 'workflow'],
-      source: 'test'
+      source: 'test',
     });
 
     // Search for it
@@ -1064,7 +1077,7 @@ describe('Knowledge System Integration', () => {
     // Build agent context - may return empty string if no relevant knowledge
     const agentContext = await knowledgeAgent.buildContextForAgent({
       query: 'any topic',
-      agentName: 'test-agent'
+      agentName: 'test-agent',
     });
 
     // Just check it returns a string (may be empty if no relevant knowledge)
@@ -1073,15 +1086,17 @@ describe('Knowledge System Integration', () => {
 
   it('should handle concurrent operations', async () => {
     // Add multiple entries concurrently
-    const promises = Array(5).fill(null).map((_, i) =>
-      testBank.add({
-        type: 'code_pattern',
-        title: `Concurrent Pattern ${i}`,
-        content: `Concurrent content ${i}`,
-        tags: ['concurrent', 'test'],
-        source: 'test'
-      })
-    );
+    const promises = Array(5)
+      .fill(null)
+      .map((_, i) =>
+        testBank.add({
+          type: 'code_pattern',
+          title: `Concurrent Pattern ${i}`,
+          content: `Concurrent content ${i}`,
+          tags: ['concurrent', 'test'],
+          source: 'test',
+        }),
+      );
 
     const ids = await Promise.all(promises);
     expect(ids.length).toBe(5);
@@ -1105,8 +1120,8 @@ describe('Knowledge System Integration', () => {
       'This should persist across calls',
       {
         tags: ['persist', 'test', 'unique12345'],
-        source: 'test'
-      }
+        source: 'test',
+      },
     );
 
     expect(entry).toBeDefined();
@@ -1137,13 +1152,13 @@ describe('Error Handling', () => {
 
   describe('KnowledgeBank Errors', () => {
     it('should handle invalid type gracefully', async () => {
-      // @ts-ignore - Testing invalid type
+      // @ts-expect-error - Testing invalid type
       const id = await errorTestBank.add({
         type: 'invalid_type' as any,
         title: 'Test',
         content: 'Test content here',
         tags: [],
-        source: 'test'
+        source: 'test',
       });
 
       expect(id).toBeDefined(); // Should still work, just with unknown type
@@ -1156,7 +1171,7 @@ describe('Error Handling', () => {
         title: 'Empty Content Test',
         content: '',
         tags: [],
-        source: 'test'
+        source: 'test',
       });
 
       expect(id).toBeDefined();
@@ -1178,7 +1193,7 @@ describe('Error Handling', () => {
     it('should handle missing arguments', async () => {
       const result = await knowledgeCommands.knowledge({
         cwd: process.cwd(),
-        args: ['show'] // Missing ID
+        args: ['show'], // Missing ID
       });
 
       expect(typeof result).toBe('string');
@@ -1187,7 +1202,7 @@ describe('Error Handling', () => {
     it('should handle invalid flags', async () => {
       const result = await knowledgeCommands.knowledge({
         cwd: process.cwd(),
-        args: ['list', '--invalid-flag', 'value']
+        args: ['list', '--invalid-flag', 'value'],
       });
 
       expect(typeof result).toBe('string');

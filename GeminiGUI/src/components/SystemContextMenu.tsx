@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef } from 'react';
-import { Copy, Scissors, Clipboard, Maximize, Brain, FileCode, Terminal } from 'lucide-react';
+import { Brain, Clipboard, Copy, FileCode, Maximize, Scissors, Terminal } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 export const SystemContextMenu = () => {
   const [visible, setVisible] = useState(false);
@@ -17,24 +17,27 @@ export const SystemContextMenu = () => {
     const handleContextMenu = (e: MouseEvent) => {
       if (e.defaultPrevented) return;
       e.preventDefault();
-      
+
       const target = e.target as HTMLElement;
       const selection = window.getSelection()?.toString().trim() || '';
       const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
 
       // Simple heuristic for commands
-      const isCommand = /^(git|npm|pnpm|yarn|docker|kubectl|echo|ls|dir|cd|python|node|cargo|rustc)\s+/.test(selection);
+      const isCommand =
+        /^(git|npm|pnpm|yarn|docker|kubectl|echo|ls|dir|cd|python|node|cargo|rustc)\s+/.test(
+          selection,
+        );
 
       if (!selection && !isInput) {
-          setVisible(false);
-          return;
+        setVisible(false);
+        return;
       }
 
       setContextData({
         text: selection,
         isInput,
         target,
-        isCommand
+        isCommand,
       });
 
       let x = e.clientX;
@@ -63,11 +66,11 @@ export const SystemContextMenu = () => {
   }, []);
 
   const dispatchAction = (action: string, content: string) => {
-      const event = new CustomEvent('gemini-context-action', { 
-          detail: { action, content } 
-      });
-      window.dispatchEvent(event);
-      setVisible(false);
+    const event = new CustomEvent('gemini-context-action', {
+      detail: { action, content },
+    });
+    window.dispatchEvent(event);
+    setVisible(false);
   };
 
   const handleCopy = async () => {
@@ -78,7 +81,7 @@ export const SystemContextMenu = () => {
   const handleCut = () => {
     if (contextData.isInput && contextData.text) {
       navigator.clipboard.writeText(contextData.text);
-      document.execCommand('delete'); 
+      document.execCommand('delete');
     }
     setVisible(false);
   };
@@ -91,20 +94,22 @@ export const SystemContextMenu = () => {
           contextData.target.focus();
           document.execCommand('insertText', false, text);
         }
-      } catch (err) { console.error(err); }
+      } catch (err) {
+        console.error(err);
+      }
     }
     setVisible(false);
   };
 
   const handleSelectAll = () => {
     if (contextData.isInput && contextData.target) {
-        (contextData.target as HTMLInputElement).select();
+      (contextData.target as HTMLInputElement).select();
     } else {
-        const range = document.createRange();
-        range.selectNodeContents(document.body);
-        const sel = window.getSelection();
-        sel?.removeAllRanges();
-        sel?.addRange(range);
+      const range = document.createRange();
+      range.selectNodeContents(document.body);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
     }
     setVisible(false);
   };
@@ -124,86 +129,86 @@ export const SystemContextMenu = () => {
           <div className="px-2 py-1 text-[10px] font-bold text-[var(--matrix-text-dim)] uppercase tracking-wider">
             Operacje Roju
           </div>
-          
-          <MenuItem 
-            icon={<Brain size={14} />} 
-            label="Zapytaj o to" 
+
+          <MenuItem
+            icon={<Brain size={14} />}
+            label="Zapytaj o to"
             onClick={() => dispatchAction('ask', contextData.text)}
           />
-          
-          <MenuItem 
-            icon={<FileCode size={14} />} 
-            label="Analizuj Kod/Tekst" 
+
+          <MenuItem
+            icon={<FileCode size={14} />}
+            label="Analizuj Kod/Tekst"
             onClick={() => dispatchAction('analyze', contextData.text)}
           />
 
           {contextData.isCommand && (
-             <MenuItem 
-                icon={<Terminal size={14} />} 
-                label="Uruchom Komendę" 
-                shortcut="Niebezpieczne"
-                onClick={() => dispatchAction('run', contextData.text)}
-                className="text-red-400 hover:text-red-300"
-             />
+            <MenuItem
+              icon={<Terminal size={14} />}
+              label="Uruchom Komendę"
+              shortcut="Niebezpieczne"
+              onClick={() => dispatchAction('run', contextData.text)}
+              className="text-red-400 hover:text-red-300"
+            />
           )}
-          
+
           <div className="h-px bg-[var(--matrix-border)] my-1 mx-2 opacity-50" />
         </>
       )}
 
       {/* STANDARD ACTIONS */}
-      <MenuItem 
-        icon={<Copy size={14} />} 
-        label="Kopiuj" 
-        shortcut="Ctrl+C" 
-        onClick={handleCopy} 
-        disabled={!contextData.text} 
+      <MenuItem
+        icon={<Copy size={14} />}
+        label="Kopiuj"
+        shortcut="Ctrl+C"
+        onClick={handleCopy}
+        disabled={!contextData.text}
       />
 
       {contextData.isInput && (
         <>
-          <MenuItem 
-            icon={<Scissors size={14} />} 
-            label="Wytnij" 
-            shortcut="Ctrl+X" 
-            onClick={handleCut} 
-            disabled={!contextData.text} 
+          <MenuItem
+            icon={<Scissors size={14} />}
+            label="Wytnij"
+            shortcut="Ctrl+X"
+            onClick={handleCut}
+            disabled={!contextData.text}
           />
-          <MenuItem 
-            icon={<Clipboard size={14} />} 
-            label="Wklej" 
-            shortcut="Ctrl+V" 
-            onClick={handlePaste} 
+          <MenuItem
+            icon={<Clipboard size={14} />}
+            label="Wklej"
+            shortcut="Ctrl+V"
+            onClick={handlePaste}
           />
         </>
       )}
 
       <div className="h-px bg-[var(--matrix-border)] my-1 mx-2 opacity-50" />
 
-      <MenuItem 
-        icon={<Maximize size={14} />} 
-        label="Zaznacz wszystko" 
-        shortcut="Ctrl+A" 
-        onClick={handleSelectAll} 
+      <MenuItem
+        icon={<Maximize size={14} />}
+        label="Zaznacz wszystko"
+        shortcut="Ctrl+A"
+        onClick={handleSelectAll}
       />
     </div>
   );
 };
 
-const MenuItem = ({ 
-  icon, 
-  label, 
-  shortcut, 
-  onClick, 
+const MenuItem = ({
+  icon,
+  label,
+  shortcut,
+  onClick,
   disabled = false,
-  className = ""
-}: { 
-  icon: React.ReactNode, 
-  label: string, 
-  shortcut?: string, 
-  onClick: () => void, 
-  disabled?: boolean,
-  className?: string
+  className = '',
+}: {
+  icon: React.ReactNode;
+  label: string;
+  shortcut?: string;
+  onClick: () => void;
+  disabled?: boolean;
+  className?: string;
 }) => (
   <button
     onClick={onClick}
@@ -218,6 +223,8 @@ const MenuItem = ({
       <span className="opacity-80 group-hover:opacity-100">{icon}</span>
       <span>{label}</span>
     </div>
-    {shortcut && <span className="text-[var(--matrix-text-dim)] text-[9px] opacity-60">{shortcut}</span>}
+    {shortcut && (
+      <span className="text-[var(--matrix-text-dim)] text-[9px] opacity-60">{shortcut}</span>
+    )}
   </button>
 );

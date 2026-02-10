@@ -3,7 +3,7 @@
  * Enhanced request/response logging
  */
 
-import type { FastifyRequest, FastifyReply, HookHandlerDoneFunction } from 'fastify';
+import type { FastifyReply, FastifyRequest, HookHandlerDoneFunction } from 'fastify';
 import { API_CONFIG } from '../config/index.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -28,7 +28,7 @@ const requestTimes = new Map<string, number>();
 export function onRequest(
   request: FastifyRequest,
   _reply: FastifyReply,
-  done: HookHandlerDoneFunction
+  done: HookHandlerDoneFunction,
 ): void {
   requestTimes.set(request.id, Date.now());
   done();
@@ -37,7 +37,7 @@ export function onRequest(
 export function onResponse(
   request: FastifyRequest,
   reply: FastifyReply,
-  done: HookHandlerDoneFunction
+  done: HookHandlerDoneFunction,
 ): void {
   const startTime = requestTimes.get(request.id);
   requestTimes.delete(request.id);

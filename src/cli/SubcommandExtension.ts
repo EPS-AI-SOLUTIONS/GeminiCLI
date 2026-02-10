@@ -10,15 +10,14 @@
 
 import chalk from 'chalk';
 import {
-  Command,
-  CommandArg,
-  CommandContext,
-  CommandHandler,
-  CommandRegistry,
-  CommandResult,
-  FlagDefinition,
+  type Command,
+  type CommandArg,
+  type CommandContext,
+  type CommandRegistry,
+  type CommandResult,
+  error,
+  type FlagDefinition,
   success,
-  error
 } from './CommandRegistry.js';
 
 // ============================================================================
@@ -110,11 +109,13 @@ export class SubcommandRegistry {
   registerSubcommand(
     parentNameOrAlias: string,
     subcommand: Command,
-    options: SubcommandOptions = {}
+    options: SubcommandOptions = {},
   ): void {
     const parent = this.registry.get(parentNameOrAlias);
     if (!parent) {
-      throw new Error(`Cannot register subcommand: parent command '${parentNameOrAlias}' not found`);
+      throw new Error(
+        `Cannot register subcommand: parent command '${parentNameOrAlias}' not found`,
+      );
     }
 
     // Validate subcommand
@@ -138,7 +139,7 @@ export class SubcommandRegistry {
       if (subcommand.flags) {
         // Add subcommand-specific flags, avoiding duplicates
         for (const flag of subcommand.flags) {
-          const exists = mergedFlags.some(f => f.long === flag.long);
+          const exists = mergedFlags.some((f) => f.long === flag.long);
           if (!exists) {
             mergedFlags.push(flag);
           }
@@ -147,7 +148,7 @@ export class SubcommandRegistry {
       // Add additional flags from options
       if (options.additionalFlags) {
         for (const flag of options.additionalFlags) {
-          const exists = mergedFlags.some(f => f.long === flag.long);
+          const exists = mergedFlags.some((f) => f.long === flag.long);
           if (!exists) {
             mergedFlags.push(flag);
           }
@@ -177,7 +178,7 @@ export class SubcommandRegistry {
    */
   registerSubcommands(
     parentNameOrAlias: string,
-    subcommands: Array<{ command: Command; options?: SubcommandOptions }>
+    subcommands: Array<{ command: Command; options?: SubcommandOptions }>,
   ): void {
     for (const { command, options } of subcommands) {
       this.registerSubcommand(parentNameOrAlias, command, options);
@@ -240,7 +241,10 @@ export class SubcommandRegistry {
   /**
    * Get subcommand info
    */
-  getSubcommandInfo(parentNameOrAlias: string, subcommandNameOrAlias: string): SubcommandInfo | undefined {
+  getSubcommandInfo(
+    parentNameOrAlias: string,
+    subcommandNameOrAlias: string,
+  ): SubcommandInfo | undefined {
     const parent = this.registry.get(parentNameOrAlias);
     if (!parent) return undefined;
 
@@ -254,7 +258,7 @@ export class SubcommandRegistry {
       parentCommand: parent.name,
       usage: subcommand.usage,
       args: subcommand.args,
-      hidden: subcommand.hidden || false
+      hidden: subcommand.hidden || false,
     };
   }
 
@@ -273,7 +277,7 @@ export class SubcommandRegistry {
   async executeWithSubcommandRouting(
     nameOrAlias: string,
     ctx: Omit<CommandContext, 'flags'>,
-    args: string[]
+    args: string[],
   ): Promise<CommandResult> {
     const command = this.registry.get(nameOrAlias);
 
@@ -305,7 +309,7 @@ export class SubcommandRegistry {
           flags,
           rawArgs: subArgs.join(' '),
           parentCommand: command.name,
-          subcommand: subcommand.name
+          subcommand: subcommand.name,
         };
 
         try {
@@ -328,7 +332,7 @@ export class SubcommandRegistry {
     parentNameOrAlias: string,
     subcommandNameOrAlias: string,
     ctx: Omit<CommandContext, 'flags'>,
-    args: string[]
+    args: string[],
   ): Promise<CommandResult> {
     const parent = this.registry.get(parentNameOrAlias);
     if (!parent) {
@@ -337,7 +341,9 @@ export class SubcommandRegistry {
 
     const subcommand = this.getSubcommand(parentNameOrAlias, subcommandNameOrAlias);
     if (!subcommand) {
-      return error(`Unknown subcommand: ${subcommandNameOrAlias}. Use /${parent.name} help to see available subcommands.`);
+      return error(
+        `Unknown subcommand: ${subcommandNameOrAlias}. Use /${parent.name} help to see available subcommands.`,
+      );
     }
 
     const { positional, flags } = this.parseArgs(args);
@@ -348,14 +354,16 @@ export class SubcommandRegistry {
       flags,
       rawArgs: args.join(' '),
       parentCommand: parent.name,
-      subcommand: subcommand.name
+      subcommand: subcommand.name,
     };
 
     try {
       return await subcommand.handler(fullCtx);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
-      return error(`Error executing ${parentNameOrAlias} ${subcommandNameOrAlias}: ${errorMessage}`);
+      return error(
+        `Error executing ${parentNameOrAlias} ${subcommandNameOrAlias}: ${errorMessage}`,
+      );
     }
   }
 
@@ -419,9 +427,10 @@ export class SubcommandRegistry {
       if (subcmd.hidden) continue;
 
       // Subcommand name with aliases
-      const aliasStr = subcmd.aliases && subcmd.aliases.length > 0
-        ? chalk.gray(` (aliases: ${subcmd.aliases.join(', ')})`)
-        : '';
+      const aliasStr =
+        subcmd.aliases && subcmd.aliases.length > 0
+          ? chalk.gray(` (aliases: ${subcmd.aliases.join(', ')})`)
+          : '';
       lines.push(`  ${chalk.yellow.bold(subcmd.name)}${aliasStr}`);
 
       // Description
@@ -429,9 +438,13 @@ export class SubcommandRegistry {
 
       // Usage
       if (subcmd.usage) {
-        lines.push(`    ${chalk.bold('Usage:')} ${chalk.cyan(`/${command.name} ${subcmd.name}`)} ${subcmd.usage}`);
+        lines.push(
+          `    ${chalk.bold('Usage:')} ${chalk.cyan(`/${command.name} ${subcmd.name}`)} ${subcmd.usage}`,
+        );
       } else {
-        lines.push(`    ${chalk.bold('Usage:')} ${chalk.cyan(`/${command.name} ${subcmd.name}`)} [args...]`);
+        lines.push(
+          `    ${chalk.bold('Usage:')} ${chalk.cyan(`/${command.name} ${subcmd.name}`)} [args...]`,
+        );
       }
 
       // Arguments
@@ -457,7 +470,11 @@ export class SubcommandRegistry {
     }
 
     lines.push(chalk.gray('─'.repeat(50)));
-    lines.push(chalk.gray(`Use ${chalk.white(`/${command.name} <subcommand> --help`)} for detailed help on a specific subcommand\n`));
+    lines.push(
+      chalk.gray(
+        `Use ${chalk.white(`/${command.name} <subcommand> --help`)} for detailed help on a specific subcommand\n`,
+      ),
+    );
 
     return lines.join('\n');
   }
@@ -473,7 +490,9 @@ export class SubcommandRegistry {
 
     const subcommand = this.getSubcommand(parentNameOrAlias, subcommandNameOrAlias);
     if (!subcommand) {
-      return chalk.red(`Unknown subcommand: ${subcommandNameOrAlias}. Use /${parent.name} help to see available subcommands.`);
+      return chalk.red(
+        `Unknown subcommand: ${subcommandNameOrAlias}. Use /${parent.name} help to see available subcommands.`,
+      );
     }
 
     const lines: string[] = [];
@@ -520,8 +539,9 @@ export class SubcommandRegistry {
       }
 
       // Subcommand-specific flags
-      const specificFlags = subcommand.flags.filter((f: FlagDefinition) =>
-        !(parent.flags || []).some((pf: FlagDefinition) => pf.long === f.long)
+      const specificFlags = subcommand.flags.filter(
+        (f: FlagDefinition) =>
+          !(parent.flags || []).some((pf: FlagDefinition) => pf.long === f.long),
       );
       if (specificFlags.length > 0) {
         lines.push(chalk.bold('Flags (subcommand-specific):'));
@@ -538,7 +558,9 @@ export class SubcommandRegistry {
     // Aliases
     if (subcommand.aliases && subcommand.aliases.length > 0) {
       lines.push(chalk.bold('Aliases:'));
-      const aliasUsages = subcommand.aliases.map((a: string) => chalk.yellow(`/${parent.name} ${a}`));
+      const aliasUsages = subcommand.aliases.map((a: string) =>
+        chalk.yellow(`/${parent.name} ${a}`),
+      );
       lines.push(`  ${aliasUsages.join(', ')}`);
       lines.push('');
     }
@@ -605,7 +627,7 @@ export class SubcommandRegistry {
 
     // Have command, suggest subcommands
     const command = this.registry.get(commandPart);
-    if (command && command.subcommands && command.subcommands.size > 0) {
+    if (command?.subcommands && command.subcommands.size > 0) {
       const subPartial = parts.slice(1).join(' ');
       const subSuggestions = this.autocompleteSubcommand(command.name, subPartial);
       for (const sub of subSuggestions) {
@@ -661,14 +683,14 @@ export function createFsCommand(): Command {
         long: 'verbose',
         description: 'Enable verbose output',
         type: 'boolean',
-        default: false
-      }
+        default: false,
+      },
     ],
-    handler: async (ctx: CommandContext): Promise<CommandResult> => {
+    handler: async (_ctx: CommandContext): Promise<CommandResult> => {
       // Default handler shows help
       return success(null, 'Use /fs help to see available subcommands');
     },
-    subcommands: new Map()
+    subcommands: new Map(),
   };
 
   return fsCommand;
@@ -688,8 +710,8 @@ export function createFsReadSubcommand(): Command {
         name: 'path',
         description: 'Path to the file to read',
         required: true,
-        type: 'path'
-      }
+        type: 'path',
+      },
     ],
     flags: [
       {
@@ -697,18 +719,18 @@ export function createFsReadSubcommand(): Command {
         long: 'encoding',
         description: 'File encoding',
         type: 'string',
-        default: 'utf-8'
+        default: 'utf-8',
       },
       {
         short: 'n',
         long: 'lines',
         description: 'Number of lines to read',
-        type: 'number'
-      }
+        type: 'number',
+      },
     ],
     handler: async (ctx: CommandContext): Promise<CommandResult> => {
       const filePath = ctx.args[0];
-      const encoding = ctx.flags.encoding as string || 'utf-8';
+      const encoding = (ctx.flags.encoding as string) || 'utf-8';
       const verbose = ctx.flags.verbose || ctx.flags.v;
 
       if (verbose) {
@@ -717,7 +739,7 @@ export function createFsReadSubcommand(): Command {
 
       // Placeholder implementation
       return success({ path: filePath, encoding }, `Would read file: ${filePath}`);
-    }
+    },
   };
 }
 
@@ -735,14 +757,14 @@ export function createFsWriteSubcommand(): Command {
         name: 'path',
         description: 'Path to the file to write',
         required: true,
-        type: 'path'
+        type: 'path',
       },
       {
         name: 'content',
         description: 'Content to write',
         required: true,
-        type: 'string'
-      }
+        type: 'string',
+      },
     ],
     flags: [
       {
@@ -750,19 +772,19 @@ export function createFsWriteSubcommand(): Command {
         long: 'append',
         description: 'Append to file instead of overwriting',
         type: 'boolean',
-        default: false
+        default: false,
       },
       {
         short: 'e',
         long: 'encoding',
         description: 'File encoding',
         type: 'string',
-        default: 'utf-8'
-      }
+        default: 'utf-8',
+      },
     ],
     handler: async (ctx: CommandContext): Promise<CommandResult> => {
       const filePath = ctx.args[0];
-      const content = ctx.args[1];
+      const _content = ctx.args[1];
       const append = ctx.flags.append || ctx.flags.a;
       const verbose = ctx.flags.verbose || ctx.flags.v;
 
@@ -772,7 +794,7 @@ export function createFsWriteSubcommand(): Command {
 
       // Placeholder implementation
       return success({ path: filePath, append }, `Would write to file: ${filePath}`);
-    }
+    },
   };
 }
 
@@ -791,8 +813,8 @@ export function createFsListSubcommand(): Command {
         description: 'Directory path (default: current directory)',
         required: false,
         type: 'path',
-        default: '.'
-      }
+        default: '.',
+      },
     ],
     flags: [
       {
@@ -800,15 +822,15 @@ export function createFsListSubcommand(): Command {
         long: 'all',
         description: 'Show hidden files',
         type: 'boolean',
-        default: false
+        default: false,
       },
       {
         short: 'l',
         long: 'long',
         description: 'Use long listing format',
         type: 'boolean',
-        default: false
-      }
+        default: false,
+      },
     ],
     handler: async (ctx: CommandContext): Promise<CommandResult> => {
       const dirPath = ctx.args[0] || '.';
@@ -817,7 +839,7 @@ export function createFsListSubcommand(): Command {
 
       // Placeholder implementation
       return success({ path: dirPath, showAll, longFormat }, `Would list: ${dirPath}`);
-    }
+    },
   };
 }
 
@@ -826,7 +848,7 @@ export function createFsListSubcommand(): Command {
  */
 export function registerFsCommandWithSubcommands(
   registry: CommandRegistry,
-  subcommandRegistry: SubcommandRegistry
+  subcommandRegistry: SubcommandRegistry,
 ): void {
   // Register main fs command
   const fsCommand = createFsCommand();
@@ -836,7 +858,7 @@ export function registerFsCommandWithSubcommands(
   subcommandRegistry.registerSubcommands('fs', [
     { command: createFsReadSubcommand(), options: { inheritFlags: true } },
     { command: createFsWriteSubcommand(), options: { inheritFlags: true } },
-    { command: createFsListSubcommand(), options: { inheritFlags: true } }
+    { command: createFsListSubcommand(), options: { inheritFlags: true } },
   ]);
 }
 

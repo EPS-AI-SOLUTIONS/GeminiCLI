@@ -4,9 +4,9 @@
  * Komunikacja z MCP serwerami (np. Serena) przez stdin/stdout
  */
 
-import { spawn, ChildProcess } from 'child_process';
-import { EventEmitter } from 'events';
-import { createInterface, Interface } from 'readline';
+import { type ChildProcess, spawn } from 'node:child_process';
+import { EventEmitter } from 'node:events';
+import { createInterface, type Interface } from 'node:readline';
 
 // JSON-RPC types
 export interface JsonRpcRequest {
@@ -111,7 +111,9 @@ export class McpClient extends EventEmitter {
 
     return new Promise((resolve, reject) => {
       try {
-        console.log(`[MCP] Starting: ${this.options.command} ${(this.options.args || []).join(' ')}`);
+        console.log(
+          `[MCP] Starting: ${this.options.command} ${(this.options.args || []).join(' ')}`,
+        );
 
         this.process = spawn(this.options.command, this.options.args || [], {
           cwd: this.options.cwd,
@@ -251,7 +253,7 @@ export class McpClient extends EventEmitter {
 
       this.pendingRequests.set(id, { resolve, reject, timeout });
 
-      const message = JSON.stringify(request) + '\n';
+      const message = `${JSON.stringify(request)}\n`;
       this.process.stdin.write(message);
     });
   }
@@ -270,7 +272,7 @@ export class McpClient extends EventEmitter {
       params,
     };
 
-    const message = JSON.stringify(notification) + '\n';
+    const message = `${JSON.stringify(notification)}\n`;
     this.process.stdin.write(message);
   }
 

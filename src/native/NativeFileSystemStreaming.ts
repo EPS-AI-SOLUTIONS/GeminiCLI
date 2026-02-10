@@ -31,11 +31,10 @@
  * ```
  */
 
-import fs from 'fs/promises';
-import fsSync from 'fs';
-import path from 'path';
-import { createReadStream, createWriteStream } from 'fs';
-import { pipeline } from 'stream/promises';
+import { createReadStream, createWriteStream } from 'node:fs';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { pipeline } from 'node:stream/promises';
 
 // ============================================================
 // File Size Limits
@@ -56,7 +55,7 @@ export const FileSizeLimits = {
   /** Huge files (500MB) */
   HUGE: 500 * 1024 * 1024,
   /** No limit - use streaming for any size */
-  UNLIMITED: Infinity
+  UNLIMITED: Infinity,
 } as const;
 
 export type FileSizeLimitPreset = keyof typeof FileSizeLimits;
@@ -201,7 +200,7 @@ export function formatBytes(bytes: number): string {
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
+  return `${(bytes / k ** i).toFixed(2)} ${sizes[i]}`;
 }
 
 /** Default chunk size for streaming operations (64KB) */
@@ -234,7 +233,7 @@ export class NativeFileSystemStreaming {
       encoding: config.encoding || 'utf-8',
       autoStreamLargeFiles: config.autoStreamLargeFiles ?? true,
       onStreamingFallback: config.onStreamingFallback,
-      blockedPaths: config.blockedPaths || [...DEFAULT_BLOCKED_PATHS]
+      blockedPaths: config.blockedPaths || [...DEFAULT_BLOCKED_PATHS],
     };
   }
 
@@ -284,7 +283,10 @@ export class NativeFileSystemStreaming {
 
     // Check blocked paths
     for (const blocked of this.config.blockedPaths) {
-      if (resolved.includes(path.sep + blocked + path.sep) || resolved.endsWith(path.sep + blocked)) {
+      if (
+        resolved.includes(path.sep + blocked + path.sep) ||
+        resolved.endsWith(path.sep + blocked)
+      ) {
         throw new Error(`Access denied: Path is blocked (${blocked})`);
       }
     }
@@ -321,8 +323,11 @@ export class NativeFileSystemStreaming {
    */
   async readFileStreaming(
     filePath: string,
-    onChunk: (chunk: Buffer | string, info: StreamingProgress) => boolean | void | Promise<boolean | void>,
-    options?: StreamingReadOptions
+    onChunk: (
+      chunk: Buffer | string,
+      info: StreamingProgress,
+    ) => boolean | undefined | Promise<boolean | undefined>,
+    options?: StreamingReadOptions,
   ): Promise<StreamingReadResult> {
     const resolved = this.validatePath(filePath);
     const stats = await fs.stat(resolved);
@@ -341,14 +346,15 @@ export class NativeFileSystemStreaming {
       start: options?.start,
       end: options?.end,
       highWaterMark,
-      encoding: asText ? encoding : undefined
+      encoding: asText ? encoding : undefined,
     });
 
     try {
       for await (const rawChunk of stream) {
         chunkNumber++;
         const chunk = asText ? rawChunk : (rawChunk as Buffer);
-        bytesProcessed += typeof chunk === 'string' ? Buffer.byteLength(chunk, encoding) : chunk.length;
+        bytesProcessed +=
+          typeof chunk === 'string' ? Buffer.byteLength(chunk, encoding) : chunk.length;
 
         const elapsedMs = Date.now() - startTime;
         const progress: StreamingProgress = {
@@ -357,7 +363,7 @@ export class NativeFileSystemStreaming {
           percentage: totalBytes > 0 ? Math.round((bytesProcessed / totalBytes) * 100) : undefined,
           chunkNumber,
           elapsedMs,
-          bytesPerSecond: elapsedMs > 0 ? Math.round((bytesProcessed / elapsedMs) * 1000) : 0
+          bytesPerSecond: elapsedMs > 0 ? Math.round((bytesProcessed / elapsedMs) * 1000) : 0,
         };
 
         // Call progress callback if provided
@@ -382,7 +388,7 @@ export class NativeFileSystemStreaming {
       totalBytes: bytesProcessed,
       chunks: chunkNumber,
       elapsedMs,
-      usedStreaming: true
+      usedStreaming: true,
     };
   }
 
@@ -407,7 +413,7 @@ export class NativeFileSystemStreaming {
    */
   async readFileAuto(
     filePath: string,
-    options?: StreamingReadOptions & { encoding?: BufferEncoding }
+    options?: StreamingReadOptions & { encoding?: BufferEncoding },
   ): Promise<{ content: string; result: StreamingReadResult }> {
     const resolved = this.validatePath(filePath);
     const encoding = options?.encoding ?? this.config.encoding;
@@ -425,8 +431,8 @@ export class NativeFileSystemStreaming {
           totalBytes: fileSize,
           chunks: 1,
           elapsedMs: Date.now() - startTime,
-          usedStreaming: false
-        }
+          usedStreaming: false,
+        },
       };
     }
 
@@ -434,7 +440,7 @@ export class NativeFileSystemStreaming {
     if (!this.config.autoStreamLargeFiles) {
       throw new Error(
         `File too large: ${formatBytes(fileSize)} (max: ${formatBytes(this.config.maxFileSize)}). ` +
-        `Enable autoStreamLargeFiles or use readFileStreaming() directly.`
+          `Enable autoStreamLargeFiles or use readFileStreaming() directly.`,
       );
     }
 
@@ -449,15 +455,15 @@ export class NativeFileSystemStreaming {
       (chunk) => {
         chunks.push(typeof chunk === 'string' ? chunk : chunk.toString(encoding));
       },
-      { ...options, asText: true, encoding }
+      { ...options, asText: true, encoding },
     );
 
     return {
       content: chunks.join(''),
       result: {
         ...result,
-        warning
-      }
+        warning,
+      },
     };
   }
 
@@ -514,7 +520,7 @@ export class NativeFileSystemStreaming {
   async writeFileStreaming(
     filePath: string,
     dataGenerator: StreamingDataGenerator,
-    options?: StreamingWriteOptions
+    options?: StreamingWriteOptions,
   ): Promise<StreamingWriteResult> {
     const resolved = this.validatePath(filePath);
     const encoding = options?.encoding ?? this.config.encoding;
@@ -534,7 +540,7 @@ export class NativeFileSystemStreaming {
       flags: options?.append ? 'a' : 'w',
       encoding,
       mode: options?.mode,
-      highWaterMark
+      highWaterMark,
     });
 
     // Get the async iterable
@@ -565,7 +571,7 @@ export class NativeFileSystemStreaming {
           bytesProcessed: bytesWritten,
           chunkNumber,
           elapsedMs,
-          bytesPerSecond: elapsedMs > 0 ? Math.round((bytesWritten / elapsedMs) * 1000) : 0
+          bytesPerSecond: elapsedMs > 0 ? Math.round((bytesWritten / elapsedMs) * 1000) : 0,
         });
       }
 
@@ -574,7 +580,6 @@ export class NativeFileSystemStreaming {
         writeStream.end(() => resolve());
         writeStream.once('error', reject);
       });
-
     } finally {
       if (!writeStream.destroyed) {
         writeStream.destroy();
@@ -585,7 +590,7 @@ export class NativeFileSystemStreaming {
       totalBytes: bytesWritten,
       chunks: chunkNumber,
       elapsedMs: Date.now() - startTime,
-      path: this.toRelative(resolved)
+      path: this.toRelative(resolved),
     };
   }
 
@@ -600,7 +605,7 @@ export class NativeFileSystemStreaming {
   async copyFileStreaming(
     source: string,
     destination: string,
-    options?: StreamingReadOptions & StreamingWriteOptions
+    options?: StreamingReadOptions & StreamingWriteOptions,
   ): Promise<StreamingWriteResult> {
     const srcResolved = this.validatePath(source);
     const destResolved = this.validatePath(destination);
@@ -618,12 +623,12 @@ export class NativeFileSystemStreaming {
     let chunkNumber = 0;
 
     const readStream = createReadStream(srcResolved, {
-      highWaterMark: options?.highWaterMark ?? DEFAULT_CHUNK_SIZE
+      highWaterMark: options?.highWaterMark ?? DEFAULT_CHUNK_SIZE,
     });
 
     const writeStream = createWriteStream(destResolved, {
       mode: options?.mode,
-      highWaterMark: options?.highWaterMark ?? DEFAULT_CHUNK_SIZE
+      highWaterMark: options?.highWaterMark ?? DEFAULT_CHUNK_SIZE,
     });
 
     // Track progress
@@ -638,7 +643,7 @@ export class NativeFileSystemStreaming {
         percentage: Math.round((bytesProcessed / totalBytes) * 100),
         chunkNumber,
         elapsedMs,
-        bytesPerSecond: elapsedMs > 0 ? Math.round((bytesProcessed / elapsedMs) * 1000) : 0
+        bytesPerSecond: elapsedMs > 0 ? Math.round((bytesProcessed / elapsedMs) * 1000) : 0,
       });
     });
 
@@ -648,7 +653,7 @@ export class NativeFileSystemStreaming {
       totalBytes: bytesProcessed,
       chunks: chunkNumber,
       elapsedMs: Date.now() - startTime,
-      path: this.toRelative(destResolved)
+      path: this.toRelative(destResolved),
     };
   }
 
@@ -672,7 +677,10 @@ export class NativeFileSystemStreaming {
 /**
  * Create a streaming-enabled filesystem instance
  */
-export function createStreamingFileSystem(rootDir: string, options?: Partial<StreamingConfig>): NativeFileSystemStreaming {
+export function createStreamingFileSystem(
+  rootDir: string,
+  options?: Partial<StreamingConfig>,
+): NativeFileSystemStreaming {
   return new NativeFileSystemStreaming({ rootDir, ...options });
 }
 
@@ -709,11 +717,11 @@ export interface StreamingMethods {
 
 export function addStreamingMethods<T extends { getRoot(): string }>(
   baseFs: T,
-  config?: Partial<Omit<StreamingConfig, 'rootDir'>>
+  config?: Partial<Omit<StreamingConfig, 'rootDir'>>,
 ): T & StreamingMethods {
   const streamingFs = new NativeFileSystemStreaming({
     rootDir: baseFs.getRoot(),
-    ...config
+    ...config,
   });
 
   // Merge streaming methods into base object
@@ -729,6 +737,6 @@ export function addStreamingMethods<T extends { getRoot(): string }>(
 
     // Streaming writes
     writeFileStreaming: streamingFs.writeFileStreaming.bind(streamingFs),
-    copyFileStreaming: streamingFs.copyFileStreaming.bind(streamingFs)
+    copyFileStreaming: streamingFs.copyFileStreaming.bind(streamingFs),
   });
 }

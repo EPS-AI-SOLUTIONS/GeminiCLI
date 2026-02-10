@@ -1,4 +1,4 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 /* ============================================
    GeminiHydra GUI - Matrix Glass Theme
@@ -6,7 +6,7 @@
    ============================================ */
 
 /* JetBrains Mono for monospace aesthetic */
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap");
 
 /* ============================================
    CSS Variables - Theme System
@@ -61,15 +61,17 @@ html {
 body {
   margin: 0;
   padding: 0;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
   background-color: var(--matrix-bg-primary);
   color: var(--matrix-text);
   min-height: 100vh;
   overflow: hidden;
 }
 
-code, pre, .font-mono {
-  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+code,
+pre,
+.font-mono {
+  font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
 }
 
 #root {
@@ -119,11 +121,17 @@ code, pre, .font-mono {
    Animations
    ============================================ */
 @keyframes pulse-glow {
-  0%, 100% {
-    box-shadow: 0 0 5px var(--matrix-accent), 0 0 10px var(--matrix-accent);
+  0%,
+  100% {
+    box-shadow:
+      0 0 5px var(--matrix-accent),
+      0 0 10px var(--matrix-accent);
   }
   50% {
-    box-shadow: 0 0 10px var(--matrix-accent), 0 0 20px var(--matrix-accent), 0 0 30px var(--matrix-accent);
+    box-shadow:
+      0 0 10px var(--matrix-accent),
+      0 0 20px var(--matrix-accent),
+      0 0 30px var(--matrix-accent);
   }
 }
 
@@ -161,12 +169,7 @@ code, pre, .font-mono {
 }
 
 .animate-shimmer {
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    var(--matrix-accent) 50%,
-    transparent 100%
-  );
+  background: linear-gradient(90deg, transparent 0%, var(--matrix-accent) 50%, transparent 100%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
@@ -179,7 +182,9 @@ code, pre, .font-mono {
    Text Glow Effects
    ============================================ */
 .text-glow {
-  text-shadow: 0 0 10px var(--matrix-accent), 0 0 20px var(--matrix-accent);
+  text-shadow:
+    0 0 10px var(--matrix-accent),
+    0 0 20px var(--matrix-accent);
 }
 
 .text-glow-subtle {
@@ -368,7 +373,7 @@ code, pre, .font-mono {
 }
 
 .progress-bar-animated .progress-bar-fill::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -385,8 +390,8 @@ code, pre, .font-mono {
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.01ms;
   }
 }

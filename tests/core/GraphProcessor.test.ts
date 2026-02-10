@@ -9,7 +9,7 @@
  * defaults, and basic structure.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ============================================================================
 // Mock ALL external dependencies BEFORE importing the module under test
@@ -59,7 +59,12 @@ vi.mock('../../src/core/Agent.js', () => ({
   })),
   AGENT_PERSONAS: {
     geralt: { name: 'geralt', role: 'Security', model: 'qwen3:4b', description: 'Security' },
-    dijkstra: { name: 'dijkstra', role: 'Strategist', model: 'gemini-cloud', description: 'Strategist' },
+    dijkstra: {
+      name: 'dijkstra',
+      role: 'Strategist',
+      model: 'gemini-cloud',
+      description: 'Strategist',
+    },
     yennefer: { name: 'yennefer', role: 'Architect', model: 'qwen3:4b', description: 'Architect' },
     triss: { name: 'triss', role: 'QA', model: 'qwen3:4b', description: 'QA' },
     vesemir: { name: 'vesemir', role: 'Mentor', model: 'qwen3:4b', description: 'Mentor' },
@@ -151,14 +156,15 @@ vi.mock('ollama', () => ({
 // Mock @google/generative-ai (must be a real class for `new` to work at module level)
 vi.mock('@google/generative-ai', () => {
   class MockGoogleGenerativeAI {
-    constructor(_apiKey: string) {}
     getGenerativeModel() {
       return {
         generateContent: vi.fn().mockResolvedValue({
           response: { text: () => 'mocked' },
         }),
         generateContentStream: vi.fn().mockResolvedValue({
-          stream: (async function* () { yield { text: () => 'mocked' }; })(),
+          stream: (async function* () {
+            yield { text: () => 'mocked' };
+          })(),
         }),
       };
     }
@@ -197,8 +203,8 @@ vi.mock('../../src/core/PromptInjectionDetector.js', () => ({
 // Import the module under test AFTER all mocks are set up
 // ============================================================================
 
-import { GraphProcessor } from '../../src/core/GraphProcessor.js';
 import type { GraphProcessorConfig } from '../../src/core/GraphProcessor.js';
+import { GraphProcessor } from '../../src/core/GraphProcessor.js';
 
 // ============================================================================
 // Tests

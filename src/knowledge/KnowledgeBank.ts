@@ -10,8 +10,8 @@
  * 6. Uczenie lokalnego modelu
  */
 
-import fs from 'fs/promises';
-import path from 'path';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import chalk from 'chalk';
 import ollama from 'ollama';
 import { KNOWLEDGE_DIR } from '../config/paths.config.js';
@@ -25,23 +25,23 @@ const TRAINING_DIR = path.join(KNOWLEDGE_DIR, 'training');
 // ============================================================
 
 export type KnowledgeType =
-  | 'code_pattern'      // Wzorce kodu, best practices
-  | 'architecture'      // Decyzje architektoniczne
-  | 'bug_fix'           // Rozwiązania błędów
-  | 'documentation'     // Dokumentacja
-  | 'conversation'      // Ważne fragmenty konwersacji
-  | 'lesson_learned'    // Wnioski z doświadczeń
-  | 'api_reference'     // Referencje API
-  | 'config'            // Konfiguracje
-  | 'workflow'          // Przepływy pracy
-  | 'custom';           // Własne kategorie
+  | 'code_pattern' // Wzorce kodu, best practices
+  | 'architecture' // Decyzje architektoniczne
+  | 'bug_fix' // Rozwiązania błędów
+  | 'documentation' // Dokumentacja
+  | 'conversation' // Ważne fragmenty konwersacji
+  | 'lesson_learned' // Wnioski z doświadczeń
+  | 'api_reference' // Referencje API
+  | 'config' // Konfiguracje
+  | 'workflow' // Przepływy pracy
+  | 'custom'; // Własne kategorie
 
 export type KnowledgeSource =
-  | 'user'              // Dodane przez użytkownika
-  | 'agent'             // Wygenerowane przez agenta
-  | 'codebase'          // Wyekstrahowane z kodu
-  | 'session'           // Z historii sesji
-  | 'import';           // Zaimportowane z pliku
+  | 'user' // Dodane przez użytkownika
+  | 'agent' // Wygenerowane przez agenta
+  | 'codebase' // Wyekstrahowane z kodu
+  | 'session' // Z historii sesji
+  | 'import'; // Zaimportowane z pliku
 
 export interface KnowledgeEntry {
   id: string;
@@ -56,14 +56,14 @@ export interface KnowledgeEntry {
     updatedAt: string;
     accessCount: number;
     lastAccessedAt: string;
-    createdBy?: string;       // Agent name or 'user'
+    createdBy?: string; // Agent name or 'user'
     projectPath?: string;
     filePath?: string;
     language?: string;
-    importance: number;       // 0-1
+    importance: number; // 0-1
   };
-  embedding?: number[];       // Vector embedding
-  relatedIds?: string[];      // Related knowledge IDs
+  embedding?: number[]; // Vector embedding
+  relatedIds?: string[]; // Related knowledge IDs
 }
 
 export interface KnowledgeStore {
@@ -96,13 +96,11 @@ export class KnowledgeBank {
   private store: KnowledgeStore = {
     version: 1,
     entries: [],
-    stats: { totalEntries: 0, byType: {}, bySource: {} }
+    stats: { totalEntries: 0, byType: {}, bySource: {} },
   };
   private initialized = false;
   private embeddingModel = 'nomic-embed-text';
   private embeddingsCache: Map<string, number[]> = new Map();
-
-  constructor() {}
 
   /**
    * Initialize knowledge bank
@@ -121,7 +119,7 @@ export class KnowledgeBank {
       this.store = {
         version: 1,
         entries: [],
-        stats: { totalEntries: 0, byType: {}, bySource: {} }
+        stats: { totalEntries: 0, byType: {}, bySource: {} },
       };
     }
 
@@ -129,7 +127,9 @@ export class KnowledgeBank {
     await this.loadEmbeddingsCache();
 
     this.initialized = true;
-    console.log(chalk.gray(`[KnowledgeBank] Loaded ${this.store.entries.length} knowledge entries`));
+    console.log(
+      chalk.gray(`[KnowledgeBank] Loaded ${this.store.entries.length} knowledge entries`),
+    );
   }
 
   /**
@@ -155,7 +155,7 @@ export class KnowledgeBank {
     this.store.stats = {
       totalEntries: this.store.entries.length,
       byType,
-      bySource
+      bySource,
     };
   }
 
@@ -187,7 +187,7 @@ export class KnowledgeBank {
       language?: string;
       importance?: number;
       generateEmbedding?: boolean;
-    } = {}
+    } = {},
   ): Promise<KnowledgeEntry> {
     const {
       source = 'user',
@@ -198,7 +198,7 @@ export class KnowledgeBank {
       filePath,
       language,
       importance = 0.5,
-      generateEmbedding = true
+      generateEmbedding = true,
     } = options;
 
     const now = new Date().toISOString();
@@ -219,15 +219,15 @@ export class KnowledgeBank {
         projectPath,
         filePath,
         language,
-        importance
-      }
+        importance,
+      },
     };
 
     // Generate embedding if requested
     if (generateEmbedding) {
       try {
         entry.embedding = await this.generateEmbedding(content);
-      } catch (err) {
+      } catch (_err) {
         console.warn(chalk.yellow('[KnowledgeBank] Could not generate embedding'));
       }
     }
@@ -243,15 +243,15 @@ export class KnowledgeBank {
    * Update knowledge entry
    */
   async update(id: string, updates: Partial<KnowledgeEntry>): Promise<KnowledgeEntry | null> {
-    const entry = this.store.entries.find(e => e.id === id);
+    const entry = this.store.entries.find((e) => e.id === id);
     if (!entry) return null;
 
     Object.assign(entry, updates, {
       metadata: {
         ...entry.metadata,
         ...updates.metadata,
-        updatedAt: new Date().toISOString()
-      }
+        updatedAt: new Date().toISOString(),
+      },
     });
 
     // Regenerate embedding if content changed
@@ -269,7 +269,7 @@ export class KnowledgeBank {
    * Delete knowledge entry
    */
   async delete(id: string): Promise<boolean> {
-    const idx = this.store.entries.findIndex(e => e.id === id);
+    const idx = this.store.entries.findIndex((e) => e.id === id);
     if (idx === -1) return false;
 
     this.store.entries.splice(idx, 1);
@@ -281,7 +281,7 @@ export class KnowledgeBank {
    * Get entry by ID
    */
   get(id: string): KnowledgeEntry | undefined {
-    const entry = this.store.entries.find(e => e.id === id);
+    const entry = this.store.entries.find((e) => e.id === id);
     if (entry) {
       entry.metadata.accessCount++;
       entry.metadata.lastAccessedAt = new Date().toISOString();
@@ -305,7 +305,7 @@ export class KnowledgeBank {
       tags?: string[];
       minImportance?: number;
       useSemanticSearch?: boolean;
-    } = {}
+    } = {},
   ): Promise<SearchResult[]> {
     const {
       limit = 10,
@@ -313,25 +313,23 @@ export class KnowledgeBank {
       sources,
       tags,
       minImportance = 0,
-      useSemanticSearch = true
+      useSemanticSearch = true,
     } = options;
 
     let candidates = this.store.entries;
 
     // Apply filters
     if (types?.length) {
-      candidates = candidates.filter(e => types.includes(e.type));
+      candidates = candidates.filter((e) => types.includes(e.type));
     }
     if (sources?.length) {
-      candidates = candidates.filter(e => sources.includes(e.source));
+      candidates = candidates.filter((e) => sources.includes(e.source));
     }
     if (tags?.length) {
-      candidates = candidates.filter(e =>
-        tags.some(t => e.tags.includes(t.toLowerCase()))
-      );
+      candidates = candidates.filter((e) => tags.some((t) => e.tags.includes(t.toLowerCase())));
     }
     if (minImportance > 0) {
-      candidates = candidates.filter(e => e.metadata.importance >= minImportance);
+      candidates = candidates.filter((e) => e.metadata.importance >= minImportance);
     }
 
     const results: SearchResult[] = [];
@@ -344,7 +342,8 @@ export class KnowledgeBank {
         for (const entry of candidates) {
           if (entry.embedding) {
             const score = this.cosineSimilarity(queryEmbedding, entry.embedding);
-            if (score > 0.3) { // Threshold
+            if (score > 0.3) {
+              // Threshold
               results.push({ entry, score, matchType: 'semantic' });
             }
           }
@@ -359,7 +358,7 @@ export class KnowledgeBank {
 
     for (const entry of candidates) {
       // Skip if already found with semantic search
-      if (results.some(r => r.entry.id === entry.id)) continue;
+      if (results.some((r) => r.entry.id === entry.id)) continue;
 
       const text = `${entry.title} ${entry.content} ${entry.tags.join(' ')}`.toLowerCase();
       let score = 0;
@@ -381,7 +380,7 @@ export class KnowledgeBank {
         results.push({
           entry,
           score: score / keywords.length,
-          matchType: 'keyword'
+          matchType: 'keyword',
         });
       }
     }
@@ -400,14 +399,14 @@ export class KnowledgeBank {
       maxTokens?: number;
       maxEntries?: number;
       types?: KnowledgeType[];
-    } = {}
+    } = {},
   ): Promise<RAGContext> {
     const { maxTokens = 4000, maxEntries = 5, types } = options;
 
     const searchResults = await this.search(query, {
       limit: maxEntries * 2,
       types,
-      useSemanticSearch: true
+      useSemanticSearch: true,
     });
 
     const relevantKnowledge: KnowledgeEntry[] = [];
@@ -422,7 +421,7 @@ export class KnowledgeBank {
       if (relevantKnowledge.length >= maxEntries) break;
 
       relevantKnowledge.push(result.entry);
-      contextText += entryText + '\n\n';
+      contextText += `${entryText}\n\n`;
       tokenEstimate += entryTokens;
 
       // Update access stats
@@ -435,7 +434,7 @@ export class KnowledgeBank {
     return {
       relevantKnowledge,
       contextText: contextText.trim(),
-      tokenEstimate
+      tokenEstimate,
     };
   }
 
@@ -465,7 +464,7 @@ Tags: ${entry.tags.join(', ')}`;
     try {
       const response = await ollama.embeddings({
         model: this.embeddingModel,
-        prompt: text.slice(0, 8000) // Limit text length
+        prompt: text.slice(0, 8000), // Limit text length
       });
 
       const embedding = response.embedding;
@@ -508,7 +507,7 @@ Tags: ${entry.tags.join(', ')}`;
   private hashText(text: string): string {
     let hash = 0;
     for (let i = 0; i < Math.min(text.length, 1000); i++) {
-      hash = ((hash << 5) - hash) + text.charCodeAt(i);
+      hash = (hash << 5) - hash + text.charCodeAt(i);
       hash = hash & hash;
     }
     return hash.toString(36);
@@ -562,7 +561,7 @@ Tags: ${entry.tags.join(', ')}`;
    * Extract tags from content
    */
   private extractTags(content: string, existingTags: string[]): string[] {
-    const tags = new Set((existingTags || []).map(t => t.toLowerCase()));
+    const tags = new Set((existingTags || []).map((t) => t.toLowerCase()));
 
     // Handle undefined/null/empty content
     if (!content) {
@@ -577,13 +576,13 @@ Tags: ${entry.tags.join(', ')}`;
       /\b(docker|kubernetes|aws|gcp|azure|ci\/cd)\b/gi,
       /\b(test|testing|jest|vitest|pytest)\b/gi,
       /\b(error|bug|fix|issue|problem)\b/gi,
-      /\b(pattern|architecture|design|structure)\b/gi
+      /\b(pattern|architecture|design|structure)\b/gi,
     ];
 
     for (const pattern of techPatterns) {
       const matches = content.match(pattern);
       if (matches) {
-        matches.forEach(m => tags.add(m.toLowerCase()));
+        matches.forEach((m) => tags.add(m.toLowerCase()));
       }
     }
 
@@ -597,18 +596,64 @@ Tags: ${entry.tags.join(', ')}`;
     if (!text) return [];
 
     const stopWords = new Set([
-      'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has',
-      'do', 'does', 'did', 'will', 'would', 'could', 'should', 'can', 'to', 'of',
-      'in', 'for', 'on', 'with', 'at', 'by', 'from', 'up', 'about', 'how', 'what',
-      'when', 'where', 'why', 'all', 'and', 'but', 'if', 'or', 'this', 'that',
-      'jak', 'jest', 'są', 'co', 'gdzie', 'kiedy', 'dlaczego', 'który', 'która'
+      'the',
+      'a',
+      'an',
+      'is',
+      'are',
+      'was',
+      'were',
+      'be',
+      'been',
+      'have',
+      'has',
+      'do',
+      'does',
+      'did',
+      'will',
+      'would',
+      'could',
+      'should',
+      'can',
+      'to',
+      'of',
+      'in',
+      'for',
+      'on',
+      'with',
+      'at',
+      'by',
+      'from',
+      'up',
+      'about',
+      'how',
+      'what',
+      'when',
+      'where',
+      'why',
+      'all',
+      'and',
+      'but',
+      'if',
+      'or',
+      'this',
+      'that',
+      'jak',
+      'jest',
+      'są',
+      'co',
+      'gdzie',
+      'kiedy',
+      'dlaczego',
+      'który',
+      'która',
     ]);
 
     return text
       .toLowerCase()
       .replace(/[^\w\sąćęłńóśźż]/g, ' ')
       .split(/\s+/)
-      .filter(w => w.length > 2 && !stopWords.has(w));
+      .filter((w) => w.length > 2 && !stopWords.has(w));
   }
 
   // ============================================================
@@ -625,15 +670,20 @@ Tags: ${entry.tags.join(', ')}`;
 
     // Detect language
     const langMap: Record<string, string> = {
-      '.ts': 'typescript', '.js': 'javascript', '.py': 'python',
-      '.rs': 'rust', '.go': 'go', '.java': 'java', '.md': 'markdown'
+      '.ts': 'typescript',
+      '.js': 'javascript',
+      '.py': 'python',
+      '.rs': 'rust',
+      '.go': 'go',
+      '.java': 'java',
+      '.md': 'markdown',
     };
 
     await this.add(type, fileName, content, {
       source: 'import',
       filePath,
       language: langMap[ext] || 'text',
-      importance: 0.6
+      importance: 0.6,
     });
 
     return 1;
@@ -648,7 +698,7 @@ Tags: ${entry.tags.join(', ')}`;
       extensions?: string[];
       type?: KnowledgeType;
       recursive?: boolean;
-    } = {}
+    } = {},
   ): Promise<number> {
     const { extensions = ['.md', '.txt'], type = 'documentation', recursive = true } = options;
     let imported = 0;
@@ -694,7 +744,7 @@ Tags: ${entry.tags.join(', ')}`;
       const trainingExample = {
         instruction: `Provide information about: ${entry.title}`,
         input: entry.tags.join(', '),
-        output: entry.content
+        output: entry.content,
       };
       lines.push(JSON.stringify(trainingExample));
 
@@ -703,14 +753,16 @@ Tags: ${entry.tags.join(', ')}`;
         const qaExample = {
           instruction: `What is ${entry.title}?`,
           input: '',
-          output: entry.summary
+          output: entry.summary,
         };
         lines.push(JSON.stringify(qaExample));
       }
     }
 
     await fs.writeFile(trainingPath, lines.join('\n'));
-    console.log(chalk.green(`[KnowledgeBank] Exported ${lines.length} training examples to ${trainingPath}`));
+    console.log(
+      chalk.green(`[KnowledgeBank] Exported ${lines.length} training examples to ${trainingPath}`),
+    );
 
     return trainingPath;
   }
@@ -741,43 +793,45 @@ Tags: ${entry.tags.join(', ')}`;
 
     return {
       ...this.store.stats,
-      embeddingsCount: this.store.entries.filter(e => e.embedding).length,
-      topTags
+      embeddingsCount: this.store.entries.filter((e) => e.embedding).length,
+      topTags,
     };
   }
 
   /**
    * List all entries
    */
-  list(options: {
-    type?: KnowledgeType;
-    source?: KnowledgeSource;
-    limit?: number;
-    sortBy?: 'recent' | 'accessed' | 'importance';
-  } = {}): KnowledgeEntry[] {
+  list(
+    options: {
+      type?: KnowledgeType;
+      source?: KnowledgeSource;
+      limit?: number;
+      sortBy?: 'recent' | 'accessed' | 'importance';
+    } = {},
+  ): KnowledgeEntry[] {
     const { type, source, limit = 50, sortBy = 'recent' } = options;
 
     let entries = [...this.store.entries];
 
-    if (type) entries = entries.filter(e => e.type === type);
-    if (source) entries = entries.filter(e => e.source === source);
+    if (type) entries = entries.filter((e) => e.type === type);
+    if (source) entries = entries.filter((e) => e.source === source);
 
     // Sort
     switch (sortBy) {
       case 'accessed':
-        entries.sort((a, b) =>
-          new Date(b.metadata.lastAccessedAt).getTime() -
-          new Date(a.metadata.lastAccessedAt).getTime()
+        entries.sort(
+          (a, b) =>
+            new Date(b.metadata.lastAccessedAt).getTime() -
+            new Date(a.metadata.lastAccessedAt).getTime(),
         );
         break;
       case 'importance':
         entries.sort((a, b) => b.metadata.importance - a.metadata.importance);
         break;
-      case 'recent':
       default:
-        entries.sort((a, b) =>
-          new Date(b.metadata.createdAt).getTime() -
-          new Date(a.metadata.createdAt).getTime()
+        entries.sort(
+          (a, b) =>
+            new Date(b.metadata.createdAt).getTime() - new Date(a.metadata.createdAt).getTime(),
         );
     }
 
@@ -787,18 +841,16 @@ Tags: ${entry.tags.join(', ')}`;
   /**
    * Prune old/unused entries
    */
-  async prune(options: {
-    maxAgeDays?: number;
-    minAccessCount?: number;
-    minImportance?: number;
-  } = {}): Promise<number> {
+  async prune(
+    options: { maxAgeDays?: number; minAccessCount?: number; minImportance?: number } = {},
+  ): Promise<number> {
     const { maxAgeDays = 90, minAccessCount = 0, minImportance = 0.1 } = options;
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - maxAgeDays);
 
     const before = this.store.entries.length;
 
-    this.store.entries = this.store.entries.filter(entry => {
+    this.store.entries = this.store.entries.filter((entry) => {
       const lastAccess = new Date(entry.metadata.lastAccessedAt);
       const isOld = lastAccess < cutoffDate;
       const isUnused = entry.metadata.accessCount <= minAccessCount;

@@ -1,126 +1,136 @@
 /**
- * CircuitBreaker - Automatic failure detection and recovery
+ * CircuitBreaker - Compatibility Adapter
  * Feature #8: Circuit Breaker Pattern
+ *
+ * ARCHITECTURE FIX (#12): This file is now a thin compatibility adapter
+ * over the modern CircuitBreaker in retry.ts. The canonical implementation
+ * lives in retry.ts. This adapter maintains the legacy UPPERCASE state API
+ * used by MCPCircuitBreaker and src/index.ts.
+ *
+ * Prefer importing from './retry.js' for new code.
+ *
+ * @deprecated Use CircuitBreaker from './retry.js' for new code
  */
 
 import chalk from 'chalk';
+import {
+  type CircuitBreakerStatus,
+  CircuitBreaker as ModernCircuitBreaker,
+  type CircuitState as ModernCircuitState,
+} from './retry.js';
 
+// Legacy UPPERCASE state type (for backwards compatibility)
 export type CircuitState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';
 
 export interface CircuitBreakerOptions {
-  failureThreshold?: number;      // Failures before opening
-  successThreshold?: number;      // Successes to close from half-open
-  timeout?: number;               // Time in OPEN state before trying again (ms)
+  failureThreshold?: number;
+  successThreshold?: number;
+  timeout?: number;
   onStateChange?: (from: CircuitState, to: CircuitState, name: string) => void;
 }
 
-const DEFAULT_OPTIONS: CircuitBreakerOptions = {
-  failureThreshold: 3,
-  successThreshold: 2,
-  timeout: 30000, // 30 seconds
+// State mapping between legacy UPPERCASE and modern lowercase
+const toLegacyState = (state: ModernCircuitState): CircuitState => {
+  switch (state) {
+    case 'closed':
+      return 'CLOSED';
+    case 'open':
+      return 'OPEN';
+    case 'half-open':
+      return 'HALF_OPEN';
+    default:
+      return 'CLOSED';
+  }
 };
 
 /**
- * Circuit Breaker for protecting against cascading failures
+ * Circuit Breaker - Legacy Adapter
+ *
+ * Wraps the modern CircuitBreaker from retry.ts with UPPERCASE state API.
+ * For new code, use `import { CircuitBreaker } from './retry.js'` directly.
+ *
+ * @deprecated Use CircuitBreaker from './retry.js' for new code
  */
 export class CircuitBreaker {
-  private state: CircuitState = 'CLOSED';
-  private failures: number = 0;
-  private successes: number = 0;
-  private lastFailureTime: number = 0;
-  private options: Required<CircuitBreakerOptions>;
+  private inner: ModernCircuitBreaker;
+  private _name: string;
+  private onStateChangeFn: (from: CircuitState, to: CircuitState, name: string) => void;
+  private lastKnownState: CircuitState = 'CLOSED';
 
-  constructor(
-    private name: string,
-    options: CircuitBreakerOptions = {}
-  ) {
-    this.options = {
-      failureThreshold: options.failureThreshold ?? DEFAULT_OPTIONS.failureThreshold!,
-      successThreshold: options.successThreshold ?? DEFAULT_OPTIONS.successThreshold!,
-      timeout: options.timeout ?? DEFAULT_OPTIONS.timeout!,
-      onStateChange: options.onStateChange ?? ((from, to, name) => {
+  constructor(name: string, options: CircuitBreakerOptions = {}) {
+    this._name = name;
+    this.onStateChangeFn =
+      options.onStateChange ??
+      ((from, to, name) => {
         console.log(chalk.yellow(`[CircuitBreaker:${name}] ${from} → ${to}`));
-      })
-    };
+      });
+
+    this.inner = new ModernCircuitBreaker({
+      failureThreshold: options.failureThreshold ?? 3,
+      successThreshold: options.successThreshold ?? 2,
+      timeout: options.timeout ?? 30000,
+      halfOpenMaxCalls: 3,
+    });
   }
 
   /**
    * Execute function with circuit breaker protection
    */
   async execute<T>(fn: () => Promise<T>): Promise<T> {
-    if (this.state === 'OPEN') {
-      // Check if timeout has passed
-      if (Date.now() - this.lastFailureTime >= this.options.timeout) {
-        this.transitionTo('HALF_OPEN');
-      } else {
-        throw new Error(`Circuit breaker ${this.name} is OPEN`);
-      }
-    }
+    const prevState = this.lastKnownState;
 
     try {
-      const result = await fn();
-      this.onSuccess();
+      const result = await this.inner.execute(fn);
+      this.checkStateTransition(prevState);
       return result;
     } catch (error) {
-      this.onFailure();
+      this.checkStateTransition(prevState);
       throw error;
     }
   }
 
-  private onSuccess(): void {
-    this.failures = 0;
-
-    if (this.state === 'HALF_OPEN') {
-      this.successes++;
-      if (this.successes >= this.options.successThreshold) {
-        this.transitionTo('CLOSED');
-      }
-    }
-  }
-
-  private onFailure(): void {
-    this.failures++;
-    this.successes = 0;
-    this.lastFailureTime = Date.now();
-
-    if (this.failures >= this.options.failureThreshold) {
-      this.transitionTo('OPEN');
-    }
-  }
-
-  private transitionTo(newState: CircuitState): void {
-    if (this.state !== newState) {
-      this.options.onStateChange(this.state, newState, this.name);
-      this.state = newState;
-
-      if (newState === 'CLOSED') {
-        this.failures = 0;
-        this.successes = 0;
-      } else if (newState === 'HALF_OPEN') {
-        this.successes = 0;
-      }
+  private checkStateTransition(prevState: CircuitState): void {
+    const currentState = toLegacyState(this.inner.getState());
+    if (currentState !== prevState) {
+      this.onStateChangeFn(prevState, currentState, this._name);
+      this.lastKnownState = currentState;
+    } else {
+      this.lastKnownState = currentState;
     }
   }
 
   getState(): CircuitState {
-    return this.state;
+    this.lastKnownState = toLegacyState(this.inner.getState());
+    return this.lastKnownState;
   }
 
   reset(): void {
-    this.transitionTo('CLOSED');
+    const prevState = this.lastKnownState;
+    this.inner.forceClose();
+    this.lastKnownState = 'CLOSED';
+    if (prevState !== 'CLOSED') {
+      this.onStateChangeFn(prevState, 'CLOSED', this._name);
+    }
   }
 
   getStats(): { state: CircuitState; failures: number; successes: number } {
+    const status: CircuitBreakerStatus = this.inner.getStatus();
     return {
-      state: this.state,
-      failures: this.failures,
-      successes: this.successes
+      state: toLegacyState(status.state),
+      failures: status.failureCount,
+      successes: status.successCount,
     };
+  }
+
+  /** Get the underlying modern CircuitBreaker */
+  getInner(): ModernCircuitBreaker {
+    return this.inner;
   }
 }
 
 /**
  * Circuit Breaker Registry - manage multiple breakers
+ * @deprecated Use CircuitBreakerRegistry from './retry.js' for new code
  */
 export class CircuitBreakerRegistry {
   private breakers: Map<string, CircuitBreaker> = new Map();
@@ -137,7 +147,7 @@ export class CircuitBreakerRegistry {
   }
 
   resetAll(): void {
-    this.breakers.forEach(breaker => breaker.reset());
+    this.breakers.forEach((breaker) => breaker.reset());
   }
 
   getAllStats(): Record<string, ReturnType<CircuitBreaker['getStats']>> {

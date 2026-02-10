@@ -5,8 +5,8 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import chalk from 'chalk';
-import { geminiSemaphore } from '../TrafficControl.js';
 import { GEMINI_MODELS } from '../../config/models.config.js';
+import { geminiSemaphore } from '../TrafficControl.js';
 
 // Initialize Gemini client
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
@@ -41,7 +41,7 @@ export class ContextWindowManager {
       content,
       importance,
       timestamp: new Date(),
-      type
+      type,
     });
 
     this.currentTokens += tokens;
@@ -69,7 +69,7 @@ export class ContextWindowManager {
     scored.sort((a, b) => a.score - b.score);
 
     // Remove least important (but not the most recent)
-    const toRemove = scored.find(s => s.index !== this.chunks.length - 1);
+    const toRemove = scored.find((s) => s.index !== this.chunks.length - 1);
     if (toRemove) {
       this.chunks.splice(toRemove.index, 1);
       this.currentTokens -= toRemove.tokens;
@@ -110,23 +110,23 @@ export class ContextWindowManager {
    * Summarize old context to save tokens
    */
   async summarizeOldContext(): Promise<void> {
-    const oldChunks = this.chunks.filter(c => {
+    const oldChunks = this.chunks.filter((c) => {
       const age = (Date.now() - c.timestamp.getTime()) / (1000 * 60);
       return age > 10 && c.importance < 0.7; // Older than 10 min and not critical
     });
 
     if (oldChunks.length < 3) return;
 
-    const toSummarize = oldChunks.map(c => c.content).join('\n---\n');
+    const toSummarize = oldChunks.map((c) => c.content).join('\n---\n');
 
     try {
       const summary = await geminiSemaphore.withPermit(async () => {
         const model = genAI.getGenerativeModel({
           model: INTELLIGENCE_MODEL,
-          generationConfig: { temperature: 0.1, maxOutputTokens: 500 }
+          generationConfig: { temperature: 0.1, maxOutputTokens: 500 },
         });
         const result = await model.generateContent(
-          `Podsumuj zwięźle (max 200 słów) następujący kontekst:\n\n${toSummarize.substring(0, 3000)}`
+          `Podsumuj zwięźle (max 200 słów) następujący kontekst:\n\n${toSummarize.substring(0, 3000)}`,
         );
         return result.response.text();
       });
@@ -142,7 +142,6 @@ export class ContextWindowManager {
 
       this.add(summary, 'system', 0.6);
       console.log(chalk.gray(`[Context] Summarized ${oldChunks.length} chunks`));
-
     } catch (error: any) {
       console.log(chalk.yellow(`[Context] Summarization failed: ${error.message}`));
     }
@@ -154,7 +153,7 @@ export class ContextWindowManager {
   getStats(): { chunks: number; estimatedTokens: number } {
     return {
       chunks: this.chunks.length,
-      estimatedTokens: this.currentTokens
+      estimatedTokens: this.currentTokens,
     };
   }
 

@@ -32,19 +32,18 @@ class ModelHealthChecker {
         model: modelName,
         available: true,
         latency: Date.now() - startTime,
-        lastCheck: new Date()
+        lastCheck: new Date(),
       };
 
       this.health.set(modelName, health);
       return health;
-
     } catch (error: any) {
       const health: ModelHealth = {
         model: modelName,
         available: false,
         latency: -1,
         lastCheck: new Date(),
-        error: error.message
+        error: error.message,
       };
 
       this.health.set(modelName, health);
@@ -53,7 +52,7 @@ class ModelHealthChecker {
   }
 
   async checkAll(models: string[]): Promise<Map<string, ModelHealth>> {
-    const promises = models.map(m => this.checkModel(m));
+    const promises = models.map((m) => this.checkModel(m));
     await Promise.all(promises);
     return this.health;
   }
@@ -75,7 +74,7 @@ class ModelHealthChecker {
   }
 
   getAvailableModels(candidates: string[]): string[] {
-    return candidates.filter(m => this.isAvailable(m));
+    return candidates.filter((m) => this.isAvailable(m));
   }
 
   printStatus(): void {

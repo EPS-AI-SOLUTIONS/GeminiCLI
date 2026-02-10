@@ -4,28 +4,24 @@
  * Uses CommandRegistry for unified command registration and handling.
  */
 
+import path from 'node:path';
 import chalk from 'chalk';
-import path from 'path';
-import { codebaseMemory, CodebaseAnalysis, FileInfo } from '../memory/CodebaseMemory.js';
+import { type CodebaseAnalysis, codebaseMemory } from '../memory/CodebaseMemory.js';
 import {
-  commandRegistry,
-  Command,
-  CommandContext,
-  CommandResult,
-  success,
-  error
-} from './CommandRegistry.js';
-import {
-  parseArgs,
-  getNumberFlag,
-  formatTable,
-  formatSimpleTable,
-  formatDuration,
   formatNumber,
   formatRelativeTime,
+  getNumberFlag,
   horizontalLine,
-  truncate
+  truncate,
 } from './CommandHelpers.js';
+import {
+  type Command,
+  type CommandContext,
+  type CommandResult,
+  commandRegistry,
+  error,
+  success,
+} from './CommandRegistry.js';
 
 // ============================================================
 // Command Handlers
@@ -45,7 +41,7 @@ async function analyzeHandler(ctx: CommandContext): Promise<CommandResult> {
   try {
     const analysis = await codebaseMemory.analyzeProject(resolvedPath, {
       maxFiles: getNumberFlag(ctx.flags, 500, 'maxFiles', 'max'),
-      maxDepth: getNumberFlag(ctx.flags, 10, 'depth', 'd')
+      maxDepth: getNumberFlag(ctx.flags, 10, 'depth', 'd'),
     });
 
     return success(analysis, formatAnalysisReport(analysis));
@@ -99,9 +95,10 @@ async function contextHandler(ctx: CommandContext): Promise<CommandResult> {
     case 'show':
       return showContext();
 
-    case 'enrich':
+    case 'enrich': {
       const testPrompt = ctx.args.slice(1).join(' ') || 'Example prompt';
       return showEnrichedPrompt(testPrompt);
+    }
 
     case 'files':
       return listRelevantFiles(ctx.args.slice(1).join(' '));
@@ -124,7 +121,9 @@ function formatAnalysisReport(analysis: CodebaseAnalysis): string {
   // Basic info
   lines.push(chalk.bold(`\n Project: ${analysis.projectName}`));
   lines.push(`   Path: ${analysis.projectPath}`);
-  lines.push(`   Type: ${chalk.cyan(analysis.structure.type)}${analysis.structure.framework ? chalk.yellow(` (${analysis.structure.framework})`) : ''}`);
+  lines.push(
+    `   Type: ${chalk.cyan(analysis.structure.type)}${analysis.structure.framework ? chalk.yellow(` (${analysis.structure.framework})`) : ''}`,
+  );
 
   // Stats table
   lines.push(chalk.bold(`\n Statistics:`));
@@ -162,7 +161,9 @@ function formatAnalysisReport(analysis: CodebaseAnalysis): string {
 
   // Dependencies summary
   if (analysis.dependencies.length > 0) {
-    lines.push(chalk.bold(`\n Dependencies: ${chalk.cyan(formatNumber(analysis.dependencies.length))}`));
+    lines.push(
+      chalk.bold(`\n Dependencies: ${chalk.cyan(formatNumber(analysis.dependencies.length))}`),
+    );
     const topDeps = analysis.dependencies.slice(0, 10);
     lines.push(`   ${topDeps.join(', ')}${analysis.dependencies.length > 10 ? '...' : ''}`);
   }
@@ -177,7 +178,7 @@ function formatAnalysisReport(analysis: CodebaseAnalysis): string {
   }
 
   // Key exports
-  const allExports = analysis.files.flatMap(f => f.exports || []).slice(0, 15);
+  const allExports = analysis.files.flatMap((f) => f.exports || []).slice(0, 15);
   if (allExports.length > 0) {
     lines.push(chalk.bold(`\n Key Exports:`));
     lines.push(`   ${allExports.join(', ')}`);
@@ -185,7 +186,11 @@ function formatAnalysisReport(analysis: CodebaseAnalysis): string {
 
   lines.push(horizontalLine(60, '='));
   lines.push(chalk.gray(`Analysis saved to persistent memory`));
-  lines.push(chalk.gray(`Use ${chalk.white('/context show')} to see how this context will be used in prompts\n`));
+  lines.push(
+    chalk.gray(
+      `Use ${chalk.white('/context show')} to see how this context will be used in prompts\n`,
+    ),
+  );
 
   return lines.join('\n');
 }
@@ -205,7 +210,9 @@ function memoryStatus(): CommandResult {
   if (current) {
     lines.push(chalk.bold(`\nCurrent Project: ${chalk.cyan(current.projectName)}`));
     lines.push(`  Path: ${current.projectPath}`);
-    lines.push(`  Type: ${current.structure.type}${current.structure.framework ? ` (${current.structure.framework})` : ''}`);
+    lines.push(
+      `  Type: ${current.structure.type}${current.structure.framework ? ` (${current.structure.framework})` : ''}`,
+    );
     lines.push(`  Access count: ${current.accessCount}`);
   } else {
     lines.push(chalk.yellow(`\nNo current project set.`));
@@ -219,7 +226,10 @@ function listProjects(): CommandResult {
   const projects = codebaseMemory.listProjects();
 
   if (projects.length === 0) {
-    return success([], chalk.yellow('\nNo projects analyzed yet.\nUse /analyze to analyze a project.'));
+    return success(
+      [],
+      chalk.yellow('\nNo projects analyzed yet.\nUse /analyze to analyze a project.'),
+    );
   }
 
   const lines: string[] = [];
@@ -228,7 +238,9 @@ function listProjects(): CommandResult {
   for (const p of projects) {
     lines.push(`${chalk.green('*')} ${chalk.bold(p.name)}`);
     lines.push(`  ${chalk.gray(p.path)}`);
-    lines.push(`  ${p.type}${p.framework ? ` (${p.framework})` : ''} - Analyzed: ${formatRelativeTime(p.analyzedAt)}`);
+    lines.push(
+      `  ${p.type}${p.framework ? ` (${p.framework})` : ''} - Analyzed: ${formatRelativeTime(p.analyzedAt)}`,
+    );
     lines.push('');
   }
 
@@ -252,10 +264,14 @@ function setCurrentProject(targetPath: string, cwd: string): CommandResult {
   if (project) {
     return success(
       { projectName: project.projectName, projectPath: project.projectPath },
-      chalk.green(`\n Current project set to: ${chalk.bold(project.projectName)}\n  ${project.projectPath}`)
+      chalk.green(
+        `\n Current project set to: ${chalk.bold(project.projectName)}\n  ${project.projectPath}`,
+      ),
     );
   } else {
-    return error(`Project not found in memory: ${resolvedPath}\n  Use /analyze ${targetPath} first.`);
+    return error(
+      `Project not found in memory: ${resolvedPath}\n  Use /analyze ${targetPath} first.`,
+    );
   }
 }
 
@@ -266,7 +282,7 @@ function clearProject(targetPath: string, cwd: string): CommandResult {
   if (deleted) {
     return success(
       { deleted: resolvedPath },
-      chalk.green(`\n Project analysis deleted: ${resolvedPath}`)
+      chalk.green(`\n Project analysis deleted: ${resolvedPath}`),
     );
   } else {
     return error(`Project not found: ${resolvedPath}`);
@@ -290,7 +306,9 @@ function searchMemory(query: string): CommandResult {
   for (const p of results) {
     lines.push(`${chalk.green('*')} ${chalk.bold(p.projectName)}`);
     lines.push(`  ${chalk.gray(p.projectPath)}`);
-    lines.push(`  ${p.structure.type}${p.structure.framework ? ` (${p.structure.framework})` : ''}`);
+    lines.push(
+      `  ${p.structure.type}${p.structure.framework ? ` (${p.structure.framework})` : ''}`,
+    );
     lines.push('');
   }
 
@@ -428,10 +446,10 @@ export function registerCodebaseCommands(): void {
     args: [
       { name: 'path', description: 'Project path to analyze', default: 'current directory' },
       { name: '--maxFiles', description: 'Max files to analyze', default: '500' },
-      { name: '--depth', description: 'Max directory depth', default: '10' }
+      { name: '--depth', description: 'Max directory depth', default: '10' },
     ],
     handler: analyzeHandler,
-    category: 'codebase'
+    category: 'codebase',
   };
 
   const memoryCommand: Command = {
@@ -442,13 +460,67 @@ export function registerCodebaseCommands(): void {
     handler: memoryHandler,
     category: 'codebase',
     subcommands: new Map([
-      ['status', { name: 'status', aliases: ['stats'], description: 'Show memory status', handler: memoryHandler, category: 'codebase' }],
-      ['list', { name: 'list', aliases: [], description: 'List analyzed projects', handler: memoryHandler, category: 'codebase' }],
-      ['current', { name: 'current', aliases: [], description: 'Show current project', handler: memoryHandler, category: 'codebase' }],
-      ['set', { name: 'set', aliases: [], description: 'Set current project', handler: memoryHandler, category: 'codebase' }],
-      ['clear', { name: 'clear', aliases: [], description: 'Clear project from memory', handler: memoryHandler, category: 'codebase' }],
-      ['search', { name: 'search', aliases: [], description: 'Search projects', handler: memoryHandler, category: 'codebase' }]
-    ])
+      [
+        'status',
+        {
+          name: 'status',
+          aliases: ['stats'],
+          description: 'Show memory status',
+          handler: memoryHandler,
+          category: 'codebase',
+        },
+      ],
+      [
+        'list',
+        {
+          name: 'list',
+          aliases: [],
+          description: 'List analyzed projects',
+          handler: memoryHandler,
+          category: 'codebase',
+        },
+      ],
+      [
+        'current',
+        {
+          name: 'current',
+          aliases: [],
+          description: 'Show current project',
+          handler: memoryHandler,
+          category: 'codebase',
+        },
+      ],
+      [
+        'set',
+        {
+          name: 'set',
+          aliases: [],
+          description: 'Set current project',
+          handler: memoryHandler,
+          category: 'codebase',
+        },
+      ],
+      [
+        'clear',
+        {
+          name: 'clear',
+          aliases: [],
+          description: 'Clear project from memory',
+          handler: memoryHandler,
+          category: 'codebase',
+        },
+      ],
+      [
+        'search',
+        {
+          name: 'search',
+          aliases: [],
+          description: 'Search projects',
+          handler: memoryHandler,
+          category: 'codebase',
+        },
+      ],
+    ]),
   };
 
   const contextCommand: Command = {
@@ -459,10 +531,37 @@ export function registerCodebaseCommands(): void {
     handler: contextHandler,
     category: 'codebase',
     subcommands: new Map([
-      ['show', { name: 'show', aliases: [], description: 'Show current context', handler: contextHandler, category: 'codebase' }],
-      ['enrich', { name: 'enrich', aliases: [], description: 'Preview enriched prompt', handler: contextHandler, category: 'codebase' }],
-      ['files', { name: 'files', aliases: [], description: 'Find relevant files', handler: contextHandler, category: 'codebase' }]
-    ])
+      [
+        'show',
+        {
+          name: 'show',
+          aliases: [],
+          description: 'Show current context',
+          handler: contextHandler,
+          category: 'codebase',
+        },
+      ],
+      [
+        'enrich',
+        {
+          name: 'enrich',
+          aliases: [],
+          description: 'Preview enriched prompt',
+          handler: contextHandler,
+          category: 'codebase',
+        },
+      ],
+      [
+        'files',
+        {
+          name: 'files',
+          aliases: [],
+          description: 'Find relevant files',
+          handler: contextHandler,
+          category: 'codebase',
+        },
+      ],
+    ]),
   };
 
   commandRegistry.register(analyzeCommand);
@@ -489,7 +588,7 @@ export interface LegacyCommandContext {
 export async function analyzeCommand(ctx: LegacyCommandContext): Promise<string> {
   const result = await analyzeHandler({
     ...ctx,
-    rawArgs: ctx.args.join(' ')
+    rawArgs: ctx.args.join(' '),
   });
   return result.message || result.error || '';
 }
@@ -500,7 +599,7 @@ export async function analyzeCommand(ctx: LegacyCommandContext): Promise<string>
 export async function memoryCommand(ctx: LegacyCommandContext): Promise<string> {
   const result = await memoryHandler({
     ...ctx,
-    rawArgs: ctx.args.join(' ')
+    rawArgs: ctx.args.join(' '),
   });
   return result.message || result.error || '';
 }
@@ -511,7 +610,7 @@ export async function memoryCommand(ctx: LegacyCommandContext): Promise<string> 
 export async function contextCommand(ctx: LegacyCommandContext): Promise<string> {
   const result = await contextHandler({
     ...ctx,
-    rawArgs: ctx.args.join(' ')
+    rawArgs: ctx.args.join(' '),
   });
   return result.message || result.error || '';
 }
@@ -522,7 +621,7 @@ export async function contextCommand(ctx: LegacyCommandContext): Promise<string>
  */
 export async function autoEnrichPrompt(
   prompt: string,
-  options: { enabled?: boolean; maxContext?: number } = {}
+  options: { enabled?: boolean; maxContext?: number } = {},
 ): Promise<string> {
   const { enabled = true, maxContext = 3000 } = options;
 
@@ -536,7 +635,7 @@ export async function autoEnrichPrompt(
   const { enrichedPrompt } = codebaseMemory.enrichPrompt(prompt, {
     maxContextLength: maxContext,
     includeStructure: true,
-    includeRelevantFiles: true
+    includeRelevantFiles: true,
   });
 
   return enrichedPrompt;
@@ -563,7 +662,7 @@ export const codebaseCommands = {
   context: contextCommand,
   autoEnrichPrompt,
   initCodebaseForCwd,
-  registerCodebaseCommands
+  registerCodebaseCommands,
 };
 
 export default codebaseCommands;

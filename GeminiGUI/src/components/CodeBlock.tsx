@@ -1,9 +1,11 @@
-import React, { useState, memo, useRef } from 'react';
-import { Check, Copy, Play, Save, Terminal } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { save } from '@tauri-apps/plugin-dialog';
+import { Check, Copy, Play, Save, Terminal } from 'lucide-react';
+import type React from 'react';
+import { memo, useRef, useState } from 'react';
+import { useTheme } from '../contexts/ThemeContext';
 import { useCopyToClipboard } from '../hooks/useCopyToClipboard';
-import { escapeForShell, containsDangerousPatterns } from '../utils/validators';
+import { containsDangerousPatterns, escapeForShell } from '../utils/validators';
 
 interface CodeBlockProps {
   language: string;
@@ -15,6 +17,8 @@ const CodeBlockComponent: React.FC<CodeBlockProps> = ({ language, value, onRun }
   const { copied, copyToClipboard } = useCopyToClipboard();
   const [isRunning, setIsRunning] = useState(false);
   const codeRef = useRef<HTMLPreElement>(null);
+  const { resolvedTheme } = useTheme();
+  const isLight = resolvedTheme === 'light';
 
   const handleCopy = (e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -23,11 +27,11 @@ const CodeBlockComponent: React.FC<CodeBlockProps> = ({ language, value, onRun }
 
   const handleSelectAll = () => {
     if (codeRef.current) {
-        const range = document.createRange();
-        range.selectNodeContents(codeRef.current);
-        const sel = window.getSelection();
-        sel?.removeAllRanges();
-        sel?.addRange(range);
+      const range = document.createRange();
+      range.selectNodeContents(codeRef.current);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
     }
   };
 
@@ -35,10 +39,12 @@ const CodeBlockComponent: React.FC<CodeBlockProps> = ({ language, value, onRun }
     e.stopPropagation();
     try {
       const filePath = await save({
-        filters: [{
-          name: language || 'Text',
-          extensions: [language || 'txt']
-        }]
+        filters: [
+          {
+            name: language || 'Text',
+            extensions: [language || 'txt'],
+          },
+        ],
       });
 
       if (filePath) {
@@ -46,7 +52,7 @@ const CodeBlockComponent: React.FC<CodeBlockProps> = ({ language, value, onRun }
       }
     } catch (error) {
       console.error('Failed to save file:', error);
-      alert('Failed to save file: ' + error);
+      alert(`Failed to save file: ${error}`);
     }
   };
 
@@ -55,7 +61,9 @@ const CodeBlockComponent: React.FC<CodeBlockProps> = ({ language, value, onRun }
 
     // SECURITY: Check for dangerous patterns
     if (containsDangerousPatterns(value)) {
-      alert('BEZPIECZEŃSTWO: Kod zawiera potencjalnie niebezpieczne wzorce i nie może być uruchomiony.');
+      alert(
+        'BEZPIECZEŃSTWO: Kod zawiera potencjalnie niebezpieczne wzorce i nie może być uruchomiony.',
+      );
       return;
     }
 
@@ -72,25 +80,27 @@ const CodeBlockComponent: React.FC<CodeBlockProps> = ({ language, value, onRun }
     let command: string;
 
     if (language === 'python' || language === 'py') {
-        // Use -c with properly escaped code
-        command = `python -c "${escapedValue}"`;
+      // Use -c with properly escaped code
+      command = `python -c "${escapedValue}"`;
     } else if (language === 'javascript' || language === 'js' || language === 'node') {
-        command = `node -e "${escapedValue}"`;
+      command = `node -e "${escapedValue}"`;
     } else if (language === 'bash' || language === 'sh' || language === 'shell') {
-        // For shell scripts, only allow simple read-only commands
-        const safeShellCommands = ['echo', 'pwd', 'ls', 'dir', 'date', 'whoami', 'hostname'];
-        const firstWord = value.trim().split(/\s+/)[0].toLowerCase();
+      // For shell scripts, only allow simple read-only commands
+      const safeShellCommands = ['echo', 'pwd', 'ls', 'dir', 'date', 'whoami', 'hostname'];
+      const firstWord = value.trim().split(/\s+/)[0].toLowerCase();
 
-        if (!safeShellCommands.includes(firstWord)) {
-          alert(`BEZPIECZEŃSTWO: Tylko podstawowe komendy shell są dozwolone: ${safeShellCommands.join(', ')}`);
-          setIsRunning(false);
-          return;
-        }
-        command = value;
-    } else {
-        alert(`Uruchamianie dla ${language} nie jest bezpośrednio wspierane.`);
+      if (!safeShellCommands.includes(firstWord)) {
+        alert(
+          `BEZPIECZEŃSTWO: Tylko podstawowe komendy shell są dozwolone: ${safeShellCommands.join(', ')}`,
+        );
         setIsRunning(false);
         return;
+      }
+      command = value;
+    } else {
+      alert(`Uruchamianie dla ${language} nie jest bezpośrednio wspierane.`);
+      setIsRunning(false);
+      return;
     }
 
     onRun(command);
@@ -98,29 +108,54 @@ const CodeBlockComponent: React.FC<CodeBlockProps> = ({ language, value, onRun }
   };
 
   return (
-    <div className="rounded-md border border-[var(--matrix-border)] bg-black/40 overflow-hidden my-2">
-      <div 
+    <div
+      className={`rounded-md border overflow-hidden my-2 ${
+        isLight ? 'border-slate-200/60 bg-slate-50/80' : 'border-[var(--matrix-border)] bg-black/40'
+      }`}
+    >
+      <div
         onClick={handleSelectAll}
-        className="flex justify-between items-center px-3 py-1.5 bg-white/5 border-b border-[var(--matrix-border)] cursor-pointer hover:bg-white/10 transition-colors select-none"
+        className={`flex justify-between items-center px-3 py-1.5 border-b cursor-pointer transition-colors select-none ${
+          isLight
+            ? 'bg-slate-100/80 border-slate-200/60 hover:bg-slate-200/60'
+            : 'bg-white/5 border-[var(--matrix-border)] hover:bg-white/10'
+        }`}
         title="Kliknij, aby zaznaczyć całość"
       >
-        <span className="text-xs font-mono text-[var(--matrix-text-dim)] uppercase">{language || 'tekst'}</span>
+        <span
+          className={`text-xs font-mono uppercase ${
+            isLight ? 'text-slate-500' : 'text-[var(--matrix-text-dim)]'
+          }`}
+        >
+          {language || 'tekst'}
+        </span>
         <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-
-          {(language === 'python' || language === 'js' || language === 'javascript' || language === 'bash' || language === 'sh') && (
-              <button
-                onClick={handleRun}
-                disabled={isRunning}
-                className="text-[var(--matrix-text-dim)] hover:text-[var(--matrix-accent)] transition-colors"
-                title="Uruchom Kod"
-              >
-                {isRunning ? <Terminal size={14} className="animate-spin"/> : <Play size={14} />}
-              </button>
+          {(language === 'python' ||
+            language === 'js' ||
+            language === 'javascript' ||
+            language === 'bash' ||
+            language === 'sh') && (
+            <button
+              onClick={handleRun}
+              disabled={isRunning}
+              className={`transition-colors ${
+                isLight
+                  ? 'text-slate-400 hover:text-emerald-600'
+                  : 'text-[var(--matrix-text-dim)] hover:text-[var(--matrix-accent)]'
+              }`}
+              title="Uruchom Kod"
+            >
+              {isRunning ? <Terminal size={14} className="animate-spin" /> : <Play size={14} />}
+            </button>
           )}
 
           <button
             onClick={handleSave}
-            className="text-[var(--matrix-text-dim)] hover:text-[var(--matrix-accent)] transition-colors"
+            className={`transition-colors ${
+              isLight
+                ? 'text-slate-400 hover:text-emerald-600'
+                : 'text-[var(--matrix-text-dim)] hover:text-[var(--matrix-accent)]'
+            }`}
             title="Zapisz do Pliku"
           >
             <Save size={14} />
@@ -128,14 +163,23 @@ const CodeBlockComponent: React.FC<CodeBlockProps> = ({ language, value, onRun }
 
           <button
             onClick={handleCopy}
-            className="text-[var(--matrix-text-dim)] hover:text-[var(--matrix-accent)] transition-colors"
+            className={`transition-colors ${
+              isLight
+                ? 'text-slate-400 hover:text-emerald-600'
+                : 'text-[var(--matrix-text-dim)] hover:text-[var(--matrix-accent)]'
+            }`}
             title="Kopiuj"
           >
             {copied ? <Check size={14} /> : <Copy size={14} />}
           </button>
         </div>
       </div>
-      <pre ref={codeRef} className="p-3 overflow-x-auto text-sm font-mono text-[var(--matrix-text)] bg-transparent m-0 select-text cursor-text">
+      <pre
+        ref={codeRef}
+        className={`p-3 overflow-x-auto text-sm font-mono bg-transparent m-0 select-text cursor-text ${
+          isLight ? 'text-slate-800' : 'text-[var(--matrix-text)]'
+        }`}
+      >
         <code>{value}</code>
       </pre>
     </div>

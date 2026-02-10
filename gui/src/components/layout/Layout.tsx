@@ -2,9 +2,9 @@
  * Main Layout Component
  */
 
-import { useState, type ReactNode } from 'react';
-import { Sidebar } from './Sidebar';
+import { type ReactNode, useState } from 'react';
 import { Header } from './Header';
+import { Sidebar } from './Sidebar';
 
 type ViewType = 'chat' | 'agents' | 'history' | 'settings';
 
@@ -33,9 +33,7 @@ export function Layout({ children }: LayoutProps) {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header title={title} subtitle={subtitle} />
 
-        <main className="flex-1 overflow-auto p-6">
-          {children(currentView)}
-        </main>
+        <main className="flex-1 overflow-auto p-6">{children(currentView)}</main>
       </div>
     </div>
   );

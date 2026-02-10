@@ -6,16 +6,15 @@
  * This avoids fragile cross-project imports between backend and frontend.
  */
 
-// Re-export everything from the shared canonical location
-export {
-  createKnowledgeNode,
-  createKnowledgeEdge,
-} from '../../shared/types/knowledge.types.js';
-
 export type {
-  KnowledgeNodeType,
-  KnowledgeNode,
+  IKnowledgeGraph,
   KnowledgeEdge,
   KnowledgeGraphData,
-  IKnowledgeGraph,
+  KnowledgeNode,
+  KnowledgeNodeType,
+} from '../../shared/types/knowledge.types.js';
+// Re-export everything from the shared canonical location
+export {
+  createKnowledgeEdge,
+  createKnowledgeNode,
 } from '../../shared/types/knowledge.types.js';

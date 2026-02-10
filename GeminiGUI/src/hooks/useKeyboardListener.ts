@@ -90,7 +90,7 @@ export const isHotkeyPressed = (event: KeyboardEvent, hotkey: string): boolean =
  */
 export const applyEventModifiers = (
   event: KeyboardEvent,
-  options: Pick<UseKeyboardOptions, 'preventDefault' | 'stopPropagation'>
+  options: Pick<UseKeyboardOptions, 'preventDefault' | 'stopPropagation'>,
 ): void => {
   if (options.preventDefault) {
     event.preventDefault();
@@ -123,7 +123,7 @@ export const applyEventModifiers = (
 export const useKeyboardListener = (
   handler: (event: KeyboardEvent) => void,
   enabled: boolean = true,
-  deps: React.DependencyList = []
+  deps: React.DependencyList = [],
 ): void => {
   useEffect(() => {
     if (!enabled) return;

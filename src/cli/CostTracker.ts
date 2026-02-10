@@ -9,16 +9,16 @@
  * - Budget alerts
  */
 
-import fs from 'fs/promises';
-import path from 'path';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import chalk from 'chalk';
 
 import { GEMINIHYDRA_DIR } from '../config/paths.config.js';
 
 // Gemini pricing (per 1M tokens) - Gemini 3 only (2026)
 const PRICING = {
-  'gemini-3-pro-preview': { input: 1.25, output: 5.00 },
-  'gemini-3-flash-preview': { input: 0.075, output: 0.30 },
+  'gemini-3-pro-preview': { input: 1.25, output: 5.0 },
+  'gemini-3-flash-preview': { input: 0.075, output: 0.3 },
   'ollama-local': { input: 0, output: 0 }, // Free (local)
 };
 
@@ -44,8 +44,6 @@ export class CostTracker {
   private usage: TokenUsage[] = [];
   private budget: number | null = null;
 
-  constructor() {}
-
   /**
    * Load usage history
    */
@@ -67,16 +65,29 @@ export class CostTracker {
    * Save usage history
    */
   async save(): Promise<void> {
-    await fs.writeFile(USAGE_FILE, JSON.stringify({
-      usage: this.usage,
-      budget: this.budget,
-    }, null, 2), 'utf-8');
+    await fs.writeFile(
+      USAGE_FILE,
+      JSON.stringify(
+        {
+          usage: this.usage,
+          budget: this.budget,
+        },
+        null,
+        2,
+      ),
+      'utf-8',
+    );
   }
 
   /**
    * Track token usage
    */
-  async track(model: string, inputTokens: number, outputTokens: number, task?: string): Promise<void> {
+  async track(
+    model: string,
+    inputTokens: number,
+    outputTokens: number,
+    task?: string,
+  ): Promise<void> {
     this.usage.push({
       model,
       inputTokens,
@@ -91,9 +102,15 @@ export class CostTracker {
     if (this.budget) {
       const stats = this.getStats('today');
       if (stats.totalCost >= this.budget) {
-        console.log(chalk.red(`\n⚠️  Budget exceeded! ($${stats.totalCost.toFixed(4)} / $${this.budget})`));
+        console.log(
+          chalk.red(`\n⚠️  Budget exceeded! ($${stats.totalCost.toFixed(4)} / $${this.budget})`),
+        );
       } else if (stats.totalCost >= this.budget * 0.8) {
-        console.log(chalk.yellow(`\n⚠️  80% of budget used ($${stats.totalCost.toFixed(4)} / $${this.budget})`));
+        console.log(
+          chalk.yellow(
+            `\n⚠️  80% of budget used ($${stats.totalCost.toFixed(4)} / $${this.budget})`,
+          ),
+        );
       }
     }
   }
@@ -117,13 +134,13 @@ export class CostTracker {
 
     if (period === 'today') {
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      filteredUsage = this.usage.filter(u => u.timestamp >= startOfDay);
+      filteredUsage = this.usage.filter((u) => u.timestamp >= startOfDay);
     } else if (period === 'week') {
       const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      filteredUsage = this.usage.filter(u => u.timestamp >= weekAgo);
+      filteredUsage = this.usage.filter((u) => u.timestamp >= weekAgo);
     } else if (period === 'month') {
       const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      filteredUsage = this.usage.filter(u => u.timestamp >= monthAgo);
+      filteredUsage = this.usage.filter((u) => u.timestamp >= monthAgo);
     }
 
     const stats: UsageStats = {
@@ -182,28 +199,41 @@ export class CostTracker {
 
     // Today
     console.log(chalk.yellow('Today:'));
-    console.log(chalk.gray(`  Tokens: ${this.formatNumber(today.totalInputTokens + today.totalOutputTokens)}`));
+    console.log(
+      chalk.gray(
+        `  Tokens: ${this.formatNumber(today.totalInputTokens + today.totalOutputTokens)}`,
+      ),
+    );
     console.log(chalk.gray(`  Cost: $${today.totalCost.toFixed(4)}`));
 
     // This week
     console.log(chalk.yellow('\nThis Week:'));
-    console.log(chalk.gray(`  Tokens: ${this.formatNumber(week.totalInputTokens + week.totalOutputTokens)}`));
+    console.log(
+      chalk.gray(`  Tokens: ${this.formatNumber(week.totalInputTokens + week.totalOutputTokens)}`),
+    );
     console.log(chalk.gray(`  Cost: $${week.totalCost.toFixed(4)}`));
 
     // This month
     console.log(chalk.yellow('\nThis Month:'));
-    console.log(chalk.gray(`  Tokens: ${this.formatNumber(month.totalInputTokens + month.totalOutputTokens)}`));
+    console.log(
+      chalk.gray(
+        `  Tokens: ${this.formatNumber(month.totalInputTokens + month.totalOutputTokens)}`,
+      ),
+    );
     console.log(chalk.gray(`  Cost: $${month.totalCost.toFixed(4)}`));
 
     // By model
     console.log(chalk.yellow('\nBy Model (Month):'));
-    const sortedModels = Object.entries(month.byModel)
-      .sort((a, b) => b[1].cost - a[1].cost);
+    const sortedModels = Object.entries(month.byModel).sort((a, b) => b[1].cost - a[1].cost);
 
     for (const [model, data] of sortedModels) {
-      const percentage = ((data.cost / month.totalCost) * 100) || 0;
+      const percentage = (data.cost / month.totalCost) * 100 || 0;
       const bar = this.createBar(percentage, 20);
-      console.log(chalk.gray(`  ${model.padEnd(25)} ${bar} ${percentage.toFixed(0)}% ($${data.cost.toFixed(4)})`));
+      console.log(
+        chalk.gray(
+          `  ${model.padEnd(25)} ${bar} ${percentage.toFixed(0)}% ($${data.cost.toFixed(4)})`,
+        ),
+      );
     }
 
     // Budget status

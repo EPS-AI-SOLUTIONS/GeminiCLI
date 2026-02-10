@@ -29,10 +29,10 @@
  * Supports TypeScript, JavaScript, Python, Rust, Go and other languages via LSP.
  */
 
-import { spawn, ChildProcess } from 'child_process';
-import { EventEmitter } from 'events';
-import * as path from 'path';
-import * as fs from 'fs';
+import { type ChildProcess, spawn } from 'node:child_process';
+import { EventEmitter } from 'node:events';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 // ============================================================
 // Types
@@ -104,7 +104,7 @@ export enum SymbolKind {
   Struct = 23,
   Event = 24,
   Operator = 25,
-  TypeParameter = 26
+  TypeParameter = 26,
 }
 
 export interface Diagnostic {
@@ -119,7 +119,7 @@ export enum DiagnosticSeverity {
   Error = 1,
   Warning = 2,
   Information = 3,
-  Hint = 4
+  Hint = 4,
 }
 
 export interface CompletionItem {
@@ -155,7 +155,7 @@ export enum CompletionItemKind {
   Struct = 22,
   Event = 23,
   Operator = 24,
-  TypeParameter = 25
+  TypeParameter = 25,
 }
 
 export interface LSPServerConfig {
@@ -199,7 +199,7 @@ export class LSPClient extends EventEmitter {
       try {
         this.process = spawn(this.config.command, this.config.args, {
           stdio: ['pipe', 'pipe', 'pipe'],
-          shell: true
+          shell: true,
         });
 
         this.process.stdout?.on('data', (data: Buffer) => {
@@ -226,7 +226,6 @@ export class LSPClient extends EventEmitter {
             resolve();
           })
           .catch(reject);
-
       } catch (error) {
         reject(error);
       }
@@ -265,30 +264,32 @@ export class LSPClient extends EventEmitter {
           synchronization: {
             didOpen: true,
             didChange: true,
-            didClose: true
+            didClose: true,
           },
           completion: {
             completionItem: {
-              snippetSupport: true
-            }
+              snippetSupport: true,
+            },
           },
           hover: {},
           definition: {},
           references: {},
           documentSymbol: {
-            hierarchicalDocumentSymbolSupport: true
+            hierarchicalDocumentSymbolSupport: true,
           },
-          rename: {}
+          rename: {},
         },
         workspace: {
           workspaceFolders: true,
-          symbol: {}
-        }
+          symbol: {},
+        },
       },
-      workspaceFolders: [{
-        uri: this.rootUri,
-        name: path.basename(this.rootUri)
-      }]
+      workspaceFolders: [
+        {
+          uri: this.rootUri,
+          name: path.basename(this.rootUri),
+        },
+      ],
     });
 
     this.capabilities = (result as { capabilities?: Record<string, unknown> })?.capabilities || {};
@@ -310,7 +311,7 @@ export class LSPClient extends EventEmitter {
         jsonrpc: '2.0',
         id,
         method,
-        params
+        params,
       };
 
       this.pendingRequests.set(id, { resolve, reject, method });
@@ -331,7 +332,7 @@ export class LSPClient extends EventEmitter {
     const message = {
       jsonrpc: '2.0',
       method,
-      params
+      params,
     };
 
     const content = JSON.stringify(message);
@@ -375,7 +376,13 @@ export class LSPClient extends EventEmitter {
   /**
    * Handle parsed LSP message
    */
-  private handleMessage(message: { id?: number; method?: string; result?: unknown; error?: { message: string }; params?: unknown }): void {
+  private handleMessage(message: {
+    id?: number;
+    method?: string;
+    result?: unknown;
+    error?: { message: string };
+    params?: unknown;
+  }): void {
     if (message.id !== undefined) {
       // Response to our request
       const pending = this.pendingRequests.get(message.id);
@@ -406,8 +413,8 @@ export class LSPClient extends EventEmitter {
         uri,
         languageId: this.languageId,
         version: 1,
-        text: content
-      }
+        text: content,
+      },
     });
   }
 
@@ -416,7 +423,7 @@ export class LSPClient extends EventEmitter {
    */
   async closeDocument(uri: string): Promise<void> {
     this.sendNotification('textDocument/didClose', {
-      textDocument: { uri }
+      textDocument: { uri },
     });
   }
 
@@ -425,7 +432,7 @@ export class LSPClient extends EventEmitter {
    */
   async getDocumentSymbols(uri: string): Promise<DocumentSymbol[] | SymbolInformation[]> {
     const result = await this.sendRequest('textDocument/documentSymbol', {
-      textDocument: { uri }
+      textDocument: { uri },
     });
     return (result as DocumentSymbol[] | SymbolInformation[]) || [];
   }
@@ -444,7 +451,7 @@ export class LSPClient extends EventEmitter {
   async getDefinition(uri: string, position: Position): Promise<Location | Location[] | null> {
     const result = await this.sendRequest('textDocument/definition', {
       textDocument: { uri },
-      position
+      position,
     });
     return result as Location | Location[] | null;
   }
@@ -452,11 +459,15 @@ export class LSPClient extends EventEmitter {
   /**
    * Find references
    */
-  async getReferences(uri: string, position: Position, includeDeclaration = true): Promise<Location[]> {
+  async getReferences(
+    uri: string,
+    position: Position,
+    includeDeclaration = true,
+  ): Promise<Location[]> {
     const result = await this.sendRequest('textDocument/references', {
       textDocument: { uri },
       position,
-      context: { includeDeclaration }
+      context: { includeDeclaration },
     });
     return (result as Location[]) || [];
   }
@@ -467,7 +478,7 @@ export class LSPClient extends EventEmitter {
   async getHover(uri: string, position: Position): Promise<{ contents: string } | null> {
     const result = await this.sendRequest('textDocument/hover', {
       textDocument: { uri },
-      position
+      position,
     });
     return result as { contents: string } | null;
   }
@@ -478,7 +489,7 @@ export class LSPClient extends EventEmitter {
   async getCompletions(uri: string, position: Position): Promise<CompletionItem[]> {
     const result = await this.sendRequest('textDocument/completion', {
       textDocument: { uri },
-      position
+      position,
     });
 
     if (Array.isArray(result)) {
@@ -493,11 +504,15 @@ export class LSPClient extends EventEmitter {
   /**
    * Rename symbol
    */
-  async rename(uri: string, position: Position, newName: string): Promise<{ changes: Record<string, { range: Range; newText: string }[]> } | null> {
+  async rename(
+    uri: string,
+    position: Position,
+    newName: string,
+  ): Promise<{ changes: Record<string, { range: Range; newText: string }[]> } | null> {
     const result = await this.sendRequest('textDocument/rename', {
       textDocument: { uri },
       position,
-      newName
+      newName,
     });
     return result as { changes: Record<string, { range: Range; newText: string }[]> } | null;
   }
@@ -525,7 +540,7 @@ const LANGUAGE_SERVERS: LanguageServerDefinition[] = [
     fileExtensions: ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'],
     command: 'npx',
     args: ['typescript-language-server', '--stdio'],
-    installCommand: 'npm install -g typescript-language-server typescript'
+    installCommand: 'npm install -g typescript-language-server typescript',
   },
   {
     id: 'python',
@@ -534,7 +549,7 @@ const LANGUAGE_SERVERS: LanguageServerDefinition[] = [
     fileExtensions: ['.py', '.pyi'],
     command: 'npx',
     args: ['pyright-langserver', '--stdio'],
-    installCommand: 'npm install -g pyright'
+    installCommand: 'npm install -g pyright',
   },
   {
     id: 'rust',
@@ -543,7 +558,7 @@ const LANGUAGE_SERVERS: LanguageServerDefinition[] = [
     fileExtensions: ['.rs'],
     command: 'rust-analyzer',
     args: [],
-    installCommand: 'rustup component add rust-analyzer'
+    installCommand: 'rustup component add rust-analyzer',
   },
   {
     id: 'go',
@@ -552,8 +567,8 @@ const LANGUAGE_SERVERS: LanguageServerDefinition[] = [
     fileExtensions: ['.go'],
     command: 'gopls',
     args: ['serve'],
-    installCommand: 'go install golang.org/x/tools/gopls@latest'
-  }
+    installCommand: 'go install golang.org/x/tools/gopls@latest',
+  },
 ];
 
 export class NativeLSP {
@@ -590,8 +605,9 @@ export class NativeLSP {
     }
 
     // Find server definition
-    const serverDef = Array.from(this.serverDefinitions.values())
-      .find(def => def.languages.includes(languageId));
+    const serverDef = Array.from(this.serverDefinitions.values()).find((def) =>
+      def.languages.includes(languageId),
+    );
 
     if (!serverDef) {
       return null;
@@ -602,7 +618,7 @@ export class NativeLSP {
       command: serverDef.command,
       args: serverDef.args,
       rootUri: `file://${this.rootDir.replace(/\\/g, '/')}`,
-      languageId
+      languageId,
     });
 
     try {
@@ -662,7 +678,7 @@ export class NativeLSP {
         try {
           const symbols = await client.getWorkspaceSymbols(query);
           results.push(...symbols);
-        } catch (e) {
+        } catch (_e) {
           // Continue with other clients
         }
       }
@@ -718,7 +734,11 @@ export class NativeLSP {
   /**
    * Go to definition
    */
-  async goToDefinition(filePath: string, line: number, character: number): Promise<Location | Location[] | null> {
+  async goToDefinition(
+    filePath: string,
+    line: number,
+    character: number,
+  ): Promise<Location | Location[] | null> {
     const languageId = this.getLanguageIdFromPath(filePath);
     if (!languageId) return null;
 
@@ -757,7 +777,8 @@ export class NativeLSP {
       // Extract text from hover contents
       const contents = result.contents as string | unknown[] | Record<string, unknown>;
       if (typeof contents === 'string') return contents;
-      if (Array.isArray(contents)) return contents.map((c: unknown) => typeof c === 'string' ? c : String(c)).join('\n');
+      if (Array.isArray(contents))
+        return contents.map((c: unknown) => (typeof c === 'string' ? c : String(c))).join('\n');
       return JSON.stringify(contents);
     } finally {
       await client.closeDocument(uri);
@@ -767,7 +788,11 @@ export class NativeLSP {
   /**
    * Get completions at position
    */
-  async getCompletions(filePath: string, line: number, character: number): Promise<CompletionItem[]> {
+  async getCompletions(
+    filePath: string,
+    line: number,
+    character: number,
+  ): Promise<CompletionItem[]> {
     const languageId = this.getLanguageIdFromPath(filePath);
     if (!languageId) return [];
 
@@ -788,7 +813,12 @@ export class NativeLSP {
   /**
    * Rename symbol
    */
-  async renameSymbol(filePath: string, line: number, character: number, newName: string): Promise<Map<string, { range: Range; newText: string }[]> | null> {
+  async renameSymbol(
+    filePath: string,
+    line: number,
+    character: number,
+    newName: string,
+  ): Promise<Map<string, { range: Range; newText: string }[]> | null> {
     const languageId = this.getLanguageIdFromPath(filePath);
     if (!languageId) return null;
 
@@ -836,7 +866,7 @@ export class NativeLSP {
     for (const client of this.clients.values()) {
       try {
         await client.stop();
-      } catch (e) {
+      } catch (_e) {
         // Ignore shutdown errors
       }
     }

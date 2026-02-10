@@ -3,17 +3,14 @@
  * Feature #3: Agent Memory Persistence
  */
 
-import fs from 'fs/promises';
-import path from 'path';
+import path from 'node:path';
 import chalk from 'chalk';
 import {
   BaseMemory,
-  MemoryOptions,
-  MemoryStats,
-  generateNumericId,
   estimateSize,
-  pruneOldEntries,
-  getDefaultBaseDir
+  getDefaultBaseDir,
+  type MemoryOptions,
+  type MemoryStats,
 } from './BaseMemory.js';
 
 const DB_DIR = getDefaultBaseDir();
@@ -92,7 +89,7 @@ export class PersistentMemory extends BaseMemory<MemoryStore> {
 
   getStats(): MemoryStats {
     const timestamps = this.store.entries
-      .map(e => new Date(e.createdAt))
+      .map((e) => new Date(e.createdAt))
       .sort((a, b) => a.getTime() - b.getTime());
 
     return {
@@ -123,7 +120,11 @@ export class PersistentMemory extends BaseMemory<MemoryStore> {
     await this.load();
 
     this.initialized = true;
-    console.log(chalk.gray(`[PersistentMemory] Initialized at ${this.persistPath} (${this.store.entries.length} entries)`));
+    console.log(
+      chalk.gray(
+        `[PersistentMemory] Initialized at ${this.persistPath} (${this.store.entries.length} entries)`,
+      ),
+    );
   }
 
   // ============================================================================
@@ -138,7 +139,7 @@ export class PersistentMemory extends BaseMemory<MemoryStore> {
     type: string,
     content: string,
     tags: string = '',
-    importance: number = 0.5
+    importance: number = 0.5,
   ): number {
     const entry: MemoryEntry = {
       id: this.store.nextId++,
@@ -149,7 +150,7 @@ export class PersistentMemory extends BaseMemory<MemoryStore> {
       importance,
       createdAt: new Date().toISOString(),
       accessedAt: new Date().toISOString(),
-      accessCount: 0
+      accessCount: 0,
     };
 
     this.store.entries.push(entry);
@@ -175,9 +176,9 @@ export class PersistentMemory extends BaseMemory<MemoryStore> {
   search(query: string, options: MemorySearchOptions = {}): MemoryEntry[] {
     const { agent, type, tags, limit = 10, minImportance = 0 } = options;
     const queryLower = query.toLowerCase();
-    const queryWords = queryLower.split(/\s+/).filter(w => w.length > 2);
+    const queryWords = queryLower.split(/\s+/).filter((w) => w.length > 2);
 
-    let results = this.store.entries.filter(entry => {
+    const results = this.store.entries.filter((entry) => {
       // Filter by importance
       if (entry.importance < minImportance) return false;
 
@@ -189,25 +190,26 @@ export class PersistentMemory extends BaseMemory<MemoryStore> {
 
       // Filter by tags
       if (tags && tags.length > 0) {
-        const entryTags = entry.tags.toLowerCase().split(',').map(t => t.trim());
-        if (!tags.some(t => entryTags.includes(t.toLowerCase()))) return false;
+        const entryTags = entry.tags
+          .toLowerCase()
+          .split(',')
+          .map((t) => t.trim());
+        if (!tags.some((t) => entryTags.includes(t.toLowerCase()))) return false;
       }
 
       // Text search
       const contentLower = entry.content.toLowerCase();
       const tagsLower = entry.tags.toLowerCase();
-      return queryWords.some(word =>
-        contentLower.includes(word) || tagsLower.includes(word)
-      );
+      return queryWords.some((word) => contentLower.includes(word) || tagsLower.includes(word));
     });
 
     // Sort by relevance (how many query words match) and importance
     results.sort((a, b) => {
-      const aMatches = queryWords.filter(w =>
-        a.content.toLowerCase().includes(w) || a.tags.toLowerCase().includes(w)
+      const aMatches = queryWords.filter(
+        (w) => a.content.toLowerCase().includes(w) || a.tags.toLowerCase().includes(w),
       ).length;
-      const bMatches = queryWords.filter(w =>
-        b.content.toLowerCase().includes(w) || b.tags.toLowerCase().includes(w)
+      const bMatches = queryWords.filter(
+        (w) => b.content.toLowerCase().includes(w) || b.tags.toLowerCase().includes(w),
       ).length;
 
       if (bMatches !== aMatches) return bMatches - aMatches;
@@ -216,7 +218,7 @@ export class PersistentMemory extends BaseMemory<MemoryStore> {
 
     // Update access stats
     const now = new Date().toISOString();
-    results.slice(0, limit).forEach(entry => {
+    results.slice(0, limit).forEach((entry) => {
       entry.accessedAt = now;
       entry.accessCount++;
     });
@@ -230,9 +232,12 @@ export class PersistentMemory extends BaseMemory<MemoryStore> {
    */
   getByAgent(agent: string, limit: number = 20): MemoryEntry[] {
     return this.store.entries
-      .filter(e => e.agent === agent)
-      .sort((a, b) => b.importance - a.importance ||
-        new Date(b.accessedAt).getTime() - new Date(a.accessedAt).getTime())
+      .filter((e) => e.agent === agent)
+      .sort(
+        (a, b) =>
+          b.importance - a.importance ||
+          new Date(b.accessedAt).getTime() - new Date(a.accessedAt).getTime(),
+      )
       .slice(0, limit);
   }
 
@@ -245,7 +250,7 @@ export class PersistentMemory extends BaseMemory<MemoryStore> {
       .toLowerCase()
       .replace(/[^\w\s]/g, '')
       .split(/\s+/)
-      .filter(w => w.length > 3)
+      .filter((w) => w.length > 3)
       .slice(0, 5);
 
     if (keywords.length === 0) {
@@ -260,7 +265,7 @@ export class PersistentMemory extends BaseMemory<MemoryStore> {
    * Update memory importance
    */
   updateImportance(id: number, importance: number): void {
-    const entry = this.store.entries.find(e => e.id === id);
+    const entry = this.store.entries.find((e) => e.id === id);
     if (entry) {
       entry.importance = importance;
       this.scheduleSave();
@@ -271,7 +276,7 @@ export class PersistentMemory extends BaseMemory<MemoryStore> {
    * Delete a memory
    */
   delete(id: number): boolean {
-    const idx = this.store.entries.findIndex(e => e.id === id);
+    const idx = this.store.entries.findIndex((e) => e.id === id);
     if (idx !== -1) {
       this.store.entries.splice(idx, 1);
       this.scheduleSave();
@@ -283,14 +288,16 @@ export class PersistentMemory extends BaseMemory<MemoryStore> {
   /**
    * Delete old/unused memories
    */
-  prune(options: { maxAgeDays?: number; minAccessCount?: number; minImportance?: number } = {}): number {
+  prune(
+    options: { maxAgeDays?: number; minAccessCount?: number; minImportance?: number } = {},
+  ): number {
     const { maxAgeDays = 30, minAccessCount = 0, minImportance = 0.1 } = options;
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - maxAgeDays);
 
     const beforeCount = this.store.entries.length;
 
-    this.store.entries = this.store.entries.filter(entry => {
+    this.store.entries = this.store.entries.filter((entry) => {
       const accessDate = new Date(entry.accessedAt);
       const isOld = accessDate < cutoffDate;
       const isUnused = entry.accessCount <= minAccessCount;
@@ -310,7 +317,11 @@ export class PersistentMemory extends BaseMemory<MemoryStore> {
   /**
    * Get extended statistics
    */
-  getExtendedStats(): { total: number; byAgent: Record<string, number>; byType: Record<string, number> } {
+  getExtendedStats(): {
+    total: number;
+    byAgent: Record<string, number>;
+    byType: Record<string, number>;
+  } {
     const byAgent: Record<string, number> = {};
     const byType: Record<string, number> = {};
 
@@ -336,8 +347,8 @@ export class PersistentMemory extends BaseMemory<MemoryStore> {
     // Find max ID to avoid conflicts
     const maxId = Math.max(
       this.store.nextId,
-      ...entries.map(e => e.id),
-      ...this.store.entries.map(e => e.id)
+      ...entries.map((e) => e.id),
+      ...this.store.entries.map((e) => e.id),
     );
 
     this.store.nextId = maxId + 1;
@@ -345,7 +356,7 @@ export class PersistentMemory extends BaseMemory<MemoryStore> {
     // Add entries that don't exist
     let added = 0;
     for (const entry of entries) {
-      if (!this.store.entries.some(e => e.id === entry.id)) {
+      if (!this.store.entries.some((e) => e.id === entry.id)) {
         this.store.entries.push(entry);
         added++;
       }

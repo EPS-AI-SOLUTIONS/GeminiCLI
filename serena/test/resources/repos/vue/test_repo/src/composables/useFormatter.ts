@@ -1,6 +1,5 @@
-import { ref, computed } from 'vue'
-import type { Ref, ComputedRef } from 'vue'
-import type { FormatOptions } from '@/types'
+import { computed, ref } from 'vue';
+import type { FormatOptions } from '@/types';
 
 /**
  * Composable for formatting numbers with various options.
@@ -8,51 +7,53 @@ import type { FormatOptions } from '@/types'
  */
 export function useFormatter(initialPrecision: number = 2) {
   // State
-  const precision = ref<number>(initialPrecision)
-  const useGrouping = ref<boolean>(true)
-  const locale = ref<string>('en-US')
+  const precision = ref<number>(initialPrecision);
+  const useGrouping = ref<boolean>(true);
+  const locale = ref<string>('en-US');
 
   // Computed properties
-  const formatOptions = computed((): FormatOptions => ({
-    maxDecimals: precision.value,
-    useGrouping: useGrouping.value
-  }))
+  const formatOptions = computed(
+    (): FormatOptions => ({
+      maxDecimals: precision.value,
+      useGrouping: useGrouping.value,
+    }),
+  );
 
   // Methods
   const formatNumber = (value: number): string => {
     return value.toLocaleString(locale.value, {
       minimumFractionDigits: precision.value,
       maximumFractionDigits: precision.value,
-      useGrouping: useGrouping.value
-    })
-  }
+      useGrouping: useGrouping.value,
+    });
+  };
 
   const formatCurrency = (value: number, currency: string = 'USD'): string => {
     return value.toLocaleString(locale.value, {
       style: 'currency',
       currency,
       minimumFractionDigits: precision.value,
-      maximumFractionDigits: precision.value
-    })
-  }
+      maximumFractionDigits: precision.value,
+    });
+  };
 
   const formatPercentage = (value: number): string => {
-    return `${(value * 100).toFixed(precision.value)}%`
-  }
+    return `${(value * 100).toFixed(precision.value)}%`;
+  };
 
   const setPrecision = (newPrecision: number): void => {
     if (newPrecision >= 0 && newPrecision <= 10) {
-      precision.value = newPrecision
+      precision.value = newPrecision;
     }
-  }
+  };
 
   const toggleGrouping = (): void => {
-    useGrouping.value = !useGrouping.value
-  }
+    useGrouping.value = !useGrouping.value;
+  };
 
   const setLocale = (newLocale: string): void => {
-    locale.value = newLocale
-  }
+    locale.value = newLocale;
+  };
 
   // Return composable API
   return {
@@ -68,8 +69,8 @@ export function useFormatter(initialPrecision: number = 2) {
     formatPercentage,
     setPrecision,
     toggleGrouping,
-    setLocale
-  }
+    setLocale,
+  };
 }
 
 /**
@@ -81,46 +82,46 @@ export function useTimeFormatter() {
     return date.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
-      second: '2-digit'
-    })
-  }
+      second: '2-digit',
+    });
+  };
 
   const formatDate = (date: Date): string => {
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
-    })
-  }
+      day: 'numeric',
+    });
+  };
 
   const formatDateTime = (date: Date): string => {
-    return `${formatDate(date)} ${formatTime(date)}`
-  }
+    return `${formatDate(date)} ${formatTime(date)}`;
+  };
 
   const getRelativeTime = (date: Date): string => {
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffSecs = Math.floor(diffMs / 1000)
-    const diffMins = Math.floor(diffSecs / 60)
-    const diffHours = Math.floor(diffMins / 60)
-    const diffDays = Math.floor(diffHours / 24)
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSecs = Math.floor(diffMs / 1000);
+    const diffMins = Math.floor(diffSecs / 60);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
 
-    if (diffSecs < 60) return 'just now'
-    if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
-    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
-  }
+    if (diffSecs < 60) return 'just now';
+    if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+  };
 
   return {
     formatTime,
     formatDate,
     formatDateTime,
-    getRelativeTime
-  }
+    getRelativeTime,
+  };
 }
 
 /**
  * Type definitions for return types
  */
-export type UseFormatterReturn = ReturnType<typeof useFormatter>
-export type UseTimeFormatterReturn = ReturnType<typeof useTimeFormatter>
+export type UseFormatterReturn = ReturnType<typeof useFormatter>;
+export type UseTimeFormatterReturn = ReturnType<typeof useTimeFormatter>;

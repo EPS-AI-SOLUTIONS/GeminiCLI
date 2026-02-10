@@ -48,7 +48,7 @@ export const MessageSkeleton = memo<MessageSkeletonProps>(
         ))}
       </>
     );
-  }
+  },
 );
 
 MessageSkeleton.displayName = 'MessageSkeleton';
@@ -61,29 +61,29 @@ MessageSkeleton.displayName = 'MessageSkeleton';
  * Renders alternating user and assistant message skeletons
  * useful for showing a loading conversation thread.
  */
-export const MessageStreamSkeleton = memo<
-  Omit<MessageSkeletonProps, 'count' | 'isUser'>
->(({ variant = 'pulse' }) => {
-  return (
-    <>
-      {/* User message skeleton */}
-      <MessageSkeleton isUser={true} count={1} variant={variant} />
+export const MessageStreamSkeleton = memo<Omit<MessageSkeletonProps, 'count' | 'isUser'>>(
+  ({ variant = 'pulse' }) => {
+    return (
+      <>
+        {/* User message skeleton */}
+        <MessageSkeleton isUser={true} count={1} variant={variant} />
 
-      {/* Assistant message skeletons (2-3 messages) */}
-      <MessageSkeleton
-        isUser={false}
-        count={Math.floor(Math.random() * 2) + 2}
-        variant={variant}
-      />
+        {/* Assistant message skeletons (2-3 messages) */}
+        <MessageSkeleton
+          isUser={false}
+          count={Math.floor(Math.random() * 2) + 2}
+          variant={variant}
+        />
 
-      {/* Another user message */}
-      <MessageSkeleton isUser={true} count={1} variant={variant} />
+        {/* Another user message */}
+        <MessageSkeleton isUser={true} count={1} variant={variant} />
 
-      {/* Assistant response skeleton */}
-      <MessageSkeleton isUser={false} count={1} variant={variant} />
-    </>
-  );
-});
+        {/* Assistant response skeleton */}
+        <MessageSkeleton isUser={false} count={1} variant={variant} />
+      </>
+    );
+  },
+);
 
 MessageStreamSkeleton.displayName = 'MessageStreamSkeleton';
 

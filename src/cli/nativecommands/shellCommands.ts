@@ -9,19 +9,20 @@
  */
 
 import {
-  chalk,
-  success, error,
   type CommandResult,
-  type ShellConfigProfile,
-  SHELL_PROFILES,
-  getTools,
-  getShellDiagnostics,
-  parseFlags,
+  chalk,
+  createFailedMessage,
+  error,
   formatBytes,
   formatDuration,
-  truncate,
+  getShellDiagnostics,
+  getTools,
+  parseFlags,
+  SHELL_PROFILES,
+  type ShellConfigProfile,
   Spinner,
-  createFailedMessage
+  success,
+  truncate,
 } from './helpers.js';
 
 // ============================================================
@@ -48,18 +49,21 @@ export const shellCommands = {
 
       // Use ShellManager for enhanced execution
       const result = await tools.shellManager.exec(command, {
-        timeout: flags.timeout ? parseInt(flags.timeout as string) : undefined,
-        shell: flags.shell as any
+        timeout: flags.timeout ? parseInt(flags.timeout as string, 10) : undefined,
+        shell: flags.shell as any,
       });
 
       spinner.stop();
 
-      return success({
-        command,
-        output: truncate(result.stdout, 5000),
-        exitCode: result.exitCode,
-        duration: `${result.duration}ms`
-      }, 'Command completed');
+      return success(
+        {
+          command,
+          output: truncate(result.stdout, 5000),
+          exitCode: result.exitCode,
+          duration: `${result.duration}ms`,
+        },
+        'Command completed',
+      );
     } catch (err) {
       spinner.stop();
       return error(createFailedMessage('run command', err));
@@ -95,13 +99,13 @@ export const shellCommands = {
       const tools = getTools();
       const processes = tools.shellManager.listProcesses(status ? { status } : undefined);
 
-      const rows = processes.map(p => ({
+      const rows = processes.map((p) => ({
         pid: p.pid,
         command: truncate(p.command, 30),
         status: p.status,
         duration: p.endTime
           ? formatDuration(p.endTime.getTime() - p.startTime.getTime())
-          : 'running'
+          : 'running',
       }));
 
       return success({ processes: rows }, `Processes: ${processes.length}`);
@@ -118,7 +122,7 @@ export const shellCommands = {
       return error('Usage: /shell kill <pid>');
     }
 
-    const pid = parseInt(args[0]);
+    const pid = parseInt(args[0], 10);
 
     try {
       const tools = getTools();
@@ -142,17 +146,20 @@ export const shellCommands = {
       return error('Usage: /shell output <pid>');
     }
 
-    const pid = parseInt(args[0]);
+    const pid = parseInt(args[0], 10);
 
     try {
       const tools = getTools();
       const output = tools.shellManager.getOutput(pid);
       const errors = tools.shellManager.getErrors(pid);
 
-      return success({
-        stdout: truncate(output, 3000),
-        stderr: truncate(errors, 1000)
-      }, `Process ${pid} output`);
+      return success(
+        {
+          stdout: truncate(output, 3000),
+          stderr: truncate(errors, 1000),
+        },
+        `Process ${pid} output`,
+      );
     } catch (err) {
       return error(createFailedMessage('get output', err));
     }
@@ -166,19 +173,22 @@ export const shellCommands = {
       const tools = getTools();
       const info = tools.shellManager.getSystemInfo();
 
-      return success({
-        platform: info.platform,
-        arch: info.arch,
-        hostname: info.hostname,
-        cpus: info.cpus,
-        memory: {
-          total: formatBytes(info.memory.total),
-          free: formatBytes(info.memory.free)
+      return success(
+        {
+          platform: info.platform,
+          arch: info.arch,
+          hostname: info.hostname,
+          cpus: info.cpus,
+          memory: {
+            total: formatBytes(info.memory.total),
+            free: formatBytes(info.memory.free),
+          },
+          uptime: formatDuration(info.uptime * 1000),
+          shell: info.shell,
+          shellManager: info.shellManager,
         },
-        uptime: formatDuration(info.uptime * 1000),
-        shell: info.shell,
-        shellManager: info.shellManager
-      }, 'System Information');
+        'System Information',
+      );
     } catch (err) {
       return error(createFailedMessage('get system info', err));
     }
@@ -210,7 +220,9 @@ export const shellCommands = {
       console.log(chalk.gray(`  Profile: ${config.profile}`));
       console.log(chalk.gray(`  Preferred Shell: ${config.preferredShell}`));
       console.log(chalk.gray(`  Default Timeout: ${config.defaultTimeout}ms`));
-      console.log(chalk.gray(`  Sandbox Mode: ${config.sandbox ? chalk.yellow('ENABLED') : 'disabled'}`));
+      console.log(
+        chalk.gray(`  Sandbox Mode: ${config.sandbox ? chalk.yellow('ENABLED') : 'disabled'}`),
+      );
       console.log(chalk.gray(`  Verbose: ${config.verbose}`));
       console.log(chalk.gray(`  Max Concurrent: ${config.maxConcurrentProcesses}`));
       console.log(chalk.gray(`  Track History: ${config.trackHistory}`));
@@ -245,26 +257,29 @@ export const shellCommands = {
       // Search history
       if (positional[0]) {
         const results = manager.searchHistory(positional[0]);
-        return success({
-          query: positional[0],
-          matches: results.map(e => ({
-            command: truncate(e.command, 60),
-            timestamp: e.timestamp.toISOString(),
-            exitCode: e.exitCode,
-            duration: e.duration ? `${e.duration}ms` : undefined
-          }))
-        }, `Found ${results.length} matching commands`);
+        return success(
+          {
+            query: positional[0],
+            matches: results.map((e) => ({
+              command: truncate(e.command, 60),
+              timestamp: e.timestamp.toISOString(),
+              exitCode: e.exitCode,
+              duration: e.duration ? `${e.duration}ms` : undefined,
+            })),
+          },
+          `Found ${results.length} matching commands`,
+        );
       }
 
       // Show recent history
-      const limit = flags.limit ? parseInt(flags.limit as string) : 20;
+      const limit = flags.limit ? parseInt(flags.limit as string, 10) : 20;
       const history = manager.getHistory(limit);
 
-      const entries = history.map(e => ({
+      const entries = history.map((e) => ({
         command: truncate(e.command, 50),
         time: e.timestamp.toLocaleTimeString(),
         exit: e.exitCode ?? '?',
-        shell: e.shell
+        shell: e.shell,
       }));
 
       return success({ entries, total: history.length }, 'Command History');
@@ -322,12 +337,15 @@ export const shellCommands = {
       const escaped = tools.shellManager.escape(str, { shell });
       const quoted = tools.shellManager.quote(str, { shell });
 
-      return success({
-        original: str,
-        escaped,
-        quoted,
-        shell: shell || tools.shellManager.getConfig().preferredShell
-      }, 'Escaped string');
+      return success(
+        {
+          original: str,
+          escaped,
+          quoted,
+          shell: shell || tools.shellManager.getConfig().preferredShell,
+        },
+        'Escaped string',
+      );
     } catch (err) {
       return error(createFailedMessage('escape string', err));
     }
@@ -364,13 +382,16 @@ export const shellCommands = {
         diag.printProcessStats(processStats);
       }
 
-      return success({
-        healthy: healthCheck.healthy,
-        availableShells: systemInfo.shells.filter(s => s.available).length,
-        runningProcesses: processStats.byStatus.running,
-        issues: healthCheck.issues,
-        recommendations: healthCheck.recommendations
-      }, 'Shell diagnostics complete');
+      return success(
+        {
+          healthy: healthCheck.healthy,
+          availableShells: systemInfo.shells.filter((s) => s.available).length,
+          runningProcesses: processStats.byStatus.running,
+          issues: healthCheck.issues,
+          recommendations: healthCheck.recommendations,
+        },
+        'Shell diagnostics complete',
+      );
     } catch (err) {
       spinner.stop();
       return error(createFailedMessage('run diagnostics', err));
@@ -391,11 +412,11 @@ export const shellCommands = {
       // Apply filter if provided
       let filtered = processes;
       if (flags.running || flags.r) {
-        filtered = processes.filter(p => p.status === 'running');
+        filtered = processes.filter((p) => p.status === 'running');
       } else if (flags.completed || flags.c) {
-        filtered = processes.filter(p => p.status === 'completed');
+        filtered = processes.filter((p) => p.status === 'completed');
       } else if (flags.error || flags.e) {
-        filtered = processes.filter(p => p.status === 'error');
+        filtered = processes.filter((p) => p.status === 'error');
       }
 
       // Format output
@@ -410,15 +431,17 @@ export const shellCommands = {
           completed: chalk.blue,
           error: chalk.red,
           killed: chalk.yellow,
-          zombie: chalk.magenta
+          zombie: chalk.magenta,
         };
         const statusColor = statusColors[proc.status] || chalk.gray;
 
         const duration = proc.endTime
           ? formatDuration(proc.endTime.getTime() - proc.startTime.getTime())
-          : formatDuration(Date.now() - proc.startTime.getTime()) + ' (running)';
+          : `${formatDuration(Date.now() - proc.startTime.getTime())} (running)`;
 
-        console.log(`${statusColor(`[${proc.status.toUpperCase()}]`)} PID: ${chalk.yellow(proc.pid.toString())}`);
+        console.log(
+          `${statusColor(`[${proc.status.toUpperCase()}]`)} PID: ${chalk.yellow(proc.pid.toString())}`,
+        );
         console.log(chalk.white(`  Command: ${truncate(proc.command, 60)}`));
         console.log(chalk.gray(`  Duration: ${duration}`));
         console.log(chalk.gray(`  Started: ${proc.startTime.toISOString()}`));
@@ -437,15 +460,22 @@ export const shellCommands = {
       // Print stats
       const stats = diag.getProcessStats();
       console.log(chalk.cyan('--- Summary ---'));
-      console.log(chalk.gray(`Running: ${stats.byStatus.running} | Completed: ${stats.byStatus.completed} | Error: ${stats.byStatus.error} | Killed: ${stats.byStatus.killed}`));
+      console.log(
+        chalk.gray(
+          `Running: ${stats.byStatus.running} | Completed: ${stats.byStatus.completed} | Error: ${stats.byStatus.error} | Killed: ${stats.byStatus.killed}`,
+        ),
+      );
 
       console.log(chalk.cyan('\n========================================\n'));
 
-      return success({
-        total: processes.length,
-        filtered: filtered.length,
-        byStatus: stats.byStatus
-      }, `Showing ${filtered.length} processes`);
+      return success(
+        {
+          total: processes.length,
+          filtered: filtered.length,
+          byStatus: stats.byStatus,
+        },
+        `Showing ${filtered.length} processes`,
+      );
     } catch (err) {
       return error(createFailedMessage('list processes', err));
     }
@@ -456,7 +486,7 @@ export const shellCommands = {
    */
   async execHistory(args: string[]): Promise<CommandResult> {
     const { flags, positional } = parseFlags(args);
-    const limit = flags.limit ? parseInt(flags.limit as string) : 20;
+    const limit = flags.limit ? parseInt(flags.limit as string, 10) : 20;
     const command = positional[0];
 
     try {
@@ -464,7 +494,7 @@ export const shellCommands = {
 
       const history = diag.getExecutionHistory({
         limit,
-        filter: command ? { command } : undefined
+        filter: command ? { command } : undefined,
       });
 
       diag.printExecutionHistory(history, { limit });
@@ -475,10 +505,13 @@ export const shellCommands = {
         diag.printPerformanceReport(report);
       }
 
-      return success({
-        total: history.length,
-        showing: Math.min(limit, history.length)
-      }, `Execution history (${history.length} records)`);
+      return success(
+        {
+          total: history.length,
+          showing: Math.min(limit, history.length),
+        },
+        `Execution history (${history.length} records)`,
+      );
     } catch (err) {
       return error(createFailedMessage('get history', err));
     }
@@ -500,29 +533,32 @@ export const shellCommands = {
       let endTime: Date | undefined;
 
       if (flags.hours) {
-        const hours = parseInt(flags.hours as string);
+        const hours = parseInt(flags.hours as string, 10);
         startTime = new Date(Date.now() - hours * 60 * 60 * 1000);
       } else if (flags.days) {
-        const days = parseInt(flags.days as string);
+        const days = parseInt(flags.days as string, 10);
         startTime = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
       }
 
       const report = diag.analyzePerformance({
         startTime,
         endTime,
-        topN: flags.top ? parseInt(flags.top as string) : 10
+        topN: flags.top ? parseInt(flags.top as string, 10) : 10,
       });
 
       spinner.stop();
       diag.printPerformanceReport(report);
 
-      return success({
-        totalExecutions: report.totalExecutions,
-        successRate: report.successRate.toFixed(1) + '%',
-        timeoutRate: report.timeoutRate.toFixed(1) + '%',
-        avgExecutionTime: (report.executionTime.average / 1000).toFixed(2) + 's',
-        recommendations: report.recommendations
-      }, 'Performance analysis complete');
+      return success(
+        {
+          totalExecutions: report.totalExecutions,
+          successRate: `${report.successRate.toFixed(1)}%`,
+          timeoutRate: `${report.timeoutRate.toFixed(1)}%`,
+          avgExecutionTime: `${(report.executionTime.average / 1000).toFixed(2)}s`,
+          recommendations: report.recommendations,
+        },
+        'Performance analysis complete',
+      );
     } catch (err) {
       spinner.stop();
       return error(createFailedMessage('analyze performance', err));
@@ -540,5 +576,5 @@ export const shellCommands = {
     } catch (err) {
       return error(createFailedMessage('clear history', err));
     }
-  }
+  },
 };

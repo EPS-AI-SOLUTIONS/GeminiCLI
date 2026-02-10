@@ -80,7 +80,8 @@
 }
 
 @keyframes errorBoundaryIconPulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     filter: drop-shadow(0 0 8px rgba(255, 107, 107, 0.3));
   }
@@ -171,7 +172,7 @@
 }
 
 .error-boundary-summary::before {
-  content: '▶ ';
+  content: "▶ ";
   display: inline-block;
   margin-right: 0.5rem;
   transition: transform 0.2s ease;
@@ -318,7 +319,8 @@
 }
 
 @keyframes errorBoundaryGlowPulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.3;
   }
   50% {
@@ -330,34 +332,34 @@
    LIGHT THEME OVERRIDES
    ============================================================================ */
 
-[data-theme='light'] .error-boundary-container {
+[data-theme="light"] .error-boundary-container {
   background-image:
     radial-gradient(circle at top, rgba(5, 150, 105, 0.1), transparent 50%),
     linear-gradient(180deg, var(--matrix-bg-primary) 0%, var(--matrix-bg-secondary) 100%);
 }
 
-[data-theme='light'] .error-boundary-panel {
+[data-theme="light"] .error-boundary-panel {
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.15),
     0 0 20px rgba(5, 150, 105, 0.1);
 }
 
-[data-theme='light'] .error-boundary-title {
+[data-theme="light"] .error-boundary-title {
   color: var(--matrix-text);
 }
 
-[data-theme='light'] .error-boundary-code,
-[data-theme='light'] .error-boundary-stack {
+[data-theme="light"] .error-boundary-code,
+[data-theme="light"] .error-boundary-stack {
   background: rgba(0, 0, 0, 0.1);
   border-color: var(--matrix-border);
 }
 
-[data-theme='light'] .error-boundary-details {
+[data-theme="light"] .error-boundary-details {
   background: rgba(0, 0, 0, 0.05);
   border-color: color-mix(in srgb, var(--matrix-accent) 30%, transparent);
 }
 
-[data-theme='light'] .error-boundary-details:hover {
+[data-theme="light"] .error-boundary-details:hover {
   background: rgba(0, 0, 0, 0.08);
 }
 
@@ -398,7 +400,7 @@
   .error-boundary-icon,
   .error-boundary-glow,
   .error-boundary-button {
-    animation: none !important;
-    transition: none !important;
+    animation: none;
+    transition: none;
   }
 }

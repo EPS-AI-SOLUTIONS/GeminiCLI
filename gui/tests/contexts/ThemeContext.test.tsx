@@ -2,8 +2,8 @@
  * ThemeContext Tests
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ThemeProvider, useTheme } from '../../src/contexts/ThemeContext';
 
 // Test component that uses the theme hook
@@ -33,7 +33,7 @@ describe('ThemeContext', () => {
       render(
         <ThemeProvider>
           <div data-testid="child">Child content</div>
-        </ThemeProvider>
+        </ThemeProvider>,
       );
       expect(screen.getByTestId('child')).toBeInTheDocument();
     });
@@ -42,7 +42,7 @@ describe('ThemeContext', () => {
       render(
         <ThemeProvider>
           <TestComponent />
-        </ThemeProvider>
+        </ThemeProvider>,
       );
       expect(screen.getByTestId('theme')).toHaveTextContent('dark');
     });
@@ -52,7 +52,7 @@ describe('ThemeContext', () => {
       render(
         <ThemeProvider>
           <TestComponent />
-        </ThemeProvider>
+        </ThemeProvider>,
       );
       expect(screen.getByTestId('theme')).toHaveTextContent('light');
     });
@@ -63,7 +63,7 @@ describe('ThemeContext', () => {
       render(
         <ThemeProvider>
           <TestComponent />
-        </ThemeProvider>
+        </ThemeProvider>,
       );
 
       fireEvent.click(screen.getByText('Set Light'));
@@ -75,7 +75,7 @@ describe('ThemeContext', () => {
       render(
         <ThemeProvider>
           <TestComponent />
-        </ThemeProvider>
+        </ThemeProvider>,
       );
 
       fireEvent.click(screen.getByText('Set Dark'));
@@ -86,7 +86,7 @@ describe('ThemeContext', () => {
       render(
         <ThemeProvider>
           <TestComponent />
-        </ThemeProvider>
+        </ThemeProvider>,
       );
 
       fireEvent.click(screen.getByText('Set Light'));
@@ -99,7 +99,7 @@ describe('ThemeContext', () => {
       render(
         <ThemeProvider>
           <TestComponent />
-        </ThemeProvider>
+        </ThemeProvider>,
       );
 
       fireEvent.click(screen.getByText('Toggle'));
@@ -111,7 +111,7 @@ describe('ThemeContext', () => {
       render(
         <ThemeProvider>
           <TestComponent />
-        </ThemeProvider>
+        </ThemeProvider>,
       );
 
       fireEvent.click(screen.getByText('Toggle'));
@@ -124,7 +124,7 @@ describe('ThemeContext', () => {
       render(
         <ThemeProvider>
           <TestComponent />
-        </ThemeProvider>
+        </ThemeProvider>,
       );
 
       fireEvent.click(screen.getByText('Set Light'));
@@ -138,7 +138,7 @@ describe('ThemeContext', () => {
       render(
         <ThemeProvider>
           <TestComponent />
-        </ThemeProvider>
+        </ThemeProvider>,
       );
 
       fireEvent.click(screen.getByText('Set Dark'));
@@ -162,7 +162,7 @@ describe('ThemeContext', () => {
       render(
         <ThemeProvider>
           <TestComponent />
-        </ThemeProvider>
+        </ThemeProvider>,
       );
 
       expect(screen.getByTestId('theme')).toBeInTheDocument();

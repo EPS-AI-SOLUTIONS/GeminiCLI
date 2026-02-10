@@ -13,23 +13,20 @@
  */
 
 import { generate, selectModel } from '../../GeminiCLI.js';
-import {
-  getFewShotExamples,
-  mapTaskTypeToExampleCategory,
-} from '../../PromptSystem.js';
+import { getFewShotExamples, mapTaskTypeToExampleCategory } from '../../PromptSystem.js';
+import { MetaPrompter } from './MetaPrompter.js';
+import { PromptTemplateLibrary } from './templates.js';
 import type {
-  MetaPromptingConfig,
-  EvolutionConfig,
   ABTestResult,
   CompressionResult,
   DomainOptimizationResult,
   DomainType,
-  RecursiveOptimizationResult,
+  EvolutionConfig,
+  MetaPromptingConfig,
   PromptIndividual,
+  RecursiveOptimizationResult,
 } from './types.js';
 import { DEFAULT_EVOLUTION_CONFIG } from './types.js';
-import { MetaPrompter } from './MetaPrompter.js';
-import { PromptTemplateLibrary } from './templates.js';
 
 /**
  * AdvancedMetaPrompter - Extended MetaPrompter with advanced features
@@ -40,7 +37,7 @@ export class AdvancedMetaPrompter extends MetaPrompter {
 
   constructor(
     config: Partial<MetaPromptingConfig> = {},
-    evolutionConfig: Partial<EvolutionConfig> = {}
+    evolutionConfig: Partial<EvolutionConfig> = {},
   ) {
     super(config);
     this.templateLibrary = new PromptTemplateLibrary();
@@ -58,7 +55,7 @@ export class AdvancedMetaPrompter extends MetaPrompter {
     prompt: string,
     context: string,
     maxIterations: number = 5,
-    convergenceThreshold: number = 0.05
+    convergenceThreshold: number = 0.05,
   ): Promise<RecursiveOptimizationResult> {
     const iterations: RecursiveOptimizationResult['iterations'] = [];
     let currentPrompt = prompt;
@@ -70,7 +67,7 @@ export class AdvancedMetaPrompter extends MetaPrompter {
       iteration: 0,
       prompt: prompt,
       score: initialScore,
-      improvements: ['Initial prompt']
+      improvements: ['Initial prompt'],
     });
     previousScore = initialScore;
 
@@ -82,7 +79,7 @@ export class AdvancedMetaPrompter extends MetaPrompter {
         iteration: i,
         prompt: optimization.optimizedPrompt,
         score: newScore,
-        improvements: optimization.improvements
+        improvements: optimization.improvements,
       });
 
       const improvement = newScore - previousScore;
@@ -103,7 +100,7 @@ export class AdvancedMetaPrompter extends MetaPrompter {
       iterations,
       totalImprovement: finalIteration.score - initialScore,
       converged,
-      iterationsPerformed: iterations.length - 1
+      iterationsPerformed: iterations.length - 1,
     };
   }
 
@@ -162,7 +159,7 @@ RETURN ONLY JSON:
       const response = await generate(scoringPrompt, {
         model,
         temperature: 0.2,
-        maxTokens: 500
+        maxTokens: 500,
       });
 
       const jsonMatch = response.match(/\{[\s\S]*\}/);
@@ -187,7 +184,7 @@ RETURN ONLY JSON:
   async evolvePrompt(
     prompt: string,
     context: string,
-    config?: Partial<EvolutionConfig>
+    config?: Partial<EvolutionConfig>,
   ): Promise<{
     bestPrompt: string;
     bestFitness: number;
@@ -208,7 +205,7 @@ RETURN ONLY JSON:
     generations.push({
       generation: 0,
       bestFitness: population[0].fitness,
-      avgFitness: population.reduce((sum, p) => sum + p.fitness, 0) / population.length
+      avgFitness: population.reduce((sum, p) => sum + p.fitness, 0) / population.length,
     });
 
     for (let gen = 1; gen <= evoConfig.generations; gen++) {
@@ -244,7 +241,7 @@ RETURN ONLY JSON:
       generations.push({
         generation: gen,
         bestFitness: population[0].fitness,
-        avgFitness: population.reduce((sum, p) => sum + p.fitness, 0) / population.length
+        avgFitness: population.reduce((sum, p) => sum + p.fitness, 0) / population.length,
       });
     }
 
@@ -255,7 +252,7 @@ RETURN ONLY JSON:
       bestPrompt: best.prompt,
       bestFitness: best.fitness,
       generations,
-      lineage
+      lineage,
     };
   }
 
@@ -265,7 +262,7 @@ RETURN ONLY JSON:
   private async initializePopulation(
     seedPrompt: string,
     context: string,
-    size: number
+    size: number,
   ): Promise<PromptIndividual[]> {
     const population: PromptIndividual[] = [];
 
@@ -275,11 +272,12 @@ RETURN ONLY JSON:
       generation: 0,
       parents: [],
       id: this.generateId(),
-      mutations: []
+      mutations: [],
     });
 
-    const variationPrompt = this.config.language === 'pl'
-      ? `Wygeneruj ${size - 1} roznych wariantow ponizszego prompta.
+    const variationPrompt =
+      this.config.language === 'pl'
+        ? `Wygeneruj ${size - 1} roznych wariantow ponizszego prompta.
 Kazdy wariant powinien zachowac oryginalny cel, ale roznowac sie:
 - Struktura
 - Sformulowania
@@ -295,7 +293,7 @@ KONTEKST: ${context}
 
 ZWROC JSON:
 {"variants": ["wariant1", "wariant2", ...]}`
-      : `Generate ${size - 1} different variants of the following prompt.
+        : `Generate ${size - 1} different variants of the following prompt.
 Each variant should preserve the original goal but vary in:
 - Structure
 - Wording
@@ -316,7 +314,7 @@ RETURN JSON:
       const response = await generate(variationPrompt, {
         model: this.config.model || selectModel('creative'),
         temperature: 0.8,
-        maxTokens: this.config.maxTokens
+        maxTokens: this.config.maxTokens,
       });
 
       const jsonMatch = response.match(/\{[\s\S]*\}/);
@@ -331,7 +329,7 @@ RETURN JSON:
             generation: 0,
             parents: [population[0].id],
             id: this.generateId(),
-            mutations: ['initial_variation']
+            mutations: ['initial_variation'],
           });
         }
       }
@@ -347,7 +345,7 @@ RETURN JSON:
         generation: 0,
         parents: [base.id],
         id: this.generateId(),
-        mutations: ['simple_mutation']
+        mutations: ['simple_mutation'],
       });
     }
 
@@ -377,10 +375,11 @@ RETURN JSON:
   private async crossover(
     parent1: PromptIndividual,
     parent2: PromptIndividual,
-    generation: number
+    generation: number,
   ): Promise<PromptIndividual> {
-    const crossoverPrompt = this.config.language === 'pl'
-      ? `Polacz te dwa prompty w jeden, biorac najlepsze elementy z kazdego:
+    const crossoverPrompt =
+      this.config.language === 'pl'
+        ? `Polacz te dwa prompty w jeden, biorac najlepsze elementy z kazdego:
 
 PROMPT A:
 """
@@ -393,7 +392,7 @@ ${parent2.prompt}
 """
 
 Stworz nowy prompt ktory laczy mocne strony obu. ZWROC TYLKO nowy prompt, bez komentarzy.`
-      : `Combine these two prompts into one, taking the best elements from each:
+        : `Combine these two prompts into one, taking the best elements from each:
 
 PROMPT A:
 """
@@ -411,7 +410,7 @@ Create a new prompt that combines the strengths of both. RETURN ONLY the new pro
       const response = await generate(crossoverPrompt, {
         model: this.config.model || selectModel('creative'),
         temperature: 0.5,
-        maxTokens: this.config.maxTokens
+        maxTokens: this.config.maxTokens,
       });
 
       return {
@@ -420,14 +419,14 @@ Create a new prompt that combines the strengths of both. RETURN ONLY the new pro
         generation,
         parents: [parent1.id, parent2.id],
         id: this.generateId(),
-        mutations: ['crossover']
+        mutations: ['crossover'],
       };
     } catch {
       const p1Parts = parent1.prompt.split('\n\n');
       const p2Parts = parent2.prompt.split('\n\n');
-      const combined = p1Parts.map((part, i) =>
-        Math.random() < 0.5 ? part : (p2Parts[i] || part)
-      ).join('\n\n');
+      const combined = p1Parts
+        .map((part, i) => (Math.random() < 0.5 ? part : p2Parts[i] || part))
+        .join('\n\n');
 
       return {
         prompt: combined,
@@ -435,7 +434,7 @@ Create a new prompt that combines the strengths of both. RETURN ONLY the new pro
         generation,
         parents: [parent1.id, parent2.id],
         id: this.generateId(),
-        mutations: ['simple_crossover']
+        mutations: ['simple_crossover'],
       };
     }
   }
@@ -443,18 +442,21 @@ Create a new prompt that combines the strengths of both. RETURN ONLY the new pro
   /**
    * Mutate a prompt
    */
-  private async mutate(
-    individual: PromptIndividual,
-    context: string
-  ): Promise<PromptIndividual> {
+  private async mutate(individual: PromptIndividual, context: string): Promise<PromptIndividual> {
     const mutationTypes = [
-      'rephrase', 'add_constraint', 'add_example', 'restructure',
-      'simplify', 'elaborate', 'change_format'
+      'rephrase',
+      'add_constraint',
+      'add_example',
+      'restructure',
+      'simplify',
+      'elaborate',
+      'change_format',
     ];
     const mutationType = mutationTypes[Math.floor(Math.random() * mutationTypes.length)];
 
-    const mutationPrompt = this.config.language === 'pl'
-      ? `Zmutuj (zmodyfikuj) ponizszy prompt stosujac operacje: ${mutationType}
+    const mutationPrompt =
+      this.config.language === 'pl'
+        ? `Zmutuj (zmodyfikuj) ponizszy prompt stosujac operacje: ${mutationType}
 
 PROMPT:
 """
@@ -473,7 +475,7 @@ OPERACJE MUTACJI:
 - change_format: Zmien format wyjscia (np. lista -> tabela)
 
 ZWROC TYLKO zmutowany prompt, bez komentarzy.`
-      : `Mutate (modify) the following prompt using operation: ${mutationType}
+        : `Mutate (modify) the following prompt using operation: ${mutationType}
 
 PROMPT:
 """
@@ -497,7 +499,7 @@ RETURN ONLY the mutated prompt, no comments.`;
       const response = await generate(mutationPrompt, {
         model: this.config.model || selectModel('creative'),
         temperature: 0.7,
-        maxTokens: this.config.maxTokens
+        maxTokens: this.config.maxTokens,
       });
 
       return {
@@ -506,13 +508,13 @@ RETURN ONLY the mutated prompt, no comments.`;
         generation: individual.generation,
         parents: individual.parents,
         id: this.generateId(),
-        mutations: [...individual.mutations, mutationType]
+        mutations: [...individual.mutations, mutationType],
       };
     } catch {
       return {
         ...individual,
         prompt: this.simpleTextMutation(individual.prompt),
-        mutations: [...individual.mutations, 'simple_text_mutation']
+        mutations: [...individual.mutations, 'simple_text_mutation'],
       };
     }
   }
@@ -523,14 +525,14 @@ RETURN ONLY the mutated prompt, no comments.`;
   private simpleTextMutation(prompt: string): string {
     const mutations = [
       (p: string) => p.replace(/(\w+)/i, '**$1**'),
-      (p: string) => p + '\n\nBadz precyzyjny w odpowiedzi.',
+      (p: string) => `${p}\n\nBadz precyzyjny w odpowiedzi.`,
       (p: string) => {
         const sentences = p.split('. ');
         const i = Math.floor(Math.random() * sentences.length);
         const j = Math.floor(Math.random() * sentences.length);
         [sentences[i], sentences[j]] = [sentences[j], sentences[i]];
         return sentences.join('. ');
-      }
+      },
     ];
 
     const mutation = mutations[Math.floor(Math.random() * mutations.length)];
@@ -547,7 +549,7 @@ RETURN ONLY the mutated prompt, no comments.`;
   /**
    * Trace lineage of an individual
    */
-  private traceLineage(individual: PromptIndividual, population: PromptIndividual[]): string[] {
+  private traceLineage(individual: PromptIndividual, _population: PromptIndividual[]): string[] {
     const lineage: string[] = [individual.prompt];
     return [...individual.mutations, ...lineage];
   }
@@ -563,7 +565,7 @@ RETURN ONLY the mutated prompt, no comments.`;
     variantA: string,
     variantB: string,
     context: string,
-    testCases?: string[]
+    testCases?: string[],
   ): Promise<ABTestResult> {
     const model = this.config.model || selectModel('analysis');
     const isPolish = this.config.language === 'pl';
@@ -637,7 +639,7 @@ RETURN JSON:
       const response = await generate(comparisonPrompt, {
         model,
         temperature: 0.3,
-        maxTokens: this.config.maxTokens
+        maxTokens: this.config.maxTokens,
       });
 
       const jsonMatch = response.match(/\{[\s\S]*\}/);
@@ -655,7 +657,7 @@ RETURN JSON:
         winner: parsed.winner || (scoreA > scoreB ? 'A' : scoreB > scoreA ? 'B' : 'tie'),
         confidence: parsed.confidence || Math.abs(scoreA - scoreB),
         analysis: parsed.analysis || '',
-        recommendations: parsed.recommendations || []
+        recommendations: parsed.recommendations || [],
       };
     } catch (error) {
       console.error('[AdvancedMetaPrompter] A/B test failed:', error);
@@ -668,7 +670,7 @@ RETURN JSON:
         winner: scoreA > scoreB ? 'A' : scoreB > scoreA ? 'B' : 'tie',
         confidence: Math.abs(scoreA - scoreB),
         analysis: 'Comparison based on automated scoring only.',
-        recommendations: []
+        recommendations: [],
       };
     }
   }
@@ -680,10 +682,7 @@ RETURN JSON:
   /**
    * Compress a prompt while preserving semantic meaning
    */
-  async compressPrompt(
-    prompt: string,
-    targetRatio: number = 0.7
-  ): Promise<CompressionResult> {
+  async compressPrompt(prompt: string, targetRatio: number = 0.7): Promise<CompressionResult> {
     const model = this.config.model || selectModel('analysis');
     const isPolish = this.config.language === 'pl';
     const originalTokens = this.estimateTokens(prompt);
@@ -740,7 +739,7 @@ RETURN JSON:
       const response = await generate(compressionPrompt, {
         model,
         temperature: 0.3,
-        maxTokens: this.config.maxTokens
+        maxTokens: this.config.maxTokens,
       });
 
       const jsonMatch = response.match(/\{[\s\S]*\}/);
@@ -758,7 +757,7 @@ RETURN JSON:
         semanticPreservation: parsed.semanticPreservation || 0.9,
         removedElements: parsed.removedElements || [],
         originalTokens,
-        compressedTokens
+        compressedTokens,
       };
     } catch (error) {
       console.error('[AdvancedMetaPrompter] Compression failed:', error);
@@ -772,7 +771,7 @@ RETURN JSON:
         semanticPreservation: 0.8,
         removedElements: ['Redundant whitespace', 'Filler words'],
         originalTokens,
-        compressedTokens: this.estimateTokens(simpleCompressed)
+        compressedTokens: this.estimateTokens(simpleCompressed),
       };
     }
   }
@@ -803,10 +802,7 @@ RETURN JSON:
   /**
    * Optimize a prompt for a specific domain
    */
-  async optimizeForDomain(
-    prompt: string,
-    domain: DomainType
-  ): Promise<DomainOptimizationResult> {
+  async optimizeForDomain(prompt: string, domain: DomainType): Promise<DomainOptimizationResult> {
     const model = this.config.model || selectModel('analysis');
     const isPolish = this.config.language === 'pl';
 
@@ -876,7 +872,7 @@ RETURN JSON:
       const response = await generate(domainPrompt, {
         model,
         temperature: 0.4,
-        maxTokens: this.config.maxTokens
+        maxTokens: this.config.maxTokens,
       });
 
       const jsonMatch = response.match(/\{[\s\S]*\}/);
@@ -892,7 +888,7 @@ RETURN JSON:
         optimizedPrompt: parsed.optimizedPrompt || prompt,
         enhancements: parsed.enhancements || [],
         vocabularyInjected: parsed.vocabularyInjected || [],
-        domainRelevance: parsed.domainRelevance || 0.7
+        domainRelevance: parsed.domainRelevance || 0.7,
       };
     } catch (error) {
       console.error('[AdvancedMetaPrompter] Domain optimization failed:', error);
@@ -903,7 +899,7 @@ RETURN JSON:
         optimizedPrompt: prompt,
         enhancements: [],
         vocabularyInjected: [],
-        domainRelevance: 0.5
+        domainRelevance: 0.5,
       };
     }
   }
@@ -916,90 +912,193 @@ RETURN JSON:
     vocabulary: string[];
     bestPractices: string[];
   } {
-    const domains: Record<DomainType, { description: string; vocabulary: string[]; bestPractices: string[] }> = {
+    const domains: Record<
+      DomainType,
+      { description: string; vocabulary: string[]; bestPractices: string[] }
+    > = {
       'web-development': {
         description: 'Tworzenie aplikacji webowych, frontend i backend',
-        vocabulary: ['API', 'REST', 'GraphQL', 'SPA', 'SSR', 'CSR', 'responsive', 'accessibility', 'SEO', 'PWA', 'WebSocket', 'CORS', 'JWT', 'OAuth'],
+        vocabulary: [
+          'API',
+          'REST',
+          'GraphQL',
+          'SPA',
+          'SSR',
+          'CSR',
+          'responsive',
+          'accessibility',
+          'SEO',
+          'PWA',
+          'WebSocket',
+          'CORS',
+          'JWT',
+          'OAuth',
+        ],
         bestPractices: [
           'Uwzgledniaj rozne przegladarki i urzadzenia',
           'Pamietaj o dostepnosci (WCAG)',
           'Optymalizuj wydajnosc (Core Web Vitals)',
-          'Stosuj bezpieczne praktyki (OWASP)'
-        ]
+          'Stosuj bezpieczne praktyki (OWASP)',
+        ],
       },
       'data-science': {
         description: 'Analiza danych, machine learning, statystyka',
-        vocabulary: ['DataFrame', 'feature engineering', 'overfitting', 'cross-validation', 'hyperparameter', 'pipeline', 'EDA', 'correlation', 'regression', 'classification'],
+        vocabulary: [
+          'DataFrame',
+          'feature engineering',
+          'overfitting',
+          'cross-validation',
+          'hyperparameter',
+          'pipeline',
+          'EDA',
+          'correlation',
+          'regression',
+          'classification',
+        ],
         bestPractices: [
           'Zawsze rozpoczynaj od eksploracji danych (EDA)',
           'Dziel dane na train/validation/test',
           'Dokumentuj transformacje i preprocessing',
-          'Wybieraj metryki odpowiednie do problemu'
-        ]
+          'Wybieraj metryki odpowiednie do problemu',
+        ],
       },
-      'devops': {
+      devops: {
         description: 'Infrastruktura, CI/CD, automatyzacja operacji',
-        vocabulary: ['container', 'orchestration', 'pipeline', 'artifact', 'deployment', 'rollback', 'monitoring', 'alerting', 'IaC', 'GitOps', 'SRE', 'SLA/SLO'],
+        vocabulary: [
+          'container',
+          'orchestration',
+          'pipeline',
+          'artifact',
+          'deployment',
+          'rollback',
+          'monitoring',
+          'alerting',
+          'IaC',
+          'GitOps',
+          'SRE',
+          'SLA/SLO',
+        ],
         bestPractices: [
           'Infrastructure as Code - wszystko w repo',
           'Immutable infrastructure',
           'Blue-green/canary deployments',
-          'Comprehensive monitoring and logging'
-        ]
+          'Comprehensive monitoring and logging',
+        ],
       },
-      'security': {
+      security: {
         description: 'Cyberbezpieczenstwo, pentesting, compliance',
-        vocabulary: ['vulnerability', 'exploit', 'CVE', 'CVSS', 'zero-day', 'hardening', 'encryption', 'authentication', 'authorization', 'audit', 'compliance', 'SIEM'],
+        vocabulary: [
+          'vulnerability',
+          'exploit',
+          'CVE',
+          'CVSS',
+          'zero-day',
+          'hardening',
+          'encryption',
+          'authentication',
+          'authorization',
+          'audit',
+          'compliance',
+          'SIEM',
+        ],
         bestPractices: [
           'Defense in depth - wiele warstw ochrony',
           'Principle of least privilege',
           'Regularne audyty i testy penetracyjne',
-          'Security by design'
-        ]
+          'Security by design',
+        ],
       },
-      'mobile': {
+      mobile: {
         description: 'Aplikacje mobilne (iOS, Android, cross-platform)',
-        vocabulary: ['native', 'hybrid', 'React Native', 'Flutter', 'widget', 'state management', 'push notification', 'deep linking', 'app store', 'APK', 'IPA'],
+        vocabulary: [
+          'native',
+          'hybrid',
+          'React Native',
+          'Flutter',
+          'widget',
+          'state management',
+          'push notification',
+          'deep linking',
+          'app store',
+          'APK',
+          'IPA',
+        ],
         bestPractices: [
           'Mobile-first design',
           'Optymalizacja zuzycia baterii',
           'Offline-first architecture',
-          'Testowanie na roznych urzadzeniach'
-        ]
+          'Testowanie na roznych urzadzeniach',
+        ],
       },
-      'database': {
+      database: {
         description: 'Bazy danych, SQL, NoSQL, optymalizacja zapytan',
-        vocabulary: ['index', 'query optimization', 'normalization', 'denormalization', 'sharding', 'replication', 'ACID', 'CAP theorem', 'transaction', 'deadlock', 'schema'],
+        vocabulary: [
+          'index',
+          'query optimization',
+          'normalization',
+          'denormalization',
+          'sharding',
+          'replication',
+          'ACID',
+          'CAP theorem',
+          'transaction',
+          'deadlock',
+          'schema',
+        ],
         bestPractices: [
           'Projektuj schema pod query patterns',
           'Indeksuj madrze (nie wszystko)',
           'Monitoruj slow queries',
-          'Planuj backup i disaster recovery'
-        ]
+          'Planuj backup i disaster recovery',
+        ],
       },
       'ai-ml': {
         description: 'Sztuczna inteligencja, deep learning, NLP, computer vision',
-        vocabulary: ['neural network', 'transformer', 'attention', 'embedding', 'fine-tuning', 'inference', 'GPU', 'tensor', 'gradient descent', 'loss function', 'epoch', 'batch'],
+        vocabulary: [
+          'neural network',
+          'transformer',
+          'attention',
+          'embedding',
+          'fine-tuning',
+          'inference',
+          'GPU',
+          'tensor',
+          'gradient descent',
+          'loss function',
+          'epoch',
+          'batch',
+        ],
         bestPractices: [
           'Zaczynaj od prostych baseline models',
           'Dokumentuj eksperymenty (MLflow, W&B)',
           'Monitoruj drift w production',
-          'Uwzgledniaj etyczne aspekty AI'
-        ]
+          'Uwzgledniaj etyczne aspekty AI',
+        ],
       },
-      'general': {
+      general: {
         description: 'Ogolne programowanie i inzynieria oprogramowania',
-        vocabulary: ['algorithm', 'data structure', 'complexity', 'design pattern', 'refactoring', 'debugging', 'testing', 'documentation', 'version control', 'code review'],
+        vocabulary: [
+          'algorithm',
+          'data structure',
+          'complexity',
+          'design pattern',
+          'refactoring',
+          'debugging',
+          'testing',
+          'documentation',
+          'version control',
+          'code review',
+        ],
         bestPractices: [
           'Clean code i SOLID principles',
           'Test-driven development',
           'Code review jako standard',
-          'Continuous learning'
-        ]
-      }
+          'Continuous learning',
+        ],
+      },
     };
 
-    return domains[domain] || domains['general'];
+    return domains[domain] || domains.general;
   }
 
   // ==========================================================================
@@ -1012,9 +1111,9 @@ RETURN JSON:
   async injectFewShot(
     prompt: string,
     taskType?: string,
-    exampleCount: number = 2
+    exampleCount: number = 2,
   ): Promise<string> {
-    const detectedType = taskType || await this.detectTaskType(prompt);
+    const detectedType = taskType || (await this.detectTaskType(prompt));
     const exampleCategory = mapTaskTypeToExampleCategory(detectedType);
 
     if (!exampleCategory) {
@@ -1045,16 +1144,33 @@ RETURN JSON:
   private async detectTaskType(prompt: string): Promise<string> {
     const lowerPrompt = prompt.toLowerCase();
 
-    if (lowerPrompt.includes('napraw') || lowerPrompt.includes('fix') || lowerPrompt.includes('bug')) {
+    if (
+      lowerPrompt.includes('napraw') ||
+      lowerPrompt.includes('fix') ||
+      lowerPrompt.includes('bug')
+    ) {
       return 'code';
     }
-    if (lowerPrompt.includes('przeanalizuj') || lowerPrompt.includes('review') || lowerPrompt.includes('analiz')) {
+    if (
+      lowerPrompt.includes('przeanalizuj') ||
+      lowerPrompt.includes('review') ||
+      lowerPrompt.includes('analiz')
+    ) {
       return 'analysis';
     }
-    if (lowerPrompt.includes('lista') || lowerPrompt.includes('wymien') || lowerPrompt.includes('list') || lowerPrompt.includes('zaproponuj')) {
+    if (
+      lowerPrompt.includes('lista') ||
+      lowerPrompt.includes('wymien') ||
+      lowerPrompt.includes('list') ||
+      lowerPrompt.includes('zaproponuj')
+    ) {
       return 'list';
     }
-    if (lowerPrompt.includes('architektur') || lowerPrompt.includes('zaprojektuj') || lowerPrompt.includes('design')) {
+    if (
+      lowerPrompt.includes('architektur') ||
+      lowerPrompt.includes('zaprojektuj') ||
+      lowerPrompt.includes('design')
+    ) {
       return 'proposal';
     }
 
@@ -1066,7 +1182,7 @@ RETURN JSON:
    */
   async generateFewShotExamples(
     taskDescription: string,
-    count: number = 3
+    count: number = 3,
   ): Promise<Array<{ input: string; output: string }>> {
     const model = this.config.model || selectModel('creative');
     const isPolish = this.config.language === 'pl';
@@ -1109,7 +1225,7 @@ RETURN JSON:
       const response = await generate(generationPrompt, {
         model,
         temperature: 0.7,
-        maxTokens: this.config.maxTokens
+        maxTokens: this.config.maxTokens,
       });
 
       const jsonMatch = response.match(/\{[\s\S]*\}/);
@@ -1142,7 +1258,7 @@ RETURN JSON:
   async applyTemplateWithFewShot(
     templateId: string,
     variables: Record<string, string>,
-    injectExamples: boolean = true
+    injectExamples: boolean = true,
   ): Promise<string> {
     let prompt = this.templateLibrary.applyTemplate(templateId, variables);
 

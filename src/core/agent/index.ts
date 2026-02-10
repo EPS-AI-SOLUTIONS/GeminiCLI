@@ -44,6 +44,14 @@ export type {
   TemperaturePerformanceRecord,
   ThinkOptions,
 } from './types.js';
+// Runtime validators (#18)
+export {
+  isTaskComplexity,
+  isTaskType,
+  resolveTaskComplexity,
+  TASK_COMPLEXITY_LEVELS,
+  TASK_TYPES,
+} from './types.js';
 // Validation utilities
 export {
   type CodeBlockValidation,

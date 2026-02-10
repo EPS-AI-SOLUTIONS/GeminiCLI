@@ -2,7 +2,7 @@
  * Navigation E2E Tests
  */
 
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 test.describe('Navigation', () => {
   test.beforeEach(async ({ page }) => {
@@ -79,7 +79,7 @@ test.describe('Navigation', () => {
 
   test('theme toggle changes appearance', async ({ page }) => {
     // Initially should be in dark mode (default)
-    const html = page.locator('html');
+    const _html = page.locator('html');
 
     // Check initial state - button says "Jasny motyw" (option to switch to light)
     // Or it may say "Ciemny motyw" if currently in dark mode

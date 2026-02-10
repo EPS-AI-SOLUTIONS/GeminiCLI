@@ -221,8 +221,12 @@ export class EnhancedGeminiProvider extends EnhancedProvider {
       const duration = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : String(error);
 
-      // Handle rate limit errors
-      if (errorMessage.includes('429') || errorMessage.includes('rate limit')) {
+      // (#24) Handle rate limit errors - including Google's gRPC RESOURCE_EXHAUSTED
+      if (
+        errorMessage.includes('429') ||
+        errorMessage.includes('rate limit') ||
+        errorMessage.includes('RESOURCE_EXHAUSTED')
+      ) {
         throw new RateLimitError(`Gemini rate limit exceeded: ${errorMessage}`);
       }
 

@@ -7,10 +7,10 @@
  * Part of ConversationLayer refactoring - extracted from lines 393-539
  */
 
+import crypto from 'node:crypto';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import chalk from 'chalk';
-import crypto from 'crypto';
-import fs from 'fs/promises';
-import path from 'path';
 
 // ============================================================
 // Types & Interfaces
@@ -69,7 +69,7 @@ export class ProactiveSuggestions {
         type: 'warning',
         priority: 'high',
         message: 'Znaleziono bledy TypeScript',
-        action: 'Uruchom `npm run build` aby zobaczyc pelna liste bledow'
+        action: 'Uruchom `npm run build` aby zobaczyc pelna liste bledow',
       });
     }
 
@@ -80,7 +80,7 @@ export class ProactiveSuggestions {
         type: 'tip',
         priority: 'medium',
         message: 'Brakuje zaleznosci',
-        action: 'Sprawdz czy wszystkie importy sa poprawne i zainstaluj brakujace pakiety'
+        action: 'Sprawdz czy wszystkie importy sa poprawne i zainstaluj brakujace pakiety',
       });
     }
 
@@ -91,7 +91,7 @@ export class ProactiveSuggestions {
         type: 'warning',
         priority: 'high',
         message: 'Blad skladni w kodzie',
-        action: 'Sprawdz ostatnio zmieniony plik pod katem literowek i brakujacych znakow'
+        action: 'Sprawdz ostatnio zmieniony plik pod katem literowek i brakujacych znakow',
       });
     }
 
@@ -102,12 +102,12 @@ export class ProactiveSuggestions {
         type: 'warning',
         priority: 'high',
         message: 'Blad uruchomieniowy',
-        action: 'Sprawdz typy danych i czy wszystkie zmienne sa zdefiniowane'
+        action: 'Sprawdz typy danych i czy wszystkie zmienne sa zdefiniowane',
       });
     }
   }
 
-  private async addActionBasedSuggestions(action: string, result: string): Promise<void> {
+  private async addActionBasedSuggestions(action: string, _result: string): Promise<void> {
     // After code generation
     if (action.includes('napisz') || action.includes('stwórz') || action.includes('generate')) {
       this.suggestions.push({
@@ -115,7 +115,7 @@ export class ProactiveSuggestions {
         type: 'followup',
         priority: 'medium',
         message: 'Rozwaz dodanie testow jednostkowych',
-        action: 'Popros o wygenerowanie testow dla nowego kodu'
+        action: 'Popros o wygenerowanie testow dla nowego kodu',
       });
     }
 
@@ -126,7 +126,7 @@ export class ProactiveSuggestions {
         type: 'tip',
         priority: 'low',
         message: 'Sprawdz czy podobne bledy nie wystepuja w innych miejscach',
-        action: 'Uzyj grep/search aby znalezc podobne wzorce'
+        action: 'Uzyj grep/search aby znalezc podobne wzorce',
       });
     }
 
@@ -137,7 +137,7 @@ export class ProactiveSuggestions {
         type: 'followup',
         priority: 'high',
         message: 'Uruchom testy po refaktoryzacji',
-        action: 'Wykonaj pelen zestaw testow aby upewnic sie, ze nic nie zepsuto'
+        action: 'Wykonaj pelen zestaw testow aby upewnic sie, ze nic nie zepsuto',
       });
     }
 
@@ -148,7 +148,7 @@ export class ProactiveSuggestions {
         type: 'tip',
         priority: 'low',
         message: 'Sprawdz plik lock po instalacji',
-        action: 'Upewnij sie, ze package-lock.json jest zaktualizowany'
+        action: 'Upewnij sie, ze package-lock.json jest zaktualizowany',
       });
     }
   }
@@ -158,14 +158,15 @@ export class ProactiveSuggestions {
       // Large files
       try {
         const stats = await fs.stat(file);
-        if (stats.size > 50000) {  // 50KB
+        if (stats.size > 50000) {
+          // 50KB
           this.suggestions.push({
             id: crypto.randomUUID(),
             type: 'improvement',
             priority: 'low',
             message: `Plik ${path.basename(file)} jest duzy (${(stats.size / 1024).toFixed(1)}KB)`,
             action: 'Rozwaz podzielenie na mniejsze moduly',
-            relatedFiles: [file]
+            relatedFiles: [file],
           });
         }
       } catch {
@@ -184,7 +185,7 @@ export class ProactiveSuggestions {
             priority: 'low',
             message: `Brak testow dla ${path.basename(file)}`,
             action: `Rozwaz utworzenie ${path.basename(testFile)}`,
-            relatedFiles: [file]
+            relatedFiles: [file],
           });
         }
       }
@@ -197,7 +198,7 @@ export class ProactiveSuggestions {
           priority: 'low',
           message: `Zmodyfikowano plik konfiguracyjny ${path.basename(file)}`,
           action: 'Sprawdz czy zmiany nie wplyna na inne czesci systemu',
-          relatedFiles: [file]
+          relatedFiles: [file],
         });
       }
     }
@@ -217,7 +218,7 @@ export class ProactiveSuggestions {
   addSuggestion(suggestion: Omit<Suggestion, 'id'>): Suggestion {
     const fullSuggestion: Suggestion = {
       ...suggestion,
-      id: crypto.randomUUID()
+      id: crypto.randomUUID(),
     };
     this.suggestions.push(fullSuggestion);
     return fullSuggestion;
@@ -234,11 +235,16 @@ export class ProactiveSuggestions {
     const lines: string[] = [chalk.cyan('Sugestie:')];
 
     for (const s of this.suggestions) {
-      const icon = s.type === 'warning' ? '!' :
-                   s.type === 'improvement' ? '+' :
-                   s.type === 'followup' ? '>' : '*';
-      const color = s.priority === 'high' ? chalk.red :
-                    s.priority === 'medium' ? chalk.yellow : chalk.gray;
+      const icon =
+        s.type === 'warning'
+          ? '!'
+          : s.type === 'improvement'
+            ? '+'
+            : s.type === 'followup'
+              ? '>'
+              : '*';
+      const color =
+        s.priority === 'high' ? chalk.red : s.priority === 'medium' ? chalk.yellow : chalk.gray;
       lines.push(color(`  [${icon}] ${s.message}`));
       if (s.action) {
         lines.push(chalk.gray(`      -> ${s.action}`));

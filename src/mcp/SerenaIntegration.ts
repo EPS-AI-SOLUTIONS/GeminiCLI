@@ -7,7 +7,7 @@
  * - import { nativeLSP } from '../native/NativeLSP.js'
  */
 
-import { nativeCodeIntelligence, NativeCodeIntelligence } from '../native/NativeCodeIntelligence.js';
+import { nativeCodeIntelligence } from '../native/NativeCodeIntelligence.js';
 
 // Re-export types that might be used elsewhere
 export interface SerenaProject {
@@ -58,7 +58,7 @@ export class SerenaIntegration {
       path: info.rootDir,
       languages: ['typescript', 'javascript'], // Assumed from LSP config
       encoding: 'utf-8',
-      memories: []
+      memories: [],
     };
   }
 
@@ -69,11 +69,11 @@ export class SerenaIntegration {
 
   async findSymbol(pattern: string, _options?: any): Promise<SerenaSymbol[] | null> {
     const symbols = await this.native.findSymbol(pattern);
-    return symbols.map(s => ({
+    return symbols.map((s) => ({
       name: s.name,
       kind: String(s.kind),
       path: s.location.uri,
-      line: s.location.range.start.line + 1
+      line: s.location.range.start.line + 1,
     }));
   }
 
@@ -94,11 +94,14 @@ export class SerenaIntegration {
     return Array.from(byFile.values());
   }
 
-  async listDir(path: string = '.', _recursive?: boolean): Promise<{ dirs: string[]; files: string[] } | null> {
+  async listDir(
+    path: string = '.',
+    _recursive?: boolean,
+  ): Promise<{ dirs: string[]; files: string[] } | null> {
     const entries = await this.native.listDir(path);
     return {
-      dirs: entries.filter(e => e.type === 'directory').map(e => e.name),
-      files: entries.filter(e => e.type === 'file').map(e => e.name)
+      dirs: entries.filter((e) => e.type === 'directory').map((e) => e.name),
+      files: entries.filter((e) => e.type === 'file').map((e) => e.name),
     };
   }
 
@@ -110,17 +113,17 @@ export class SerenaIntegration {
     const overviews = await this.native.getSymbolsOverview([_path]);
     if (overviews.length === 0) return [];
 
-    return overviews[0].symbols.map(s => ({
+    return overviews[0].symbols.map((s) => ({
       name: s.name,
       kind: s.kind,
       path: overviews[0].file,
-      line: s.line
+      line: s.line,
     }));
   }
 
   async listMemories(): Promise<string[] | null> {
     const mems = await this.native.listMemories();
-    return mems.map(m => m.key);
+    return mems.map((m) => m.key);
   }
 
   async readMemory(name: string): Promise<string | null> {

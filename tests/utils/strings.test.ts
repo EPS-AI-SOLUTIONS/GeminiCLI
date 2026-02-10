@@ -2,20 +2,20 @@
  * Tests for string utilities
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import {
+  CONTEXT_TRUNCATION,
+  OBJECTIVE_TRUNCATION,
+  TASK_DISPLAY_TRUNCATION,
+  TASK_TRUNCATION,
+} from '../../src/config/constants.js';
 import {
   truncate,
+  truncateContext,
   truncateObjective,
   truncateTask,
   truncateTaskDisplay,
-  truncateContext,
 } from '../../src/utils/strings.js';
-import {
-  OBJECTIVE_TRUNCATION,
-  TASK_TRUNCATION,
-  TASK_DISPLAY_TRUNCATION,
-  CONTEXT_TRUNCATION,
-} from '../../src/config/constants.js';
 
 describe('String Utilities', () => {
   describe('truncate', () => {
@@ -45,7 +45,7 @@ describe('String Utilities', () => {
     it('should handle very long strings', () => {
       const longStr = 'a'.repeat(1000);
       const result = truncate(longStr, 100);
-      expect(result).toBe('a'.repeat(100) + '...');
+      expect(result).toBe(`${'a'.repeat(100)}...`);
       expect(result.length).toBe(103); // 100 + '...'
     });
 
@@ -64,7 +64,7 @@ describe('String Utilities', () => {
     it('should truncate to OBJECTIVE_TRUNCATION length', () => {
       const longObjective = 'a'.repeat(OBJECTIVE_TRUNCATION + 50);
       const result = truncateObjective(longObjective);
-      expect(result).toBe('a'.repeat(OBJECTIVE_TRUNCATION) + '...');
+      expect(result).toBe(`${'a'.repeat(OBJECTIVE_TRUNCATION)}...`);
     });
 
     it('should not truncate short objectives', () => {
@@ -82,7 +82,7 @@ describe('String Utilities', () => {
     it('should truncate to TASK_TRUNCATION length', () => {
       const longTask = 'b'.repeat(TASK_TRUNCATION + 30);
       const result = truncateTask(longTask);
-      expect(result).toBe('b'.repeat(TASK_TRUNCATION) + '...');
+      expect(result).toBe(`${'b'.repeat(TASK_TRUNCATION)}...`);
     });
 
     it('should not truncate short tasks', () => {
@@ -100,7 +100,7 @@ describe('String Utilities', () => {
     it('should truncate to TASK_DISPLAY_TRUNCATION length', () => {
       const longTask = 'c'.repeat(TASK_DISPLAY_TRUNCATION + 40);
       const result = truncateTaskDisplay(longTask);
-      expect(result).toBe('c'.repeat(TASK_DISPLAY_TRUNCATION) + '...');
+      expect(result).toBe(`${'c'.repeat(TASK_DISPLAY_TRUNCATION)}...`);
     });
 
     it('should not truncate short tasks', () => {
@@ -118,7 +118,7 @@ describe('String Utilities', () => {
     it('should truncate to CONTEXT_TRUNCATION length', () => {
       const longContext = 'd'.repeat(CONTEXT_TRUNCATION + 100);
       const result = truncateContext(longContext);
-      expect(result).toBe('d'.repeat(CONTEXT_TRUNCATION) + '...');
+      expect(result).toBe(`${'d'.repeat(CONTEXT_TRUNCATION)}...`);
     });
 
     it('should not truncate short context', () => {

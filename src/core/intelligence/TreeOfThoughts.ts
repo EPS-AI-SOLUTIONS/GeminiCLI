@@ -17,11 +17,11 @@
  * - Tree visualization
  */
 
-import { v4 as uuidv4 } from 'uuid';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import chalk from 'chalk';
-import { geminiSemaphore } from '../TrafficControl.js';
+import { v4 as uuidv4 } from 'uuid';
 import { GEMINI_MODELS } from '../../config/models.config.js';
+import { geminiSemaphore } from '../TrafficControl.js';
 
 // Initialize Gemini client
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
@@ -176,7 +176,7 @@ const DEFAULT_OPTIONS: Required<ToTOptions> = {
   strategy: 'beam',
   temperature: 0.7,
   mctsIterations: 50,
-  explorationConstant: 1.414,
+  explorationConstant: Math.SQRT2,
   parallelBranches: 3,
   pruneThreshold: 0.5,
   dynamicPruning: true,
@@ -185,7 +185,7 @@ const DEFAULT_OPTIONS: Required<ToTOptions> = {
   enableBacktracking: true,
   backtrackOnStagnation: 5,
   maxNodes: 100,
-  onProgress: undefined as unknown as (node: ThoughtNode, stats: ExplorationStats) => void
+  onProgress: undefined as unknown as (node: ThoughtNode, stats: ExplorationStats) => void,
 };
 
 // =============================================================================
@@ -200,11 +200,15 @@ async function generateChildThoughts(
   parentThought: string,
   depth: number,
   breadth: number = 3,
-  existingThoughts: string[] = []
+  existingThoughts: string[] = [],
 ): Promise<ThoughtNode[]> {
-  const existingContext = existingThoughts.length > 0
-    ? `\n\nUNIKAJ POWTARZANIA tych myśli (już eksplorowane):\n${existingThoughts.slice(-10).map(t => `- ${t.substring(0, 100)}`).join('\n')}`
-    : '';
+  const existingContext =
+    existingThoughts.length > 0
+      ? `\n\nUNIKAJ POWTARZANIA tych myśli (już eksplorowane):\n${existingThoughts
+          .slice(-10)
+          .map((t) => `- ${t.substring(0, 100)}`)
+          .join('\n')}`
+      : '';
 
   const prompt = `Jesteś ekspertem w rozwiązywaniu problemów metodą TREE-OF-THOUGHTS.
 
@@ -238,13 +242,16 @@ Odpowiadaj PO POLSKU. Zwróć TYLKO JSON.`;
     const response = await geminiSemaphore.withPermit(async () => {
       const model = genAI.getGenerativeModel({
         model: INTELLIGENCE_MODEL,
-        generationConfig: { temperature: 0.6, maxOutputTokens: 2048 }
+        generationConfig: { temperature: 0.6, maxOutputTokens: 2048 },
       });
       const result = await model.generateContent(prompt);
       return result.response.text();
     });
 
-    const jsonStr = response.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const jsonStr = response
+      .replace(/```json/gi, '')
+      .replace(/```/g, '')
+      .trim();
     const parsed = JSON.parse(jsonStr);
 
     return (parsed.children || []).map((child: any, index: number) => ({
@@ -261,10 +268,9 @@ Odpowiadaj PO POLSKU. Zwróć TYLKO JSON.`;
       totalReward: 0,
       metadata: {
         createdAt: new Date(),
-        attempt: index + 1
-      }
+        attempt: index + 1,
+      },
     }));
-
   } catch (error: any) {
     console.log(chalk.yellow(`[ToT] Child generation failed: ${error.message}`));
     return [];
@@ -274,10 +280,7 @@ Odpowiadaj PO POLSKU. Zwróć TYLKO JSON.`;
 /**
  * Extract final solution from best path
  */
-async function extractSolution(
-  task: string,
-  bestPath: ThoughtNode[]
-): Promise<string> {
+async function extractSolution(task: string, bestPath: ThoughtNode[]): Promise<string> {
   const pathSummary = bestPath.map((node, i) => `Krok ${i + 1}: ${node.thought}`).join('\n');
 
   const prompt = `Na podstawie ścieżki rozumowania, sformułuj FINALNE ROZWIĄZANIE.
@@ -297,15 +300,14 @@ Odpowiadaj PO POLSKU.`;
     const response = await geminiSemaphore.withPermit(async () => {
       const model = genAI.getGenerativeModel({
         model: INTELLIGENCE_MODEL,
-        generationConfig: { temperature: 0.2, maxOutputTokens: 2048 }
+        generationConfig: { temperature: 0.2, maxOutputTokens: 2048 },
       });
       const result = await model.generateContent(prompt);
       return result.response.text();
     });
 
     return response.trim();
-
-  } catch (error: any) {
+  } catch (_error: any) {
     return bestPath[bestPath.length - 1]?.thought || task;
   }
 }
@@ -321,12 +323,12 @@ function calculateThoughtSimilarity(thought1: string, thought2: string): number 
   const t1 = thought1.toLowerCase();
   const t2 = thought2.toLowerCase();
 
-  const words1 = new Set(t1.split(/\s+/).filter(w => w.length > 3));
-  const words2 = new Set(t2.split(/\s+/).filter(w => w.length > 3));
+  const words1 = new Set(t1.split(/\s+/).filter((w) => w.length > 3));
+  const words2 = new Set(t2.split(/\s+/).filter((w) => w.length > 3));
 
   if (words1.size === 0 || words2.size === 0) return 0;
 
-  const intersection = new Set([...words1].filter(x => words2.has(x)));
+  const intersection = new Set([...words1].filter((x) => words2.has(x)));
   const union = new Set([...words1, ...words2]);
 
   return intersection.size / union.size;
@@ -337,7 +339,7 @@ function calculateThoughtSimilarity(thought1: string, thought2: string): number 
  */
 function deduplicateThoughts(
   thoughts: ThoughtNode[],
-  threshold: number = 0.7
+  threshold: number = 0.7,
 ): { deduplicated: ThoughtNode[]; mergedCount: number } {
   if (thoughts.length <= 1) {
     return { deduplicated: thoughts, mergedCount: 0 };
@@ -364,13 +366,16 @@ function deduplicateThoughts(
     }
 
     if (similar.length > 1) {
-      const bestIdx = similar.reduce((best, idx) =>
-        thoughts[idx].evaluation > thoughts[best].evaluation ? idx : best
-      , similar[0]);
+      const bestIdx = similar.reduce(
+        (best, idx) => (thoughts[idx].evaluation > thoughts[best].evaluation ? idx : best),
+        similar[0],
+      );
 
       const mergedThought = { ...thoughts[bestIdx] };
-      mergedThought.similarTo = similar.filter(idx => idx !== bestIdx).map(idx => thoughts[idx].id);
-      mergedThought.evaluation = Math.max(...similar.map(idx => thoughts[idx].evaluation));
+      mergedThought.similarTo = similar
+        .filter((idx) => idx !== bestIdx)
+        .map((idx) => thoughts[idx].id);
+      mergedThought.evaluation = Math.max(...similar.map((idx) => thoughts[idx].evaluation));
       merged.push(mergedThought);
       mergedCount += similar.length - 1;
     } else {
@@ -388,11 +393,13 @@ function deduplicateThoughts(
  */
 async function aggregateThoughts(
   task: string,
-  thoughts: ThoughtNode[]
+  thoughts: ThoughtNode[],
 ): Promise<ThoughtNode | null> {
   if (thoughts.length < 2) return null;
 
-  const thoughtSummary = thoughts.map((t, i) => `${i + 1}. ${t.thought} (ocena: ${t.evaluation})`).join('\n');
+  const thoughtSummary = thoughts
+    .map((t, i) => `${i + 1}. ${t.thought} (ocena: ${t.evaluation})`)
+    .join('\n');
 
   const prompt = `Połącz poniższe podobne myśli w JEDNĄ, SILNIEJSZĄ myśl.
 
@@ -414,13 +421,16 @@ Zwróć TYLKO JSON.`;
     const response = await geminiSemaphore.withPermit(async () => {
       const model = genAI.getGenerativeModel({
         model: INTELLIGENCE_MODEL,
-        generationConfig: { temperature: 0.3, maxOutputTokens: 1024 }
+        generationConfig: { temperature: 0.3, maxOutputTokens: 1024 },
       });
       const result = await model.generateContent(prompt);
       return result.response.text();
     });
 
-    const jsonStr = response.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const jsonStr = response
+      .replace(/```json/gi, '')
+      .replace(/```/g, '')
+      .trim();
     const parsed = JSON.parse(jsonStr);
 
     return {
@@ -432,12 +442,11 @@ Zwróć TYLKO JSON.`;
       children: [],
       isTerminal: false,
       reasoning: parsed.reasoning || 'Agregacja myśli',
-      similarTo: thoughts.map(t => t.id),
+      similarTo: thoughts.map((t) => t.id),
       visits: 0,
       totalReward: 0,
-      metadata: { createdAt: new Date() }
+      metadata: { createdAt: new Date() },
     };
-
   } catch {
     return null;
   }
@@ -454,7 +463,7 @@ function calculatePruneThreshold(
   bestScore: number,
   depth: number,
   maxDepth: number,
-  basePruneThreshold: number
+  basePruneThreshold: number,
 ): number {
   const depthFactor = 1 + (depth / maxDepth) * 0.3;
   return bestScore * basePruneThreshold * depthFactor;
@@ -465,12 +474,12 @@ function calculatePruneThreshold(
  */
 function pruneNodes(
   nodes: ThoughtNode[],
-  threshold: number
+  threshold: number,
 ): { pruned: ThoughtNode[]; prunedCount: number } {
-  const pruned = nodes.filter(n => n.evaluation >= threshold);
+  const pruned = nodes.filter((n) => n.evaluation >= threshold);
   return {
     pruned,
-    prunedCount: nodes.length - pruned.length
+    prunedCount: nodes.length - pruned.length,
   };
 }
 
@@ -495,10 +504,7 @@ function ucb1(node: ThoughtNode, parentVisits: number, explorationConstant: numb
 /**
  * Select best child using UCB1
  */
-function selectBestChild(
-  node: ThoughtNode,
-  explorationConstant: number
-): ThoughtNode | null {
+function selectBestChild(node: ThoughtNode, explorationConstant: number): ThoughtNode | null {
   if (node.children.length === 0) return null;
 
   const parentVisits = node.visits || 1;
@@ -552,7 +558,7 @@ async function mctsExplore(
   task: string,
   options: Required<ToTOptions>,
   existingThoughts: string[],
-  stats: ExplorationStats
+  stats: ExplorationStats,
 ): Promise<{
   bestPath: ThoughtNode[];
   bestScore: number;
@@ -572,7 +578,7 @@ async function mctsExplore(
     visits: 0,
     totalReward: 0,
     depth: 0,
-    metadata: { createdAt: new Date() }
+    metadata: { createdAt: new Date() },
   };
 
   const allThoughts: ThoughtNode[] = [rootNode];
@@ -590,7 +596,7 @@ async function mctsExplore(
         selectedNode.thought,
         (selectedNode.depth || 0) + 1,
         beamWidth,
-        existingThoughts.concat(allThoughts.map(t => t.thought))
+        existingThoughts.concat(allThoughts.map((t) => t.thought)),
       );
 
       for (const child of children) {
@@ -604,9 +610,10 @@ async function mctsExplore(
       stats.nodesEvaluated += children.length;
     }
 
-    const leafNode = selectedNode.children.length > 0
-      ? selectedNode.children.reduce((best, c) => c.evaluation > best.evaluation ? c : best)
-      : selectedNode;
+    const leafNode =
+      selectedNode.children.length > 0
+        ? selectedNode.children.reduce((best, c) => (c.evaluation > best.evaluation ? c : best))
+        : selectedNode;
 
     const reward = leafNode.evaluation / 100;
     mctsBackpropagate(leafNode, reward);
@@ -618,7 +625,9 @@ async function mctsExplore(
     }
 
     if ((iter + 1) % 10 === 0) {
-      console.log(chalk.gray(`[ToT-MCTS] Iteration ${iter + 1}/${mctsIterations}, best score: ${bestScore}%`));
+      console.log(
+        chalk.gray(`[ToT-MCTS] Iteration ${iter + 1}/${mctsIterations}, best score: ${bestScore}%`),
+      );
     }
 
     if (bestScore >= 95) {
@@ -660,13 +669,21 @@ async function bfsExplore(
   task: string,
   options: Required<ToTOptions>,
   existingThoughts: string[],
-  stats: ExplorationStats
+  stats: ExplorationStats,
 ): Promise<{
   bestPath: ThoughtNode[];
   bestScore: number;
   allThoughts: ThoughtNode[];
 }> {
-  const { maxDepth, beamWidth, minScore, pruneThreshold, dynamicPruning, enableDeduplication, deduplicationThreshold } = options;
+  const {
+    maxDepth,
+    beamWidth,
+    minScore,
+    pruneThreshold,
+    dynamicPruning,
+    enableDeduplication,
+    deduplicationThreshold,
+  } = options;
 
   const rootNode: ThoughtNode = {
     id: uuidv4(),
@@ -678,7 +695,7 @@ async function bfsExplore(
     isTerminal: false,
     reasoning: 'Początek eksploracji BFS',
     depth: 0,
-    metadata: { createdAt: new Date() }
+    metadata: { createdAt: new Date() },
   };
 
   const allThoughts: ThoughtNode[] = [rootNode];
@@ -689,15 +706,23 @@ async function bfsExplore(
   console.log(chalk.magenta('[ToT-BFS] Starting Breadth-First Search...'));
 
   for (let depth = 1; depth <= maxDepth; depth++) {
-    console.log(chalk.gray(`[ToT-BFS] Depth ${depth}/${maxDepth}, exploring ${currentLevel.length} nodes...`));
+    console.log(
+      chalk.gray(`[ToT-BFS] Depth ${depth}/${maxDepth}, exploring ${currentLevel.length} nodes...`),
+    );
 
     const nextLevel: ThoughtNode[] = [];
-    const thoughtTexts = existingThoughts.concat(allThoughts.map(t => t.thought));
+    const thoughtTexts = existingThoughts.concat(allThoughts.map((t) => t.thought));
 
     for (const node of currentLevel) {
       if (node.isTerminal) continue;
 
-      const children = await generateChildThoughts(task, node.thought, depth, beamWidth, thoughtTexts);
+      const children = await generateChildThoughts(
+        task,
+        node.thought,
+        depth,
+        beamWidth,
+        thoughtTexts,
+      );
 
       for (const child of children) {
         child.parent = node;
@@ -724,7 +749,7 @@ async function bfsExplore(
       const { pruned, prunedCount } = pruneNodes(children, threshold);
       stats.nodesPruned += prunedCount;
 
-      nextLevel.push(...pruned.filter(c => !c.isTerminal));
+      nextLevel.push(...pruned.filter((c) => !c.isTerminal));
 
       if (options.onProgress) {
         options.onProgress(node, stats);
@@ -767,7 +792,7 @@ async function dfsExplore(
   task: string,
   options: Required<ToTOptions>,
   existingThoughts: string[],
-  stats: ExplorationStats
+  stats: ExplorationStats,
 ): Promise<{
   bestPath: ThoughtNode[];
   bestScore: number;
@@ -785,7 +810,7 @@ async function dfsExplore(
     isTerminal: false,
     reasoning: 'Początek eksploracji DFS',
     depth: 0,
-    metadata: { createdAt: new Date() }
+    metadata: { createdAt: new Date() },
   };
 
   const allThoughts: ThoughtNode[] = [rootNode];
@@ -808,8 +833,14 @@ async function dfsExplore(
       return;
     }
 
-    const thoughtTexts = existingThoughts.concat(allThoughts.map(t => t.thought));
-    const children = await generateChildThoughts(task, node.thought, depth + 1, beamWidth, thoughtTexts);
+    const thoughtTexts = existingThoughts.concat(allThoughts.map((t) => t.thought));
+    const children = await generateChildThoughts(
+      task,
+      node.thought,
+      depth + 1,
+      beamWidth,
+      thoughtTexts,
+    );
 
     for (const child of children) {
       child.parent = node;
@@ -825,7 +856,7 @@ async function dfsExplore(
     for (const child of children) {
       if (stats.totalNodes >= maxNodes) break;
 
-      if (child.evaluation < (pruneThreshold * bestScore / 100) || child.evaluation < minScore) {
+      if (child.evaluation < (pruneThreshold * bestScore) / 100 || child.evaluation < minScore) {
         stats.nodesPruned++;
         continue;
       }
@@ -863,16 +894,23 @@ async function beamExplore(
   task: string,
   options: Required<ToTOptions>,
   existingThoughts: string[],
-  stats: ExplorationStats
+  stats: ExplorationStats,
 ): Promise<{
   bestPath: ThoughtNode[];
   bestScore: number;
   allThoughts: ThoughtNode[];
 }> {
   const {
-    maxDepth, beamWidth, minScore, parallelBranches,
-    pruneThreshold, dynamicPruning, enableDeduplication,
-    deduplicationThreshold, enableBacktracking, backtrackOnStagnation
+    maxDepth,
+    beamWidth,
+    minScore,
+    parallelBranches,
+    pruneThreshold,
+    dynamicPruning,
+    enableDeduplication,
+    deduplicationThreshold,
+    enableBacktracking,
+    backtrackOnStagnation,
   } = options;
 
   const rootThought = `Analizuję zadanie: ${task}`;
@@ -886,7 +924,7 @@ async function beamExplore(
     isTerminal: false,
     reasoning: 'Początek eksploracji',
     depth: 0,
-    metadata: { createdAt: new Date() }
+    metadata: { createdAt: new Date() },
   };
 
   const allThoughts: ThoughtNode[] = [rootNode];
@@ -901,16 +939,20 @@ async function beamExplore(
   console.log(chalk.magenta('[ToT-Beam] Starting enhanced Beam Search...'));
 
   for (let depth = 1; depth <= maxDepth; depth++) {
-    console.log(chalk.gray(`[ToT-Beam] Depth ${depth}/${maxDepth}, exploring ${currentLevel.length} nodes...`));
+    console.log(
+      chalk.gray(
+        `[ToT-Beam] Depth ${depth}/${maxDepth}, exploring ${currentLevel.length} nodes...`,
+      ),
+    );
 
     explorationHistory.push({
       depth: depth - 1,
       nodes: [...currentLevel],
-      bestScore
+      bestScore,
     });
 
     let nextLevel: ThoughtNode[] = [];
-    const thoughtTexts = existingThoughts.concat(allThoughts.map(t => t.thought));
+    const thoughtTexts = existingThoughts.concat(allThoughts.map((t) => t.thought));
 
     // Parallel exploration
     const explorationPromises: Promise<ThoughtNode[]>[] = [];
@@ -921,14 +963,19 @@ async function beamExplore(
       const branchCount = Math.min(parallelBranches, beamWidth);
       for (let branch = 0; branch < branchCount; branch++) {
         explorationPromises.push(
-          generateChildThoughts(task, node.thought, depth, Math.ceil(beamWidth / branchCount), thoughtTexts)
-            .then(children => {
-              children.forEach(c => {
-                c.parent = node;
-                c.depth = depth;
-              });
-              return children;
-            })
+          generateChildThoughts(
+            task,
+            node.thought,
+            depth,
+            Math.ceil(beamWidth / branchCount),
+            thoughtTexts,
+          ).then((children) => {
+            children.forEach((c) => {
+              c.parent = node;
+              c.depth = depth;
+            });
+            return children;
+          }),
         );
         stats.parallelExplorations++;
       }
@@ -970,7 +1017,7 @@ async function beamExplore(
       const { pruned, prunedCount } = pruneNodes(nodeChildren, threshold);
       stats.nodesPruned += prunedCount;
 
-      nextLevel.push(...pruned.filter(c => !c.isTerminal));
+      nextLevel.push(...pruned.filter((c) => !c.isTerminal));
 
       if (options.onProgress) {
         options.onProgress(node, stats);
@@ -1010,10 +1057,10 @@ async function beamExplore(
           backtrackState.nodes[0]?.thought || rootThought,
           backtrackState.depth + 1,
           beamWidth * 2,
-          thoughtTexts
+          thoughtTexts,
         );
 
-        nextLevel.push(...alternativeChildren.filter(c => c.evaluation >= minScore));
+        nextLevel.push(...alternativeChildren.filter((c) => c.evaluation >= minScore));
         allThoughts.push(...alternativeChildren);
         stats.totalNodes += alternativeChildren.length;
 
@@ -1051,27 +1098,22 @@ function visualizeTree(root: ThoughtNode, maxDepth: number = 5): string {
     if (depth > maxDepth) return;
 
     const connector = isLast ? '└── ' : '├── ';
-    const scoreColor = node.evaluation >= 70 ? chalk.green :
-                       node.evaluation >= 40 ? chalk.yellow : chalk.red;
+    const scoreColor =
+      node.evaluation >= 70 ? chalk.green : node.evaluation >= 40 ? chalk.yellow : chalk.red;
 
-    const truncatedContent = node.thought.length > 60
-      ? node.thought.substring(0, 57) + '...'
-      : node.thought;
+    const truncatedContent =
+      node.thought.length > 60 ? `${node.thought.substring(0, 57)}...` : node.thought;
 
     lines.push(
       `${prefix}${depth === 0 ? '' : connector}` +
-      `[${scoreColor(node.evaluation.toString().padStart(3))}%] ` +
-      `${truncatedContent}`
+        `[${scoreColor(node.evaluation.toString().padStart(3))}%] ` +
+        `${truncatedContent}`,
     );
 
     const childPrefix = prefix + (isLast ? '    ' : '│   ');
 
     for (let i = 0; i < node.children.length; i++) {
-      visualizeNode(
-        node.children[i],
-        childPrefix,
-        i === node.children.length - 1
-      );
+      visualizeNode(node.children[i], childPrefix, i === node.children.length - 1);
     }
   };
 
@@ -1089,7 +1131,7 @@ function visualizeTree(root: ThoughtNode, maxDepth: number = 5): string {
  */
 export async function treeOfThoughts(
   task: string,
-  options: ToTOptions = {}
+  options: ToTOptions = {},
 ): Promise<TreeOfThoughtsResult> {
   const opts = { ...DEFAULT_OPTIONS, ...options } as Required<ToTOptions>;
   const { strategy } = opts;
@@ -1105,10 +1147,12 @@ export async function treeOfThoughts(
     mergedThoughts: 0,
     backtrackCount: 0,
     parallelExplorations: 0,
-    avgScoreByDepth: new Map()
+    avgScoreByDepth: new Map(),
   };
 
-  console.log(chalk.magenta(`[ToT] Starting Tree-of-Thoughts with ${strategy.toUpperCase()} strategy...`));
+  console.log(
+    chalk.magenta(`[ToT] Starting Tree-of-Thoughts with ${strategy.toUpperCase()} strategy...`),
+  );
 
   const existingThoughts: string[] = [];
   let result: {
@@ -1127,7 +1171,6 @@ export async function treeOfThoughts(
     case 'dfs':
       result = await dfsExplore(task, opts, existingThoughts, stats);
       break;
-    case 'beam':
     default:
       result = await beamExplore(task, opts, existingThoughts, stats);
       break;
@@ -1137,7 +1180,11 @@ export async function treeOfThoughts(
 
   const finalSolution = await extractSolution(task, result.bestPath);
 
-  console.log(chalk.green(`[ToT] Completed: ${stats.totalNodes} nodes explored, best score: ${result.bestScore}%`));
+  console.log(
+    chalk.green(
+      `[ToT] Completed: ${stats.totalNodes} nodes explored, best score: ${result.bestScore}%`,
+    ),
+  );
 
   return {
     rootThought: result.allThoughts[0]?.thought || task,
@@ -1147,7 +1194,7 @@ export async function treeOfThoughts(
     allThoughts: result.allThoughts,
     exploredPaths: stats.totalNodes,
     strategy,
-    stats
+    stats,
   };
 }
 
@@ -1163,7 +1210,7 @@ export async function quickTreeOfThoughts(task: string): Promise<string> {
     maxDepth: 2,
     beamWidth: 2,
     minScore: 30,
-    strategy: 'beam'
+    strategy: 'beam',
   });
   return result.finalSolution;
 }
@@ -1173,13 +1220,13 @@ export async function quickTreeOfThoughts(task: string): Promise<string> {
  */
 export async function mctsTreeOfThoughts(
   task: string,
-  iterations: number = 50
+  iterations: number = 50,
 ): Promise<TreeOfThoughtsResult> {
   return treeOfThoughts(task, {
     strategy: 'mcts',
     mctsIterations: iterations,
     maxDepth: 4,
-    beamWidth: 3
+    beamWidth: 3,
   });
 }
 
@@ -1188,13 +1235,13 @@ export async function mctsTreeOfThoughts(
  */
 export async function bfsTreeOfThoughts(
   task: string,
-  maxDepth: number = 3
+  maxDepth: number = 3,
 ): Promise<TreeOfThoughtsResult> {
   return treeOfThoughts(task, {
     strategy: 'bfs',
     maxDepth,
     beamWidth: 3,
-    enableDeduplication: true
+    enableDeduplication: true,
   });
 }
 
@@ -1203,12 +1250,12 @@ export async function bfsTreeOfThoughts(
  */
 export async function dfsTreeOfThoughts(
   task: string,
-  maxDepth: number = 4
+  maxDepth: number = 4,
 ): Promise<TreeOfThoughtsResult> {
   return treeOfThoughts(task, {
     strategy: 'dfs',
     maxDepth,
-    beamWidth: 3
+    beamWidth: 3,
   });
 }
 
@@ -1217,7 +1264,7 @@ export async function dfsTreeOfThoughts(
  */
 export async function parallelTreeOfThoughts(
   task: string,
-  parallelBranches: number = 4
+  parallelBranches: number = 4,
 ): Promise<TreeOfThoughtsResult> {
   return treeOfThoughts(task, {
     strategy: 'beam',
@@ -1225,7 +1272,7 @@ export async function parallelTreeOfThoughts(
     dynamicPruning: true,
     enableBacktracking: true,
     maxDepth: 4,
-    beamWidth: 4
+    beamWidth: 4,
   });
 }
 
@@ -1240,10 +1287,10 @@ export function formatToTResult(result: TreeOfThoughtsResult): string {
   lines.push(chalk.bold('Best Reasoning Path:'));
   for (let i = 0; i < result.bestPath.length; i++) {
     const node = result.bestPath[i];
-    const scoreColor = node.evaluation >= 70 ? chalk.green :
-                       node.evaluation >= 40 ? chalk.yellow : chalk.red;
+    const scoreColor =
+      node.evaluation >= 70 ? chalk.green : node.evaluation >= 40 ? chalk.yellow : chalk.red;
     lines.push(
-      `  ${i + 1}. [${scoreColor(node.evaluation + '%')}] ${node.thought.substring(0, 80)}${node.thought.length > 80 ? '...' : ''}`
+      `  ${i + 1}. [${scoreColor(`${node.evaluation}%`)}] ${node.thought.substring(0, 80)}${node.thought.length > 80 ? '...' : ''}`,
     );
   }
 
@@ -1311,7 +1358,7 @@ export {
   bfsExplore,
   dfsExplore,
   beamExplore,
-  getPathFromRoot
+  getPathFromRoot,
 };
 
 export default {
@@ -1323,5 +1370,5 @@ export default {
   parallelTreeOfThoughts,
   formatToTResult,
   visualizeTree,
-  TreeOfThoughts
+  TreeOfThoughts,
 };

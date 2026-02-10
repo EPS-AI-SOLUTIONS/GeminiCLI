@@ -2,8 +2,8 @@
  * SettingsView Tests
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SettingsView } from '../../src/views/SettingsView';
 import { createMockAppState, type MockAppState } from '../mocks/store';
 
@@ -14,7 +14,10 @@ vi.mock('framer-motion', async () => {
 });
 
 // Mock window.confirm
-vi.stubGlobal('confirm', vi.fn(() => true));
+vi.stubGlobal(
+  'confirm',
+  vi.fn(() => true),
+);
 
 // Create mock state
 let mockState: MockAppState;

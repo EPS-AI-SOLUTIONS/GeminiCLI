@@ -3,11 +3,11 @@
  * Common string manipulation functions
  */
 
-import { 
-  OBJECTIVE_TRUNCATION, 
-  TASK_TRUNCATION,
+import {
+  CONTEXT_TRUNCATION,
+  OBJECTIVE_TRUNCATION,
   TASK_DISPLAY_TRUNCATION,
-  CONTEXT_TRUNCATION 
+  TASK_TRUNCATION,
 } from '../config/constants.js';
 
 /**
@@ -15,7 +15,7 @@ import {
  */
 export function truncate(str: string, maxLength: number): string {
   if (str.length <= maxLength) return str;
-  return str.substring(0, maxLength) + '...';
+  return `${str.substring(0, maxLength)}...`;
 }
 
 /**

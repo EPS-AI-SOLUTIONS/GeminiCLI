@@ -11,18 +11,20 @@ async function main() {
   }
 
   switch (command) {
-    case 'add_observations':
+    case 'add_observations': {
       const observations = process.argv.slice(3).join(' ');
       if (observations.length > 0) {
         await addObservations(observations);
       }
       break;
-    case 'memory/create_entities':
+    }
+    case 'memory/create_entities': {
       const entities = process.argv.slice(3).join(' ');
       if (entities.length > 0) {
         await createEntities(entities);
       }
       break;
+    }
     default:
       console.log(`Nieznane polecenie CLI: ${command}`);
   }
@@ -38,7 +40,7 @@ async function createEntities(entities: string): Promise<void> {
   await fetch('/api/create_entities', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ entities })
+    body: JSON.stringify({ entities }),
   });
 }
 

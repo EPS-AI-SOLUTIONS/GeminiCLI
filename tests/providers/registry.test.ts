@@ -2,10 +2,14 @@
  * GeminiHydra - Provider Registry Unit Tests
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { ProviderRegistry } from '../../src/providers/registry.js';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { BaseProvider } from '../../src/providers/base-provider.js';
-import type { ProviderOptions, ProviderResult, HealthCheckResult } from '../../src/types/provider.js';
+import { ProviderRegistry } from '../../src/providers/registry.js';
+import type {
+  HealthCheckResult,
+  ProviderOptions,
+  ProviderResult,
+} from '../../src/types/provider.js';
 
 // Mock provider implementation
 class MockProvider extends BaseProvider {
@@ -16,13 +20,13 @@ class MockProvider extends BaseProvider {
     super(name, {
       models: ['mock-model'],
       maxRetries: 3,
-      timeout: 5000
+      timeout: 5000,
     });
     this._healthy = healthy;
     this._latency = latency;
   }
 
-  async generate(prompt: string, options?: ProviderOptions): Promise<ProviderResult> {
+  async generate(prompt: string, _options?: ProviderOptions): Promise<ProviderResult> {
     if (!this._healthy) {
       throw new Error('Provider unhealthy');
     }
@@ -30,11 +34,14 @@ class MockProvider extends BaseProvider {
       content: `Response to: ${prompt}`,
       model: 'mock-model',
       success: true,
-      usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 }
+      usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
     };
   }
 
-  async *streamGenerate(prompt: string, options?: ProviderOptions): AsyncGenerator<string, void, unknown> {
+  async *streamGenerate(
+    _prompt: string,
+    _options?: ProviderOptions,
+  ): AsyncGenerator<string, void, unknown> {
     yield 'Hello ';
     yield 'World';
   }
@@ -43,7 +50,7 @@ class MockProvider extends BaseProvider {
     return {
       healthy: this._healthy,
       available: this._healthy,
-      latency: this._latency
+      latency: this._latency,
     };
   }
 
@@ -160,9 +167,9 @@ describe('ProviderRegistry', () => {
       }
 
       // Should rotate through all providers
-      expect(selected.filter(n => n === 'p1').length).toBeGreaterThanOrEqual(1);
-      expect(selected.filter(n => n === 'p2').length).toBeGreaterThanOrEqual(1);
-      expect(selected.filter(n => n === 'p3').length).toBeGreaterThanOrEqual(1);
+      expect(selected.filter((n) => n === 'p1').length).toBeGreaterThanOrEqual(1);
+      expect(selected.filter((n) => n === 'p2').length).toBeGreaterThanOrEqual(1);
+      expect(selected.filter((n) => n === 'p3').length).toBeGreaterThanOrEqual(1);
     });
 
     it('should select random provider', async () => {
@@ -221,8 +228,8 @@ describe('ProviderRegistry', () => {
       const healthy = await registry.getHealthyProviders();
 
       expect(healthy).toHaveLength(2);
-      expect(healthy.map(p => p.name)).toContain('h1');
-      expect(healthy.map(p => p.name)).toContain('h2');
+      expect(healthy.map((p) => p.name)).toContain('h1');
+      expect(healthy.map((p) => p.name)).toContain('h2');
     });
   });
 

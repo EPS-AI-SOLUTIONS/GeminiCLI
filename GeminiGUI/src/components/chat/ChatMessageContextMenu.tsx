@@ -1,5 +1,6 @@
-import React, { useEffect, useRef } from 'react';
-import { Copy, Trash2, RefreshCw, X } from 'lucide-react';
+import { Copy, RefreshCw, Trash2, X } from 'lucide-react';
+import type React from 'react';
+import { useEffect, useRef } from 'react';
 
 interface ChatMessageContextMenuProps {
   x: number;
@@ -78,9 +79,9 @@ export const ChatMessageContextMenu: React.FC<ChatMessageContextMenuProps> = ({
           </button>
         </>
       )}
-      
-       <div className="h-px bg-[var(--matrix-border)] my-1" />
-       <button
+
+      <div className="h-px bg-[var(--matrix-border)] my-1" />
+      <button
         onClick={onClose}
         className="w-full text-left px-4 py-2 hover:bg-[var(--matrix-color)]/20 flex items-center gap-2 transition-colors text-gray-500"
       >

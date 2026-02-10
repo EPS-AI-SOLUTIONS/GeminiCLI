@@ -11,113 +11,101 @@
 // Re-export everything from the modular developer subpackage
 // Note: detectLanguage is renamed to detectFileLanguage to avoid conflict
 // with SemanticChunking.detectLanguage exported from intelligence/index.js
+// Backward-compatible alias
+// Re-export default for backward compatibility
 export {
-  // Feature #31: Code Review
-  reviewCode,
-  formatCodeReview,
-  detectLanguage as detectFileLanguage,
+  type ApiEndpointSpec,
+  // Feature #37: Dependency Analysis
+  analyzeDependencies,
+  // Feature #34: Refactoring Analysis
+  analyzeRefactoring,
+  type CodeMetrics,
   type CodeReviewIssue,
   type CodeReviewResult,
-
-  // Feature #32: Test Generation
-  generateTests,
-  formatGeneratedTests,
-  generateTestFileContent,
-  getDefaultTestFramework,
-  getTestFileName,
-  type GeneratedTest,
-  type TestGenerationResult,
-  type TestGenerationOptions,
-
-  // Feature #33: Documentation Generation
-  generateDocumentation,
-  formatDocumentation,
-  generateJSDoc,
-  generateTableOfContents,
+  calculateSeverityScore,
+  calculateTotalEffort,
+  type DependencyAnalysis,
+  type DependencyInfo,
   type DocEntry,
   type DocParam,
   type DocReturn,
-  type DocumentationResult,
   type DocumentationFormat,
-
-  // Feature #34: Refactoring Analysis
-  analyzeRefactoring,
-  formatRefactoringAnalysis,
-  getSuggestionDetails,
-  filterSuggestionsByType,
-  calculateTotalEffort,
-  type RefactoringSuggestion,
-  type RefactoringAnalysis,
-  type RefactoringType,
-  type RefactoringPriority,
-  type RefactoringEffort,
-  type CodeMetrics,
-
-  // Feature #35: Performance Profiling
-  profilePerformance,
-  formatPerformanceProfile,
-  filterIssuesByCategory,
-  getIssueSummaryByCategory,
-  calculateSeverityScore,
-  hasCriticalIssues,
-  type PerformanceIssue,
-  type PerformanceProfile,
-  type PerformanceHotspot,
-  type PerformanceOptimization,
-  type PerformanceSeverity,
-  type PerformanceCategory,
-
-  // Feature #36: Security Scanning
-  scanSecurity,
-  formatSecurityScan,
-  type SecurityVulnerability,
-  type SecurityScanResult,
-
-  // Feature #37: Dependency Analysis
-  analyzeDependencies,
-  groupDependenciesByType,
-  findDependencies,
-  formatDependencyAnalysis,
-  generateDependencyReport,
-  type DependencyInfo,
-  type DependencyAnalysis,
-
-  // Feature #38: API Mocking
-  generateMockEndpoints,
-  generateMockData,
-  generateMockList,
-  generateMockServer,
-  generateMockHandler,
-  formatMockApiConfig,
-  type MockEndpoint,
-  type MockApiConfig,
-  type ApiEndpointSpec,
-  type MockServerOptions,
-
-  // Feature #39: Environment Management
-  EnvManager,
-  envManager,
-  formatEnvironments,
+  type DocumentationResult,
+  default,
+  detectLanguage as detectFileLanguage,
   type EnvironmentConfig,
   type EnvironmentManagerState,
   type EnvironmentValidationResult,
-
-  // Feature #40: Multi-Project Support
-  MultiProjectManager,
-  projectManager,
+  // Feature #39: Environment Management
+  EnvManager,
+  envManager,
+  filterIssuesByCategory,
+  filterSuggestionsByType,
+  findDependencies,
+  formatCodeReview,
+  formatDependencyAnalysis,
+  formatDocumentation,
+  formatEnvironments,
+  formatGeneratedTests,
+  formatMockApiConfig,
+  formatPerformanceProfile,
   formatProjectList,
   formatRecentProjects,
-  type ProjectType,
-  type ProjectInfo,
-  type ProjectWorkspace,
-  type ProjectFilter,
-
+  formatRefactoringAnalysis,
+  formatSecurityScan,
+  type GeneratedTest,
+  generateDependencyReport,
+  // Feature #33: Documentation Generation
+  generateDocumentation,
+  generateJSDoc,
+  generateMockData,
+  // Feature #38: API Mocking
+  generateMockEndpoints,
+  generateMockHandler,
+  generateMockList,
+  generateMockServer,
+  generateTableOfContents,
+  generateTestFileContent,
+  // Feature #32: Test Generation
+  generateTests,
+  getDefaultTestFramework,
+  getIssueSummaryByCategory,
+  getSuggestionDetails,
+  getTestFileName,
+  groupDependenciesByType,
+  hasCriticalIssues,
   // Initialization
-  initDeveloperModules
+  initDeveloperModules,
+  initDeveloperModules as initDeveloperTools,
+  type MockApiConfig,
+  type MockEndpoint,
+  type MockServerOptions,
+  // Feature #40: Multi-Project Support
+  MultiProjectManager,
+  type PerformanceCategory,
+  type PerformanceHotspot,
+  type PerformanceIssue,
+  type PerformanceOptimization,
+  type PerformanceProfile,
+  type PerformanceSeverity,
+  type ProjectFilter,
+  type ProjectInfo,
+  type ProjectType,
+  type ProjectWorkspace,
+  // Feature #35: Performance Profiling
+  profilePerformance,
+  projectManager,
+  type RefactoringAnalysis,
+  type RefactoringEffort,
+  type RefactoringPriority,
+  type RefactoringSuggestion,
+  type RefactoringType,
+  // Feature #31: Code Review
+  reviewCode,
+  type SecurityScanResult,
+  type SecurityVulnerability,
+  // Feature #36: Security Scanning
+  scanSecurity,
+  type TestGenerationOptions,
+  type TestGenerationResult,
 } from './developer/index.js';
-
-// Backward-compatible alias
-export { initDeveloperModules as initDeveloperTools } from './developer/index.js';
-
-// Re-export default for backward compatibility
-export { default } from './developer/index.js';

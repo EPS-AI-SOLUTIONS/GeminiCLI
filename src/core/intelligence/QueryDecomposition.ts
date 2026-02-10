@@ -11,11 +11,11 @@
  * - Caching for decomposition patterns
  */
 
+import crypto from 'node:crypto';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import chalk from 'chalk';
-import crypto from 'crypto';
-import { geminiSemaphore } from '../TrafficControl.js';
 import { GEMINI_MODELS } from '../../config/models.config.js';
+import { geminiSemaphore } from '../TrafficControl.js';
 
 // Initialize Gemini client
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
@@ -25,7 +25,14 @@ const INTELLIGENCE_MODEL = GEMINI_MODELS.FLASH;
 // TYPES & INTERFACES
 // =============================================================================
 
-export type QueryType = 'factual' | 'analytical' | 'creative' | 'procedural' | 'comparative' | 'exploratory' | 'hybrid';
+export type QueryType =
+  | 'factual'
+  | 'analytical'
+  | 'creative'
+  | 'procedural'
+  | 'comparative'
+  | 'exploratory'
+  | 'hybrid';
 
 export interface QueryTypeInfo {
   type: QueryType;
@@ -38,17 +45,17 @@ export interface SubQuery {
   id: number;
   query: string;
   type: QueryType;
-  priority: number;       // 1-10, higher = more important
+  priority: number; // 1-10, higher = more important
   estimatedComplexity: number; // 1-5
-  parentId?: number;      // For hierarchical decomposition
-  level: number;          // Hierarchy level (0 = top)
+  parentId?: number; // For hierarchical decomposition
+  level: number; // Hierarchy level (0 = top)
 }
 
 export interface DecomposedQuery {
   originalQuery: string;
   queryType: QueryTypeInfo;
   subQueries: SubQuery[];
-  executionOrder: number[][];  // Groups that can run in parallel
+  executionOrder: number[][]; // Groups that can run in parallel
   dependencies: Map<number, number[]>;
   hierarchy: HierarchyNode;
   mergedGroups: MergedGroup[];
@@ -83,7 +90,10 @@ interface DecompositionCacheEntry {
 /**
  * Robust JSON parser with multiple extraction strategies
  */
-export function robustJsonParse<T>(text: string, fallback: T): { result: T; strategy: string; success: boolean } {
+export function robustJsonParse<T>(
+  text: string,
+  fallback: T,
+): { result: T; strategy: string; success: boolean } {
   const strategies = [
     { name: 'direct', fn: () => JSON.parse(text) },
     { name: 'markdown_cleanup', fn: () => parseWithMarkdownCleanup(text) },
@@ -158,7 +168,7 @@ function parseLineByLine(text: string): any {
     }
 
     if (inJson) {
-      jsonContent += line + '\n';
+      jsonContent += `${line}\n`;
       braceCount += (line.match(/[{[]/g) || []).length;
       braceCount -= (line.match(/[}\]]/g) || []).length;
 
@@ -174,8 +184,8 @@ function parseLineByLine(text: string): any {
 function extractJsonByRegex(text: string): any {
   // Try to extract JSON-like structures with regex
   const patterns = [
-    /\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g,  // Nested objects
-    /\[[^\[\]]*(?:\[[^\[\]]*\][^\[\]]*)*\]/g,  // Nested arrays
+    /\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g, // Nested objects
+    /\[[^[\]]*(?:\[[^[\]]*\][^[\]]*)*\]/g, // Nested arrays
   ];
 
   for (const pattern of patterns) {
@@ -234,7 +244,7 @@ function extractKeyValues(text: string): any {
   if (subQueriesMatch) {
     const items = subQueriesMatch[1].match(/"([^"]+)"/g);
     if (items) {
-      result.subQueries = items.map(item => item.replace(/"/g, ''));
+      result.subQueries = items.map((item) => item.replace(/"/g, ''));
     }
   }
 
@@ -340,7 +350,7 @@ const QUERY_TYPE_PATTERNS: Record<QueryType, RegExp[]> = {
     /investigate/i,
     /jakie\s+mam\s+opcje/i,
   ],
-  hybrid: [] // Detected when multiple types match
+  hybrid: [], // Detected when multiple types match
 };
 
 /**
@@ -354,7 +364,7 @@ export function detectQueryType(query: string): QueryTypeInfo {
     procedural: 0,
     comparative: 0,
     exploratory: 0,
-    hybrid: 0
+    hybrid: 0,
   };
 
   const matchedCharacteristics: string[] = [];
@@ -410,7 +420,7 @@ export function detectQueryType(query: string): QueryTypeInfo {
     type: primaryType,
     confidence,
     characteristics: matchedCharacteristics,
-    suggestedDepth
+    suggestedDepth,
   };
 }
 
@@ -461,8 +471,7 @@ class DecompositionCache {
   set(query: string, result: Omit<DecomposedQuery, 'fromCache' | 'decompositionTime'>): void {
     // Evict old entries if needed
     if (this.cache.size >= this.maxSize) {
-      const oldest = [...this.cache.entries()]
-        .sort((a, b) => a[1].timestamp - b[1].timestamp)[0];
+      const oldest = [...this.cache.entries()].sort((a, b) => a[1].timestamp - b[1].timestamp)[0];
       if (oldest) this.cache.delete(oldest[0]);
     }
 
@@ -471,14 +480,14 @@ class DecompositionCache {
     // Convert Map to object for storage
     const storable = {
       ...result,
-      dependencies: Object.fromEntries(result.dependencies)
+      dependencies: Object.fromEntries(result.dependencies),
     };
 
     this.cache.set(hash, {
       pattern: hash,
       result: storable as any,
       timestamp: Date.now(),
-      hitCount: 0
+      hitCount: 0,
     });
 
     console.log(chalk.gray(`[Decompose Cache] Stored (size: ${this.cache.size})`));
@@ -511,7 +520,7 @@ export async function hierarchicalDecompose(
   query: string,
   maxDepth: number = 2,
   currentDepth: number = 0,
-  parentId?: number
+  parentId?: number,
 ): Promise<SubQuery[]> {
   if (currentDepth >= maxDepth) {
     return [];
@@ -548,27 +557,28 @@ ZASADY:
     const result = await geminiSemaphore.withPermit(async () => {
       const model = genAI.getGenerativeModel({
         model: INTELLIGENCE_MODEL,
-        generationConfig: { temperature: 0.2, maxOutputTokens: 1024 }
+        generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
       });
       const res = await model.generateContent(prompt);
       return res.response.text();
     });
 
-    const { result: parsed, success } = robustJsonParse<{ components: any[] }>(
-      result,
-      { components: [{ query, priority: 5, complexity: 3, needsFurtherDecomposition: false }] }
-    );
+    const { result: parsed, success } = robustJsonParse<{ components: any[] }>(result, {
+      components: [{ query, priority: 5, complexity: 3, needsFurtherDecomposition: false }],
+    });
 
     if (!success || !parsed.components || parsed.components.length === 0) {
-      return [{
-        id: subQueries.length,
-        query,
-        type: queryType.type,
-        priority: 5,
-        estimatedComplexity: 3,
-        parentId,
-        level: currentDepth
-      }];
+      return [
+        {
+          id: subQueries.length,
+          query,
+          type: queryType.type,
+          priority: 5,
+          estimatedComplexity: 3,
+          parentId,
+          level: currentDepth,
+        },
+      ];
     }
 
     for (const comp of parsed.components) {
@@ -580,7 +590,7 @@ ZASADY:
         priority: comp.priority || 5,
         estimatedComplexity: comp.complexity || 3,
         parentId,
-        level: currentDepth
+        level: currentDepth,
       };
       subQueries.push(subQuery);
 
@@ -590,7 +600,7 @@ ZASADY:
           comp.query,
           maxDepth,
           currentDepth + 1,
-          id
+          id,
         );
 
         // Update IDs and add to list
@@ -601,7 +611,6 @@ ZASADY:
         }
       }
     }
-
   } catch (error: any) {
     console.log(chalk.yellow(`[Hierarchical] Level ${currentDepth} failed: ${error.message}`));
     subQueries.push({
@@ -611,7 +620,7 @@ ZASADY:
       priority: 5,
       estimatedComplexity: 3,
       parentId,
-      level: currentDepth
+      level: currentDepth,
     });
   }
 
@@ -630,7 +639,7 @@ export function buildHierarchyTree(subQueries: SubQuery[]): HierarchyNode {
       id: sq.id,
       query: sq.query,
       children: [],
-      level: sq.level
+      level: sq.level,
     });
   }
 
@@ -682,7 +691,7 @@ export async function mergeRelatedQueries(subQueries: SubQuery[]): Promise<Merge
       if (processed.has(subQueries[j].id)) continue;
 
       const words2 = new Set(subQueries[j].query.toLowerCase().split(/\s+/));
-      const intersection = [...words1].filter(w => words2.has(w) && w.length > 3);
+      const intersection = [...words1].filter((w) => words2.has(w) && w.length > 3);
       const similarity = intersection.length / Math.min(words1.size, words2.size);
 
       if (similarity > 0.4) {
@@ -692,11 +701,11 @@ export async function mergeRelatedQueries(subQueries: SubQuery[]): Promise<Merge
     }
 
     if (similar.length > 1) {
-      const queries = similar.map(id => subQueries.find(sq => sq.id === id)!.query);
+      const queries = similar.map((id) => subQueries.find((sq) => sq.id === id)?.query);
       mergedGroups.push({
         ids: similar,
         reason: `High word overlap (${similar.length} queries)`,
-        combinedQuery: queries.join(' ORAZ ')
+        combinedQuery: queries.join(' ORAZ '),
       });
       processed.add(subQueries[i].id);
     }
@@ -727,7 +736,7 @@ export function visualizeDependencyGraph(decomposed: DecomposedQuery): string {
     lines.push(`\nPhase ${groupIdx + 1} (parallel):`);
 
     for (const id of group) {
-      const sq = decomposed.subQueries.find(s => s.id === id);
+      const sq = decomposed.subQueries.find((s) => s.id === id);
       if (sq) {
         const deps = decomposed.dependencies.get(id);
         const depStr = deps && deps.length > 0 ? ` <- depends on [${deps.join(', ')}]` : '';
@@ -764,7 +773,7 @@ function getTypeIcon(type: QueryType): string {
     procedural: '[P]',
     comparative: '[~]',
     exploratory: '[?]',
-    hybrid: '[H]'
+    hybrid: '[H]',
   };
   return icons[type] || '[?]';
 }
@@ -795,7 +804,7 @@ export async function decomposeQuery(
     maxDepth?: number;
     enableMerging?: boolean;
     verbose?: boolean;
-  } = {}
+  } = {},
 ): Promise<DecomposedQuery> {
   const startTime = Date.now();
   const { useCache = true, maxDepth = 2, enableMerging = true, verbose = false } = options;
@@ -809,7 +818,7 @@ export async function decomposeQuery(
       return {
         ...cached,
         fromCache: true,
-        decompositionTime: Date.now() - startTime
+        decompositionTime: Date.now() - startTime,
       };
     }
   }
@@ -830,20 +839,22 @@ export async function decomposeQuery(
     const result: DecomposedQuery = {
       originalQuery: query,
       queryType,
-      subQueries: [{
-        id: 0,
-        query,
-        type: queryType.type,
-        priority: 10,
-        estimatedComplexity: 1,
-        level: 0
-      }],
+      subQueries: [
+        {
+          id: 0,
+          query,
+          type: queryType.type,
+          priority: 10,
+          estimatedComplexity: 1,
+          level: 0,
+        },
+      ],
       executionOrder: [[0]],
       dependencies: new Map(),
       hierarchy: { id: 0, query, children: [], level: 0 },
       mergedGroups: [],
       decompositionTime: Date.now() - startTime,
-      fromCache: false
+      fromCache: false,
     };
 
     if (useCache) {
@@ -889,7 +900,7 @@ Odpowiadaj TYLKO poprawnym JSON bez formatowania markdown.`;
     const result = await geminiSemaphore.withPermit(async () => {
       const model = genAI.getGenerativeModel({
         model: INTELLIGENCE_MODEL,
-        generationConfig: { temperature: 0.1, maxOutputTokens: 2048 }
+        generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
       });
       const res = await model.generateContent(prompt);
       return res.response.text();
@@ -899,7 +910,7 @@ Odpowiadaj TYLKO poprawnym JSON bez formatowania markdown.`;
     const fallback = {
       subQueries: [{ query, priority: 5, complexity: 3 }],
       executionOrder: [[0]],
-      dependencies: {}
+      dependencies: {},
     };
 
     const { result: parsed, strategy, success } = robustJsonParse(result, fallback);
@@ -914,15 +925,15 @@ Odpowiadaj TYLKO poprawnym JSON bez formatowania markdown.`;
     if (Array.isArray(parsed.subQueries)) {
       for (let i = 0; i < parsed.subQueries.length; i++) {
         const sq = parsed.subQueries[i];
-        const queryText = typeof sq === 'string' ? sq : (sq.query || query);
+        const queryText = typeof sq === 'string' ? sq : sq.query || query;
 
         subQueries.push({
           id: i,
           query: queryText,
           type: detectQueryType(queryText).type,
-          priority: typeof sq === 'object' ? (sq.priority || 5) : 5,
-          estimatedComplexity: typeof sq === 'object' ? (sq.complexity || 3) : 3,
-          level: 0
+          priority: typeof sq === 'object' ? sq.priority || 5 : 5,
+          estimatedComplexity: typeof sq === 'object' ? sq.complexity || 3 : 3,
+          level: 0,
         });
       }
     } else {
@@ -932,7 +943,7 @@ Odpowiadaj TYLKO poprawnym JSON bez formatowania markdown.`;
         type: queryType.type,
         priority: 5,
         estimatedComplexity: 3,
-        level: 0
+        level: 0,
       });
     }
 
@@ -940,9 +951,12 @@ Odpowiadaj TYLKO poprawnym JSON bez formatowania markdown.`;
     const deps = new Map<number, number[]>();
     if (parsed.dependencies && typeof parsed.dependencies === 'object') {
       for (const [key, value] of Object.entries(parsed.dependencies)) {
-        const keyNum = parseInt(key);
-        if (!isNaN(keyNum) && Array.isArray(value)) {
-          deps.set(keyNum, value.map(v => typeof v === 'number' ? v : parseInt(v)));
+        const keyNum = parseInt(key, 10);
+        if (!Number.isNaN(keyNum) && Array.isArray(value)) {
+          deps.set(
+            keyNum,
+            value.map((v) => (typeof v === 'number' ? v : parseInt(v, 10))),
+          );
         }
       }
     }
@@ -967,7 +981,11 @@ Odpowiadaj TYLKO poprawnym JSON bez formatowania markdown.`;
       mergedGroups = await mergeRelatedQueries(subQueries);
     }
 
-    console.log(chalk.green(`[Decompose] Split into ${subQueries.length} sub-queries (strategy: ${strategy})`));
+    console.log(
+      chalk.green(
+        `[Decompose] Split into ${subQueries.length} sub-queries (strategy: ${strategy})`,
+      ),
+    );
 
     const decomposedResult: DecomposedQuery = {
       originalQuery: query,
@@ -978,7 +996,7 @@ Odpowiadaj TYLKO poprawnym JSON bez formatowania markdown.`;
       hierarchy,
       mergedGroups,
       decompositionTime: Date.now() - startTime,
-      fromCache: false
+      fromCache: false,
     };
 
     // Cache the result
@@ -987,7 +1005,6 @@ Odpowiadaj TYLKO poprawnym JSON bez formatowania markdown.`;
     }
 
     return decomposedResult;
-
   } catch (error: any) {
     console.log(chalk.yellow(`[Decompose] Failed: ${error.message}`));
 
@@ -995,20 +1012,22 @@ Odpowiadaj TYLKO poprawnym JSON bez formatowania markdown.`;
     return {
       originalQuery: query,
       queryType,
-      subQueries: [{
-        id: 0,
-        query,
-        type: queryType.type,
-        priority: 5,
-        estimatedComplexity: 3,
-        level: 0
-      }],
+      subQueries: [
+        {
+          id: 0,
+          query,
+          type: queryType.type,
+          priority: 5,
+          estimatedComplexity: 3,
+          level: 0,
+        },
+      ],
       executionOrder: [[0]],
       dependencies: new Map(),
       hierarchy: { id: 0, query, children: [], level: 0 },
       mergedGroups: [],
       decompositionTime: Date.now() - startTime,
-      fromCache: false
+      fromCache: false,
     };
   }
 }
@@ -1019,7 +1038,7 @@ Odpowiadaj TYLKO poprawnym JSON bez formatowania markdown.`;
 function generateExecutionOrder(subQueries: SubQuery[], deps: Map<number, number[]>): number[][] {
   const order: number[][] = [];
   const executed = new Set<number>();
-  const allIds = subQueries.map(sq => sq.id);
+  const allIds = subQueries.map((sq) => sq.id);
 
   while (executed.size < allIds.length) {
     const phase: number[] = [];
@@ -1028,7 +1047,7 @@ function generateExecutionOrder(subQueries: SubQuery[], deps: Map<number, number
       if (executed.has(id)) continue;
 
       const dependencies = deps.get(id) || [];
-      const allDepsExecuted = dependencies.every(depId => executed.has(depId));
+      const allDepsExecuted = dependencies.every((depId) => executed.has(depId));
 
       if (allDepsExecuted) {
         phase.push(id);
@@ -1098,5 +1117,5 @@ export default {
   robustJsonParse,
   decompositionCache,
   getDecompositionCacheStats,
-  clearDecompositionCache
+  clearDecompositionCache,
 };

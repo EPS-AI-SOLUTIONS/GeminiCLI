@@ -9,11 +9,11 @@
  * - Code symbol extraction
  */
 
-import fs from 'fs/promises';
-import path from 'path';
+import { exec } from 'node:child_process';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { promisify } from 'node:util';
 import chalk from 'chalk';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 
 const execAsync = promisify(exec);
 
@@ -141,7 +141,15 @@ export class ProjectContext {
    * Scan files in directory
    */
   private async scanFiles(dir: string, files: ProjectFile[] = []): Promise<ProjectFile[]> {
-    const ignoreDirs = ['node_modules', '.git', 'dist', 'build', '__pycache__', 'target', '.geminihydra'];
+    const ignoreDirs = [
+      'node_modules',
+      '.git',
+      'dist',
+      'build',
+      '__pycache__',
+      'target',
+      '.geminihydra',
+    ];
 
     const entries = await fs.readdir(dir, { withFileTypes: true });
 
@@ -179,7 +187,7 @@ export class ProjectContext {
     if (this.index?.type === 'nodejs') {
       try {
         const pkgJson = JSON.parse(
-          await fs.readFile(path.join(this.root, 'package.json'), 'utf-8')
+          await fs.readFile(path.join(this.root, 'package.json'), 'utf-8'),
         );
 
         for (const [name, version] of Object.entries(pkgJson.dependencies || {})) {
@@ -201,14 +209,18 @@ export class ProjectContext {
   private async getGitInfo(): Promise<GitInfo | undefined> {
     try {
       const { stdout: branch } = await execAsync('git branch --show-current', { cwd: this.root });
-      const { stdout: lastCommit } = await execAsync('git log -1 --pretty=format:"%h %s"', { cwd: this.root });
+      const { stdout: lastCommit } = await execAsync('git log -1 --pretty=format:"%h %s"', {
+        cwd: this.root,
+      });
       const { stdout: status } = await execAsync('git status --porcelain', { cwd: this.root });
-      const { stdout: recentLog } = await execAsync('git log -5 --pretty=format:"%h %s"', { cwd: this.root });
+      const { stdout: recentLog } = await execAsync('git log -5 --pretty=format:"%h %s"', {
+        cwd: this.root,
+      });
 
       return {
         branch: branch.trim(),
         lastCommit: lastCommit.trim(),
-        uncommittedChanges: status.split('\n').filter(l => l.trim()).length,
+        uncommittedChanges: status.split('\n').filter((l) => l.trim()).length,
         recentCommits: recentLog.split('\n'),
       };
     } catch {
@@ -222,11 +234,12 @@ export class ProjectContext {
   private async extractSymbols(): Promise<void> {
     if (!this.index) return;
 
-    const codeFiles = this.index.files.filter(f =>
-      ['ts', 'js', 'tsx', 'jsx', 'py', 'rs'].includes(f.type)
+    const codeFiles = this.index.files.filter((f) =>
+      ['ts', 'js', 'tsx', 'jsx', 'py', 'rs'].includes(f.type),
     );
 
-    for (const file of codeFiles.slice(0, 100)) { // Limit to 100 files
+    for (const file of codeFiles.slice(0, 100)) {
+      // Limit to 100 files
       try {
         const content = await fs.readFile(file.path, 'utf-8');
         const symbols: string[] = [];
@@ -304,12 +317,12 @@ export class ProjectContext {
     // Find relevant files based on task keywords
     const keywords = task.toLowerCase().split(/\s+/);
     const relevantFiles = this.index.files
-      .filter(f => keywords.some(k => f.relativePath.toLowerCase().includes(k)))
+      .filter((f) => keywords.some((k) => f.relativePath.toLowerCase().includes(k)))
       .slice(0, 10);
 
     if (relevantFiles.length > 0) {
       context.push('\nRelevant files:');
-      relevantFiles.forEach(f => context.push(`  - ${f.relativePath}`));
+      relevantFiles.forEach((f) => context.push(`  - ${f.relativePath}`));
     }
 
     return context.join('\n');
@@ -334,7 +347,7 @@ export class ProjectContext {
 
     // File types breakdown
     const typeCount: Record<string, number> = {};
-    this.index.files.forEach(f => {
+    this.index.files.forEach((f) => {
       typeCount[f.type] = (typeCount[f.type] || 0) + 1;
     });
 

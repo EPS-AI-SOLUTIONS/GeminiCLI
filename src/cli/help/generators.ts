@@ -5,17 +5,10 @@
  */
 
 import chalk from 'chalk';
-import {
-  commandRegistry,
-  type Command,
-} from '../CommandRegistry.js';
-import {
-  horizontalLine,
-  truncate,
-  highlightMatch,
-} from '../CommandHelpers.js';
-import { helpMetaRegistry, categoryConfig, getCategoryDisplay } from './HelpMetaRegistry.js';
+import { highlightMatch, horizontalLine, truncate } from '../CommandHelpers.js';
+import { type Command, commandRegistry } from '../CommandRegistry.js';
 import { formatSignature } from './formatting.js';
+import { categoryConfig, getCategoryDisplay, helpMetaRegistry } from './HelpMetaRegistry.js';
 
 /**
  * Generate general help overview
@@ -24,9 +17,21 @@ export function generateOverview(): string {
   const lines: string[] = [];
 
   lines.push('');
-  lines.push(chalk.bold.cyan('\u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557'));
-  lines.push(chalk.bold.cyan('\u2551') + chalk.bold.white('           GeminiHydra CLI - Help System                   ') + chalk.bold.cyan('\u2551'));
-  lines.push(chalk.bold.cyan('\u255A\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u255D'));
+  lines.push(
+    chalk.bold.cyan(
+      '\u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557',
+    ),
+  );
+  lines.push(
+    chalk.bold.cyan('\u2551') +
+      chalk.bold.white('           GeminiHydra CLI - Help System                   ') +
+      chalk.bold.cyan('\u2551'),
+  );
+  lines.push(
+    chalk.bold.cyan(
+      '\u255A\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u255D',
+    ),
+  );
   lines.push('');
 
   lines.push(chalk.bold.yellow('Quick Start:'));
@@ -37,13 +42,14 @@ export function generateOverview(): string {
   lines.push(chalk.bold.yellow('Command Categories:'));
   lines.push('');
 
-  const sortedCategories = Array.from(categoryConfig.values())
-    .sort((a, b) => a.order - b.order);
+  const sortedCategories = Array.from(categoryConfig.values()).sort((a, b) => a.order - b.order);
 
   for (const cat of sortedCategories) {
     const commands = commandRegistry.getByCategory(cat.name);
     if (commands.length > 0) {
-      lines.push(`  ${cat.icon} ${chalk.cyan(cat.displayName.padEnd(20))} ${chalk.gray(`(${commands.length} commands)`)}`);
+      lines.push(
+        `  ${cat.icon} ${chalk.cyan(cat.displayName.padEnd(20))} ${chalk.gray(`(${commands.length} commands)`)}`,
+      );
     }
   }
 
@@ -52,7 +58,9 @@ export function generateOverview(): string {
   lines.push(chalk.bold.yellow('Essential Commands:'));
   lines.push('');
   lines.push(`  ${chalk.yellow('/help')}              ${chalk.gray('Show this help')}`);
-  lines.push(`  ${chalk.yellow('/help <command>')}    ${chalk.gray('Detailed help for a command')}`);
+  lines.push(
+    `  ${chalk.yellow('/help <command>')}    ${chalk.gray('Detailed help for a command')}`,
+  );
   lines.push(`  ${chalk.yellow('/help --all')}        ${chalk.gray('List all commands')}`);
   lines.push(`  ${chalk.yellow('/help --interactive')}${chalk.gray('Interactive help browser')}`);
   lines.push('');
@@ -64,7 +72,9 @@ export function generateOverview(): string {
   lines.push('');
 
   lines.push(chalk.gray(horizontalLine(60)));
-  lines.push(chalk.gray(`Use ${chalk.white('/help --category <name>')} for category-specific help`));
+  lines.push(
+    chalk.gray(`Use ${chalk.white('/help --category <name>')} for category-specific help`),
+  );
   lines.push(chalk.gray(`Use ${chalk.white('/help --export')} to save help to markdown file`));
   lines.push('');
 
@@ -78,8 +88,10 @@ export function generateCommandHelp(commandName: string): string {
   const cmd = commandRegistry.get(commandName);
 
   if (!cmd) {
-    return chalk.red(`\nUnknown command: ${commandName}\n\n`) +
-           chalk.gray(`Use /help --search ${commandName} to find related commands`);
+    return (
+      chalk.red(`\nUnknown command: ${commandName}\n\n`) +
+      chalk.gray(`Use /help --search ${commandName} to find related commands`)
+    );
   }
 
   const meta = helpMetaRegistry.get(cmd.name);
@@ -87,12 +99,18 @@ export function generateCommandHelp(commandName: string): string {
 
   lines.push('');
   lines.push(chalk.bold.cyan(`\u256D${'─'.repeat(58)}\u256E`));
-  lines.push(chalk.bold.cyan('│') + chalk.bold.white(` Command: /${cmd.name}`.padEnd(58)) + chalk.bold.cyan('│'));
+  lines.push(
+    chalk.bold.cyan('│') +
+      chalk.bold.white(` Command: /${cmd.name}`.padEnd(58)) +
+      chalk.bold.cyan('│'),
+  );
   lines.push(chalk.bold.cyan(`\u2570${'─'.repeat(58)}\u256F`));
   lines.push('');
 
   if (meta?.deprecated) {
-    lines.push(chalk.bgYellow.black(' DEPRECATED ') + ' ' + chalk.yellow(meta.deprecatedMessage || 'This command is deprecated'));
+    lines.push(
+      `${chalk.bgYellow.black(' DEPRECATED ')} ${chalk.yellow(meta.deprecatedMessage || 'This command is deprecated')}`,
+    );
     lines.push('');
   }
 
@@ -120,16 +138,15 @@ export function generateCommandHelp(commandName: string): string {
 
   if (cmd.aliases && cmd.aliases.length > 0) {
     lines.push(chalk.bold.white('Aliases:'));
-    lines.push(`  ${cmd.aliases.map(a => chalk.yellow(`/${a}`)).join(', ')}`);
+    lines.push(`  ${cmd.aliases.map((a) => chalk.yellow(`/${a}`)).join(', ')}`);
     lines.push('');
   }
 
   if (cmd.subcommands && cmd.subcommands.size > 0) {
     lines.push(chalk.bold.white('Subcommands:'));
     for (const [name, subcmd] of cmd.subcommands) {
-      const subAliases = subcmd.aliases.length > 0
-        ? chalk.gray(` (${subcmd.aliases.join(', ')})`)
-        : '';
+      const subAliases =
+        subcmd.aliases.length > 0 ? chalk.gray(` (${subcmd.aliases.join(', ')})`) : '';
       lines.push(`  ${chalk.yellow(name.padEnd(15))} ${subcmd.description}${subAliases}`);
     }
     lines.push('');
@@ -157,7 +174,7 @@ export function generateCommandHelp(commandName: string): string {
 
   if (meta?.seeAlso && meta.seeAlso.length > 0) {
     lines.push(chalk.bold.white('See Also:'));
-    lines.push(`  ${meta.seeAlso.map(s => chalk.cyan(`/${s}`)).join(', ')}`);
+    lines.push(`  ${meta.seeAlso.map((s) => chalk.cyan(`/${s}`)).join(', ')}`);
     lines.push('');
   }
 
@@ -185,8 +202,7 @@ export function generateFullReference(): string {
   lines.push(chalk.bold.cyan('\u2550'.repeat(60)));
   lines.push('');
 
-  const sortedCategories = Array.from(categoryConfig.values())
-    .sort((a, b) => a.order - b.order);
+  const sortedCategories = Array.from(categoryConfig.values()).sort((a, b) => a.order - b.order);
 
   for (const cat of sortedCategories) {
     const commands = commandRegistry.getByCategory(cat.name);
@@ -197,11 +213,11 @@ export function generateFullReference(): string {
     lines.push(chalk.gray('─'.repeat(50)));
 
     for (const cmd of commands) {
-      const aliases = cmd.aliases.length > 0
-        ? chalk.gray(` [${cmd.aliases.join(', ')}]`)
-        : '';
+      const aliases = cmd.aliases.length > 0 ? chalk.gray(` [${cmd.aliases.join(', ')}]`) : '';
 
-      lines.push(`  ${chalk.yellow(`/${cmd.name}`.padEnd(20))} ${truncate(cmd.description, 35)}${aliases}`);
+      lines.push(
+        `  ${chalk.yellow(`/${cmd.name}`.padEnd(20))} ${truncate(cmd.description, 35)}${aliases}`,
+      );
     }
   }
 
@@ -225,25 +241,34 @@ export function generateCategoryHelp(categoryName: string): string {
 
   if (commands.length === 0) {
     const categories = commandRegistry.getCategories();
-    const similar = categories.filter(c =>
-      c.toLowerCase().includes(categoryName.toLowerCase()) ||
-      categoryName.toLowerCase().includes(c.toLowerCase())
+    const similar = categories.filter(
+      (c) =>
+        c.toLowerCase().includes(categoryName.toLowerCase()) ||
+        categoryName.toLowerCase().includes(c.toLowerCase()),
     );
 
     if (similar.length > 0) {
-      return chalk.yellow(`\nCategory "${categoryName}" not found.\n`) +
-             chalk.gray(`Did you mean: ${similar.map(s => chalk.cyan(s)).join(', ')}?`);
+      return (
+        chalk.yellow(`\nCategory "${categoryName}" not found.\n`) +
+        chalk.gray(`Did you mean: ${similar.map((s) => chalk.cyan(s)).join(', ')}?`)
+      );
     }
 
-    return chalk.yellow(`\nCategory "${categoryName}" not found.\n`) +
-           chalk.gray(`Available categories: ${categories.join(', ')}`);
+    return (
+      chalk.yellow(`\nCategory "${categoryName}" not found.\n`) +
+      chalk.gray(`Available categories: ${categories.join(', ')}`)
+    );
   }
 
   const lines: string[] = [];
 
   lines.push('');
   lines.push(chalk.bold.cyan(`\u256D${'─'.repeat(58)}\u256E`));
-  lines.push(chalk.bold.cyan('│') + chalk.bold.white(` ${cat.icon} ${cat.displayName}`.padEnd(58)) + chalk.bold.cyan('│'));
+  lines.push(
+    chalk.bold.cyan('│') +
+      chalk.bold.white(` ${cat.icon} ${cat.displayName}`.padEnd(58)) +
+      chalk.bold.cyan('│'),
+  );
   lines.push(chalk.bold.cyan(`\u2570${'─'.repeat(58)}\u256F`));
   lines.push('');
 
@@ -258,9 +283,7 @@ export function generateCategoryHelp(categoryName: string): string {
   for (const cmd of commands) {
     const meta = helpMetaRegistry.get(cmd.name);
     const deprecated = meta?.deprecated ? chalk.yellow(' [DEPRECATED]') : '';
-    const aliases = cmd.aliases.length > 0
-      ? chalk.gray(` (${cmd.aliases.join(', ')})`)
-      : '';
+    const aliases = cmd.aliases.length > 0 ? chalk.gray(` (${cmd.aliases.join(', ')})`) : '';
 
     lines.push(`  ${chalk.yellow(`/${cmd.name}`.padEnd(18))} ${cmd.description}${deprecated}`);
 
@@ -298,7 +321,7 @@ export function searchHelp(query: string): string {
       matches.push('name');
     }
 
-    if (cmd.aliases.some(a => a.toLowerCase().includes(lowerQuery))) {
+    if (cmd.aliases.some((a) => a.toLowerCase().includes(lowerQuery))) {
       score += 8;
       matches.push('alias');
     }
@@ -315,8 +338,10 @@ export function searchHelp(query: string): string {
 
     if (cmd.subcommands) {
       for (const [subName, subcmd] of cmd.subcommands) {
-        if (subName.toLowerCase().includes(lowerQuery) ||
-            subcmd.description.toLowerCase().includes(lowerQuery)) {
+        if (
+          subName.toLowerCase().includes(lowerQuery) ||
+          subcmd.description.toLowerCase().includes(lowerQuery)
+        ) {
           score += 4;
           matches.push(`subcommand:${subName}`);
         }
@@ -325,15 +350,18 @@ export function searchHelp(query: string): string {
 
     const meta = helpMetaRegistry.get(cmd.name);
     if (meta) {
-      if (meta.examples?.some(e =>
-        e.command.toLowerCase().includes(lowerQuery) ||
-        e.description.toLowerCase().includes(lowerQuery)
-      )) {
+      if (
+        meta.examples?.some(
+          (e) =>
+            e.command.toLowerCase().includes(lowerQuery) ||
+            e.description.toLowerCase().includes(lowerQuery),
+        )
+      ) {
         score += 2;
         matches.push('examples');
       }
 
-      if (meta.notes?.some(n => n.toLowerCase().includes(lowerQuery))) {
+      if (meta.notes?.some((n) => n.toLowerCase().includes(lowerQuery))) {
         score += 2;
         matches.push('notes');
       }
@@ -347,11 +375,13 @@ export function searchHelp(query: string): string {
   results.sort((a, b) => b.score - a.score);
 
   if (results.length === 0) {
-    return chalk.yellow(`\nNo results found for: "${query}"\n\n`) +
-           chalk.gray('Tips:\n') +
-           chalk.gray('  - Try broader search terms\n') +
-           chalk.gray('  - Use /help --all to browse all commands\n') +
-           chalk.gray('  - Use /help --category <name> to browse by category');
+    return (
+      chalk.yellow(`\nNo results found for: "${query}"\n\n`) +
+      chalk.gray('Tips:\n') +
+      chalk.gray('  - Try broader search terms\n') +
+      chalk.gray('  - Use /help --all to browse all commands\n') +
+      chalk.gray('  - Use /help --category <name> to browse by category')
+    );
   }
 
   const lines: string[] = [];

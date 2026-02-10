@@ -9,7 +9,6 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import chalk from 'chalk';
-import path from 'path';
 import 'dotenv/config';
 import { GEMINI_MODELS } from '../../config/models.config.js';
 
@@ -100,7 +99,7 @@ export function getDefaultTestFramework(language: string): string {
     rust: 'cargo test',
     go: 'testing',
     java: 'junit',
-    csharp: 'xunit'
+    csharp: 'xunit',
   };
   return frameworks[language] || 'unknown';
 }
@@ -128,15 +127,14 @@ export function getTestFileName(filename: string): string {
 export async function generateTests(
   code: string,
   filename: string,
-  options: TestGenerationOptions = {}
+  options: TestGenerationOptions = {},
 ): Promise<TestGenerationResult> {
   const language = options.language || detectLanguage(filename);
   const framework = options.framework || getDefaultTestFramework(language);
 
   console.log(chalk.cyan(`[TestGen] Generating tests for ${filename} using ${framework}...`));
 
-  const prompt = TEST_GENERATION_PROMPT
-    .replace('{filename}', filename)
+  const prompt = TEST_GENERATION_PROMPT.replace('{filename}', filename)
     .replace(/{language}/g, language)
     .replace('{framework}', framework)
     .replace('{code}', code);
@@ -144,7 +142,7 @@ export async function generateTests(
   try {
     const model = genAI.getGenerativeModel({
       model: QUALITY_MODEL,
-      generationConfig: { temperature: 0.3, maxOutputTokens: 8192 }
+      generationConfig: { temperature: 0.3, maxOutputTokens: 8192 },
     });
 
     const result = await model.generateContent(prompt);
@@ -167,7 +165,7 @@ export async function generateTests(
       framework,
       tests: parsed.tests || [],
       setupCode: parsed.setupCode,
-      teardownCode: parsed.teardownCode
+      teardownCode: parsed.teardownCode,
     };
   } catch (error: any) {
     console.log(chalk.yellow(`[TestGen] Failed: ${error.message}`));
@@ -175,7 +173,7 @@ export async function generateTests(
       targetFile: filename,
       testFile: getTestFileName(filename),
       framework,
-      tests: []
+      tests: [],
     };
   }
 }
@@ -258,5 +256,5 @@ export default {
   formatGeneratedTests,
   generateTestFileContent,
   getDefaultTestFramework,
-  getTestFileName
+  getTestFileName,
 };

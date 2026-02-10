@@ -4,29 +4,28 @@
  * @module multimodal/MultiModalProcessor
  */
 
-import * as fs from 'fs';
-import * as fsPromises from 'fs/promises';
-import * as path from 'path';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import { GoogleGenerativeAI, Part, GenerativeModel } from '@google/generative-ai';
+import { exec } from 'node:child_process';
+import * as fs from 'node:fs';
+import * as fsPromises from 'node:fs/promises';
+import * as path from 'node:path';
+import { promisify } from 'node:util';
+import { type GenerativeModel, GoogleGenerativeAI, type Part } from '@google/generative-ai';
 import 'dotenv/config';
 
-import type {
-  ImageInput,
-  AudioInput,
-  VideoInput,
-  MultiModalContent,
-  MixedContentPrompt,
-  AnalysisResult,
-  ScreenshotAnalysis,
-  MCPMultiModalResource,
-  MCPResourceContent,
-  MCPMultiModalToolInput,
-  ContentType,
-} from './types.js';
 import { MAX_FILE_SIZES, MULTIMODAL_MODELS } from './constants.js';
-import { getMimeType, detectContentType, downloadToBuffer } from './utils.js';
+import type {
+  AnalysisResult,
+  AudioInput,
+  ImageInput,
+  MCPMultiModalResource,
+  MCPMultiModalToolInput,
+  MCPResourceContent,
+  MixedContentPrompt,
+  MultiModalContent,
+  ScreenshotAnalysis,
+  VideoInput,
+} from './types.js';
+import { detectContentType, downloadToBuffer, getMimeType } from './utils.js';
 
 const execAsync = promisify(exec);
 
@@ -65,9 +64,7 @@ export class MultiModalProcessor {
   }
 
   isMultiModalSupported(): boolean {
-    return MULTIMODAL_MODELS.some(m =>
-      this.modelName.includes(m) || m.includes(this.modelName)
-    );
+    return MULTIMODAL_MODELS.some((m) => this.modelName.includes(m) || m.includes(this.modelName));
   }
 
   static getSupportedModels(): string[] {
@@ -153,7 +150,9 @@ export class MultiModalProcessor {
         },
       },
       {
-        text: prompt || 'Describe this image in detail. Include information about the main subjects, colors, composition, and any text visible.',
+        text:
+          prompt ||
+          'Describe this image in detail. Include information about the main subjects, colors, composition, and any text visible.',
       },
     ];
 
@@ -258,7 +257,7 @@ export class MultiModalProcessor {
           processingTimeMs: Date.now() - startTime,
         },
       };
-    } catch (error: any) {
+    } catch (_error: any) {
       return {
         text: `[Audio transcription not available for model ${this.modelName}. Audio content received: ${content.mimeType}, size: ${content.data.length} bytes]`,
         metadata: {
@@ -334,7 +333,7 @@ export class MultiModalProcessor {
       interval?: number;
       maxFrames?: number;
       outputDir?: string;
-    }
+    },
   ): Promise<string[]> {
     const resolvedPath = path.resolve(videoPath);
     if (!fs.existsSync(resolvedPath)) {
@@ -352,14 +351,16 @@ export class MultiModalProcessor {
         for (let i = 0; i < Math.min(options.timestamps.length, maxFrames); i++) {
           const timestamp = options.timestamps[i];
           const outputPath = path.join(outputDir, `frame_${i.toString().padStart(4, '0')}.png`);
-          await execAsync(`ffmpeg -ss ${timestamp} -i "${resolvedPath}" -frames:v 1 -y "${outputPath}" 2>/dev/null`);
+          await execAsync(
+            `ffmpeg -ss ${timestamp} -i "${resolvedPath}" -frames:v 1 -y "${outputPath}" 2>/dev/null`,
+          );
           if (fs.existsSync(outputPath)) {
             framePaths.push(outputPath);
           }
         }
       } else if (options?.interval) {
         await execAsync(
-          `ffmpeg -i "${resolvedPath}" -vf "fps=1/${options.interval}" -frames:v ${maxFrames} "${outputDir}/frame_%04d.png" 2>/dev/null`
+          `ffmpeg -i "${resolvedPath}" -vf "fps=1/${options.interval}" -frames:v ${maxFrames} "${outputDir}/frame_%04d.png" 2>/dev/null`,
         );
         const files = await fsPromises.readdir(outputDir);
         for (const file of files.sort()) {
@@ -370,7 +371,7 @@ export class MultiModalProcessor {
         }
       } else {
         await execAsync(
-          `ffmpeg -i "${resolvedPath}" -vf "select='eq(pict_type,I)'" -vsync vfr -frames:v ${maxFrames} "${outputDir}/frame_%04d.png" 2>/dev/null`
+          `ffmpeg -i "${resolvedPath}" -vf "select='eq(pict_type,I)'" -vsync vfr -frames:v ${maxFrames} "${outputDir}/frame_%04d.png" 2>/dev/null`,
         );
         const files = await fsPromises.readdir(outputDir);
         for (const file of files.sort()) {
@@ -403,7 +404,9 @@ export class MultiModalProcessor {
         },
       },
       {
-        text: prompt || 'Analyze this video. Describe what happens, identify people or objects, and summarize the main content.',
+        text:
+          prompt ||
+          'Analyze this video. Describe what happens, identify people or objects, and summarize the main content.',
       },
     ];
 
@@ -429,7 +432,7 @@ export class MultiModalProcessor {
           for (const framePath of frames) {
             const analysis = await this.analyzeImage(
               { source: 'file', data: framePath },
-              'Briefly describe what you see in this video frame.'
+              'Briefly describe what you see in this video frame.',
             );
             frameAnalyses.push(analysis.text);
           }
@@ -492,7 +495,7 @@ export class MultiModalProcessor {
       }),
     });
 
-    const contentTypes = [...new Set(mixedContent.parts.map(p => p.type))];
+    const contentTypes = [...new Set(mixedContent.parts.map((p) => p.type))];
 
     return {
       text: result.response.text(),
@@ -564,10 +567,7 @@ Focus on:
 
 Be thorough but concise. Return ONLY valid JSON.`;
 
-    const result = await this.analyzeImage(
-      { source: 'file', data: imagePath },
-      prompt
-    );
+    const result = await this.analyzeImage({ source: 'file', data: imagePath }, prompt);
 
     let analysis: ScreenshotAnalysis;
     try {
@@ -600,7 +600,7 @@ Be thorough but concise. Return ONLY valid JSON.`;
 
       const errorMatches = result.text.match(/error[:\s]+([^\n]+)/gi);
       if (errorMatches) {
-        analysis.errors = errorMatches.map(e => ({
+        analysis.errors = errorMatches.map((e) => ({
           type: 'error' as const,
           message: e,
           severity: 'medium' as const,
@@ -613,7 +613,7 @@ Be thorough but concise. Return ONLY valid JSON.`;
 
   async compareScreenshots(
     beforePath: string,
-    afterPath: string
+    afterPath: string,
   ): Promise<{
     changesDetected: boolean;
     description: string;

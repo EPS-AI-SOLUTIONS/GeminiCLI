@@ -31,15 +31,18 @@ const COMPLEXITY_INDICATORS: Record<TaskEstimate['complexity'], string[]> = {
   simple: ['add', 'remove', 'change', 'update', 'fix simple'],
   moderate: ['implement', 'create', 'refactor small', 'test'],
   complex: ['build', 'migrate', 'integrate', 'refactor large', 'debug complex'],
-  massive: ['redesign', 'architecture', 'security audit', 'full rewrite']
+  massive: ['redesign', 'architecture', 'security audit', 'full rewrite'],
 };
 
-const COMPLEXITY_ESTIMATES: Record<TaskEstimate['complexity'], { agents: number; steps: number; tokens: number }> = {
+const COMPLEXITY_ESTIMATES: Record<
+  TaskEstimate['complexity'],
+  { agents: number; steps: number; tokens: number }
+> = {
   trivial: { agents: 1, steps: 1, tokens: 500 },
   simple: { agents: 1, steps: 2, tokens: 1500 },
   moderate: { agents: 2, steps: 4, tokens: 4000 },
   complex: { agents: 3, steps: 8, tokens: 10000 },
-  massive: { agents: 5, steps: 15, tokens: 25000 }
+  massive: { agents: 5, steps: 15, tokens: 25000 },
 };
 
 // ============================================================
@@ -57,7 +60,7 @@ export async function estimateTask(taskDescription: string): Promise<TaskEstimat
   const lowerTask = taskDescription.toLowerCase();
 
   for (const [level, keywords] of Object.entries(COMPLEXITY_INDICATORS)) {
-    if (keywords.some(kw => lowerTask.includes(kw))) {
+    if (keywords.some((kw) => lowerTask.includes(kw))) {
       complexity = level as TaskEstimate['complexity'];
       break;
     }
@@ -71,13 +74,20 @@ export async function estimateTask(taskDescription: string): Promise<TaskEstimat
   if (complexity !== 'trivial') {
     breakdown.push({ step: 'Analiza i planowanie', estimate: 'krotko' });
   }
-  breakdown.push({ step: 'Wykonanie glowne', estimate: complexity === 'trivial' ? 'blyskawicznie' : 'srednio' });
+  breakdown.push({
+    step: 'Wykonanie glowne',
+    estimate: complexity === 'trivial' ? 'blyskawicznie' : 'srednio',
+  });
   if (complexity === 'complex' || complexity === 'massive') {
     breakdown.push({ step: 'Weryfikacja i testy', estimate: 'srednio' });
     breakdown.push({ step: 'Poprawki i finalizacja', estimate: 'krotko' });
   }
 
-  console.log(chalk.gray(`[TaskEstimation] Complexity: ${complexity}, Agents: ~${estimate.agents}, Steps: ~${estimate.steps}`));
+  console.log(
+    chalk.gray(
+      `[TaskEstimation] Complexity: ${complexity}, Agents: ~${estimate.agents}, Steps: ~${estimate.steps}`,
+    ),
+  );
 
   return {
     complexity,
@@ -85,7 +95,7 @@ export async function estimateTask(taskDescription: string): Promise<TaskEstimat
     estimatedSteps: estimate.steps,
     estimatedTokens: estimate.tokens,
     confidence: 0.7,
-    breakdown
+    breakdown,
   };
 }
 
@@ -102,7 +112,7 @@ export function determineComplexity(taskDescription: string): TaskEstimate['comp
   const lowerTask = taskDescription.toLowerCase();
 
   for (const [level, keywords] of Object.entries(COMPLEXITY_INDICATORS)) {
-    if (keywords.some(kw => lowerTask.includes(kw))) {
+    if (keywords.some((kw) => lowerTask.includes(kw))) {
       return level as TaskEstimate['complexity'];
     }
   }
@@ -115,7 +125,11 @@ export function determineComplexity(taskDescription: string): TaskEstimate['comp
  * @param complexity - Complexity level
  * @returns Estimates object with agents, steps, tokens
  */
-export function getEstimatesForComplexity(complexity: TaskEstimate['complexity']): { agents: number; steps: number; tokens: number } {
+export function getEstimatesForComplexity(complexity: TaskEstimate['complexity']): {
+  agents: number;
+  steps: number;
+  tokens: number;
+} {
   return COMPLEXITY_ESTIMATES[complexity];
 }
 
@@ -126,5 +140,5 @@ export function getEstimatesForComplexity(complexity: TaskEstimate['complexity']
 export default {
   estimateTask,
   determineComplexity,
-  getEstimatesForComplexity
+  getEstimatesForComplexity,
 };

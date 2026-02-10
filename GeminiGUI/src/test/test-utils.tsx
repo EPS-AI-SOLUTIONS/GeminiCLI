@@ -5,18 +5,16 @@
  * Reusable utilities and helpers for testing React components
  */
 
-import React, { ReactElement } from 'react';
-import { render, RenderOptions } from '@testing-library/react';
+import { type RenderOptions, render } from '@testing-library/react';
+import type React from 'react';
+import type { ReactElement } from 'react';
 import { vi } from 'vitest';
 
 /**
  * Custom render function that includes common providers
  * Can be extended to include Redux, Theme providers, etc.
  */
-export function renderWithProviders(
-  ui: ReactElement,
-  options?: Omit<RenderOptions, 'wrapper'>
-) {
+export function renderWithProviders(ui: ReactElement, options?: Omit<RenderOptions, 'wrapper'>) {
   function Wrapper({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
@@ -163,5 +161,5 @@ export const builders = {
 };
 
 // Export React Testing Library utilities for convenience
-export { render, screen, fireEvent, waitFor } from '@testing-library/react';
+export { fireEvent, render, screen, waitFor } from '@testing-library/react';
 export { vi } from 'vitest';

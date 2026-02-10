@@ -7,7 +7,7 @@
  */
 
 import chalk from 'chalk';
-import { ErrorType } from './AdaptiveRetry.js';
+import type { ErrorType } from './AdaptiveRetry.js';
 
 // =============================================================================
 // TYPES
@@ -38,26 +38,26 @@ export const DEGRADATION_LEVELS: Record<DegradationLevelName, DegradationLevel> 
     level: 'full',
     features: ['all'],
     fallbackModel: 'gemini-3-pro-preview',
-    maxConcurrency: 12
+    maxConcurrency: 12,
   },
   reduced: {
     level: 'reduced',
     features: ['basic', 'mcp', 'ollama'],
     fallbackModel: 'gemini-3-pro-preview',
-    maxConcurrency: 6
+    maxConcurrency: 6,
   },
   minimal: {
     level: 'minimal',
     features: ['basic', 'ollama'],
     fallbackModel: 'gemini-3-pro-preview',
-    maxConcurrency: 3
+    maxConcurrency: 3,
   },
   offline: {
     level: 'offline',
     features: ['ollama'],
     fallbackModel: 'qwen3:4b',
-    maxConcurrency: 2
-  }
+    maxConcurrency: 2,
+  },
 };
 
 // =============================================================================
@@ -163,7 +163,7 @@ class GracefulDegradationManager {
       level: this.currentLevel,
       failureCount: this.failureCount,
       lastFailure: this.lastFailure,
-      recoveryAttempts: this.recoveryAttempts
+      recoveryAttempts: this.recoveryAttempts,
     };
   }
 

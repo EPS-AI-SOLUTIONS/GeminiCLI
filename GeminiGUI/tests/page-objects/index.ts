@@ -6,6 +6,6 @@
 
 export { BasePage } from './BasePage';
 export { ChatPage } from './ChatPage';
+export { MemoryPanel } from './MemoryPanel';
 export { SessionSidebar } from './SessionSidebar';
 export { SettingsModal } from './SettingsModal';
-export { MemoryPanel } from './MemoryPanel';

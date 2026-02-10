@@ -5,10 +5,10 @@
  * Comprehensive test suite for the MessageList component using Vitest + React Testing Library
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
-import { MessageList, type MessageListProps } from './MessageList';
+import { render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Message } from '../../types';
+import { MessageList, type MessageListProps } from './MessageList';
 
 // ============================================================================
 // MOCKS
@@ -50,7 +50,7 @@ vi.mock('../CodeBlock', () => ({
       data-testid="code-block"
       data-language={language}
       data-value={value}
-      onClick={() => onRun && onRun(value)}
+      onClick={() => onRun?.(value)}
     >
       <button data-testid="code-block-run">Run Code</button>
       <code>{value}</code>
@@ -62,8 +62,9 @@ vi.mock('../CodeBlock', () => ({
 vi.mock('react-markdown', () => ({
   default: ({ children, components }: any) => {
     // Simple check for code block in markdown string
-    const codeBlockMatch = typeof children === 'string' && children.match(/```(\w+)\n([\s\S]*?)\n```/);
-    
+    const codeBlockMatch =
+      typeof children === 'string' && children.match(/```(\w+)\n([\s\S]*?)\n```/);
+
     if (codeBlockMatch && components?.code) {
       const [_, language, code] = codeBlockMatch;
       return (
@@ -83,9 +84,7 @@ vi.mock('react-markdown', () => ({
         ) : (
           children
         )}
-        {components?.code && (
-          <span data-testid="markdown-code-component-available" />
-        )}
+        {components?.code && <span data-testid="markdown-code-component-available" />}
       </div>
     );
   },
@@ -160,20 +159,14 @@ describe('MessageList Component', () => {
         content: 'Hello, assistant!',
       });
 
-      render(
-        <MessageList {...defaultProps} messages={[userMessage]} />
-      );
+      render(<MessageList {...defaultProps} messages={[userMessage]} />);
 
       const messageDiv = screen.getByText('Hello, assistant!');
       expect(messageDiv).toBeInTheDocument();
 
       // Check parent container for user styling
       const messageContainer = messageDiv.closest('[class*="max-w"]');
-      expect(messageContainer).toHaveClass(
-        'bg-[var(--matrix-accent)]',
-        'text-black',
-        'font-bold'
-      );
+      expect(messageContainer).toHaveClass('bg-[var(--matrix-accent)]', 'text-black', 'font-bold');
     });
 
     it('should right-align user messages', () => {
@@ -182,9 +175,7 @@ describe('MessageList Component', () => {
         content: 'User question',
       });
 
-      const { container } = render(
-        <MessageList {...defaultProps} messages={[userMessage]} />
-      );
+      const { container } = render(<MessageList {...defaultProps} messages={[userMessage]} />);
 
       const flexContainer = container.querySelector('[class*="flex"][class*="justify-end"]');
       expect(flexContainer).toBeInTheDocument();
@@ -217,9 +208,7 @@ describe('MessageList Component', () => {
         content: 'This is an assistant response.',
       });
 
-      render(
-        <MessageList {...defaultProps} messages={[assistantMessage]} />
-      );
+      render(<MessageList {...defaultProps} messages={[assistantMessage]} />);
 
       const messageDiv = screen.getByText('This is an assistant response.');
       expect(messageDiv).toBeInTheDocument();
@@ -230,7 +219,7 @@ describe('MessageList Component', () => {
         'text-[var(--matrix-text)]',
         'border',
         'border-[var(--matrix-border)]',
-        'font-mono'
+        'font-mono',
       );
     });
 
@@ -240,9 +229,7 @@ describe('MessageList Component', () => {
         content: 'Assistant response',
       });
 
-      const { container } = render(
-        <MessageList {...defaultProps} messages={[assistantMessage]} />
-      );
+      const { container } = render(<MessageList {...defaultProps} messages={[assistantMessage]} />);
 
       const flexContainer = container.querySelector('[class*="flex"][class*="justify-start"]');
       expect(flexContainer).toBeInTheDocument();
@@ -255,9 +242,7 @@ describe('MessageList Component', () => {
         content: 'Here is some **bold** text and _italic_ text.',
       });
 
-      render(
-        <MessageList {...defaultProps} messages={[assistantMessage]} />
-      );
+      render(<MessageList {...defaultProps} messages={[assistantMessage]} />);
 
       const markdownBody = screen.getByTestId('markdown-body');
       expect(markdownBody).toBeInTheDocument();
@@ -269,9 +254,7 @@ describe('MessageList Component', () => {
         content: '```python\nprint("hello")\n```',
       });
 
-      render(
-        <MessageList {...defaultProps} messages={[assistantMessage]} />
-      );
+      render(<MessageList {...defaultProps} messages={[assistantMessage]} />);
 
       const codeBlock = screen.getByTestId('code-block');
       expect(codeBlock).toBeInTheDocument();
@@ -290,9 +273,7 @@ describe('MessageList Component', () => {
         content: 'System initialized successfully.',
       });
 
-      render(
-        <MessageList {...defaultProps} messages={[systemMessage]} />
-      );
+      render(<MessageList {...defaultProps} messages={[systemMessage]} />);
 
       const messageDiv = screen.getByText('System initialized successfully.');
       expect(messageDiv).toBeInTheDocument();
@@ -304,7 +285,7 @@ describe('MessageList Component', () => {
         'border',
         'border-blue-500/30',
         'font-mono',
-        'text-xs'
+        'text-xs',
       );
     });
 
@@ -314,9 +295,7 @@ describe('MessageList Component', () => {
         content: 'System message',
       });
 
-      render(
-        <MessageList {...defaultProps} messages={[systemMessage]} />
-      );
+      render(<MessageList {...defaultProps} messages={[systemMessage]} />);
 
       const terminalIcon = screen.getByTestId('icon-terminal');
       expect(terminalIcon).toBeInTheDocument();
@@ -328,14 +307,12 @@ describe('MessageList Component', () => {
         content: 'System output here',
       });
 
-      render(
-        <MessageList {...defaultProps} messages={[systemMessage]} />
-      );
+      render(<MessageList {...defaultProps} messages={[systemMessage]} />);
 
       const systemHeader = screen.getByText('SYSTEM OUTPUT');
       expect(systemHeader).toBeInTheDocument();
       expect(systemHeader).toHaveClass('font-bold');
-      
+
       const headerContainer = systemHeader.parentElement;
       expect(headerContainer).toHaveClass('text-blue-400');
     });
@@ -346,9 +323,7 @@ describe('MessageList Component', () => {
         content: 'System info',
       });
 
-      const { container } = render(
-        <MessageList {...defaultProps} messages={[systemMessage]} />
-      );
+      const { container } = render(<MessageList {...defaultProps} messages={[systemMessage]} />);
 
       const flexContainer = container.querySelector('[class*="flex"][class*="justify-start"]');
       expect(flexContainer).toBeInTheDocument();
@@ -367,11 +342,7 @@ describe('MessageList Component', () => {
       ];
 
       const { container } = render(
-        <MessageList
-          {...defaultProps}
-          messages={messages}
-          isStreaming={true}
-        />
+        <MessageList {...defaultProps} messages={messages} isStreaming={true} />,
       );
 
       const cursor = container.querySelector('[class*="animate-pulse"]');
@@ -380,16 +351,10 @@ describe('MessageList Component', () => {
     });
 
     it('should not show streaming cursor when isStreaming is false', () => {
-      const messages = [
-        createMessage({ role: 'assistant', content: 'Response complete' }),
-      ];
+      const messages = [createMessage({ role: 'assistant', content: 'Response complete' })];
 
       const { container } = render(
-        <MessageList
-          {...defaultProps}
-          messages={messages}
-          isStreaming={false}
-        />
+        <MessageList {...defaultProps} messages={messages} isStreaming={false} />,
       );
 
       const cursor = container.querySelector('[class*="animate-pulse"]');
@@ -409,11 +374,7 @@ describe('MessageList Component', () => {
       ];
 
       const { container } = render(
-        <MessageList
-          {...defaultProps}
-          messages={messages}
-          isStreaming={true}
-        />
+        <MessageList {...defaultProps} messages={messages} isStreaming={true} />,
       );
 
       // Count cursor elements - should only be one (on the last message)
@@ -434,11 +395,7 @@ describe('MessageList Component', () => {
       ];
 
       const { container } = render(
-        <MessageList
-          {...defaultProps}
-          messages={messages}
-          isStreaming={true}
-        />
+        <MessageList {...defaultProps} messages={messages} isStreaming={true} />,
       );
 
       const cursor = container.querySelector('[class*="animate-pulse"]');
@@ -463,7 +420,7 @@ describe('MessageList Component', () => {
           {...defaultProps}
           messages={[assistantMessage]}
           onExecuteCommand={onExecuteCommand}
-        />
+        />,
       );
 
       const codeBlockRunButton = screen.getByTestId('code-block-run');
@@ -486,7 +443,7 @@ describe('MessageList Component', () => {
           {...defaultProps}
           messages={[assistantMessage]}
           onExecuteCommand={onExecuteCommand}
-        />
+        />,
       );
 
       const codeBlockRunButton = screen.getByTestId('code-block-run');
@@ -511,9 +468,7 @@ describe('MessageList Component', () => {
         }),
       ];
 
-      render(
-        <MessageList {...defaultProps} messages={messages} />
-      );
+      render(<MessageList {...defaultProps} messages={messages} />);
 
       const codeBlocks = screen.getAllByTestId('code-block');
       expect(codeBlocks).toHaveLength(3);
@@ -530,11 +485,7 @@ describe('MessageList Component', () => {
       });
 
       const { container } = render(
-        <MessageList
-          {...defaultProps}
-          messages={[assistantMessage]}
-          onExecuteCommand={vi.fn()}
-        />
+        <MessageList {...defaultProps} messages={[assistantMessage]} onExecuteCommand={vi.fn()} />,
       );
 
       // Component should render without errors
@@ -553,9 +504,7 @@ describe('MessageList Component', () => {
         createMessage({ role: 'assistant', content: 'Response 1' }),
       ];
 
-      render(
-        <MessageList {...defaultProps} messages={messages} />
-      );
+      render(<MessageList {...defaultProps} messages={messages} />);
 
       const virtuosoList = screen.getByTestId('virtuoso-list');
       expect(virtuosoList).toBeInTheDocument();
@@ -568,9 +517,7 @@ describe('MessageList Component', () => {
         createMessage({ role: 'user', content: 'Message 2' }),
       ];
 
-      render(
-        <MessageList {...defaultProps} messages={messages} />
-      );
+      render(<MessageList {...defaultProps} messages={messages} />);
 
       const virtuosoItems = screen.getAllByTestId(/^virtuoso-item-/);
       expect(virtuosoItems).toHaveLength(3);
@@ -581,12 +528,10 @@ describe('MessageList Component', () => {
         createMessage({
           role: i % 2 === 0 ? 'user' : 'assistant',
           content: `Message ${i + 1}`,
-        })
+        }),
       );
 
-      render(
-        <MessageList {...defaultProps} messages={messages} />
-      );
+      render(<MessageList {...defaultProps} messages={messages} />);
 
       messages.forEach((msg) => {
         expect(screen.getByText(msg.content)).toBeInTheDocument();
@@ -607,9 +552,7 @@ describe('MessageList Component', () => {
         createMessage({ role: 'assistant', content: 'Fourth' }),
       ];
 
-      const { container } = render(
-        <MessageList {...defaultProps} messages={messages} />
-      );
+      const { container } = render(<MessageList {...defaultProps} messages={messages} />);
 
       const virtuosoItems = container.querySelectorAll('[data-testid^="virtuoso-item-"]');
       expect(virtuosoItems.length).toBe(4);
@@ -624,9 +567,7 @@ describe('MessageList Component', () => {
         createMessage({ role: 'user', content: 'Another question' }),
       ];
 
-      render(
-        <MessageList {...defaultProps} messages={messages} />
-      );
+      render(<MessageList {...defaultProps} messages={messages} />);
 
       expect(screen.getByText('System init')).toBeInTheDocument();
       expect(screen.getByText('User question')).toBeInTheDocument();
@@ -648,9 +589,7 @@ describe('MessageList Component', () => {
         content: longContent,
       });
 
-      render(
-        <MessageList {...defaultProps} messages={[message]} />
-      );
+      render(<MessageList {...defaultProps} messages={[message]} />);
 
       const messageDiv = screen.getByText(longContent);
       expect(messageDiv).toBeInTheDocument();
@@ -662,9 +601,7 @@ describe('MessageList Component', () => {
         content: 'Special chars: <>&"\'`',
       });
 
-      render(
-        <MessageList {...defaultProps} messages={[message]} />
-      );
+      render(<MessageList {...defaultProps} messages={[message]} />);
 
       // Should not throw and content should be rendered safely
       expect(screen.getByText(/Special chars:/)).toBeInTheDocument();
@@ -676,9 +613,7 @@ describe('MessageList Component', () => {
         content: '',
       });
 
-      const { container } = render(
-        <MessageList {...defaultProps} messages={[message]} />
-      );
+      const { container } = render(<MessageList {...defaultProps} messages={[message]} />);
 
       // Should render without crashing
       expect(container).toBeInTheDocument();
@@ -690,48 +625,24 @@ describe('MessageList Component', () => {
         content: '   \n\n   ',
       });
 
-      const { container } = render(
-        <MessageList {...defaultProps} messages={[message]} />
-      );
+      const { container } = render(<MessageList {...defaultProps} messages={[message]} />);
 
       expect(container).toBeInTheDocument();
     });
 
     it('should handle rapid isStreaming state changes', () => {
-      const messages = [
-        createMessage({ role: 'assistant', content: 'Response' }),
-      ];
+      const messages = [createMessage({ role: 'assistant', content: 'Response' })];
 
       const { rerender } = render(
-        <MessageList
-          {...defaultProps}
-          messages={messages}
-          isStreaming={false}
-        />
+        <MessageList {...defaultProps} messages={messages} isStreaming={false} />,
       );
 
-      rerender(
-        <MessageList
-          {...defaultProps}
-          messages={messages}
-          isStreaming={true}
-        />
-      );
+      rerender(<MessageList {...defaultProps} messages={messages} isStreaming={true} />);
 
-      rerender(
-        <MessageList
-          {...defaultProps}
-          messages={messages}
-          isStreaming={false}
-        />
-      );
+      rerender(<MessageList {...defaultProps} messages={messages} isStreaming={false} />);
 
       const { container } = render(
-        <MessageList
-          {...defaultProps}
-          messages={messages}
-          isStreaming={true}
-        />
+        <MessageList {...defaultProps} messages={messages} isStreaming={true} />,
       );
 
       // Should not crash with rapid changes
@@ -745,13 +656,9 @@ describe('MessageList Component', () => {
 
   describe('Props Changes', () => {
     it('should update when messages array changes', () => {
-      const initialMessages = [
-        createMessage({ role: 'user', content: 'Initial' }),
-      ];
+      const initialMessages = [createMessage({ role: 'user', content: 'Initial' })];
 
-      const { rerender } = render(
-        <MessageList {...defaultProps} messages={initialMessages} />
-      );
+      const { rerender } = render(<MessageList {...defaultProps} messages={initialMessages} />);
 
       expect(screen.getByText('Initial')).toBeInTheDocument();
 
@@ -760,9 +667,7 @@ describe('MessageList Component', () => {
         createMessage({ role: 'assistant', content: 'Updated' }),
       ];
 
-      rerender(
-        <MessageList {...defaultProps} messages={updatedMessages} />
-      );
+      rerender(<MessageList {...defaultProps} messages={updatedMessages} />);
 
       expect(screen.getByText('Updated')).toBeInTheDocument();
     });
@@ -779,19 +684,11 @@ describe('MessageList Component', () => {
       const onExecuteCommand2 = vi.fn();
 
       const { rerender } = render(
-        <MessageList
-          {...defaultProps}
-          messages={messages}
-          onExecuteCommand={onExecuteCommand1}
-        />
+        <MessageList {...defaultProps} messages={messages} onExecuteCommand={onExecuteCommand1} />,
       );
 
       rerender(
-        <MessageList
-          {...defaultProps}
-          messages={messages}
-          onExecuteCommand={onExecuteCommand2}
-        />
+        <MessageList {...defaultProps} messages={messages} onExecuteCommand={onExecuteCommand2} />,
       );
 
       // Both should be valid, component should not crash
@@ -799,38 +696,26 @@ describe('MessageList Component', () => {
     });
 
     it('should handle transition from empty to populated message list', () => {
-      const { rerender } = render(
-        <MessageList {...defaultProps} messages={[]} />
-      );
+      const { rerender } = render(<MessageList {...defaultProps} messages={[]} />);
 
       expect(screen.getByText('Oczekiwanie na dane lub plik...')).toBeInTheDocument();
 
-      const messages = [
-        createMessage({ role: 'user', content: 'New message' }),
-      ];
+      const messages = [createMessage({ role: 'user', content: 'New message' })];
 
-      rerender(
-        <MessageList {...defaultProps} messages={messages} />
-      );
+      rerender(<MessageList {...defaultProps} messages={messages} />);
 
       expect(screen.getByText('New message')).toBeInTheDocument();
       expect(screen.queryByText('Oczekiwanie na dane lub plik...')).not.toBeInTheDocument();
     });
 
     it('should handle transition from populated to empty message list', () => {
-      const messages = [
-        createMessage({ role: 'user', content: 'Message' }),
-      ];
+      const messages = [createMessage({ role: 'user', content: 'Message' })];
 
-      const { rerender } = render(
-        <MessageList {...defaultProps} messages={messages} />
-      );
+      const { rerender } = render(<MessageList {...defaultProps} messages={messages} />);
 
       expect(screen.getByText('Message')).toBeInTheDocument();
 
-      rerender(
-        <MessageList {...defaultProps} messages={[]} />
-      );
+      rerender(<MessageList {...defaultProps} messages={[]} />);
 
       expect(screen.getByText('Oczekiwanie na dane lub plik...')).toBeInTheDocument();
       expect(screen.queryByText('Message')).not.toBeInTheDocument();
@@ -848,9 +733,7 @@ describe('MessageList Component', () => {
         content: 'Accessible message',
       });
 
-      render(
-        <MessageList {...defaultProps} messages={[message]} />
-      );
+      render(<MessageList {...defaultProps} messages={[message]} />);
 
       // Content should be readable by screen readers
       expect(screen.getByText('Accessible message')).toBeInTheDocument();
@@ -862,9 +745,7 @@ describe('MessageList Component', () => {
         content: 'System message',
       });
 
-      render(
-        <MessageList {...defaultProps} messages={[message]} />
-      );
+      render(<MessageList {...defaultProps} messages={[message]} />);
 
       const header = screen.getByText('SYSTEM OUTPUT');
       expect(header).toBeInTheDocument();

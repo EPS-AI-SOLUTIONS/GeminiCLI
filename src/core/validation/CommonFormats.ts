@@ -7,29 +7,29 @@ import type { FormatSpec, FormatType, JsonSchema } from './types.js';
 export const CommonFormats = {
   json: (schema?: JsonSchema): FormatSpec => ({
     type: 'json',
-    schema
+    schema,
   }),
 
   markdown: (requiredSections?: string[]): FormatSpec => ({
     type: 'markdown',
-    requiredSections
+    requiredSections,
   }),
 
   code: (language?: string): FormatSpec => ({
     type: 'code',
-    codeLanguage: language
+    codeLanguage: language,
   }),
 
   bulletList: (minItems?: number): FormatSpec => ({
     type: 'list',
     listStyle: 'bullet',
-    minItems
+    minItems,
   }),
 
   numberedList: (minItems?: number): FormatSpec => ({
     type: 'list',
     listStyle: 'numbered',
-    minItems
+    minItems,
   }),
 
   taskList: (): FormatSpec => ({
@@ -43,10 +43,10 @@ export const CommonFormats = {
           id: { type: 'number' },
           task: { type: 'string', minLength: 1 },
           priority: { type: 'string', enum: ['critical', 'high', 'medium', 'low'] },
-          status: { type: 'string', enum: ['pending', 'in_progress', 'completed'] }
-        }
-      }
-    }
+          status: { type: 'string', enum: ['pending', 'in_progress', 'completed'] },
+        },
+      },
+    },
   }),
 
   apiResponse: (): FormatSpec => ({
@@ -58,20 +58,20 @@ export const CommonFormats = {
         success: { type: 'boolean' },
         data: {},
         error: { type: 'string' },
-        message: { type: 'string' }
-      }
-    }
+        message: { type: 'string' },
+      },
+    },
   }),
 
   codeReview: (): FormatSpec => ({
     type: 'markdown',
-    requiredSections: ['Summary', 'Issues', 'Suggestions']
+    requiredSections: ['Summary', 'Issues', 'Suggestions'],
   }),
 
   analysisReport: (): FormatSpec => ({
     type: 'markdown',
-    requiredSections: ['Overview', 'Findings', 'Recommendations']
-  })
+    requiredSections: ['Overview', 'Findings', 'Recommendations'],
+  }),
 };
 
 /**
@@ -88,7 +88,12 @@ export function createSpec(type: FormatType, options?: Partial<FormatSpec>): For
     case 'code':
       return { ...baseSpec, codeLanguage: options?.codeLanguage, ...options };
     case 'list':
-      return { ...baseSpec, listStyle: options?.listStyle || 'both', minItems: options?.minItems, ...options };
+      return {
+        ...baseSpec,
+        listStyle: options?.listStyle || 'both',
+        minItems: options?.minItems,
+        ...options,
+      };
     default:
       return { ...baseSpec, ...options };
   }

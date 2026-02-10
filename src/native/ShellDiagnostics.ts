@@ -8,12 +8,11 @@
  * - System resource usage
  */
 
-import { spawn, execSync } from 'child_process';
-import os from 'os';
-import path from 'path';
+import { execSync, spawn } from 'node:child_process';
+import os from 'node:os';
+import path from 'node:path';
 import chalk from 'chalk';
-import { NativeShell } from './nativeshell/index.js';
-import type { ShellType, ProcessInfo } from './nativeshell/index.js';
+import type { NativeShell, ShellType } from './nativeshell/index.js';
 
 // ============================================================
 // Types
@@ -268,11 +267,14 @@ export interface PerformanceReport {
   }>;
 
   /** Shell usage statistics */
-  shellUsage: Record<string, {
-    count: number;
-    avgDuration: number;
-    successRate: number;
-  }>;
+  shellUsage: Record<
+    string,
+    {
+      count: number;
+      avgDuration: number;
+      successRate: number;
+    }
+  >;
 
   /** Recommendations based on analysis */
   recommendations: string[];
@@ -332,9 +334,9 @@ export class ShellDiagnostics {
         path: process.env.PATH || '',
         shellVar: isWindows ? process.env.COMSPEC : process.env.SHELL,
         home: os.homedir(),
-        user: os.userInfo().username
+        user: os.userInfo().username,
       },
-      limits
+      limits,
     };
   }
 
@@ -348,16 +350,31 @@ export class ShellDiagnostics {
     if (isWindows) {
       // Windows shells
       shells.push(await this.checkShell('cmd', 'Command Prompt', 'cmd.exe', ['cmd', '/?']));
-      shells.push(await this.checkShell('powershell', 'Windows PowerShell', 'powershell.exe', ['powershell', '-Command', '$PSVersionTable.PSVersion.ToString()']));
-      shells.push(await this.checkShell('pwsh', 'PowerShell Core', 'pwsh.exe', ['pwsh', '-Command', '$PSVersionTable.PSVersion.ToString()']));
+      shells.push(
+        await this.checkShell('powershell', 'Windows PowerShell', 'powershell.exe', [
+          'powershell',
+          '-Command',
+          '$PSVersionTable.PSVersion.ToString()',
+        ]),
+      );
+      shells.push(
+        await this.checkShell('pwsh', 'PowerShell Core', 'pwsh.exe', [
+          'pwsh',
+          '-Command',
+          '$PSVersionTable.PSVersion.ToString()',
+        ]),
+      );
 
       // Git Bash
       const gitBashPaths = [
         'C:\\Program Files\\Git\\bin\\bash.exe',
-        'C:\\Program Files (x86)\\Git\\bin\\bash.exe'
+        'C:\\Program Files (x86)\\Git\\bin\\bash.exe',
       ];
       for (const gitBashPath of gitBashPaths) {
-        const gitBash = await this.checkShell('bash', 'Git Bash', gitBashPath, [gitBashPath, '--version']);
+        const gitBash = await this.checkShell('bash', 'Git Bash', gitBashPath, [
+          gitBashPath,
+          '--version',
+        ]);
         if (gitBash.available) {
           shells.push(gitBash);
           break;
@@ -365,7 +382,9 @@ export class ShellDiagnostics {
       }
 
       // WSL Bash
-      shells.push(await this.checkShell('bash', 'WSL Bash', 'wsl.exe', ['wsl', 'bash', '--version']));
+      shells.push(
+        await this.checkShell('bash', 'WSL Bash', 'wsl.exe', ['wsl', 'bash', '--version']),
+      );
     } else {
       // Unix shells
       shells.push(await this.checkShell('bash', 'Bash', '/bin/bash', ['bash', '--version']));
@@ -377,9 +396,7 @@ export class ShellDiagnostics {
     }
 
     // Mark default shell
-    const defaultShell = os.platform() === 'win32'
-      ? process.env.COMSPEC
-      : process.env.SHELL;
+    const defaultShell = os.platform() === 'win32' ? process.env.COMSPEC : process.env.SHELL;
 
     for (const shell of shells) {
       if (shell.path && defaultShell && shell.path.includes(path.basename(defaultShell))) {
@@ -397,7 +414,7 @@ export class ShellDiagnostics {
     type: ShellType,
     name: string,
     shellPath: string,
-    versionCommand: string[]
+    versionCommand: string[],
   ): Promise<ShellInstallInfo> {
     const result: ShellInstallInfo = {
       type,
@@ -406,7 +423,7 @@ export class ShellDiagnostics {
       available: false,
       version: null,
       isDefault: false,
-      features: []
+      features: [],
     };
 
     try {
@@ -415,7 +432,7 @@ export class ShellDiagnostics {
         encoding: 'utf-8',
         timeout: 5000,
         windowsHide: true,
-        stdio: ['pipe', 'pipe', 'pipe']
+        stdio: ['pipe', 'pipe', 'pipe'],
       }).trim();
 
       result.available = true;
@@ -438,10 +455,10 @@ export class ShellDiagnostics {
   private parseVersion(output: string): string {
     // Extract version number from various formats
     const patterns = [
-      /(\d+\.\d+\.\d+)/,      // Standard semver
-      /(\d+\.\d+)/,           // Major.minor
-      /version\s+(\S+)/i,     // "version X.Y.Z"
-      /v(\d+\.\d+)/i          // "vX.Y"
+      /(\d+\.\d+\.\d+)/, // Standard semver
+      /(\d+\.\d+)/, // Major.minor
+      /version\s+(\S+)/i, // "version X.Y.Z"
+      /v(\d+\.\d+)/i, // "vX.Y"
     ];
 
     for (const pattern of patterns) {
@@ -470,13 +487,14 @@ export class ShellDiagnostics {
         }
         break;
 
-      case 'bash':
+      case 'bash': {
         features.push('scripting', 'job-control', 'arrays');
-        const majorVersion = parseInt(version.split('.')[0]);
+        const majorVersion = parseInt(version.split('.')[0], 10);
         if (majorVersion >= 4) {
           features.push('associative-arrays', 'coprocesses');
         }
         break;
+      }
 
       case 'zsh':
         features.push('scripting', 'completion', 'themes', 'plugins');
@@ -501,9 +519,9 @@ export class ShellDiagnostics {
     const isWindows = os.platform() === 'win32';
 
     return {
-      maxCommandLength: isWindows ? 8191 : 131072,  // Windows cmd limit vs Linux
+      maxCommandLength: isWindows ? 8191 : 131072, // Windows cmd limit vs Linux
       maxEnvSize: isWindows ? 32767 : 131072,
-      maxFileDescriptors: isWindows ? null : this.getMaxFileDescriptors()
+      maxFileDescriptors: isWindows ? null : this.getMaxFileDescriptors(),
     };
   }
 
@@ -515,7 +533,7 @@ export class ShellDiagnostics {
 
     try {
       const result = execSync('ulimit -n', { encoding: 'utf-8', timeout: 1000 });
-      return parseInt(result.trim());
+      return parseInt(result.trim(), 10);
     } catch {
       return null;
     }
@@ -538,14 +556,16 @@ export class ShellDiagnostics {
     const systemInfo = await this.getSystemInfo();
 
     // Check each available shell
-    for (const shellInfo of systemInfo.shells.filter(s => s.available)) {
+    for (const shellInfo of systemInfo.shells.filter((s) => s.available)) {
       const check = await this.testShellResponse(shellInfo);
       shellChecks.push(check);
 
       if (!check.healthy) {
         issues.push(`Shell ${shellInfo.name} is not responding properly: ${check.error}`);
       } else if (check.responseTimeMs > 1000) {
-        recommendations.push(`Shell ${shellInfo.name} is slow (${check.responseTimeMs}ms). Consider checking system load.`);
+        recommendations.push(
+          `Shell ${shellInfo.name} is slow (${check.responseTimeMs}ms). Consider checking system load.`,
+        );
       }
     }
 
@@ -566,7 +586,7 @@ export class ShellDiagnostics {
       recommendations.push('Consider closing unused applications');
     }
 
-    const healthy = shellChecks.some(c => c.healthy) && issues.length === 0;
+    const healthy = shellChecks.some((c) => c.healthy) && issues.length === 0;
 
     return {
       healthy,
@@ -575,14 +595,16 @@ export class ShellDiagnostics {
       processManager,
       resources,
       issues,
-      recommendations
+      recommendations,
     };
   }
 
   /**
    * Test shell response time and health
    */
-  private async testShellResponse(shellInfo: ShellInstallInfo): Promise<HealthCheckResult['shellChecks'][0]> {
+  private async testShellResponse(
+    shellInfo: ShellInstallInfo,
+  ): Promise<HealthCheckResult['shellChecks'][0]> {
     const startTime = Date.now();
 
     try {
@@ -590,10 +612,14 @@ export class ShellDiagnostics {
       const testCommand = isWindows ? 'echo ok' : 'echo ok';
 
       await new Promise<void>((resolve, reject) => {
-        const proc = spawn(shellInfo.path || '', isWindows ? ['/c', testCommand] : ['-c', testCommand], {
-          timeout: 5000,
-          windowsHide: true
-        });
+        const proc = spawn(
+          shellInfo.path || '',
+          isWindows ? ['/c', testCommand] : ['-c', testCommand],
+          {
+            timeout: 5000,
+            windowsHide: true,
+          },
+        );
 
         proc.on('close', (code) => {
           if (code === 0) resolve();
@@ -606,14 +632,14 @@ export class ShellDiagnostics {
       return {
         shell: shellInfo.type,
         healthy: true,
-        responseTimeMs: Date.now() - startTime
+        responseTimeMs: Date.now() - startTime,
       };
     } catch (err: any) {
       return {
         shell: shellInfo.type,
         healthy: false,
         responseTimeMs: Date.now() - startTime,
-        error: err.message
+        error: err.message,
       };
     }
   }
@@ -623,8 +649,8 @@ export class ShellDiagnostics {
    */
   private checkProcessManagerHealth(): HealthCheckResult['processManager'] {
     const processes = this.shell?.listProcesses() || [];
-    const running = processes.filter(p => p.status === 'running').length;
-    const zombie = processes.filter(p => {
+    const running = processes.filter((p) => p.status === 'running').length;
+    const zombie = processes.filter((p) => {
       // Detect zombie processes (started long ago but not running)
       const age = Date.now() - p.startTime.getTime();
       return p.status === 'running' && age > 3600000 && !p.endTime;
@@ -636,7 +662,7 @@ export class ShellDiagnostics {
       healthy: zombie === 0,
       runningProcesses: running,
       zombieProcesses: zombie,
-      memoryUsage: memoryUsage.heapUsed
+      memoryUsage: memoryUsage.heapUsed,
     };
   }
 
@@ -645,17 +671,18 @@ export class ShellDiagnostics {
    */
   private getResourceUsage(): HealthCheckResult['resources'] {
     const cpus = os.cpus();
-    const totalCpu = cpus.reduce((acc, cpu) => {
-      const total = Object.values(cpu.times).reduce((a, b) => a + b, 0);
-      const idle = cpu.times.idle;
-      return acc + ((total - idle) / total) * 100;
-    }, 0) / cpus.length;
+    const totalCpu =
+      cpus.reduce((acc, cpu) => {
+        const total = Object.values(cpu.times).reduce((a, b) => a + b, 0);
+        const idle = cpu.times.idle;
+        return acc + ((total - idle) / total) * 100;
+      }, 0) / cpus.length;
 
     return {
       cpuUsage: totalCpu,
       memoryAvailable: os.freemem(),
       memoryTotal: os.totalmem(),
-      loadAverage: os.loadavg()
+      loadAverage: os.loadavg(),
     };
   }
 
@@ -674,7 +701,7 @@ export class ShellDiagnostics {
       completed: 0,
       error: 0,
       killed: 0,
-      zombie: 0
+      zombie: 0,
     };
 
     const durations: number[] = [];
@@ -693,17 +720,20 @@ export class ShellDiagnostics {
       totalOutputSize += proc.output.join('').length;
     }
 
-    const executionTime = durations.length > 0 ? {
-      total: durations.reduce((a, b) => a + b, 0),
-      average: durations.reduce((a, b) => a + b, 0) / durations.length,
-      min: Math.min(...durations),
-      max: Math.max(...durations)
-    } : {
-      total: 0,
-      average: 0,
-      min: 0,
-      max: 0
-    };
+    const executionTime =
+      durations.length > 0
+        ? {
+            total: durations.reduce((a, b) => a + b, 0),
+            average: durations.reduce((a, b) => a + b, 0) / durations.length,
+            min: Math.min(...durations),
+            max: Math.max(...durations),
+          }
+        : {
+            total: 0,
+            average: 0,
+            min: 0,
+            max: 0,
+          };
 
     const memoryUsage = process.memoryUsage();
 
@@ -713,15 +743,15 @@ export class ShellDiagnostics {
       memoryUsage: {
         total: totalOutputSize,
         average: processes.length > 0 ? totalOutputSize / processes.length : 0,
-        peak: totalOutputSize  // Simplified - would need tracking for true peak
+        peak: totalOutputSize, // Simplified - would need tracking for true peak
       },
       executionTime,
       systemProcesses: {
         pid: process.pid,
         memoryUsed: memoryUsage.heapUsed,
         cpuTime: process.cpuUsage().user + process.cpuUsage().system,
-        uptime: process.uptime() * 1000
-      }
+        uptime: process.uptime() * 1000,
+      },
     };
   }
 
@@ -735,7 +765,7 @@ export class ShellDiagnostics {
   recordExecution(record: Omit<ExecutionRecord, 'id'>): ExecutionRecord {
     const execution: ExecutionRecord = {
       id: `exec_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      ...record
+      ...record,
     };
 
     this.executionHistory.push(execution);
@@ -752,12 +782,12 @@ export class ShellDiagnostics {
    * Update an execution record (e.g., when completed)
    */
   updateExecution(id: string, updates: Partial<ExecutionRecord>): ExecutionRecord | null {
-    const index = this.executionHistory.findIndex(e => e.id === id);
+    const index = this.executionHistory.findIndex((e) => e.id === id);
     if (index === -1) return null;
 
     this.executionHistory[index] = {
       ...this.executionHistory[index],
-      ...updates
+      ...updates,
     };
 
     return this.executionHistory[index];
@@ -784,24 +814,24 @@ export class ShellDiagnostics {
       const filter = options.filter;
 
       if (filter.shell) {
-        history = history.filter(e => e.shell === filter.shell);
+        history = history.filter((e) => e.shell === filter.shell);
       }
 
       if (filter.success !== undefined) {
-        history = history.filter(e => e.success === filter.success);
+        history = history.filter((e) => e.success === filter.success);
       }
 
       if (filter.command) {
         const pattern = filter.command.toLowerCase();
-        history = history.filter(e => e.command.toLowerCase().includes(pattern));
+        history = history.filter((e) => e.command.toLowerCase().includes(pattern));
       }
 
       if (filter.startTime) {
-        history = history.filter(e => e.startTime >= filter.startTime!);
+        history = history.filter((e) => e.startTime >= filter.startTime!);
       }
 
       if (filter.endTime) {
-        history = history.filter(e => e.startTime <= filter.endTime!);
+        history = history.filter((e) => e.startTime <= filter.endTime!);
       }
     }
 
@@ -841,27 +871,24 @@ export class ShellDiagnostics {
     const topN = options?.topN || 10;
 
     // Filter history to period
-    const periodHistory = this.executionHistory.filter(e =>
-      e.startTime >= startTime && e.startTime <= endTime
+    const periodHistory = this.executionHistory.filter(
+      (e) => e.startTime >= startTime && e.startTime <= endTime,
     );
 
     // Calculate success and timeout rates
-    const completed = periodHistory.filter(e => e.success !== undefined);
-    const successes = completed.filter(e => e.success);
-    const timeouts = periodHistory.filter(e => e.timedOut);
+    const completed = periodHistory.filter((e) => e.success !== undefined);
+    const successes = completed.filter((e) => e.success);
+    const timeouts = periodHistory.filter((e) => e.timedOut);
 
-    const successRate = completed.length > 0
-      ? (successes.length / completed.length) * 100
-      : 100;
+    const successRate = completed.length > 0 ? (successes.length / completed.length) * 100 : 100;
 
-    const timeoutRate = periodHistory.length > 0
-      ? (timeouts.length / periodHistory.length) * 100
-      : 0;
+    const timeoutRate =
+      periodHistory.length > 0 ? (timeouts.length / periodHistory.length) * 100 : 0;
 
     // Calculate execution time statistics
     const durations = periodHistory
-      .filter(e => e.durationMs !== undefined)
-      .map(e => e.durationMs!);
+      .filter((e) => e.durationMs !== undefined)
+      .map((e) => e.durationMs!);
 
     const executionTime = this.calculateTimeStats(durations);
 
@@ -876,7 +903,7 @@ export class ShellDiagnostics {
       successRate,
       timeoutRate,
       executionTime,
-      commandStats.problematic
+      commandStats.problematic,
     );
 
     return {
@@ -884,7 +911,7 @@ export class ShellDiagnostics {
       period: {
         start: startTime,
         end: endTime,
-        durationMs: endTime.getTime() - startTime.getTime()
+        durationMs: endTime.getTime() - startTime.getTime(),
       },
       totalExecutions: periodHistory.length,
       successRate,
@@ -894,7 +921,7 @@ export class ShellDiagnostics {
       slowestCommands: commandStats.slowest.slice(0, topN),
       problematicCommands: commandStats.problematic.slice(0, topN),
       shellUsage,
-      recommendations
+      recommendations,
     };
   }
 
@@ -915,7 +942,7 @@ export class ShellDiagnostics {
       p95: sorted[Math.floor(sorted.length * 0.95)],
       p99: sorted[Math.floor(sorted.length * 0.99)],
       min: sorted[0],
-      max: sorted[sorted.length - 1]
+      max: sorted[sorted.length - 1],
     };
   }
 
@@ -935,52 +962,56 @@ export class ShellDiagnostics {
       if (!commandGroups.has(baseCommand)) {
         commandGroups.set(baseCommand, []);
       }
-      commandGroups.get(baseCommand)!.push(exec);
+      commandGroups.get(baseCommand)?.push(exec);
     }
 
     // Calculate stats for each command
     const stats = Array.from(commandGroups.entries()).map(([command, executions]) => {
-      const completed = executions.filter(e => e.success !== undefined);
-      const successes = completed.filter(e => e.success);
-      const durations = executions.filter(e => e.durationMs).map(e => e.durationMs!);
-      const errors = executions.filter(e => e.error).map(e => e.error!);
+      const completed = executions.filter((e) => e.success !== undefined);
+      const successes = completed.filter((e) => e.success);
+      const durations = executions.filter((e) => e.durationMs).map((e) => e.durationMs!);
+      const errors = executions.filter((e) => e.error).map((e) => e.error!);
 
       return {
         command,
         count: executions.length,
-        avgDuration: durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : 0,
+        avgDuration:
+          durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : 0,
         maxDuration: durations.length > 0 ? Math.max(...durations) : 0,
         successRate: completed.length > 0 ? (successes.length / completed.length) * 100 : 100,
-        failureRate: completed.length > 0 ? ((completed.length - successes.length) / completed.length) * 100 : 0,
-        commonErrors: [...new Set(errors)].slice(0, 3)
+        failureRate:
+          completed.length > 0
+            ? ((completed.length - successes.length) / completed.length) * 100
+            : 0,
+        commonErrors: [...new Set(errors)].slice(0, 3),
       };
     });
 
     return {
       top: stats
         .sort((a, b) => b.count - a.count)
-        .map(s => ({
+        .map((s) => ({
           command: s.command,
           count: s.count,
           avgDuration: s.avgDuration,
-          successRate: s.successRate
+          successRate: s.successRate,
         })),
       slowest: stats
-        .filter(s => s.avgDuration > 0)
+        .filter((s) => s.avgDuration > 0)
         .sort((a, b) => b.maxDuration - a.maxDuration)
-        .map(s => ({
+        .map((s) => ({
           command: s.command,
           maxDuration: s.maxDuration,
-          avgDuration: s.avgDuration
+          avgDuration: s.avgDuration,
         })),
       problematic: stats
-        .filter(s => s.failureRate > 0)
+        .filter((s) => s.failureRate > 0)
         .sort((a, b) => b.failureRate - a.failureRate)
-        .map(s => ({
+        .map((s) => ({
           command: s.command,
           failureRate: s.failureRate,
-          commonErrors: s.commonErrors
-        }))
+          commonErrors: s.commonErrors,
+        })),
     };
   }
 
@@ -1002,18 +1033,16 @@ export class ShellDiagnostics {
 
     // Calculate averages
     for (const shell of Object.keys(usage)) {
-      const shellHistory = history.filter(e => (e.shell || 'unknown') === shell);
-      const durations = shellHistory.filter(e => e.durationMs).map(e => e.durationMs!);
-      const completed = shellHistory.filter(e => e.success !== undefined);
-      const successes = completed.filter(e => e.success);
+      const shellHistory = history.filter((e) => (e.shell || 'unknown') === shell);
+      const durations = shellHistory.filter((e) => e.durationMs).map((e) => e.durationMs!);
+      const completed = shellHistory.filter((e) => e.success !== undefined);
+      const successes = completed.filter((e) => e.success);
 
-      usage[shell].avgDuration = durations.length > 0
-        ? durations.reduce((a, b) => a + b, 0) / durations.length
-        : 0;
+      usage[shell].avgDuration =
+        durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : 0;
 
-      usage[shell].successRate = completed.length > 0
-        ? (successes.length / completed.length) * 100
-        : 100;
+      usage[shell].successRate =
+        completed.length > 0 ? (successes.length / completed.length) * 100 : 100;
     }
 
     return usage;
@@ -1026,25 +1055,33 @@ export class ShellDiagnostics {
     successRate: number,
     timeoutRate: number,
     executionTime: PerformanceReport['executionTime'],
-    problematicCommands: PerformanceReport['problematicCommands']
+    problematicCommands: PerformanceReport['problematicCommands'],
   ): string[] {
     const recommendations: string[] = [];
 
     if (successRate < 90) {
-      recommendations.push(`Success rate is low (${successRate.toFixed(1)}%). Review failed commands.`);
+      recommendations.push(
+        `Success rate is low (${successRate.toFixed(1)}%). Review failed commands.`,
+      );
     }
 
     if (timeoutRate > 5) {
-      recommendations.push(`High timeout rate (${timeoutRate.toFixed(1)}%). Consider increasing timeouts or optimizing commands.`);
+      recommendations.push(
+        `High timeout rate (${timeoutRate.toFixed(1)}%). Consider increasing timeouts or optimizing commands.`,
+      );
     }
 
     if (executionTime.p95 > 10000) {
-      recommendations.push(`95th percentile execution time is high (${(executionTime.p95 / 1000).toFixed(1)}s). Consider optimizing slow commands.`);
+      recommendations.push(
+        `95th percentile execution time is high (${(executionTime.p95 / 1000).toFixed(1)}s). Consider optimizing slow commands.`,
+      );
     }
 
     if (problematicCommands.length > 0) {
       const topProblematic = problematicCommands[0];
-      recommendations.push(`Command '${topProblematic.command}' has ${topProblematic.failureRate.toFixed(1)}% failure rate.`);
+      recommendations.push(
+        `Command '${topProblematic.command}' has ${topProblematic.failureRate.toFixed(1)}% failure rate.`,
+      );
     }
 
     if (executionTime.max > executionTime.average * 10) {
@@ -1089,10 +1126,18 @@ export class ShellDiagnostics {
     console.log(chalk.white('Shell Var: ') + chalk.gray(info.environment.shellVar || 'N/A'));
 
     console.log(chalk.cyan('\n--- Limits ---'));
-    console.log(chalk.white('Max Command Length: ') + chalk.gray(info.limits.maxCommandLength.toLocaleString()));
-    console.log(chalk.white('Max Env Size: ') + chalk.gray(info.limits.maxEnvSize.toLocaleString()));
+    console.log(
+      chalk.white('Max Command Length: ') +
+        chalk.gray(info.limits.maxCommandLength.toLocaleString()),
+    );
+    console.log(
+      chalk.white('Max Env Size: ') + chalk.gray(info.limits.maxEnvSize.toLocaleString()),
+    );
     if (info.limits.maxFileDescriptors) {
-      console.log(chalk.white('Max File Descriptors: ') + chalk.gray(info.limits.maxFileDescriptors.toLocaleString()));
+      console.log(
+        chalk.white('Max File Descriptors: ') +
+          chalk.gray(info.limits.maxFileDescriptors.toLocaleString()),
+      );
     }
 
     console.log(chalk.cyan('\n========================================\n'));
@@ -1106,9 +1151,7 @@ export class ShellDiagnostics {
     console.log(chalk.cyan('  SHELL HEALTH CHECK'));
     console.log(chalk.cyan('========================================\n'));
 
-    const overallStatus = result.healthy
-      ? chalk.green('[HEALTHY]')
-      : chalk.red('[UNHEALTHY]');
+    const overallStatus = result.healthy ? chalk.green('[HEALTHY]') : chalk.red('[UNHEALTHY]');
 
     console.log(chalk.white('Status: ') + overallStatus);
     console.log(chalk.white('Time: ') + chalk.gray(result.timestamp.toISOString()));
@@ -1127,16 +1170,26 @@ export class ShellDiagnostics {
     console.log(`${pmStatus} Process Manager`);
     console.log(chalk.gray(`    Running: ${result.processManager.runningProcesses}`));
     console.log(chalk.gray(`    Zombie: ${result.processManager.zombieProcesses}`));
-    console.log(chalk.gray(`    Memory: ${(result.processManager.memoryUsage / 1024 / 1024).toFixed(1)} MB`));
+    console.log(
+      chalk.gray(`    Memory: ${(result.processManager.memoryUsage / 1024 / 1024).toFixed(1)} MB`),
+    );
 
     console.log(chalk.cyan('\n--- Resources ---'));
-    console.log(chalk.white('CPU Usage: ') + chalk.gray(`${result.resources.cpuUsage.toFixed(1)}%`));
-    console.log(chalk.white('Memory: ') + chalk.gray(
-      `${(result.resources.memoryAvailable / 1024 / 1024 / 1024).toFixed(1)} GB free / ` +
-      `${(result.resources.memoryTotal / 1024 / 1024 / 1024).toFixed(1)} GB total`
-    ));
+    console.log(
+      chalk.white('CPU Usage: ') + chalk.gray(`${result.resources.cpuUsage.toFixed(1)}%`),
+    );
+    console.log(
+      chalk.white('Memory: ') +
+        chalk.gray(
+          `${(result.resources.memoryAvailable / 1024 / 1024 / 1024).toFixed(1)} GB free / ` +
+            `${(result.resources.memoryTotal / 1024 / 1024 / 1024).toFixed(1)} GB total`,
+        ),
+    );
     if (os.platform() !== 'win32') {
-      console.log(chalk.white('Load Average: ') + chalk.gray(result.resources.loadAverage.map(l => l.toFixed(2)).join(', ')));
+      console.log(
+        chalk.white('Load Average: ') +
+          chalk.gray(result.resources.loadAverage.map((l) => l.toFixed(2)).join(', ')),
+      );
     }
 
     if (result.issues.length > 0) {
@@ -1173,15 +1226,28 @@ export class ShellDiagnostics {
     console.log(chalk.yellow(`  Killed: ${stats.byStatus.killed}`));
 
     console.log(chalk.cyan('\n--- Execution Time ---'));
-    console.log(chalk.white('  Total: ') + chalk.gray(`${(stats.executionTime.total / 1000).toFixed(1)}s`));
-    console.log(chalk.white('  Average: ') + chalk.gray(`${(stats.executionTime.average / 1000).toFixed(2)}s`));
+    console.log(
+      chalk.white('  Total: ') + chalk.gray(`${(stats.executionTime.total / 1000).toFixed(1)}s`),
+    );
+    console.log(
+      chalk.white('  Average: ') +
+        chalk.gray(`${(stats.executionTime.average / 1000).toFixed(2)}s`),
+    );
     console.log(chalk.white('  Min: ') + chalk.gray(`${stats.executionTime.min}ms`));
-    console.log(chalk.white('  Max: ') + chalk.gray(`${(stats.executionTime.max / 1000).toFixed(2)}s`));
+    console.log(
+      chalk.white('  Max: ') + chalk.gray(`${(stats.executionTime.max / 1000).toFixed(2)}s`),
+    );
 
     console.log(chalk.cyan('\n--- System Process ---'));
     console.log(chalk.white('  PID: ') + chalk.gray(stats.systemProcesses.pid.toString()));
-    console.log(chalk.white('  Memory: ') + chalk.gray(`${(stats.systemProcesses.memoryUsed / 1024 / 1024).toFixed(1)} MB`));
-    console.log(chalk.white('  Uptime: ') + chalk.gray(`${(stats.systemProcesses.uptime / 1000 / 60).toFixed(1)} min`));
+    console.log(
+      chalk.white('  Memory: ') +
+        chalk.gray(`${(stats.systemProcesses.memoryUsed / 1024 / 1024).toFixed(1)} MB`),
+    );
+    console.log(
+      chalk.white('  Uptime: ') +
+        chalk.gray(`${(stats.systemProcesses.uptime / 1000 / 60).toFixed(1)} min`),
+    );
 
     console.log(chalk.cyan('\n========================================\n'));
   }
@@ -1199,15 +1265,14 @@ export class ShellDiagnostics {
     console.log(chalk.cyan('========================================\n'));
 
     for (const record of records) {
-      const status = record.success === undefined
-        ? chalk.yellow('[...]')
-        : record.success
-          ? chalk.green('[OK]')
-          : chalk.red('[FAIL]');
+      const status =
+        record.success === undefined
+          ? chalk.yellow('[...]')
+          : record.success
+            ? chalk.green('[OK]')
+            : chalk.red('[FAIL]');
 
-      const duration = record.durationMs
-        ? chalk.gray(`(${record.durationMs}ms)`)
-        : '';
+      const duration = record.durationMs ? chalk.gray(`(${record.durationMs}ms)`) : '';
 
       const timeout = record.timedOut ? chalk.red(' [TIMEOUT]') : '';
 
@@ -1230,27 +1295,47 @@ export class ShellDiagnostics {
     console.log(chalk.cyan('  PERFORMANCE REPORT'));
     console.log(chalk.cyan('========================================\n'));
 
-    console.log(chalk.white('Period: ') + chalk.gray(
-      `${report.period.start.toISOString()} to ${report.period.end.toISOString()}`
-    ));
-    console.log(chalk.white('Total Executions: ') + chalk.yellow(report.totalExecutions.toString()));
+    console.log(
+      chalk.white('Period: ') +
+        chalk.gray(`${report.period.start.toISOString()} to ${report.period.end.toISOString()}`),
+    );
+    console.log(
+      chalk.white('Total Executions: ') + chalk.yellow(report.totalExecutions.toString()),
+    );
 
     console.log(chalk.cyan('\n--- Rates ---'));
-    const successColor = report.successRate >= 90 ? chalk.green : report.successRate >= 70 ? chalk.yellow : chalk.red;
-    const timeoutColor = report.timeoutRate <= 5 ? chalk.green : report.timeoutRate <= 15 ? chalk.yellow : chalk.red;
-    console.log(chalk.white('  Success Rate: ') + successColor(`${report.successRate.toFixed(1)}%`));
-    console.log(chalk.white('  Timeout Rate: ') + timeoutColor(`${report.timeoutRate.toFixed(1)}%`));
+    const successColor =
+      report.successRate >= 90 ? chalk.green : report.successRate >= 70 ? chalk.yellow : chalk.red;
+    const timeoutColor =
+      report.timeoutRate <= 5 ? chalk.green : report.timeoutRate <= 15 ? chalk.yellow : chalk.red;
+    console.log(
+      chalk.white('  Success Rate: ') + successColor(`${report.successRate.toFixed(1)}%`),
+    );
+    console.log(
+      chalk.white('  Timeout Rate: ') + timeoutColor(`${report.timeoutRate.toFixed(1)}%`),
+    );
 
     console.log(chalk.cyan('\n--- Execution Time ---'));
-    console.log(chalk.white('  Average: ') + chalk.gray(`${(report.executionTime.average / 1000).toFixed(2)}s`));
-    console.log(chalk.white('  Median: ') + chalk.gray(`${(report.executionTime.median / 1000).toFixed(2)}s`));
-    console.log(chalk.white('  P95: ') + chalk.gray(`${(report.executionTime.p95 / 1000).toFixed(2)}s`));
-    console.log(chalk.white('  P99: ') + chalk.gray(`${(report.executionTime.p99 / 1000).toFixed(2)}s`));
+    console.log(
+      chalk.white('  Average: ') +
+        chalk.gray(`${(report.executionTime.average / 1000).toFixed(2)}s`),
+    );
+    console.log(
+      chalk.white('  Median: ') + chalk.gray(`${(report.executionTime.median / 1000).toFixed(2)}s`),
+    );
+    console.log(
+      chalk.white('  P95: ') + chalk.gray(`${(report.executionTime.p95 / 1000).toFixed(2)}s`),
+    );
+    console.log(
+      chalk.white('  P99: ') + chalk.gray(`${(report.executionTime.p99 / 1000).toFixed(2)}s`),
+    );
 
     if (report.topCommands.length > 0) {
       console.log(chalk.cyan('\n--- Top Commands ---'));
       for (const cmd of report.topCommands.slice(0, 5)) {
-        console.log(`  ${chalk.white(cmd.command)} - ${cmd.count} calls, avg ${(cmd.avgDuration / 1000).toFixed(2)}s`);
+        console.log(
+          `  ${chalk.white(cmd.command)} - ${cmd.count} calls, avg ${(cmd.avgDuration / 1000).toFixed(2)}s`,
+        );
       }
     }
 

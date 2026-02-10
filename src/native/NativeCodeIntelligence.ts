@@ -30,13 +30,20 @@
  * - Pattern-based code search
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { glob } from 'glob';
-import { nativeLSP, SymbolInformation, DocumentSymbol, SymbolKind, Location, Range } from './NativeLSP.js';
-import { createSearch } from './NativeSearch.js';
-import { NativeFileSystem, createFileSystem } from './nativefilesystem/NativeFileSystem.js';
 import { escapeRegex } from '../utils/regex.js';
+import {
+  type DocumentSymbol,
+  type Location,
+  nativeLSP,
+  type Range,
+  type SymbolInformation,
+  SymbolKind,
+} from './NativeLSP.js';
+import { createSearch } from './NativeSearch.js';
+import { createFileSystem, type NativeFileSystem } from './nativefilesystem/NativeFileSystem.js';
 
 // ============================================================
 // Types
@@ -107,7 +114,7 @@ function symbolKindToString(kind: SymbolKind): string {
     [SymbolKind.Struct]: 'Struct',
     [SymbolKind.Event]: 'Event',
     [SymbolKind.Operator]: 'Operator',
-    [SymbolKind.TypeParameter]: 'TypeParameter'
+    [SymbolKind.TypeParameter]: 'TypeParameter',
   };
   return names[kind] || 'Unknown';
 }
@@ -134,7 +141,7 @@ export class NativeCodeIntelligence {
 
     // Initialize NativeFileSystem for delegated file operations
     this.nativeFs = createFileSystem(rootDir, {
-      blockedPaths: ['node_modules', '.git', 'dist', 'build']
+      blockedPaths: ['node_modules', '.git', 'dist', 'build'],
     });
 
     // Initialize LSP
@@ -159,7 +166,7 @@ export class NativeCodeIntelligence {
   getProjectInfo(): { name: string; rootDir: string } {
     return {
       name: this.projectName,
-      rootDir: this.rootDir
+      rootDir: this.rootDir,
     };
   }
 
@@ -171,7 +178,9 @@ export class NativeCodeIntelligence {
    * List directory contents
    * Delegates to NativeFileSystem.listDirectory() as the canonical implementation
    */
-  async listDir(dirPath: string = '.'): Promise<{ name: string; type: 'file' | 'directory'; size?: number }[]> {
+  async listDir(
+    dirPath: string = '.',
+  ): Promise<{ name: string; type: 'file' | 'directory'; size?: number }[]> {
     // Delegate to NativeFileSystem if initialized (canonical implementation)
     if (this.nativeFs) {
       const relativePath = path.isAbsolute(dirPath)
@@ -179,29 +188,27 @@ export class NativeCodeIntelligence {
         : dirPath;
 
       const entries = await this.nativeFs.listDirectory(relativePath, {
-        includeHidden: true  // Match original behavior of showing all files
+        includeHidden: true, // Match original behavior of showing all files
       });
 
       // Transform FileInfo[] to expected return type for backwards compatibility
-      return entries.map(entry => ({
+      return entries.map((entry) => ({
         name: entry.name,
-        type: entry.isDirectory ? 'directory' as const : 'file' as const,
-        size: entry.isFile ? entry.size : undefined
+        type: entry.isDirectory ? ('directory' as const) : ('file' as const),
+        size: entry.isFile ? entry.size : undefined,
       }));
     }
 
     // Fallback for when not initialized (backwards compatibility)
-    const fullPath = path.isAbsolute(dirPath)
-      ? dirPath
-      : path.join(this.rootDir, dirPath);
+    const fullPath = path.isAbsolute(dirPath) ? dirPath : path.join(this.rootDir, dirPath);
 
     const entries = fs.readdirSync(fullPath, { withFileTypes: true });
 
-    return entries.map(entry => {
+    return entries.map((entry) => {
       const entryPath = path.join(fullPath, entry.name);
       const result: { name: string; type: 'file' | 'directory'; size?: number } = {
         name: entry.name,
-        type: entry.isDirectory() ? 'directory' : 'file'
+        type: entry.isDirectory() ? 'directory' : 'file',
       };
 
       if (entry.isFile()) {
@@ -222,7 +229,7 @@ export class NativeCodeIntelligence {
   async findFile(pattern: string): Promise<string[]> {
     const matches = await glob(pattern, {
       cwd: this.rootDir,
-      ignore: ['**/node_modules/**', '**/.git/**', '**/dist/**', '**/build/**']
+      ignore: ['**/node_modules/**', '**/.git/**', '**/dist/**', '**/build/**'],
     });
     return matches;
   }
@@ -242,9 +249,7 @@ export class NativeCodeIntelligence {
     }
 
     // Fallback for when not initialized (backwards compatibility)
-    const fullPath = path.isAbsolute(filePath)
-      ? filePath
-      : path.join(this.rootDir, filePath);
+    const fullPath = path.isAbsolute(filePath) ? filePath : path.join(this.rootDir, filePath);
 
     return fs.readFileSync(fullPath, 'utf-8');
   }
@@ -253,9 +258,7 @@ export class NativeCodeIntelligence {
    * Create or overwrite a file
    */
   async createFile(filePath: string, content: string): Promise<void> {
-    const fullPath = path.isAbsolute(filePath)
-      ? filePath
-      : path.join(this.rootDir, filePath);
+    const fullPath = path.isAbsolute(filePath) ? filePath : path.join(this.rootDir, filePath);
 
     // Ensure directory exists
     const dir = path.dirname(fullPath);
@@ -316,7 +319,10 @@ export class NativeCodeIntelligence {
     // to find symbol declarations. This is similar to NativeSearch.searchSymbols()
     // but returns SymbolInformation[] for API compatibility.
     const results: SymbolInformation[] = [];
-    const pattern = new RegExp(`(class|function|interface|type|const|let|var|enum)\\s+${escapeRegex(query)}`, 'g');
+    const pattern = new RegExp(
+      `(class|function|interface|type|const|let|var|enum)\\s+${escapeRegex(query)}`,
+      'g',
+    );
 
     const files = await this.findFile('**/*.{ts,tsx,js,jsx,py,rs,go}');
 
@@ -336,9 +342,9 @@ export class NativeCodeIntelligence {
                 uri: nativeLSP.pathToUri(path.join(this.rootDir, file)),
                 range: {
                   start: { line: i, character: match.index },
-                  end: { line: i, character: match.index + match[0].length }
-                }
-              }
+                  end: { line: i, character: match.index + match[0].length },
+                },
+              },
             });
           }
           pattern.lastIndex = 0;
@@ -371,7 +377,7 @@ export class NativeCodeIntelligence {
           if (summaries.length > 0) {
             results.push({
               file,
-              symbols: summaries
+              symbols: summaries,
             });
           }
         } catch {
@@ -387,9 +393,7 @@ export class NativeCodeIntelligence {
    * Find references to symbol
    */
   async findReferences(filePath: string, line: number, character: number): Promise<Location[]> {
-    const fullPath = path.isAbsolute(filePath)
-      ? filePath
-      : path.join(this.rootDir, filePath);
+    const fullPath = path.isAbsolute(filePath) ? filePath : path.join(this.rootDir, filePath);
 
     return nativeLSP.findReferences(fullPath, line, character);
   }
@@ -397,10 +401,12 @@ export class NativeCodeIntelligence {
   /**
    * Go to definition
    */
-  async goToDefinition(filePath: string, line: number, character: number): Promise<Location | Location[] | null> {
-    const fullPath = path.isAbsolute(filePath)
-      ? filePath
-      : path.join(this.rootDir, filePath);
+  async goToDefinition(
+    filePath: string,
+    line: number,
+    character: number,
+  ): Promise<Location | Location[] | null> {
+    const fullPath = path.isAbsolute(filePath) ? filePath : path.join(this.rootDir, filePath);
 
     return nativeLSP.goToDefinition(fullPath, line, character);
   }
@@ -421,35 +427,33 @@ export class NativeCodeIntelligence {
       isRegex?: boolean;
       caseSensitive?: boolean;
       maxResults?: number;
-    } = {}
+    } = {},
   ): Promise<SearchResult[]> {
     const {
       glob: fileGlob = '**/*.{ts,tsx,js,jsx,py,rs,go,java,c,cpp,h}',
       isRegex = false,
       caseSensitive = true,
-      maxResults = 100
+      maxResults = 100,
     } = options;
 
     // Use NativeSearch as canonical search implementation
     const search = createSearch(this.rootDir, {
-      defaultIgnore: ['node_modules', '.git', 'dist', 'build', '__pycache__']
+      defaultIgnore: ['node_modules', '.git', 'dist', 'build', '__pycache__'],
     });
 
     // Build the pattern - NativeSearch handles both regex and string patterns
-    const searchPattern = isRegex
-      ? new RegExp(pattern, caseSensitive ? 'g' : 'gi')
-      : pattern;
+    const searchPattern = isRegex ? new RegExp(pattern, caseSensitive ? 'g' : 'gi') : pattern;
 
     const searchResults = await search.searchFiles({
       pattern: searchPattern,
       glob: fileGlob,
       caseSensitive,
       maxResults,
-      contextLines: 1
+      contextLines: 1,
     });
 
     // Convert NativeSearch results to SearchResult format
-    return searchResults.map(result => ({
+    return searchResults.map((result) => ({
       file: result.file,
       line: result.line,
       column: result.column,
@@ -457,14 +461,19 @@ export class NativeCodeIntelligence {
       context: result.context
         ? (Array.isArray(result.context.before) ? result.context.before : [result.context.before])
             .concat([result.content])
-            .concat(Array.isArray(result.context.after) ? result.context.after : [result.context.after])
+            .concat(
+              Array.isArray(result.context.after) ? result.context.after : [result.context.after],
+            )
             .map((line, i) => {
-              const lineNum = result.line - (Array.isArray(result.context!.before) ? result.context!.before.length : 1) + i;
+              const lineNum =
+                result.line -
+                (Array.isArray(result.context?.before) ? result.context?.before.length : 1) +
+                i;
               const marker = lineNum === result.line ? '>' : ' ';
               return `${marker} ${lineNum}: ${line}`;
             })
             .join('\n')
-        : undefined
+        : undefined,
     }));
   }
 
@@ -479,13 +488,11 @@ export class NativeCodeIntelligence {
     filePath: string,
     searchPattern: string,
     replacement: string,
-    options: { isRegex?: boolean; replaceAll?: boolean } = {}
+    options: { isRegex?: boolean; replaceAll?: boolean } = {},
   ): Promise<{ success: boolean; replacements: number }> {
     const { isRegex = false, replaceAll = false } = options;
 
-    const fullPath = path.isAbsolute(filePath)
-      ? filePath
-      : path.join(this.rootDir, filePath);
+    const fullPath = path.isAbsolute(filePath) ? filePath : path.join(this.rootDir, filePath);
 
     let content = await this.readFile(fullPath);
     const originalContent = content;
@@ -499,7 +506,10 @@ export class NativeCodeIntelligence {
 
     if (content !== originalContent) {
       await this.createFile(fullPath, content);
-      return { success: true, replacements: replaceAll ? matches.length : (matches.length > 0 ? 1 : 0) };
+      return {
+        success: true,
+        replacements: replaceAll ? matches.length : matches.length > 0 ? 1 : 0,
+      };
     }
 
     return { success: false, replacements: 0 };
@@ -511,11 +521,9 @@ export class NativeCodeIntelligence {
   async replaceSymbolBody(
     filePath: string,
     symbolName: string,
-    newBody: string
+    newBody: string,
   ): Promise<{ success: boolean; message: string }> {
-    const fullPath = path.isAbsolute(filePath)
-      ? filePath
-      : path.join(this.rootDir, filePath);
+    const fullPath = path.isAbsolute(filePath) ? filePath : path.join(this.rootDir, filePath);
 
     // Get file symbols
     const symbols = await nativeLSP.getFileSymbols(fullPath);
@@ -535,13 +543,8 @@ export class NativeCodeIntelligence {
     const lineEnd = lines[range.end.line].substring(range.end.character);
     const after = lines.slice(range.end.line + 1).join('\n');
 
-    const newContent = before +
-      (before ? '\n' : '') +
-      lineStart +
-      newBody +
-      lineEnd +
-      (after ? '\n' : '') +
-      after;
+    const newContent =
+      before + (before ? '\n' : '') + lineStart + newBody + lineEnd + (after ? '\n' : '') + after;
 
     await this.createFile(fullPath, newContent);
 
@@ -554,11 +557,9 @@ export class NativeCodeIntelligence {
   async insertBeforeSymbol(
     filePath: string,
     symbolName: string,
-    textToInsert: string
+    textToInsert: string,
   ): Promise<{ success: boolean; message: string }> {
-    const fullPath = path.isAbsolute(filePath)
-      ? filePath
-      : path.join(this.rootDir, filePath);
+    const fullPath = path.isAbsolute(filePath) ? filePath : path.join(this.rootDir, filePath);
 
     const symbols = await nativeLSP.getFileSymbols(fullPath);
     const symbol = this.findSymbolByName(symbols, symbolName);
@@ -586,11 +587,9 @@ export class NativeCodeIntelligence {
   async insertAfterSymbol(
     filePath: string,
     symbolName: string,
-    textToInsert: string
+    textToInsert: string,
   ): Promise<{ success: boolean; message: string }> {
-    const fullPath = path.isAbsolute(filePath)
-      ? filePath
-      : path.join(this.rootDir, filePath);
+    const fullPath = path.isAbsolute(filePath) ? filePath : path.join(this.rootDir, filePath);
 
     const symbols = await nativeLSP.getFileSymbols(fullPath);
     const symbol = this.findSymbolByName(symbols, symbolName);
@@ -619,11 +618,9 @@ export class NativeCodeIntelligence {
     filePath: string,
     line: number,
     character: number,
-    newName: string
+    newName: string,
   ): Promise<{ success: boolean; filesChanged: number; edits: number }> {
-    const fullPath = path.isAbsolute(filePath)
-      ? filePath
-      : path.join(this.rootDir, filePath);
+    const fullPath = path.isAbsolute(filePath) ? filePath : path.join(this.rootDir, filePath);
 
     const changes = await nativeLSP.renameSymbol(fullPath, line, character, newName);
 
@@ -655,7 +652,7 @@ export class NativeCodeIntelligence {
     return {
       success: true,
       filesChanged: changes.size,
-      edits: totalEdits
+      edits: totalEdits,
     };
   }
 
@@ -689,7 +686,7 @@ export class NativeCodeIntelligence {
       key,
       value,
       createdAt: existing?.createdAt ?? now,
-      updatedAt: now
+      updatedAt: now,
     });
 
     await this.saveMemories();
@@ -720,7 +717,7 @@ export class NativeCodeIntelligence {
             key: item.key,
             value: item.value,
             createdAt: new Date(item.createdAt),
-            updatedAt: new Date(item.updatedAt)
+            updatedAt: new Date(item.updatedAt),
           });
         }
       }
@@ -749,15 +746,17 @@ export class NativeCodeIntelligence {
   /**
    * Convert LSP symbols to summaries
    */
-  private convertToSymbolSummaries(symbols: DocumentSymbol[] | SymbolInformation[]): SymbolSummary[] {
-    return symbols.map(symbol => {
+  private convertToSymbolSummaries(
+    symbols: DocumentSymbol[] | SymbolInformation[],
+  ): SymbolSummary[] {
+    return symbols.map((symbol) => {
       if ('range' in symbol) {
         // DocumentSymbol
         const summary: SymbolSummary = {
           name: symbol.name,
           kind: symbolKindToString(symbol.kind),
           line: symbol.range.start.line + 1,
-          detail: symbol.detail
+          detail: symbol.detail,
         };
 
         if (symbol.children) {
@@ -771,7 +770,7 @@ export class NativeCodeIntelligence {
           name: symbol.name,
           kind: symbolKindToString(symbol.kind),
           line: symbol.location.range.start.line + 1,
-          detail: symbol.containerName
+          detail: symbol.containerName,
         };
       }
     });
@@ -782,7 +781,7 @@ export class NativeCodeIntelligence {
    */
   private findSymbolByName(
     symbols: DocumentSymbol[] | SymbolInformation[],
-    name: string
+    name: string,
   ): DocumentSymbol | SymbolInformation | null {
     for (const symbol of symbols) {
       if (symbol.name === name) {
@@ -802,33 +801,16 @@ export class NativeCodeIntelligence {
    */
   private inferSymbolKind(keyword: string): SymbolKind {
     const mapping: Record<string, SymbolKind> = {
-      'class': SymbolKind.Class,
-      'function': SymbolKind.Function,
-      'interface': SymbolKind.Interface,
-      'type': SymbolKind.Interface,
-      'const': SymbolKind.Constant,
-      'let': SymbolKind.Variable,
-      'var': SymbolKind.Variable,
-      'enum': SymbolKind.Enum
+      class: SymbolKind.Class,
+      function: SymbolKind.Function,
+      interface: SymbolKind.Interface,
+      type: SymbolKind.Interface,
+      const: SymbolKind.Constant,
+      let: SymbolKind.Variable,
+      var: SymbolKind.Variable,
+      enum: SymbolKind.Enum,
     };
     return mapping[keyword] || SymbolKind.Variable;
-  }
-
-  /**
-   * Get context around a line
-   */
-  private getLineContext(lines: string[], lineIndex: number, contextLines: number): string {
-    const start = Math.max(0, lineIndex - contextLines);
-    const end = Math.min(lines.length, lineIndex + contextLines + 1);
-
-    return lines
-      .slice(start, end)
-      .map((line, i) => {
-        const lineNum = start + i + 1;
-        const marker = lineNum === lineIndex + 1 ? '>' : ' ';
-        return `${marker} ${lineNum}: ${line}`;
-      })
-      .join('\n');
   }
 
   /**
@@ -842,13 +824,9 @@ export class NativeCodeIntelligence {
     const lineEnd = lines[range.end.line].substring(range.end.character);
     const after = lines.slice(range.end.line + 1).join('\n');
 
-    return before +
-      (before ? '\n' : '') +
-      lineStart +
-      newText +
-      lineEnd +
-      (after ? '\n' : '') +
-      after;
+    return (
+      before + (before ? '\n' : '') + lineStart + newText + lineEnd + (after ? '\n' : '') + after
+    );
   }
 
   /**

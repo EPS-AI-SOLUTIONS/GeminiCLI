@@ -28,7 +28,7 @@ export interface ProgressReport {
   taskName: string;
   steps: ProgressStep[];
   currentStep: number;
-  overallProgress: number;  // 0-100
+  overallProgress: number; // 0-100
   startTime: number;
   estimatedCompletion?: number;
   status: 'pending' | 'running' | 'completed' | 'failed';
@@ -58,12 +58,12 @@ export class ProgressTracker {
       steps: steps.map((s, i) => ({
         id: i + 1,
         name: s,
-        status: 'pending'
+        status: 'pending',
       })),
       currentStep: 0,
       overallProgress: 0,
       startTime: Date.now(),
-      status: 'pending'
+      status: 'pending',
     };
 
     this.tasks.set(taskId, report);
@@ -79,7 +79,7 @@ export class ProgressTracker {
     const report = this.tasks.get(taskId);
     if (!report) return;
 
-    const step = report.steps.find(s => s.id === stepId);
+    const step = report.steps.find((s) => s.id === stepId);
     if (step) {
       step.status = 'running';
       step.startTime = Date.now();
@@ -99,14 +99,14 @@ export class ProgressTracker {
     const report = this.tasks.get(taskId);
     if (!report) return;
 
-    const step = report.steps.find(s => s.id === stepId);
+    const step = report.steps.find((s) => s.id === stepId);
     if (step) {
       step.status = 'completed';
       step.endTime = Date.now();
       step.result = result;
 
       // Update progress
-      const completed = report.steps.filter(s => s.status === 'completed').length;
+      const completed = report.steps.filter((s) => s.status === 'completed').length;
       report.overallProgress = Math.round((completed / report.steps.length) * 100);
 
       // Check if all done
@@ -128,7 +128,7 @@ export class ProgressTracker {
     const report = this.tasks.get(taskId);
     if (!report) return;
 
-    const step = report.steps.find(s => s.id === stepId);
+    const step = report.steps.find((s) => s.id === stepId);
     if (step) {
       step.status = 'failed';
       step.endTime = Date.now();
@@ -148,7 +148,7 @@ export class ProgressTracker {
     const report = this.tasks.get(taskId);
     if (!report) return;
 
-    const step = report.steps.find(s => s.id === stepId);
+    const step = report.steps.find((s) => s.id === stepId);
     if (step) {
       step.status = 'skipped';
       step.endTime = Date.now();
@@ -226,10 +226,16 @@ export class ProgressTracker {
     lines.push(`[Task] ${report.taskName} [${report.overallProgress}%]`);
 
     for (const step of report.steps) {
-      const icon = step.status === 'completed' ? '[OK]' :
-                   step.status === 'running' ? '[..]' :
-                   step.status === 'failed' ? '[X]' :
-                   step.status === 'skipped' ? '[>>]' : '[  ]';
+      const icon =
+        step.status === 'completed'
+          ? '[OK]'
+          : step.status === 'running'
+            ? '[..]'
+            : step.status === 'failed'
+              ? '[X]'
+              : step.status === 'skipped'
+                ? '[>>]'
+                : '[  ]';
       lines.push(`  ${icon} ${step.id}. ${step.name}`);
     }
 
@@ -279,5 +285,5 @@ export const progressTracker = new ProgressTracker();
 
 export default {
   ProgressTracker,
-  progressTracker
+  progressTracker,
 };

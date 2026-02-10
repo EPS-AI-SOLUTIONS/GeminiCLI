@@ -104,55 +104,55 @@ const DEFAULT_PATTERNS: ClaimPattern[] = [
     pattern: /(?:in|the)\s+file\s+[`"']?([a-zA-Z0-9_\-./\\]+\.[a-zA-Z0-9]+)[`"']?/gi,
     type: 'file',
     entityGroup: 1,
-    description: 'File reference (English)'
+    description: 'File reference (English)',
   },
   {
     pattern: /(?:function|method|func)\s+[`"']?([a-zA-Z_][a-zA-Z0-9_]*)[`"']?/gi,
     type: 'function',
     entityGroup: 1,
-    description: 'Function reference (English)'
+    description: 'Function reference (English)',
   },
   {
     pattern: /(?:class|Class)\s+[`"']?([A-Z][a-zA-Z0-9_]*)[`"']?/gi,
     type: 'class',
     entityGroup: 1,
-    description: 'Class reference (English)'
+    description: 'Class reference (English)',
   },
   {
     pattern: /(?:interface|Interface)\s+[`"']?([A-Z][a-zA-Z0-9_]*)[`"']?/gi,
     type: 'interface',
     entityGroup: 1,
-    description: 'Interface reference (English)'
+    description: 'Interface reference (English)',
   },
   {
     pattern: /(?:type|Type)\s+[`"']?([A-Z][a-zA-Z0-9_]*)[`"']?/gi,
     type: 'type',
     entityGroup: 1,
-    description: 'Type reference (English)'
+    description: 'Type reference (English)',
   },
   {
     pattern: /(?:variable|const|let|var)\s+[`"']?([a-zA-Z_][a-zA-Z0-9_]*)[`"']?/gi,
     type: 'variable',
     entityGroup: 1,
-    description: 'Variable reference (English)'
+    description: 'Variable reference (English)',
   },
   {
     pattern: /(?:module|package)\s+[`"']?([a-zA-Z_][a-zA-Z0-9_\-./]*)[`"']?/gi,
     type: 'module',
     entityGroup: 1,
-    description: 'Module/package reference (English)'
+    description: 'Module/package reference (English)',
   },
   {
     pattern: /(?:directory|folder|dir)\s+[`"']?([a-zA-Z0-9_\-./\\]+)[`"']?/gi,
     type: 'directory',
     entityGroup: 1,
-    description: 'Directory reference (English)'
+    description: 'Directory reference (English)',
   },
   {
     pattern: /\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/g,
     type: 'method',
     entityGroup: 1,
-    description: 'Method call'
+    description: 'Method call',
   },
 
   // Polish patterns
@@ -160,85 +160,85 @@ const DEFAULT_PATTERNS: ClaimPattern[] = [
     pattern: /w\s+pliku\s+[`"']?([a-zA-Z0-9_\-./\\]+\.[a-zA-Z0-9]+)[`"']?/gi,
     type: 'file',
     entityGroup: 1,
-    description: 'File reference (Polish: w pliku X)'
+    description: 'File reference (Polish: w pliku X)',
   },
   {
     pattern: /plik\s+[`"']?([a-zA-Z0-9_\-./\\]+\.[a-zA-Z0-9]+)[`"']?/gi,
     type: 'file',
     entityGroup: 1,
-    description: 'File reference (Polish: plik X)'
+    description: 'File reference (Polish: plik X)',
   },
   {
     pattern: /funkcja\s+[`"']?([a-zA-Z_][a-zA-Z0-9_]*)[`"']?/gi,
     type: 'function',
     entityGroup: 1,
-    description: 'Function reference (Polish: funkcja Y)'
+    description: 'Function reference (Polish: funkcja Y)',
   },
   {
     pattern: /funkcji\s+[`"']?([a-zA-Z_][a-zA-Z0-9_]*)[`"']?/gi,
     type: 'function',
     entityGroup: 1,
-    description: 'Function reference (Polish: funkcji Y)'
+    description: 'Function reference (Polish: funkcji Y)',
   },
   {
     pattern: /klasa\s+[`"']?([A-Z][a-zA-Z0-9_]*)[`"']?/gi,
     type: 'class',
     entityGroup: 1,
-    description: 'Class reference (Polish: klasa Z)'
+    description: 'Class reference (Polish: klasa Z)',
   },
   {
     pattern: /klasie\s+[`"']?([A-Z][a-zA-Z0-9_]*)[`"']?/gi,
     type: 'class',
     entityGroup: 1,
-    description: 'Class reference (Polish: w klasie Z)'
+    description: 'Class reference (Polish: w klasie Z)',
   },
   {
     pattern: /klasy\s+[`"']?([A-Z][a-zA-Z0-9_]*)[`"']?/gi,
     type: 'class',
     entityGroup: 1,
-    description: 'Class reference (Polish: klasy Z)'
+    description: 'Class reference (Polish: klasy Z)',
   },
   {
     pattern: /metoda\s+[`"']?([a-zA-Z_][a-zA-Z0-9_]*)[`"']?/gi,
     type: 'method',
     entityGroup: 1,
-    description: 'Method reference (Polish: metoda X)'
+    description: 'Method reference (Polish: metoda X)',
   },
   {
     pattern: /metodzie\s+[`"']?([a-zA-Z_][a-zA-Z0-9_]*)[`"']?/gi,
     type: 'method',
     entityGroup: 1,
-    description: 'Method reference (Polish: w metodzie X)'
+    description: 'Method reference (Polish: w metodzie X)',
   },
   {
     pattern: /interfejs\s+[`"']?([A-Z][a-zA-Z0-9_]*)[`"']?/gi,
     type: 'interface',
     entityGroup: 1,
-    description: 'Interface reference (Polish: interfejs X)'
+    description: 'Interface reference (Polish: interfejs X)',
   },
   {
     pattern: /typ\s+[`"']?([A-Z][a-zA-Z0-9_]*)[`"']?/gi,
     type: 'type',
     entityGroup: 1,
-    description: 'Type reference (Polish: typ X)'
+    description: 'Type reference (Polish: typ X)',
   },
   {
     pattern: /zmienna\s+[`"']?([a-zA-Z_][a-zA-Z0-9_]*)[`"']?/gi,
     type: 'variable',
     entityGroup: 1,
-    description: 'Variable reference (Polish: zmienna X)'
+    description: 'Variable reference (Polish: zmienna X)',
   },
   {
     pattern: /katalog(?:u|iem)?\s+[`"']?([a-zA-Z0-9_\-./\\]+)[`"']?/gi,
     type: 'directory',
     entityGroup: 1,
-    description: 'Directory reference (Polish: katalog/katalogu/katalogiem X)'
+    description: 'Directory reference (Polish: katalog/katalogu/katalogiem X)',
   },
   {
     pattern: /folderze?\s+[`"']?([a-zA-Z0-9_\-./\\]+)[`"']?/gi,
     type: 'directory',
     entityGroup: 1,
-    description: 'Folder reference (Polish: folder/folderze X)'
+    description: 'Folder reference (Polish: folder/folderze X)',
   },
 
   // Code-specific patterns (language-agnostic)
@@ -246,20 +246,20 @@ const DEFAULT_PATTERNS: ClaimPattern[] = [
     pattern: /import\s+(?:\{[^}]*\}\s+from\s+)?[`"']([^`"']+)[`"']/gi,
     type: 'module',
     entityGroup: 1,
-    description: 'Import statement'
+    description: 'Import statement',
   },
   {
     pattern: /require\s*\(\s*[`"']([^`"']+)[`"']\s*\)/gi,
     type: 'module',
     entityGroup: 1,
-    description: 'Require statement'
+    description: 'Require statement',
   },
   {
     pattern: /export\s+(?:class|interface|type|function|const)\s+([A-Za-z_][A-Za-z0-9_]*)/gi,
     type: 'unknown',
     entityGroup: 1,
-    description: 'Export statement'
-  }
+    description: 'Export statement',
+  },
 ];
 
 /**
@@ -268,44 +268,262 @@ const DEFAULT_PATTERNS: ClaimPattern[] = [
  */
 const STANDARD_LIBRARY_WHITELIST = new Set([
   // JavaScript built-in methods
-  'stringify', 'parse', 'tostring', 'valueof', 'indexof', 'includes', 'slice', 'splice',
-  'push', 'pop', 'shift', 'unshift', 'map', 'filter', 'reduce', 'foreach', 'find', 'findindex',
-  'some', 'every', 'join', 'split', 'replace', 'match', 'test', 'exec', 'keys', 'values', 'entries',
-  'assign', 'freeze', 'seal', 'create', 'defineproperty', 'getownpropertynames',
-  'promise', 'then', 'catch', 'finally', 'resolve', 'reject', 'all', 'race', 'allsettled',
-  'settimeout', 'setinterval', 'cleartimeout', 'clearinterval', 'requestanimationframe',
-  'fetch', 'json', 'text', 'blob', 'arraybuffer', 'formdata',
-  'console', 'log', 'error', 'warn', 'info', 'debug', 'trace', 'table', 'dir',
-  'math', 'floor', 'ceil', 'round', 'abs', 'min', 'max', 'random', 'sqrt', 'pow',
-  'date', 'now', 'gettime', 'toiso', 'toisostring', 'tolocaledatestring',
-  'array', 'object', 'string', 'number', 'boolean', 'symbol', 'bigint', 'function',
-  'regexp', 'error', 'typeerror', 'syntaxerror', 'rangeerror', 'referenceerror',
-  'map', 'set', 'weakmap', 'weakset', 'proxy', 'reflect',
-  'buffer', 'uint8array', 'int32array', 'float64array', 'arraybuffer', 'dataview',
-  'nan', 'infinity', 'undefined', 'null', 'globalthis', 'this',
+  'stringify',
+  'parse',
+  'tostring',
+  'valueof',
+  'indexof',
+  'includes',
+  'slice',
+  'splice',
+  'push',
+  'pop',
+  'shift',
+  'unshift',
+  'map',
+  'filter',
+  'reduce',
+  'foreach',
+  'find',
+  'findindex',
+  'some',
+  'every',
+  'join',
+  'split',
+  'replace',
+  'match',
+  'test',
+  'exec',
+  'keys',
+  'values',
+  'entries',
+  'assign',
+  'freeze',
+  'seal',
+  'create',
+  'defineproperty',
+  'getownpropertynames',
+  'promise',
+  'then',
+  'catch',
+  'finally',
+  'resolve',
+  'reject',
+  'all',
+  'race',
+  'allsettled',
+  'settimeout',
+  'setinterval',
+  'cleartimeout',
+  'clearinterval',
+  'requestanimationframe',
+  'fetch',
+  'json',
+  'text',
+  'blob',
+  'arraybuffer',
+  'formdata',
+  'console',
+  'log',
+  'error',
+  'warn',
+  'info',
+  'debug',
+  'trace',
+  'table',
+  'dir',
+  'math',
+  'floor',
+  'ceil',
+  'round',
+  'abs',
+  'min',
+  'max',
+  'random',
+  'sqrt',
+  'pow',
+  'date',
+  'now',
+  'gettime',
+  'toiso',
+  'toisostring',
+  'tolocaledatestring',
+  'array',
+  'object',
+  'string',
+  'number',
+  'boolean',
+  'symbol',
+  'bigint',
+  'function',
+  'regexp',
+  'error',
+  'typeerror',
+  'syntaxerror',
+  'rangeerror',
+  'referenceerror',
+  'map',
+  'set',
+  'weakmap',
+  'weakset',
+  'proxy',
+  'reflect',
+  'buffer',
+  'uint8array',
+  'int32array',
+  'float64array',
+  'arraybuffer',
+  'dataview',
+  'nan',
+  'infinity',
+  'undefined',
+  'null',
+  'globalthis',
+  'this',
   // Node.js built-in modules/functions
-  'fs', 'path', 'os', 'util', 'http', 'https', 'url', 'querystring', 'crypto', 'zlib',
-  'child_process', 'cluster', 'dgram', 'dns', 'domain', 'events', 'net', 'readline',
-  'stream', 'tls', 'tty', 'v8', 'vm', 'worker_threads', 'perf_hooks',
-  'readfile', 'writefile', 'readdir', 'mkdir', 'rmdir', 'stat', 'existssync', 'accesssync',
-  'dirname', 'basename', 'extname', 'join', 'resolve', 'relative', 'isabsolute', 'normalize',
-  'promisify', 'inspect', 'format', 'deprecate', 'inherits',
-  'exec', 'execsync', 'spawn', 'fork', 'execfile',
-  'createserver', 'listen', 'get', 'post', 'put', 'delete', 'request', 'response',
-  'emit', 'on', 'once', 'off', 'removelistener', 'addlistener', 'removealllisteners',
-  'pipe', 'unpipe', 'read', 'write', 'end', 'destroy', 'close',
+  'fs',
+  'path',
+  'os',
+  'util',
+  'http',
+  'https',
+  'url',
+  'querystring',
+  'crypto',
+  'zlib',
+  'child_process',
+  'cluster',
+  'dgram',
+  'dns',
+  'domain',
+  'events',
+  'net',
+  'readline',
+  'stream',
+  'tls',
+  'tty',
+  'v8',
+  'vm',
+  'worker_threads',
+  'perf_hooks',
+  'readfile',
+  'writefile',
+  'readdir',
+  'mkdir',
+  'rmdir',
+  'stat',
+  'existssync',
+  'accesssync',
+  'dirname',
+  'basename',
+  'extname',
+  'join',
+  'resolve',
+  'relative',
+  'isabsolute',
+  'normalize',
+  'promisify',
+  'inspect',
+  'format',
+  'deprecate',
+  'inherits',
+  'exec',
+  'execsync',
+  'spawn',
+  'fork',
+  'execfile',
+  'createserver',
+  'listen',
+  'get',
+  'post',
+  'put',
+  'delete',
+  'request',
+  'response',
+  'emit',
+  'on',
+  'once',
+  'off',
+  'removelistener',
+  'addlistener',
+  'removealllisteners',
+  'pipe',
+  'unpipe',
+  'read',
+  'write',
+  'end',
+  'destroy',
+  'close',
   // TypeScript specific
-  'partial', 'required', 'readonly', 'record', 'pick', 'omit', 'exclude', 'extract',
-  'nonnullable', 'returntype', 'parameters', 'constructorparameters', 'instancetype',
+  'partial',
+  'required',
+  'readonly',
+  'record',
+  'pick',
+  'omit',
+  'exclude',
+  'extract',
+  'nonnullable',
+  'returntype',
+  'parameters',
+  'constructorparameters',
+  'instancetype',
   // Common patterns
-  'createpayload', 'runcommand', 'executecommand', 'handleerror', 'validateinput',
-  'init', 'initialize', 'setup', 'configure', 'start', 'stop', 'reset', 'clear',
-  'get', 'set', 'add', 'remove', 'update', 'delete', 'create', 'destroy',
-  'load', 'save', 'import', 'export', 'parse', 'serialize', 'deserialize',
-  'encode', 'decode', 'encrypt', 'decrypt', 'hash', 'sign', 'verify',
-  'connect', 'disconnect', 'send', 'receive', 'subscribe', 'unsubscribe', 'publish',
-  'validate', 'sanitize', 'normalize', 'transform', 'convert', 'format',
-  'tostring', 'tojson', 'fromjson', 'clone', 'copy', 'merge', 'extend'
+  'createpayload',
+  'runcommand',
+  'executecommand',
+  'handleerror',
+  'validateinput',
+  'init',
+  'initialize',
+  'setup',
+  'configure',
+  'start',
+  'stop',
+  'reset',
+  'clear',
+  'get',
+  'set',
+  'add',
+  'remove',
+  'update',
+  'delete',
+  'create',
+  'destroy',
+  'load',
+  'save',
+  'import',
+  'export',
+  'parse',
+  'serialize',
+  'deserialize',
+  'encode',
+  'decode',
+  'encrypt',
+  'decrypt',
+  'hash',
+  'sign',
+  'verify',
+  'connect',
+  'disconnect',
+  'send',
+  'receive',
+  'subscribe',
+  'unsubscribe',
+  'publish',
+  'validate',
+  'sanitize',
+  'normalize',
+  'transform',
+  'convert',
+  'format',
+  'tostring',
+  'tojson',
+  'fromjson',
+  'clone',
+  'copy',
+  'merge',
+  'extend',
 ]);
 
 /**
@@ -317,7 +535,7 @@ const DEFAULT_OPTIONS: Required<GroundingCheckerOptions> = {
   includeDetails: true,
   customPatterns: [],
   debug: false,
-  language: 'both'
+  language: 'both',
 };
 
 /**
@@ -350,21 +568,21 @@ export class FactualGroundingChecker {
         ungroundedClaims: [],
         score: 1.0,
         details: [],
-        warnings: []
+        warnings: [],
       };
     }
 
     // Analyze each claim
-    const analyses: ClaimAnalysis[] = claims.map(claim => this.analyzeClaim(claim));
+    const analyses: ClaimAnalysis[] = claims.map((claim) => this.analyzeClaim(claim));
 
     // Calculate results
     const groundedClaims = analyses
-      .filter(a => a.hasEvidence)
-      .map(a => `${a.type}: ${a.entity}`);
+      .filter((a) => a.hasEvidence)
+      .map((a) => `${a.type}: ${a.entity}`);
 
     const ungroundedClaims = analyses
-      .filter(a => !a.hasEvidence)
-      .map(a => `${a.type}: ${a.entity}`);
+      .filter((a) => !a.hasEvidence)
+      .map((a) => `${a.type}: ${a.entity}`);
 
     const score = this.calculateScore(analyses);
     const isGrounded = score >= this.options.minGroundingScore;
@@ -381,7 +599,7 @@ export class FactualGroundingChecker {
       groundedClaims,
       ungroundedClaims,
       score,
-      warnings
+      warnings,
     };
 
     if (this.options.includeDetails) {
@@ -399,10 +617,20 @@ export class FactualGroundingChecker {
 
     // Initialize sets for each type
     const types: ClaimType[] = [
-      'file', 'function', 'class', 'method', 'variable',
-      'interface', 'type', 'module', 'directory', 'config', 'api', 'database'
+      'file',
+      'function',
+      'class',
+      'method',
+      'variable',
+      'interface',
+      'type',
+      'module',
+      'directory',
+      'config',
+      'api',
+      'database',
     ];
-    types.forEach(type => this.contextIndex.set(type, new Set()));
+    types.forEach((type) => this.contextIndex.set(type, new Set()));
 
     const fullContext = context.join('\n');
 
@@ -441,7 +669,7 @@ export class FactualGroundingChecker {
     }
 
     // File paths
-    const filePathPattern = /([a-zA-Z0-9_\-]+(?:\/[a-zA-Z0-9_\-]+)*\.[a-zA-Z0-9]+)/g;
+    const filePathPattern = /([a-zA-Z0-9_-]+(?:\/[a-zA-Z0-9_-]+)*\.[a-zA-Z0-9]+)/g;
     while ((match = filePathPattern.exec(context)) !== null) {
       this.contextIndex.get('file')?.add(match[1].toLowerCase());
     }
@@ -464,7 +692,9 @@ export class FactualGroundingChecker {
   /**
    * Extract claims from response text
    */
-  private extractClaims(response: string): Array<{ text: string; type: ClaimType; entity: string }> {
+  private extractClaims(
+    response: string,
+  ): Array<{ text: string; type: ClaimType; entity: string }> {
     const claims: Array<{ text: string; type: ClaimType; entity: string }> = [];
     const seen = new Set<string>();
 
@@ -480,7 +710,7 @@ export class FactualGroundingChecker {
             claims.push({
               text: match[0],
               type: pattern.type,
-              entity
+              entity,
             });
           }
         }
@@ -507,9 +737,9 @@ export class FactualGroundingChecker {
         claim: claim.text,
         type: claim.type,
         entity: claim.entity,
-        hasEvidence: true,  // Always trust standard library
+        hasEvidence: true, // Always trust standard library
         evidence: `[standard library: ${claim.entity}]`,
-        confidence: 1.0
+        confidence: 1.0,
       };
     }
 
@@ -558,7 +788,7 @@ export class FactualGroundingChecker {
       entity: claim.entity,
       hasEvidence,
       evidence,
-      confidence: hasEvidence ? confidence : 0
+      confidence: hasEvidence ? confidence : 0,
     };
   }
 
@@ -567,20 +797,20 @@ export class FactualGroundingChecker {
    */
   private getRelatedTypes(type: ClaimType): ClaimType[] {
     const relations: Record<ClaimType, ClaimType[]> = {
-      'function': ['method'],
-      'method': ['function'],
-      'class': ['interface', 'type'],
-      'interface': ['class', 'type'],
-      'type': ['class', 'interface'],
-      'file': ['module'],
-      'module': ['file', 'package'],
-      'package': ['module'],
-      'variable': [],
-      'directory': [],
-      'config': ['file'],
-      'api': ['function', 'method'],
-      'database': [],
-      'unknown': []
+      function: ['method'],
+      method: ['function'],
+      class: ['interface', 'type'],
+      interface: ['class', 'type'],
+      type: ['class', 'interface'],
+      file: ['module'],
+      module: ['file', 'package'],
+      package: ['module'],
+      variable: [],
+      directory: [],
+      config: ['file'],
+      api: ['function', 'method'],
+      database: [],
+      unknown: [],
     };
     return relations[type] || [];
   }
@@ -614,7 +844,7 @@ export class FactualGroundingChecker {
           matrix[i][j] = Math.min(
             matrix[i - 1][j - 1] + 1,
             matrix[i][j - 1] + 1,
-            matrix[i - 1][j] + 1
+            matrix[i - 1][j] + 1,
           );
         }
       }
@@ -649,23 +879,29 @@ export class FactualGroundingChecker {
     }
 
     // Check for specific patterns
-    const fileHallucinations = analyses.filter(a => a.type === 'file' && !a.hasEvidence);
+    const fileHallucinations = analyses.filter((a) => a.type === 'file' && !a.hasEvidence);
     if (fileHallucinations.length > 0) {
-      warnings.push(`Potential file hallucinations: ${fileHallucinations.map(a => a.entity).join(', ')}`);
+      warnings.push(
+        `Potential file hallucinations: ${fileHallucinations.map((a) => a.entity).join(', ')}`,
+      );
     }
 
-    const classHallucinations = analyses.filter(a =>
-      (a.type === 'class' || a.type === 'interface') && !a.hasEvidence
+    const classHallucinations = analyses.filter(
+      (a) => (a.type === 'class' || a.type === 'interface') && !a.hasEvidence,
     );
     if (classHallucinations.length > 0) {
-      warnings.push(`Potential class/interface hallucinations: ${classHallucinations.map(a => a.entity).join(', ')}`);
+      warnings.push(
+        `Potential class/interface hallucinations: ${classHallucinations.map((a) => a.entity).join(', ')}`,
+      );
     }
 
-    const functionHallucinations = analyses.filter(a =>
-      (a.type === 'function' || a.type === 'method') && !a.hasEvidence
+    const functionHallucinations = analyses.filter(
+      (a) => (a.type === 'function' || a.type === 'method') && !a.hasEvidence,
     );
     if (functionHallucinations.length > 0) {
-      warnings.push(`Potential function/method hallucinations: ${functionHallucinations.map(a => a.entity).join(', ')}`);
+      warnings.push(
+        `Potential function/method hallucinations: ${functionHallucinations.map((a) => a.entity).join(', ')}`,
+      );
     }
 
     return warnings;
@@ -677,8 +913,8 @@ export class FactualGroundingChecker {
   private logDebugInfo(analyses: ClaimAnalysis[], score: number, isGrounded: boolean): void {
     console.log(chalk.cyan('\n[FactualGrounding] Debug Info:'));
     console.log(chalk.gray(`  Total claims: ${analyses.length}`));
-    console.log(chalk.gray(`  Grounded: ${analyses.filter(a => a.hasEvidence).length}`));
-    console.log(chalk.gray(`  Ungrounded: ${analyses.filter(a => !a.hasEvidence).length}`));
+    console.log(chalk.gray(`  Grounded: ${analyses.filter((a) => a.hasEvidence).length}`));
+    console.log(chalk.gray(`  Ungrounded: ${analyses.filter((a) => !a.hasEvidence).length}`));
     console.log(chalk.gray(`  Score: ${(score * 100).toFixed(1)}%`));
     console.log(chalk.gray(`  Is grounded: ${isGrounded ? chalk.green('YES') : chalk.red('NO')}`));
 
@@ -738,7 +974,7 @@ export class FactualGroundingChecker {
       taskId,
       taskDescription,
       rootDir,
-      registeredAt: Date.now()
+      registeredAt: Date.now(),
     });
   }
 
@@ -748,7 +984,10 @@ export class FactualGroundingChecker {
    * @param responseText - The response text to validate
    * @returns Validation result with isGrounded flag and issues array
    */
-  validateResponse(taskId: number, responseText: string): { isGrounded: boolean; issues: string[] } {
+  validateResponse(
+    taskId: number,
+    responseText: string,
+  ): { isGrounded: boolean; issues: string[] } {
     const issues: string[] = [];
     let isGrounded = true;
 
@@ -776,7 +1015,7 @@ export class FactualGroundingChecker {
         issues.push(...result.warnings);
       }
       if (result.ungroundedClaims) {
-        result.ungroundedClaims.forEach(claim => {
+        result.ungroundedClaims.forEach((claim) => {
           issues.push(`Ungrounded: ${claim.substring(0, 60)}...`);
         });
       }
@@ -785,7 +1024,10 @@ export class FactualGroundingChecker {
     return { isGrounded, issues };
   }
 
-  private registeredTasks?: Map<number, { taskId: number; taskDescription: string; rootDir?: string; registeredAt: number }>;
+  private registeredTasks?: Map<
+    number,
+    { taskId: number; taskDescription: string; rootDir?: string; registeredAt: number }
+  >;
 }
 
 /**
@@ -794,7 +1036,7 @@ export class FactualGroundingChecker {
 export function validateGrounding(
   response: string,
   context: string[],
-  minScore: number = 0.7
+  minScore: number = 0.7,
 ): boolean {
   const checker = new FactualGroundingChecker({ minGroundingScore: minScore });
   const result = checker.checkGrounding(response, context);
@@ -804,10 +1046,7 @@ export function validateGrounding(
 /**
  * Get detailed grounding analysis
  */
-export function analyzeGrounding(
-  response: string,
-  context: string[]
-): GroundingResult {
+export function analyzeGrounding(response: string, context: string[]): GroundingResult {
   const checker = new FactualGroundingChecker({ includeDetails: true });
   return checker.checkGrounding(response, context);
 }

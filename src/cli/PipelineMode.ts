@@ -12,7 +12,7 @@
 import chalk from 'chalk';
 import ora from 'ora';
 import { Agent } from '../core/agent/Agent.js';
-import { Swarm } from '../core/swarm/Swarm.js';
+import type { Swarm } from '../core/swarm/Swarm.js';
 
 interface PipelineStage {
   task: string;
@@ -130,7 +130,6 @@ export class PipelineMode {
 
         context = output; // Pass to next stage
         spinner.succeed(chalk.green(`[${stageNum}/${stages.length}] Complete (${duration}ms)`));
-
       } catch (error: any) {
         const duration = Date.now() - startTime;
 
@@ -165,15 +164,15 @@ export class PipelineMode {
    */
   private generateSummary(): string {
     const totalDuration = this.results.reduce((sum, r) => sum + r.duration, 0);
-    const successCount = this.results.filter(r => r.success).length;
+    const successCount = this.results.filter((r) => r.success).length;
 
-    let summary = chalk.cyan('\n═══ Pipeline Summary ═══\n');
-    summary += chalk.gray(`Total stages: ${this.results.length}\n`);
-    summary += chalk.gray(`Successful: ${successCount}/${this.results.length}\n`);
-    summary += chalk.gray(`Total time: ${totalDuration}ms\n\n`);
+    let _summary = chalk.cyan('\n═══ Pipeline Summary ═══\n');
+    _summary += chalk.gray(`Total stages: ${this.results.length}\n`);
+    _summary += chalk.gray(`Successful: ${successCount}/${this.results.length}\n`);
+    _summary += chalk.gray(`Total time: ${totalDuration}ms\n\n`);
 
     // Return last successful output as main result
-    const lastSuccess = [...this.results].reverse().find(r => r.success);
+    const lastSuccess = [...this.results].reverse().find((r) => r.success);
     return lastSuccess?.output || 'Pipeline completed with no output';
   }
 
@@ -187,5 +186,5 @@ export class PipelineMode {
 
 // Helper to create quick pipelines
 export function pipe(...tasks: string[]): string {
-  return tasks.map(t => `"${t}"`).join(' | ');
+  return tasks.map((t) => `"${t}"`).join(' | ');
 }

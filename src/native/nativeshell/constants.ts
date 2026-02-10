@@ -8,11 +8,11 @@
  */
 
 import type {
-  ShellType,
   CommandMapping,
   EnvironmentConfig,
   EnvironmentProfile,
-  TimeoutProfile
+  ShellType,
+  TimeoutProfile,
 } from './types.js';
 
 // ============================================================
@@ -25,40 +25,37 @@ import type {
 export const SHELL_PATHS: Record<ShellType, { windows: string[]; unix: string[] }> = {
   cmd: {
     windows: ['C:\\Windows\\System32\\cmd.exe', 'cmd.exe'],
-    unix: []
+    unix: [],
   },
   powershell: {
-    windows: [
-      'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
-      'powershell.exe'
-    ],
-    unix: []
+    windows: ['C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe', 'powershell.exe'],
+    unix: [],
   },
   pwsh: {
     windows: [
       'C:\\Program Files\\PowerShell\\7\\pwsh.exe',
       'C:\\Program Files (x86)\\PowerShell\\7\\pwsh.exe',
-      'pwsh.exe'
+      'pwsh.exe',
     ],
-    unix: ['/usr/local/bin/pwsh', '/usr/bin/pwsh', 'pwsh']
+    unix: ['/usr/local/bin/pwsh', '/usr/bin/pwsh', 'pwsh'],
   },
   bash: {
     windows: [
       'C:\\Program Files\\Git\\bin\\bash.exe',
       'C:\\Program Files (x86)\\Git\\bin\\bash.exe',
       'C:\\Windows\\System32\\bash.exe',
-      'bash.exe'
+      'bash.exe',
     ],
-    unix: ['/bin/bash', '/usr/bin/bash', '/usr/local/bin/bash']
+    unix: ['/bin/bash', '/usr/bin/bash', '/usr/local/bin/bash'],
   },
   sh: {
     windows: [],
-    unix: ['/bin/sh', '/usr/bin/sh']
+    unix: ['/bin/sh', '/usr/bin/sh'],
   },
   zsh: {
     windows: [],
-    unix: ['/bin/zsh', '/usr/bin/zsh', '/usr/local/bin/zsh']
-  }
+    unix: ['/bin/zsh', '/usr/bin/zsh', '/usr/local/bin/zsh'],
+  },
 };
 
 /**
@@ -120,7 +117,7 @@ export const COMMAND_TRANSLATIONS: CommandMapping[] = [
   { cmd: 'attrib', powershell: 'Get-ItemProperty', bash: 'stat' },
 
   // Help
-  { cmd: 'help', powershell: 'Get-Help', bash: 'man' }
+  { cmd: 'help', powershell: 'Get-Help', bash: 'man' },
 ];
 
 /**
@@ -128,7 +125,7 @@ export const COMMAND_TRANSLATIONS: CommandMapping[] = [
  */
 export const SHELL_FALLBACK_ORDER: Record<'windows' | 'unix', ShellType[]> = {
   windows: ['powershell', 'pwsh', 'cmd', 'bash'],
-  unix: ['bash', 'zsh', 'sh', 'pwsh']
+  unix: ['bash', 'zsh', 'sh', 'pwsh'],
 };
 
 // ============================================================
@@ -147,7 +144,7 @@ export const DEFAULT_PROGRESS_PATTERNS: RegExp[] = [
   // Percentage patterns: "50%", "50.5%", "Progress: 50%"
   /(\d+(?:\.\d+)?)\s*%/,
   // Progress bar patterns: "[=====>    ]", "[#####     ]"
-  /\[([=>#\-]+)\s*\]/,
+  /\[([=>#-]+)\s*\]/,
   // Fraction patterns: "5/10", "5 of 10", "5 / 10"
   /(\d+)\s*(?:\/|of)\s*(\d+)/i,
   // Download patterns: "Downloading...", "downloading file.zip"
@@ -159,7 +156,7 @@ export const DEFAULT_PROGRESS_PATTERNS: RegExp[] = [
   // Pip patterns: "Installing collected packages"
   /Installing\s+(.+)/i,
   // Generic progress: "Step 1/5", "Stage 2 of 4"
-  /(?:Step|Stage)\s+(\d+)\s*(?:\/|of)\s*(\d+)/i
+  /(?:Step|Stage)\s+(\d+)\s*(?:\/|of)\s*(\d+)/i,
 ];
 
 // ============================================================
@@ -170,10 +167,10 @@ export const DEFAULT_PROGRESS_PATTERNS: RegExp[] = [
  * Timeout profile values in milliseconds
  */
 export const TIMEOUT_PROFILES: Record<TimeoutProfile, number> = {
-  quick: 10000,    // 10 seconds - for simple commands
-  normal: 120000,  // 2 minutes - default for most operations
-  long: 300000,    // 5 minutes - for longer operations
-  build: 600000    // 10 minutes - for build processes
+  quick: 10000, // 10 seconds - for simple commands
+  normal: 120000, // 2 minutes - default for most operations
+  long: 300000, // 5 minutes - for longer operations
+  build: 600000, // 10 minutes - for build processes
 };
 
 // ============================================================
@@ -193,7 +190,7 @@ export const SENSITIVE_ENV_PATTERNS: RegExp[] = [
   /AUTH/i,
   /ACCESS[_-]?KEY/i,
   /SESSION[_-]?KEY/i,
-  /ENCRYPT/i
+  /ENCRYPT/i,
 ];
 
 /**
@@ -212,7 +209,7 @@ export const DEFAULT_BLOCKED_ENV_VARS: string[] = [
   'MONGO_PASSWORD',
   'JWT_SECRET',
   'ENCRYPTION_KEY',
-  'PRIVATE_KEY'
+  'PRIVATE_KEY',
 ];
 
 /**
@@ -224,27 +221,27 @@ export const ENVIRONMENT_PROFILES: Record<EnvironmentProfile, Partial<Environmen
     additionalEnv: {
       NODE_ENV: 'development',
       DEBUG: '*',
-      LOG_LEVEL: 'debug'
+      LOG_LEVEL: 'debug',
     },
-    blockedEnvVars: []
+    blockedEnvVars: [],
   },
   production: {
     inheritEnv: true,
     additionalEnv: {
       NODE_ENV: 'production',
-      LOG_LEVEL: 'info'
+      LOG_LEVEL: 'info',
     },
-    blockedEnvVars: [...DEFAULT_BLOCKED_ENV_VARS]
+    blockedEnvVars: [...DEFAULT_BLOCKED_ENV_VARS],
   },
   test: {
     inheritEnv: false,
     additionalEnv: {
       NODE_ENV: 'test',
       LOG_LEVEL: 'warn',
-      CI: 'true'
+      CI: 'true',
     },
-    blockedEnvVars: [...DEFAULT_BLOCKED_ENV_VARS]
-  }
+    blockedEnvVars: [...DEFAULT_BLOCKED_ENV_VARS],
+  },
 };
 
 // ============================================================
@@ -258,7 +255,7 @@ export const ALLOWED_SCRIPT_EXTENSIONS: Record<string, string[]> = {
   python: ['.py', '.pyw'],
   node: ['.js', '.mjs', '.cjs'],
   bash: ['.sh', '.bash'],
-  powershell: ['.ps1', '.psm1', '.psd1']
+  powershell: ['.ps1', '.psm1', '.psd1'],
 };
 
 /**
@@ -293,5 +290,5 @@ export const PYTHON_SANDBOX_BLOCKED_IMPORTS = [
   'zipimport',
   'pkgutil',
   'modulefinder',
-  'runpy'
+  'runpy',
 ];

@@ -7,38 +7,32 @@
  * from src/core/intelligence/SelfReflection.ts for backward compatibility.
  */
 
+// Default export
 export {
-  // Types
-  type ReflectionResult,
-  type ReflectionConfig,
-  type ReflectionCriteria,
-  type ReflexionLesson,
-  type TrajectoryCheckpoint,
+  clearReflexionMemory,
+  default,
   type EvaluationResult,
-  type ReflexionMemory,
-  type ReflexionResult,
-  type ReflexionOptions,
-
-  // Main functions
-  reflexionLoop,
-  selfReflect,
-  selfEvaluate,
-  learnFromFailure,
   findBestCheckpoint,
-
   // Utility functions
   getReflexionStats,
-  clearReflexionMemory,
-
+  learnFromFailure,
+  type ReflectionConfig,
+  type ReflectionCriteria,
+  // Types
+  type ReflectionResult,
+  type ReflexionLesson,
+  type ReflexionMemory,
+  type ReflexionOptions,
+  type ReflexionResult,
+  // Main functions
+  reflexionLoop,
   // Memory manager
   reflexionMemory,
-
   // Class
   SelfReflectionEngine,
-
+  selfEvaluate,
+  selfReflect,
   // Singleton
-  selfReflection
+  selfReflection,
+  type TrajectoryCheckpoint,
 } from './intelligence/SelfReflection.js';
-
-// Default export
-export { default } from './intelligence/SelfReflection.js';

@@ -10,17 +10,17 @@
  * - Vector-based semantic search integration
  */
 
-import path from 'path';
+import path from 'node:path';
+import { MEMORY_DIR } from '../config/paths.config.js';
 import {
   BaseMemory,
-  MemoryOptions,
-  MemoryStats,
-  generateId,
-  estimateSize,
-  serializeToJson,
   deserializeFromJson,
+  estimateSize,
+  generateId,
+  type MemoryOptions,
+  type MemoryStats,
+  serializeToJson,
 } from './BaseMemory.js';
-import { MEMORY_DIR } from '../config/paths.config.js';
 
 // ============================================================================
 // Interfaces
@@ -192,7 +192,7 @@ export class GraphMemory extends BaseMemory<GraphData> {
       metadata?: Record<string, unknown>;
       importance?: number;
       tags?: string[];
-    } = {}
+    } = {},
   ): Entity {
     const id = generateId();
     const now = new Date();
@@ -230,12 +230,14 @@ export class GraphMemory extends BaseMemory<GraphData> {
       type: EntityType;
       observations?: string[];
       metadata?: Record<string, unknown>;
-    }>
+    }>,
   ): Entity[] {
-    return entities.map(e => this.createEntity(e.name, e.type, {
-      observations: e.observations,
-      metadata: e.metadata,
-    }));
+    return entities.map((e) =>
+      this.createEntity(e.name, e.type, {
+        observations: e.observations,
+        metadata: e.metadata,
+      }),
+    );
   }
 
   /**
@@ -251,14 +253,16 @@ export class GraphMemory extends BaseMemory<GraphData> {
   getEntitiesByName(name: string): Entity[] {
     const ids = this.entityByName.get(name.toLowerCase());
     if (!ids) return [];
-    return Array.from(ids).map(id => this.entities.get(id)!).filter(Boolean);
+    return Array.from(ids)
+      .map((id) => this.entities.get(id)!)
+      .filter(Boolean);
   }
 
   /**
    * Get entities by type
    */
   getEntitiesByType(type: EntityType): Entity[] {
-    return Array.from(this.entities.values()).filter(e => e.type === type);
+    return Array.from(this.entities.values()).filter((e) => e.type === type);
   }
 
   /**
@@ -337,7 +341,7 @@ export class GraphMemory extends BaseMemory<GraphData> {
       label?: string;
       weight?: number;
       metadata?: Record<string, unknown>;
-    } = {}
+    } = {},
   ): Relation | undefined {
     // Verify entities exist
     if (!this.entities.has(sourceId) || !this.entities.has(targetId)) {
@@ -372,10 +376,10 @@ export class GraphMemory extends BaseMemory<GraphData> {
       targetId: string;
       type: RelationType;
       label?: string;
-    }>
+    }>,
   ): Relation[] {
     return relations
-      .map(r => this.createRelation(r.sourceId, r.targetId, r.type, { label: r.label }))
+      .map((r) => this.createRelation(r.sourceId, r.targetId, r.type, { label: r.label }))
       .filter((r): r is Relation => r !== undefined);
   }
 
@@ -452,7 +456,7 @@ export class GraphMemory extends BaseMemory<GraphData> {
     entityId: string,
     content: string,
     source: Observation['source'] = 'user',
-    confidence: number = 1.0
+    confidence: number = 1.0,
   ): Observation | undefined {
     if (!this.entities.has(entityId)) return undefined;
 
@@ -472,7 +476,7 @@ export class GraphMemory extends BaseMemory<GraphData> {
     if (!this.observationsByEntity.has(entityId)) {
       this.observationsByEntity.set(entityId, new Set());
     }
-    this.observationsByEntity.get(entityId)!.add(id);
+    this.observationsByEntity.get(entityId)?.add(id);
 
     // Update entity's observations array
     const entity = this.entities.get(entityId)!;
@@ -491,10 +495,10 @@ export class GraphMemory extends BaseMemory<GraphData> {
   addObservations(
     entityId: string,
     contents: string[],
-    source: Observation['source'] = 'user'
+    source: Observation['source'] = 'user',
   ): Observation[] {
     return contents
-      .map(c => this.addObservation(entityId, c, source))
+      .map((c) => this.addObservation(entityId, c, source))
       .filter((o): o is Observation => o !== undefined);
   }
 
@@ -505,7 +509,7 @@ export class GraphMemory extends BaseMemory<GraphData> {
     const obsIds = this.observationsByEntity.get(entityId);
     if (!obsIds) return [];
     return Array.from(obsIds)
-      .map(id => this.observations.get(id)!)
+      .map((id) => this.observations.get(id)!)
       .filter(Boolean);
   }
 
@@ -519,7 +523,7 @@ export class GraphMemory extends BaseMemory<GraphData> {
     // Remove from entity
     const entity = this.entities.get(obs.entityId);
     if (entity) {
-      entity.observations = entity.observations.filter(o => o !== obs.content);
+      entity.observations = entity.observations.filter((o) => o !== obs.content);
       entity.updated = new Date();
     }
 
@@ -554,12 +558,12 @@ export class GraphMemory extends BaseMemory<GraphData> {
    */
   searchEntities(query: string, limit: number = 10): GraphSearchResult[] {
     const queryLower = query.toLowerCase();
-    const queryWords = queryLower.split(/\s+/).filter(w => w.length > 2);
+    const queryWords = queryLower.split(/\s+/).filter((w) => w.length > 2);
 
     if (queryWords.length === 0) {
       return Array.from(this.entities.values())
         .slice(0, limit)
-        .map(e => ({
+        .map((e) => ({
           entity: e,
           score: e.importance,
           matchedObservations: [],
@@ -575,13 +579,13 @@ export class GraphMemory extends BaseMemory<GraphData> {
       const obsLower = entity.observations.join(' ').toLowerCase();
       const combined = `${nameLower} ${tagsLower} ${obsLower}`;
 
-      const matchCount = queryWords.filter(w => combined.includes(w)).length;
+      const matchCount = queryWords.filter((w) => combined.includes(w)).length;
       if (matchCount === 0) continue;
 
       const score = (matchCount / queryWords.length) * 0.6 + entity.importance * 0.4;
 
-      const matchedObservations = entity.observations.filter(obs =>
-        queryWords.some(w => obs.toLowerCase().includes(w))
+      const matchedObservations = entity.observations.filter((obs) =>
+        queryWords.some((w) => obs.toLowerCase().includes(w)),
       );
 
       results.push({
@@ -592,9 +596,7 @@ export class GraphMemory extends BaseMemory<GraphData> {
       });
     }
 
-    return results
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit);
+    return results.sort((a, b) => b.score - a.score).slice(0, limit);
   }
 
   /**
@@ -646,16 +648,18 @@ export class GraphMemory extends BaseMemory<GraphData> {
     relations: Relation[];
     observations: Observation[];
   }> {
-    return ids.map(id => {
-      const entity = this.entities.get(id);
-      if (!entity) return null;
+    return ids
+      .map((id) => {
+        const entity = this.entities.get(id);
+        if (!entity) return null;
 
-      return {
-        entity,
-        relations: this.getEntityRelations(id),
-        observations: this.getEntityObservations(id),
-      };
-    }).filter((n): n is NonNullable<typeof n> => n !== null);
+        return {
+          entity,
+          relations: this.getEntityRelations(id),
+          observations: this.getEntityObservations(id),
+        };
+      })
+      .filter((n): n is NonNullable<typeof n> => n !== null);
   }
 
   /**
@@ -682,7 +686,7 @@ export class GraphMemory extends BaseMemory<GraphData> {
     if (!this.entityByName.has(nameLower)) {
       this.entityByName.set(nameLower, new Set());
     }
-    this.entityByName.get(nameLower)!.add(entity.id);
+    this.entityByName.get(nameLower)?.add(entity.id);
   }
 
   private removeEntityIndex(entity: Entity): void {
@@ -700,12 +704,12 @@ export class GraphMemory extends BaseMemory<GraphData> {
     if (!this.relationsBySource.has(relation.sourceId)) {
       this.relationsBySource.set(relation.sourceId, new Set());
     }
-    this.relationsBySource.get(relation.sourceId)!.add(relation.id);
+    this.relationsBySource.get(relation.sourceId)?.add(relation.id);
 
     if (!this.relationsByTarget.has(relation.targetId)) {
       this.relationsByTarget.set(relation.targetId, new Set());
     }
-    this.relationsByTarget.get(relation.targetId)!.add(relation.id);
+    this.relationsByTarget.get(relation.targetId)?.add(relation.id);
   }
 
   private removeRelationIndex(relation: Relation): void {
@@ -738,7 +742,7 @@ export class GraphMemory extends BaseMemory<GraphData> {
       if (!this.observationsByEntity.has(obs.entityId)) {
         this.observationsByEntity.set(obs.entityId, new Set());
       }
-      this.observationsByEntity.get(obs.entityId)!.add(obs.id);
+      this.observationsByEntity.get(obs.entityId)?.add(obs.id);
     }
   }
 
@@ -819,10 +823,12 @@ export class GraphMemory extends BaseMemory<GraphData> {
     }
 
     const allDates = [
-      ...Array.from(this.entities.values()).map(e => e.created),
-      ...Array.from(this.relations.values()).map(r => r.created),
-      ...Array.from(this.observations.values()).map(o => o.created),
-    ].filter(d => d instanceof Date).sort((a, b) => a.getTime() - b.getTime());
+      ...Array.from(this.entities.values()).map((e) => e.created),
+      ...Array.from(this.relations.values()).map((r) => r.created),
+      ...Array.from(this.observations.values()).map((o) => o.created),
+    ]
+      .filter((d) => d instanceof Date)
+      .sort((a, b) => a.getTime() - b.getTime());
 
     return {
       entries: this.entities.size + this.relations.size + this.observations.size,

@@ -2,8 +2,8 @@
  * AgentsView Tests
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AgentsView } from '../../src/views/AgentsView';
 import { createMockAppState, type MockAppState } from '../mocks/store';
 
@@ -38,7 +38,9 @@ describe('AgentsView', () => {
 
     it('renders page description', () => {
       render(<AgentsView />);
-      expect(screen.getByText(/System multi-agentowy inspirowany postaciami z Wiedźmina/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/System multi-agentowy inspirowany postaciami z Wiedźmina/),
+      ).toBeInTheDocument();
     });
   });
 

@@ -6,8 +6,8 @@
  */
 
 import chalk from 'chalk';
-import { MCPTool, MCPToolDiscoveryOptions } from './MCPTypes.js';
 import { logError } from '../utils/errorHandling.js';
+import type { MCPTool, MCPToolDiscoveryOptions } from './MCPTypes.js';
 
 // ============================================================
 // Types
@@ -45,7 +45,7 @@ export class MCPAutoDiscovery {
     },
     onToolRemoved: (tool) => {
       console.log(chalk.yellow(`[MCP Discovery] Tool removed: ${tool.server}__${tool.name}`));
-    }
+    },
   };
 
   constructor(options?: MCPToolDiscoveryOptions) {
@@ -164,7 +164,7 @@ export class MCPAutoDiscovery {
 
       const currentTools = this.toolProvider();
       const currentToolNames = new Set(
-        currentTools.map(t => this.formatToolName(t.serverName, t.name))
+        currentTools.map((t) => this.formatToolName(t.serverName, t.name)),
       );
 
       // Check for new tools
@@ -190,7 +190,6 @@ export class MCPAutoDiscovery {
       }
 
       this.lastScanTime = Date.now();
-
     } catch (error) {
       logError('MCP Discovery', 'Scan failed', error);
     }
@@ -218,7 +217,7 @@ export class MCPAutoDiscovery {
     const parts = fullName.split('__');
     return {
       serverName: parts[0],
-      toolName: parts.slice(1).join('__')
+      toolName: parts.slice(1).join('__'),
     };
   }
 

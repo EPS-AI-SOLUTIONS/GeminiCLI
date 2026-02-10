@@ -2,7 +2,7 @@
  * Settings E2E Tests
  */
 
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 test.describe('Settings', () => {
   test.beforeEach(async ({ page }) => {
@@ -132,7 +132,7 @@ test.describe('Settings', () => {
 
   test('reset button shows confirmation', async ({ page }) => {
     // Listen for dialog
-    page.on('dialog', async dialog => {
+    page.on('dialog', async (dialog) => {
       expect(dialog.message()).toContain('przywrócić domyślne');
       await dialog.dismiss();
     });
@@ -150,7 +150,7 @@ test.describe('Settings', () => {
     await verboseToggle.click();
 
     // Accept confirmation
-    page.on('dialog', async dialog => {
+    page.on('dialog', async (dialog) => {
       await dialog.accept();
     });
 

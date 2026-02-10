@@ -229,9 +229,13 @@ export interface MetaPromptResult {
 }
 
 /**
- * Legacy TaskType
+ * MetaPrompting task type for prompt classification.
+ *
+ * ARCHITECTURE FIX (#13): Renamed from `TaskType` to `MetaPromptingTaskType`
+ * to avoid collision with the agent temperature `TaskType` in agent/types.ts.
+ * The old name is kept as a deprecated alias for backwards compatibility.
  */
-export type TaskType =
+export type MetaPromptingTaskType =
   | 'analysis'
   | 'creative'
   | 'coding'
@@ -242,6 +246,9 @@ export type TaskType =
   | 'transformation'
   | 'evaluation'
   | 'unknown';
+
+/** @deprecated Use MetaPromptingTaskType instead */
+export type TaskType = MetaPromptingTaskType;
 
 // ============================================================================
 // DEFAULT CONFIGURATIONS
@@ -254,7 +261,7 @@ export const DEFAULT_CONFIG: MetaPromptingConfig = {
   model: undefined, // Will use selectModel dynamically
   temperature: 0.4,
   language: 'pl',
-  maxTokens: 4096
+  maxTokens: 4096,
 };
 
 /**
@@ -266,5 +273,5 @@ export const DEFAULT_EVOLUTION_CONFIG: EvolutionConfig = {
   mutationRate: 0.3,
   selectionPressure: 2.0,
   crossoverRate: 0.7,
-  elitismCount: 2
+  elitismCount: 2,
 };

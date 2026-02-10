@@ -8,31 +8,31 @@
 // ============================================================================
 
 export {
-  // Model constants
-  GEMINI_MODELS,
-  LLAMA_MODELS,
-  OLLAMA_MODELS,  // Alias for LLAMA_MODELS
-  DEFAULT_MODEL,
-  FAST_MODEL,
-  QUALITY_MODEL,
-  LOCAL_MODEL,
   CODING_MODEL,
-  // Pricing
-  MODEL_PRICING,
-  // Capabilities
-  MODEL_CAPABILITIES,
-  // Types
-  type GeminiModel,
-  type LlamaModel,
-  type OllamaModel,  // Alias for LlamaModel
-  type ModelPricing,
-  type ModelCapabilities,
   // Functions
   calculateCost,
+  DEFAULT_MODEL,
+  FAST_MODEL,
+  // Model constants
+  GEMINI_MODELS,
+  // Types
+  type GeminiModel,
   getModelCapabilities,
-  isLocalModel,
-  isLlamaModel,
   isGeminiModel,
+  isLlamaModel,
+  isLocalModel,
+  LLAMA_MODELS,
+  type LlamaModel,
+  LOCAL_MODEL,
+  // Capabilities
+  MODEL_CAPABILITIES,
+  // Pricing
+  MODEL_PRICING,
+  type ModelCapabilities,
+  type ModelPricing,
+  OLLAMA_MODELS, // Alias for LLAMA_MODELS
+  type OllamaModel, // Alias for LlamaModel
+  QUALITY_MODEL,
 } from './models.config.js';
 
 // ============================================================================
@@ -40,22 +40,22 @@ export {
 // ============================================================================
 
 export {
+  AGENT_COLORS,
+  AGENT_DESCRIPTIONS,
+  AGENT_FALLBACK_CHAINS,
   // Agent constants
   AGENT_ROLES,
-  AGENT_DESCRIPTIONS,
-  AGENT_COLORS,
-  AGENT_FALLBACK_CHAINS,
-  TASK_ROUTING,
+  type AgentDescription,
   // Types
   type AgentRole,
-  type AgentDescription,
-  type TaskCategory,
+  getAgentColor,
   // Functions
   getAgentDescription,
-  getAgentColor,
   getAgentFallbackChain,
   getAgentForTask,
   getAllAgentRoles,
+  TASK_ROUTING,
+  type TaskCategory,
 } from './agents.config.js';
 
 // ============================================================================
@@ -63,70 +63,70 @@ export {
 // ============================================================================
 
 export {
+  CACHE_LIMITS,
+  // Cache limits
+  CACHE_TTL,
+  CACHE_TTL_LONG,
+  CACHE_TTL_SHORT,
+  CONCURRENCY_LIMITS,
+  CONNECTION_TIMEOUT_MS,
+  // Functions
+  calculateRetryDelay,
+  FAST_TIMEOUT_MS,
+  FILE_LIMITS,
+  getAvailableContextTokens,
+  getMaxTokensForOperation,
+  getTimeoutForOperation,
+  isCacheExpired,
+  LLAMA_TIMEOUT_MS,
+  LONG_TIMEOUT_MS,
+  MAX_BATCH_FILES,
+  MAX_CACHE_ENTRY_SIZE,
+  MAX_CACHE_SIZE,
+  MAX_CACHE_SIZE_BYTES,
+  MAX_CONCURRENT_API_CALLS,
+  MAX_CONCURRENT_FILE_OPS,
+  // Concurrency limits
+  MAX_CONCURRENT_TASKS,
+  MAX_CONTEXT_TOKENS,
+  MAX_CONVERSATION_TURNS,
+  MAX_CRITICAL_RETRIES,
+  MAX_DIRECTORY_DEPTH,
+  MAX_FILE_LINES,
+  // File limits
+  MAX_FILE_SIZE,
+  // Memory limits
+  MAX_MEMORY_ENTRIES,
+  MAX_PARALLEL_AGENTS,
+  // Queue limits
+  MAX_QUEUE_SIZE,
   // Retry limits
   MAX_RETRIES,
-  MAX_CRITICAL_RETRIES,
-  RETRY_INITIAL_DELAY_MS,
-  RETRY_MAX_DELAY_MS,
-  RETRY_BACKOFF_MULTIPLIER,
-  // Timeout limits
-  TIMEOUT_MS,
-  FAST_TIMEOUT_MS,
-  LONG_TIMEOUT_MS,
-  LLAMA_TIMEOUT_MS,
-  OLLAMA_TIMEOUT_MS,  // Deprecated alias
-  STREAM_TIMEOUT_MS,
-  CONNECTION_TIMEOUT_MS,
+  MAX_SESSION_HISTORY,
   // Token limits
   MAX_TOKENS,
   MAX_TOKENS_FAST,
   MAX_TOKENS_LONG,
-  MAX_CONTEXT_TOKENS,
-  RESERVED_SYSTEM_TOKENS,
-  TOKEN_SAFETY_BUFFER,
-  // Concurrency limits
-  MAX_CONCURRENT_TASKS,
-  MAX_CONCURRENT_API_CALLS,
-  MAX_CONCURRENT_FILE_OPS,
-  MAX_PARALLEL_AGENTS,
-  RATE_LIMIT_RPM,
-  RATE_LIMIT_TPM,
-  // Cache limits
-  CACHE_TTL,
-  CACHE_TTL_SHORT,
-  CACHE_TTL_LONG,
-  MAX_CACHE_SIZE,
-  MAX_CACHE_SIZE_BYTES,
-  MAX_CACHE_ENTRY_SIZE,
-  // Memory limits
-  MAX_MEMORY_ENTRIES,
-  MAX_SESSION_HISTORY,
-  MAX_CONVERSATION_TURNS,
   MEMORY_CLEANUP_THRESHOLD,
-  // File limits
-  MAX_FILE_SIZE,
-  MAX_BATCH_FILES,
-  MAX_DIRECTORY_DEPTH,
-  MAX_FILE_LINES,
-  // Queue limits
-  MAX_QUEUE_SIZE,
+  MEMORY_LIMITS,
+  OLLAMA_TIMEOUT_MS, // Deprecated alias
   QUEUE_BATCH_SIZE,
   QUEUE_DRAIN_TIMEOUT_MS,
+  QUEUE_LIMITS,
+  RATE_LIMIT_RPM,
+  RATE_LIMIT_TPM,
+  RESERVED_SYSTEM_TOKENS,
+  RETRY_BACKOFF_MULTIPLIER,
+  RETRY_INITIAL_DELAY_MS,
   // Grouped limit objects
   RETRY_LIMITS,
+  RETRY_MAX_DELAY_MS,
+  STREAM_TIMEOUT_MS,
   TIMEOUT_LIMITS,
+  // Timeout limits
+  TIMEOUT_MS,
   TOKEN_LIMITS,
-  CONCURRENCY_LIMITS,
-  CACHE_LIMITS,
-  MEMORY_LIMITS,
-  FILE_LIMITS,
-  QUEUE_LIMITS,
-  // Functions
-  calculateRetryDelay,
-  getAvailableContextTokens,
-  isCacheExpired,
-  getTimeoutForOperation,
-  getMaxTokensForOperation,
+  TOKEN_SAFETY_BUFFER,
 } from './limits.config.js';
 
 // ============================================================================
@@ -134,50 +134,50 @@ export {
 // ============================================================================
 
 export {
-  // Base directories
-  HOME_DIR,
-  GEMINIHYDRA_DIR,
-  PROJECT_ROOT,
-  // Configuration directories
-  SESSION_DIR,
-  MEMORY_DIR,
-  CACHE_DIR,
-  LOGS_DIR,
-  KNOWLEDGE_DIR,
-  TEMP_DIR,
+  API_KEYS_FILE,
+  API_LOG_FILE,
   BACKUP_DIR,
+  CACHE_DIR,
   // Configuration files
   CONFIG_FILE,
-  API_KEYS_FILE,
-  PREFERENCES_FILE,
-  SESSION_INDEX_FILE,
-  MEMORY_INDEX_FILE,
-  KNOWLEDGE_GRAPH_FILE,
-  // Cache files
-  RESPONSE_CACHE_FILE,
-  EMBEDDING_CACHE_FILE,
-  TOKEN_CACHE_FILE,
-  // Log files
-  MAIN_LOG_FILE,
-  ERROR_LOG_FILE,
   DEBUG_LOG_FILE,
-  API_LOG_FILE,
-  // Path helpers
-  getConfigPath,
-  getSessionPath,
-  getMemoryPath,
-  getKnowledgePath,
-  getCachePath,
-  getTempPath,
-  getBackupPath,
-  getLogPath,
+  EMBEDDING_CACHE_FILE,
+  ERROR_LOG_FILE,
+  ensureDirectoryPath,
+  GEMINIHYDRA_DIR,
   // Directory helpers
   getAllDirectories,
-  ensureDirectoryPath,
+  getBackupPath,
+  getCachePath,
+  // Path helpers
+  getConfigPath,
+  getKnowledgePath,
+  getLogPath,
+  getMemoryPath,
+  getRelativePath,
+  getSessionPath,
+  getTempPath,
+  // Base directories
+  HOME_DIR,
   // Path validation
   isWithinGeminiHydra,
+  KNOWLEDGE_DIR,
+  KNOWLEDGE_GRAPH_FILE,
+  LOGS_DIR,
+  // Log files
+  MAIN_LOG_FILE,
+  MEMORY_DIR,
+  MEMORY_INDEX_FILE,
   normalizePath,
-  getRelativePath,
+  PREFERENCES_FILE,
+  PROJECT_ROOT,
+  // Cache files
+  RESPONSE_CACHE_FILE,
+  // Configuration directories
+  SESSION_DIR,
+  SESSION_INDEX_FILE,
+  TEMP_DIR,
+  TOKEN_CACHE_FILE,
 } from './paths.config.js';
 
 // ============================================================================
@@ -185,23 +185,23 @@ export {
 // ============================================================================
 
 export {
-  // Temperature presets
-  TEMPERATURE_PRESETS,
-  TASK_TEMPERATURES,
-  TEMPERATURE_RANGES,
-  MODEL_TEMPERATURES,
-  TEMPERATURE_ADJUSTMENTS,
   ANNEALING_CONFIG,
-  // Types
-  type TemperaturePreset,
-  type TaskType as TemperatureTaskType,
-  type TemperatureRange,
+  blendTemperature,
+  calculatePassTemperature,
+  clampTemperature,
   // Functions
   getTemperatureForTask,
   getTemperaturePreset,
-  clampTemperature,
-  calculatePassTemperature,
-  blendTemperature,
+  MODEL_TEMPERATURES,
+  TASK_TEMPERATURES,
+  type TaskType as TemperatureTaskType,
+  TEMPERATURE_ADJUSTMENTS,
+  // Temperature presets
+  TEMPERATURE_PRESETS,
+  TEMPERATURE_RANGES,
+  // Types
+  type TemperaturePreset,
+  type TemperatureRange,
 } from './temperatures.config.js';
 
 // ============================================================================
@@ -219,10 +219,24 @@ export {
 // COMBINED CONFIG OBJECT
 // ============================================================================
 
-import { GEMINI_MODELS, OLLAMA_MODELS, DEFAULT_MODEL, FAST_MODEL, QUALITY_MODEL } from './models.config.js';
 import { AGENT_ROLES } from './agents.config.js';
-import { MAX_RETRIES, TIMEOUT_MS, MAX_TOKENS, MAX_CONTEXT_TOKENS, MAX_CONCURRENT_TASKS, CACHE_TTL, MAX_CACHE_SIZE } from './limits.config.js';
-import { GEMINIHYDRA_DIR, SESSION_DIR, MEMORY_DIR, CACHE_DIR } from './paths.config.js';
+import {
+  CACHE_TTL,
+  MAX_CACHE_SIZE,
+  MAX_CONCURRENT_TASKS,
+  MAX_CONTEXT_TOKENS,
+  MAX_RETRIES,
+  MAX_TOKENS,
+  TIMEOUT_MS,
+} from './limits.config.js';
+import {
+  DEFAULT_MODEL,
+  FAST_MODEL,
+  GEMINI_MODELS,
+  OLLAMA_MODELS,
+  QUALITY_MODEL,
+} from './models.config.js';
+import { CACHE_DIR, GEMINIHYDRA_DIR, MEMORY_DIR, SESSION_DIR } from './paths.config.js';
 
 /**
  * Combined configuration object for quick access

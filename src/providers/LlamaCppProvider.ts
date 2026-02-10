@@ -7,43 +7,22 @@
  */
 
 import type {
-  LLMProvider,
+  ChatCompletionChunk,
   ChatCompletionRequest,
   ChatCompletionResponse,
-  ChatCompletionChunk,
+  LLMProvider,
   TaskDifficulty,
 } from '../types/index.js';
 
 // Recommended models by difficulty (GGUF format)
 export const LLAMA_CPP_MODELS: Record<TaskDifficulty, readonly string[]> = {
-  trivial: [
-    'qwen3-0.6b',
-    'qwen3-1.7b',
-  ],
-  simple: [
-    'qwen3-0.6b',
-    'qwen3-1.7b',
-  ],
-  medium: [
-    'qwen3-4b',
-    'qwen3-8b',
-  ],
-  complex: [
-    'qwen3-14b',
-    'qwen3-32b',
-  ],
-  moderate: [
-    'qwen3-4b',
-    'qwen3-8b',
-  ],
-  expert: [
-    'qwen3-14b',
-    'qwen3-32b',
-  ],
-  critical: [
-    'qwen3-14b',
-    'qwen3-32b',
-  ],
+  trivial: ['qwen3-0.6b', 'qwen3-1.7b'],
+  simple: ['qwen3-0.6b', 'qwen3-1.7b'],
+  medium: ['qwen3-4b', 'qwen3-8b'],
+  complex: ['qwen3-14b', 'qwen3-32b'],
+  moderate: ['qwen3-4b', 'qwen3-8b'],
+  expert: ['qwen3-14b', 'qwen3-32b'],
+  critical: ['qwen3-14b', 'qwen3-32b'],
 };
 
 export interface LlamaCppConfig {
@@ -102,8 +81,8 @@ export class LlamaCppProvider implements LLMProvider {
         headers: this.getHeaders(),
       });
       if (!response.ok) return [];
-      const data = await response.json() as { data: Array<{ id: string }> };
-      return data.data.map(m => m.id);
+      const data = (await response.json()) as { data: Array<{ id: string }> };
+      return data.data.map((m) => m.id);
     } catch {
       return [];
     }
@@ -154,12 +133,12 @@ export class LlamaCppProvider implements LLMProvider {
       throw new Error(`llama-cpp-python error: ${response.status} - ${error}`);
     }
 
-    const data = await response.json() as ChatCompletionResponse;
+    const data = (await response.json()) as ChatCompletionResponse;
     return data;
   }
 
   async *createChatCompletionStream(
-    request: ChatCompletionRequest
+    request: ChatCompletionRequest,
   ): AsyncIterable<ChatCompletionChunk> {
     const url = `${this.baseUrl}/v1/chat/completions`;
 
@@ -249,7 +228,7 @@ export class LlamaCppProvider implements LLMProvider {
       'Content-Type': 'application/json',
     };
     if (this.apiKey) {
-      headers['Authorization'] = `Bearer ${this.apiKey}`;
+      headers.Authorization = `Bearer ${this.apiKey}`;
     }
     return headers;
   }

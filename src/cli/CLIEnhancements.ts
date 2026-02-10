@@ -3,11 +3,11 @@
  * Features #31, #32, #33, #34, #35, #36, #37, #38, #39
  */
 
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import readline from 'node:readline';
 import chalk from 'chalk';
-import readline from 'readline';
-import fs from 'fs/promises';
-import path from 'path';
-import os from 'os';
 
 import { GEMINIHYDRA_DIR } from '../config/paths.config.js';
 
@@ -109,7 +109,7 @@ export class TaskEditor {
   constructor() {
     this.rl = readline.createInterface({
       input: process.stdin,
-      output: process.stdout
+      output: process.stdout,
     });
   }
 
@@ -118,19 +118,22 @@ export class TaskEditor {
     console.log(chalk.gray(`Current: ${task.objective}\n`));
 
     return new Promise((resolve) => {
-      this.rl.question(chalk.yellow('New objective (or Enter to keep, "cancel" to abort): '), (answer) => {
-        if (answer.toLowerCase() === 'cancel') {
-          console.log(chalk.gray('Edit cancelled'));
-          resolve(null);
-        } else if (answer.trim() === '') {
-          console.log(chalk.gray('Kept original'));
-          resolve(task);
-        } else {
-          task.objective = answer.trim();
-          console.log(chalk.green('Task updated'));
-          resolve(task);
-        }
-      });
+      this.rl.question(
+        chalk.yellow('New objective (or Enter to keep, "cancel" to abort): '),
+        (answer) => {
+          if (answer.toLowerCase() === 'cancel') {
+            console.log(chalk.gray('Edit cancelled'));
+            resolve(null);
+          } else if (answer.trim() === '') {
+            console.log(chalk.gray('Kept original'));
+            resolve(task);
+          } else {
+            task.objective = answer.trim();
+            console.log(chalk.green('Task updated'));
+            resolve(task);
+          }
+        },
+      );
     });
   }
 
@@ -156,39 +159,43 @@ const BUILT_IN_TEMPLATES: TaskTemplate[] = [
   {
     name: 'review-pr',
     description: 'Review a pull request',
-    objective: 'Review the pull request at {{url}}. Check for bugs, code style, and suggest improvements.',
-    variables: ['url']
+    objective:
+      'Review the pull request at {{url}}. Check for bugs, code style, and suggest improvements.',
+    variables: ['url'],
   },
   {
     name: 'refactor',
     description: 'Refactor code',
-    objective: 'Refactor {{file}} to improve readability and performance. Keep the same functionality.',
-    variables: ['file']
+    objective:
+      'Refactor {{file}} to improve readability and performance. Keep the same functionality.',
+    variables: ['file'],
   },
   {
     name: 'test',
     description: 'Generate tests',
     objective: 'Write comprehensive unit tests for {{file}}. Cover edge cases and error handling.',
-    variables: ['file']
+    variables: ['file'],
   },
   {
     name: 'document',
     description: 'Generate documentation',
-    objective: 'Write documentation for {{file}} including function descriptions and usage examples.',
-    variables: ['file']
+    objective:
+      'Write documentation for {{file}} including function descriptions and usage examples.',
+    variables: ['file'],
   },
   {
     name: 'optimize',
     description: 'Optimize performance',
     objective: 'Analyze {{file}} for performance issues and optimize where possible.',
-    variables: ['file']
+    variables: ['file'],
   },
   {
     name: 'security',
     description: 'Security audit',
-    objective: 'Perform a security audit on {{file}}. Look for vulnerabilities like injection, XSS, etc.',
-    variables: ['file']
-  }
+    objective:
+      'Perform a security audit on {{file}}. Look for vulnerabilities like injection, XSS, etc.',
+    variables: ['file'],
+  },
 ];
 
 export class TemplateManager {
@@ -196,7 +203,7 @@ export class TemplateManager {
 
   constructor() {
     // Load built-in templates
-    BUILT_IN_TEMPLATES.forEach(t => this.templates.set(t.name, t));
+    BUILT_IN_TEMPLATES.forEach((t) => this.templates.set(t.name, t));
   }
 
   async loadCustomTemplates(): Promise<void> {
@@ -210,12 +217,12 @@ export class TemplateManager {
             const content = await fs.readFile(path.join(TEMPLATES_DIR, file), 'utf-8');
             const template = JSON.parse(content) as TaskTemplate;
             this.templates.set(template.name, template);
-          } catch (e) {
+          } catch (_e) {
             // Skip invalid templates
           }
         }
       }
-    } catch (e) {
+    } catch (_e) {
       // Templates dir doesn't exist, that's fine
     }
   }
@@ -232,7 +239,7 @@ export class TemplateManager {
     await fs.mkdir(TEMPLATES_DIR, { recursive: true });
     await fs.writeFile(
       path.join(TEMPLATES_DIR, `${template.name}.json`),
-      JSON.stringify(template, null, 2)
+      JSON.stringify(template, null, 2),
     );
     this.templates.set(template.name, template);
   }
@@ -285,11 +292,15 @@ export class OutputFormatter {
   }
 
   private toJSON(content: string): string {
-    return JSON.stringify({
-      timestamp: new Date().toISOString(),
-      content: content,
-      format: 'text'
-    }, null, 2);
+    return JSON.stringify(
+      {
+        timestamp: new Date().toISOString(),
+        content: content,
+        format: 'text',
+      },
+      null,
+      2,
+    );
   }
 
   private toMarkdown(content: string): string {
@@ -360,19 +371,22 @@ const SYNTAX_COLORS: Record<string, (s: string) => string> = {
   number: chalk.yellow,
   comment: chalk.gray,
   function: chalk.cyan,
-  operator: chalk.white
+  operator: chalk.white,
 };
 
-export function highlightCode(code: string, language: string = 'javascript'): string {
+export function highlightCode(code: string, _language: string = 'javascript'): string {
   let highlighted = code;
 
   // Keywords
-  const keywords = /\b(const|let|var|function|return|if|else|for|while|class|import|export|from|async|await|try|catch|throw|new|this)\b/g;
+  const keywords =
+    /\b(const|let|var|function|return|if|else|for|while|class|import|export|from|async|await|try|catch|throw|new|this)\b/g;
   highlighted = highlighted.replace(keywords, SYNTAX_COLORS.keyword('$1'));
 
   // Strings
-  highlighted = highlighted.replace(/(["'`])((?:\\\1|(?!\1).)*)(\1)/g,
-    SYNTAX_COLORS.string('$1$2$3'));
+  highlighted = highlighted.replace(
+    /(["'`])((?:\\\1|(?!\1).)*)(\1)/g,
+    SYNTAX_COLORS.string('$1$2$3'),
+  );
 
   // Numbers
   highlighted = highlighted.replace(/\b(\d+\.?\d*)\b/g, SYNTAX_COLORS.number('$1'));
@@ -396,15 +410,21 @@ export interface AutocompleteOptions {
 
 export function createCompleter(options: AutocompleteOptions) {
   const allCompletions = [
-    ...options.commands.map(c => `/${c}`),
-    ...options.agents.map(a => `@${a}`),
-    ...options.tools.map(t => `mcp:${t}`),
-    'exit', 'quit', '/help', '/status', '/queue', '/history', '/clear'
+    ...options.commands.map((c) => `/${c}`),
+    ...options.agents.map((a) => `@${a}`),
+    ...options.tools.map((t) => `mcp:${t}`),
+    'exit',
+    'quit',
+    '/help',
+    '/status',
+    '/queue',
+    '/history',
+    '/clear',
   ];
 
   return (line: string): [string[], string] => {
-    const completions = allCompletions.filter(c =>
-      c.toLowerCase().startsWith(line.toLowerCase())
+    const completions = allCompletions.filter((c) =>
+      c.toLowerCase().startsWith(line.toLowerCase()),
     );
     return [completions, line];
   };
@@ -502,7 +522,7 @@ export class OutputPaginator {
 
     const rl = readline.createInterface({
       input: process.stdin,
-      output: process.stdout
+      output: process.stdout,
     });
 
     for (let i = 0; i < pages.length; i++) {
@@ -547,19 +567,21 @@ export async function sendNotification(options: NotificationOptions): Promise<vo
   try {
     if (platform === 'darwin') {
       // macOS
-      const { exec } = await import('child_process');
+      const { exec } = await import('node:child_process');
       const soundFlag = sound ? 'default' : '';
-      exec(`osascript -e 'display notification "${message}" with title "${title}" sound name "${soundFlag}"'`);
+      exec(
+        `osascript -e 'display notification "${message}" with title "${title}" sound name "${soundFlag}"'`,
+      );
     } else if (platform === 'win32') {
       // Windows - use PowerShell toast
-      const { exec } = await import('child_process');
+      const { exec } = await import('node:child_process');
       exec(`powershell -Command "New-BurntToastNotification -Text '${title}', '${message}'"`);
     } else {
       // Linux - use notify-send
-      const { exec } = await import('child_process');
+      const { exec } = await import('node:child_process');
       exec(`notify-send "${title}" "${message}"`);
     }
-  } catch (error) {
+  } catch (_error) {
     // Fallback to console
     console.log(chalk.cyan(`\n🔔 ${title}: ${message}\n`));
   }
@@ -578,5 +600,5 @@ export default {
   createCompleter,
   historySearch,
   paginator,
-  sendNotification
+  sendNotification,
 };

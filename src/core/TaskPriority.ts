@@ -3,14 +3,12 @@
  * Feature #7: Task Prioritization
  */
 
-import chalk from 'chalk';
-
 export type Priority = 'critical' | 'high' | 'medium' | 'low';
 
 export interface PrioritizedTask {
   id: number | string;
   priority: Priority;
-  content?: string;        // Alias for task
+  content?: string; // Alias for task
   task?: string;
   agent?: string;
   dependencies?: (number | string)[];
@@ -23,7 +21,7 @@ const PRIORITY_WEIGHTS: Record<Priority, number> = {
   critical: 1000,
   high: 100,
   medium: 10,
-  low: 1
+  low: 1,
 };
 
 /**
@@ -55,10 +53,10 @@ export class TaskPriorityQueue {
   getNext(): PrioritizedTask | undefined {
     for (const task of this.tasks) {
       const deps = task.dependencies || [];
-      const depsCompleted = deps.every(dep => this.completedIds.has(dep));
+      const depsCompleted = deps.every((dep) => this.completedIds.has(dep));
       if (depsCompleted) {
         // Remove from queue
-        this.tasks = this.tasks.filter(t => t.id !== task.id);
+        this.tasks = this.tasks.filter((t) => t.id !== task.id);
         return task;
       }
     }
@@ -75,15 +73,15 @@ export class TaskPriorityQueue {
       if (executable.length >= maxCount) break;
 
       const deps = task.dependencies || [];
-      const depsCompleted = deps.every(dep => this.completedIds.has(dep));
+      const depsCompleted = deps.every((dep) => this.completedIds.has(dep));
       if (depsCompleted) {
         executable.push(task);
       }
     }
 
     // Remove from queue
-    const executableIds = new Set(executable.map(t => t.id));
-    this.tasks = this.tasks.filter(t => !executableIds.has(t.id));
+    const executableIds = new Set(executable.map((t) => t.id));
+    this.tasks = this.tasks.filter((t) => !executableIds.has(t.id));
 
     return executable;
   }
@@ -156,7 +154,7 @@ export class TaskPriorityQueue {
     for (let i = 0; i < this.tasks.length; i++) {
       const task = this.tasks[i];
       const deps = task.dependencies || [];
-      const depsCompleted = deps.every(dep => completed.has(dep));
+      const depsCompleted = deps.every((dep) => completed.has(dep));
       if (depsCompleted) {
         this.tasks.splice(i, 1);
         return task;
@@ -206,7 +204,7 @@ export class TaskPriorityQueue {
       critical: 0,
       high: 0,
       medium: 0,
-      low: 0
+      low: 0,
     };
 
     for (const task of this.tasks) {
@@ -216,7 +214,7 @@ export class TaskPriorityQueue {
     return {
       total: this.tasks.length,
       completed: this.completedIds.size,
-      byPriority
+      byPriority,
     };
   }
 }
@@ -245,16 +243,16 @@ export function detectPriority(taskText: string): Priority {
 /**
  * Prioritize tasks from plan
  */
-export function prioritizeTasks<T extends { id: number | string; task?: string; objective?: string; content?: string }>(
-  tasks: T[]
-): (T & { priority: Priority })[] {
+export function prioritizeTasks<
+  T extends { id: number | string; task?: string; objective?: string; content?: string },
+>(tasks: T[]): (T & { priority: Priority })[] {
   return tasks
-    .map(t => {
+    .map((t) => {
       const text = t.task || t.objective || t.content || '';
       return {
         ...t,
         priority: detectPriority(text),
-        retryCount: 0
+        retryCount: 0,
       };
     })
     .sort((a, b) => {
@@ -271,5 +269,5 @@ export default {
   TaskPriorityQueue,
   detectPriority,
   prioritizeTasks,
-  taskQueue
+  taskQueue,
 };

@@ -2,7 +2,7 @@
  * Framer Motion Mock - Simplified for testing
  */
 
-import React, { forwardRef, type ReactNode, type ComponentProps } from 'react';
+import { type ComponentProps, forwardRef, type ReactNode } from 'react';
 
 type MotionProps<T extends keyof JSX.IntrinsicElements> = ComponentProps<T> & {
   initial?: unknown;
@@ -16,23 +16,31 @@ type MotionProps<T extends keyof JSX.IntrinsicElements> = ComponentProps<T> & {
 export const motion = {
   div: forwardRef<HTMLDivElement, MotionProps<'div'>>(
     ({ children, initial, animate, exit, whileHover, whileTap, transition, ...props }, ref) => (
-      <div ref={ref} {...props}>{children}</div>
-    )
+      <div ref={ref} {...props}>
+        {children}
+      </div>
+    ),
   ),
   aside: forwardRef<HTMLElement, MotionProps<'aside'>>(
     ({ children, initial, animate, exit, whileHover, whileTap, transition, ...props }, ref) => (
-      <aside ref={ref} {...props}>{children}</aside>
-    )
+      <aside ref={ref} {...props}>
+        {children}
+      </aside>
+    ),
   ),
   span: forwardRef<HTMLSpanElement, MotionProps<'span'>>(
     ({ children, initial, animate, exit, whileHover, whileTap, transition, ...props }, ref) => (
-      <span ref={ref} {...props}>{children}</span>
-    )
+      <span ref={ref} {...props}>
+        {children}
+      </span>
+    ),
   ),
   button: forwardRef<HTMLButtonElement, MotionProps<'button'>>(
     ({ children, initial, animate, exit, whileHover, whileTap, transition, ...props }, ref) => (
-      <button ref={ref} {...props}>{children}</button>
-    )
+      <button ref={ref} {...props}>
+        {children}
+      </button>
+    ),
   ),
 };
 

@@ -11,7 +11,18 @@
 /**
  * File type classification
  */
-export type FileType = 'pdf' | 'docx' | 'image' | 'csv' | 'json' | 'yaml' | 'code' | 'text' | 'file' | 'directory' | 'unknown';
+export type FileType =
+  | 'pdf'
+  | 'docx'
+  | 'image'
+  | 'csv'
+  | 'json'
+  | 'yaml'
+  | 'code'
+  | 'text'
+  | 'file'
+  | 'directory'
+  | 'unknown';
 
 /**
  * Unified FileInfo interface combining:
@@ -118,12 +129,16 @@ export type FileInfoBasic = Pick<FileInfo, 'path' | 'name' | 'type' | 'size' | '
 /**
  * Version with filesystem stats
  */
-export type FileInfoWithStats = FileInfo & Required<Pick<FileInfo, 'size' | 'isDirectory' | 'isFile' | 'created' | 'modified' | 'accessed' | 'mode'>>;
+export type FileInfoWithStats = FileInfo &
+  Required<
+    Pick<FileInfo, 'size' | 'isDirectory' | 'isFile' | 'created' | 'modified' | 'accessed' | 'mode'>
+  >;
 
 /**
  * Version with code analysis
  */
-export type FileInfoWithAnalysis = FileInfo & Required<Pick<FileInfo, 'lines' | 'exports' | 'imports' | 'classes' | 'functions'>>;
+export type FileInfoWithAnalysis = FileInfo &
+  Required<Pick<FileInfo, 'lines' | 'exports' | 'imports' | 'classes' | 'functions'>>;
 
 // ============================================================
 // Search Types
@@ -176,22 +191,26 @@ export type SearchContext = {
 };
 
 // Helper function to normalize context to string array format
-export function normalizeContextToArray(context: SearchContext | undefined): { before: string[]; after: string[] } | undefined {
+export function normalizeContextToArray(
+  context: SearchContext | undefined,
+): { before: string[]; after: string[] } | undefined {
   if (!context) return undefined;
 
   return {
     before: Array.isArray(context.before) ? context.before : context.before.split('\n'),
-    after: Array.isArray(context.after) ? context.after : context.after.split('\n')
+    after: Array.isArray(context.after) ? context.after : context.after.split('\n'),
   };
 }
 
 // Helper function to normalize context to string format
-export function normalizeContextToString(context: SearchContext | undefined): { before: string; after: string } | undefined {
+export function normalizeContextToString(
+  context: SearchContext | undefined,
+): { before: string; after: string } | undefined {
   if (!context) return undefined;
 
   return {
     before: Array.isArray(context.before) ? context.before.join('\n') : context.before,
-    after: Array.isArray(context.after) ? context.after.join('\n') : context.after
+    after: Array.isArray(context.after) ? context.after.join('\n') : context.after,
   };
 }
 
@@ -336,7 +355,7 @@ export interface WriteWithRetryResult {
 export class FileLockError extends Error {
   constructor(
     message: string,
-    public readonly lockInfo: FileLockInfo
+    public readonly lockInfo: FileLockInfo,
   ) {
     super(message);
     this.name = 'FileLockError';

@@ -6,17 +6,9 @@
  * Displays quick-action cards that auto-send commands to the chat.
  */
 
-import { memo } from 'react';
 import { motion } from 'framer-motion';
-import {
-  Monitor,
-  FolderTree,
-  GitBranch,
-  HardDrive,
-  Network,
-  Cpu,
-  Keyboard,
-} from 'lucide-react';
+import { Cpu, FolderTree, GitBranch, HardDrive, Keyboard, Monitor, Network } from 'lucide-react';
+import { memo } from 'react';
 import { useAppStore } from '../store/useAppStore';
 
 // ============================================================================

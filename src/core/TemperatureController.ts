@@ -100,16 +100,16 @@ export interface TemperatureResult {
  */
 const DEFAULT_TASK_TYPE_RANGES: Record<ControllerTaskType, [number, number]> = {
   // Factual: Lower range for accuracy, but respecting Gemini 3 minimum
-  'factual': [0.8, 1.0],
+  factual: [0.8, 1.0],
 
   // Analytical: Default range for balanced reasoning
-  'analytical': [0.9, 1.2],
+  analytical: [0.9, 1.2],
 
   // Creative: Higher temperature for diverse, creative outputs
-  'creative': [1.4, 1.9],
+  creative: [1.4, 1.9],
 
   // Code-generation: Slightly below default for correctness
-  'code-generation': [0.8, 1.1]
+  'code-generation': [0.8, 1.1],
 };
 
 /**
@@ -119,11 +119,11 @@ const DEFAULT_TASK_TYPE_RANGES: Record<ControllerTaskType, [number, number]> = {
  * GEMINI 3 OPTIMIZED: All phases use 1.0+ for optimal performance
  */
 const DEFAULT_PHASE_TEMPERATURES: Record<ExecutionPhase, number> = {
-  'PRE-A': 0.9,  // Planning phase - slightly below default for precision
-  'A': 1.0,      // Analysis phase - Gemini 3 default
-  'B': 1.2,      // Build phase - moderate creativity for implementation
-  'C': 1.0,      // Consensus phase - default for verification
-  'D': 1.0       // Delivery phase - default for clear output
+  'PRE-A': 0.9, // Planning phase - slightly below default for precision
+  A: 1.0, // Analysis phase - Gemini 3 default
+  B: 1.2, // Build phase - moderate creativity for implementation
+  C: 1.0, // Consensus phase - default for verification
+  D: 1.0, // Delivery phase - default for clear output
 };
 
 /**
@@ -136,9 +136,9 @@ const DEFAULT_CONFIG: TemperatureControllerConfig = {
   enablePhaseAdjustment: true,
   taskTypeRanges: DEFAULT_TASK_TYPE_RANGES,
   phaseTemperatures: DEFAULT_PHASE_TEMPERATURES,
-  uncertaintyPenalty: 0.05,  // Reduced penalty to avoid going too low
-  minTemperature: 0.7,       // Gemini 3 safe minimum
-  maxTemperature: 2.0        // Gemini 3 maximum
+  uncertaintyPenalty: 0.05, // Reduced penalty to avoid going too low
+  minTemperature: 0.7, // Gemini 3 safe minimum
+  maxTemperature: 2.0, // Gemini 3 maximum
 };
 
 // =============================================================================
@@ -149,58 +149,175 @@ const DEFAULT_CONFIG: TemperatureControllerConfig = {
  * Keywords for auto-detecting task types from prompt content
  */
 const TASK_TYPE_KEYWORDS: Record<ControllerTaskType, string[]> = {
-  'factual': [
+  factual: [
     // English
-    'what is', 'who is', 'when did', 'where is', 'how many', 'list',
-    'define', 'describe', 'explain', 'tell me about', 'facts',
-    'true or false', 'verify', 'check', 'confirm', 'validate',
-    'retrieve', 'find', 'search', 'lookup', 'get information',
+    'what is',
+    'who is',
+    'when did',
+    'where is',
+    'how many',
+    'list',
+    'define',
+    'describe',
+    'explain',
+    'tell me about',
+    'facts',
+    'true or false',
+    'verify',
+    'check',
+    'confirm',
+    'validate',
+    'retrieve',
+    'find',
+    'search',
+    'lookup',
+    'get information',
     // Polish
-    'co to jest', 'kto to', 'kiedy', 'gdzie', 'ile', 'wymien',
-    'zdefiniuj', 'opisz', 'wyjasni', 'powiedz mi', 'fakty',
-    'prawda czy falsz', 'zweryfikuj', 'sprawdz', 'potwierdz',
-    'pobierz', 'znajdz', 'szukaj', 'odczytaj'
+    'co to jest',
+    'kto to',
+    'kiedy',
+    'gdzie',
+    'ile',
+    'wymien',
+    'zdefiniuj',
+    'opisz',
+    'wyjasni',
+    'powiedz mi',
+    'fakty',
+    'prawda czy falsz',
+    'zweryfikuj',
+    'sprawdz',
+    'potwierdz',
+    'pobierz',
+    'znajdz',
+    'szukaj',
+    'odczytaj',
   ],
 
-  'analytical': [
+  analytical: [
     // English
-    'analyze', 'compare', 'evaluate', 'assess', 'review',
-    'investigate', 'examine', 'study', 'research', 'audit',
-    'critique', 'pros and cons', 'trade-offs', 'implications',
-    'why', 'how does', 'what causes', 'relationship between',
+    'analyze',
+    'compare',
+    'evaluate',
+    'assess',
+    'review',
+    'investigate',
+    'examine',
+    'study',
+    'research',
+    'audit',
+    'critique',
+    'pros and cons',
+    'trade-offs',
+    'implications',
+    'why',
+    'how does',
+    'what causes',
+    'relationship between',
     // Polish
-    'analizuj', 'porownaj', 'ocen', 'zbadaj', 'przegladnij',
-    'sprawdz', 'zbadaj', 'badaj', 'audyt', 'krytyka',
-    'za i przeciw', 'kompromisy', 'implikacje', 'dlaczego',
-    'jak dziala', 'co powoduje', 'zaleznosc miedzy'
+    'analizuj',
+    'porownaj',
+    'ocen',
+    'zbadaj',
+    'przegladnij',
+    'sprawdz',
+    'zbadaj',
+    'badaj',
+    'audyt',
+    'krytyka',
+    'za i przeciw',
+    'kompromisy',
+    'implikacje',
+    'dlaczego',
+    'jak dziala',
+    'co powoduje',
+    'zaleznosc miedzy',
   ],
 
-  'creative': [
+  creative: [
     // English
-    'create', 'design', 'imagine', 'brainstorm', 'invent',
-    'generate ideas', 'propose', 'suggest', 'come up with',
-    'creative', 'innovative', 'novel', 'unique', 'original',
-    'what if', 'alternative', 'possibilities', 'vision',
+    'create',
+    'design',
+    'imagine',
+    'brainstorm',
+    'invent',
+    'generate ideas',
+    'propose',
+    'suggest',
+    'come up with',
+    'creative',
+    'innovative',
+    'novel',
+    'unique',
+    'original',
+    'what if',
+    'alternative',
+    'possibilities',
+    'vision',
     // Polish
-    'stworz', 'zaprojektuj', 'wyobraz', 'burza mozgow', 'wynajdz',
-    'generuj pomysly', 'zaproponuj', 'sugeruj', 'wymysl',
-    'kreatywny', 'innowacyjny', 'nowy', 'unikalny', 'oryginalny',
-    'co jesli', 'alternatywa', 'mozliwosci', 'wizja'
+    'stworz',
+    'zaprojektuj',
+    'wyobraz',
+    'burza mozgow',
+    'wynajdz',
+    'generuj pomysly',
+    'zaproponuj',
+    'sugeruj',
+    'wymysl',
+    'kreatywny',
+    'innowacyjny',
+    'nowy',
+    'unikalny',
+    'oryginalny',
+    'co jesli',
+    'alternatywa',
+    'mozliwosci',
+    'wizja',
   ],
 
   'code-generation': [
     // English
-    'implement', 'code', 'write function', 'create class',
-    'program', 'develop', 'build', 'script', 'algorithm',
-    'typescript', 'javascript', 'python', 'rust', 'java',
-    'function', 'method', 'api', 'endpoint', 'module',
-    'fix bug', 'debug', 'refactor', 'optimize code',
+    'implement',
+    'code',
+    'write function',
+    'create class',
+    'program',
+    'develop',
+    'build',
+    'script',
+    'algorithm',
+    'typescript',
+    'javascript',
+    'python',
+    'rust',
+    'java',
+    'function',
+    'method',
+    'api',
+    'endpoint',
+    'module',
+    'fix bug',
+    'debug',
+    'refactor',
+    'optimize code',
     // Polish
-    'implementuj', 'koduj', 'napisz funkcje', 'stworz klase',
-    'programuj', 'rozwijaj', 'buduj', 'skrypt', 'algorytm',
-    'funkcja', 'metoda', 'modul', 'napraw blad', 'debuguj',
-    'refaktoryzuj', 'optymalizuj kod'
-  ]
+    'implementuj',
+    'koduj',
+    'napisz funkcje',
+    'stworz klase',
+    'programuj',
+    'rozwijaj',
+    'buduj',
+    'skrypt',
+    'algorytm',
+    'funkcja',
+    'metoda',
+    'modul',
+    'napraw blad',
+    'debuguj',
+    'refaktoryzuj',
+    'optymalizuj kod',
+  ],
 };
 
 /**
@@ -213,10 +330,10 @@ function detectTaskTypeFromPrompt(prompt: string): {
 } {
   const promptLower = prompt.toLowerCase();
   const scores: Record<ControllerTaskType, { count: number; keywords: string[] }> = {
-    'factual': { count: 0, keywords: [] },
-    'analytical': { count: 0, keywords: [] },
-    'creative': { count: 0, keywords: [] },
-    'code-generation': { count: 0, keywords: [] }
+    factual: { count: 0, keywords: [] },
+    analytical: { count: 0, keywords: [] },
+    creative: { count: 0, keywords: [] },
+    'code-generation': { count: 0, keywords: [] },
   };
 
   // Count keyword matches for each task type
@@ -249,7 +366,7 @@ function detectTaskTypeFromPrompt(prompt: string): {
   return {
     taskType: detectedType,
     confidence: maxScore > 0 ? Math.max(0.3, confidence) : 0.3,
-    matchedKeywords
+    matchedKeywords,
   };
 }
 
@@ -290,7 +407,7 @@ export class TemperatureController {
     if (config.taskTypeRanges) {
       this.config.taskTypeRanges = {
         ...DEFAULT_TASK_TYPE_RANGES,
-        ...config.taskTypeRanges
+        ...config.taskTypeRanges,
       };
     }
 
@@ -298,7 +415,7 @@ export class TemperatureController {
     if (config.phaseTemperatures) {
       this.config.phaseTemperatures = {
         ...DEFAULT_PHASE_TEMPERATURES,
-        ...config.phaseTemperatures
+        ...config.phaseTemperatures,
       };
     }
   }
@@ -359,7 +476,7 @@ export class TemperatureController {
   getOptimalTemperatureWithAnalysis(
     prompt: string,
     phase: ExecutionPhase,
-    overrideTaskType?: ControllerTaskType
+    overrideTaskType?: ControllerTaskType,
   ): TemperatureResult {
     const reasoning: string[] = [];
     let taskType: ControllerTaskType;
@@ -373,7 +490,9 @@ export class TemperatureController {
       const detection = detectTaskTypeFromPrompt(prompt);
       taskType = detection.taskType;
       detectionConfidence = detection.confidence;
-      reasoning.push(`Auto-detected task type: ${taskType} (confidence: ${(detection.confidence * 100).toFixed(0)}%)`);
+      reasoning.push(
+        `Auto-detected task type: ${taskType} (confidence: ${(detection.confidence * 100).toFixed(0)}%)`,
+      );
       if (detection.matchedKeywords.length > 0) {
         reasoning.push(`Matched keywords: ${detection.matchedKeywords.slice(0, 5).join(', ')}`);
       }
@@ -393,13 +512,17 @@ export class TemperatureController {
     // Step 4: Calculate weighted temperature
     const taskTypeMid = (minTemp + maxTemp) / 2;
     let temperature = taskTypeMid * 0.6 + phaseTemp * 0.4;
-    reasoning.push(`Weighted calculation: (${taskTypeMid.toFixed(2)} * 0.6) + (${phaseTemp} * 0.4) = ${temperature.toFixed(2)}`);
+    reasoning.push(
+      `Weighted calculation: (${taskTypeMid.toFixed(2)} * 0.6) + (${phaseTemp} * 0.4) = ${temperature.toFixed(2)}`,
+    );
 
     // Step 5: Apply phase adjustments
     const beforeAdjust = temperature;
     temperature = this.applyPhaseAdjustments(temperature, phase, taskType);
     if (temperature !== beforeAdjust) {
-      reasoning.push(`Phase adjustment applied: ${beforeAdjust.toFixed(2)} -> ${temperature.toFixed(2)}`);
+      reasoning.push(
+        `Phase adjustment applied: ${beforeAdjust.toFixed(2)} -> ${temperature.toFixed(2)}`,
+      );
     }
 
     // Step 6: Apply uncertainty penalty if detection confidence is low
@@ -429,7 +552,7 @@ export class TemperatureController {
       taskType,
       phase,
       reasoning,
-      confidence: detectionConfidence
+      confidence: detectionConfidence,
     };
   }
 
@@ -450,7 +573,7 @@ export class TemperatureController {
   private applyPhaseAdjustments(
     temperature: number,
     phase: ExecutionPhase,
-    taskType: ControllerTaskType
+    taskType: ControllerTaskType,
   ): number {
     switch (phase) {
       case 'PRE-A':
@@ -551,14 +674,14 @@ export class TemperatureController {
     if (updates.taskTypeRanges) {
       this.config.taskTypeRanges = {
         ...this.config.taskTypeRanges,
-        ...updates.taskTypeRanges
+        ...updates.taskTypeRanges,
       };
     }
 
     if (updates.phaseTemperatures) {
       this.config.phaseTemperatures = {
         ...this.config.phaseTemperatures,
-        ...updates.phaseTemperatures
+        ...updates.phaseTemperatures,
       };
     }
   }
@@ -576,13 +699,13 @@ export class TemperatureController {
   private recordUsage(
     taskType: ControllerTaskType,
     phase: ExecutionPhase,
-    temperature: number
+    temperature: number,
   ): void {
     this.history.push({
       timestamp: Date.now(),
       taskType,
       phase,
-      temperature
+      temperature,
     });
 
     // Keep only last 100 entries
@@ -615,7 +738,7 @@ export class TemperatureController {
       averageTemperature: 0,
       byTaskType: {} as Record<ControllerTaskType, { count: number; avgTemp: number }>,
       byPhase: {} as Record<ExecutionPhase, { count: number; avgTemp: number }>,
-      successRate: 0
+      successRate: 0,
     };
 
     if (this.history.length === 0) {
@@ -663,14 +786,14 @@ export class TemperatureController {
     for (const [taskType, data] of Object.entries(taskTypeTotals)) {
       stats.byTaskType[taskType as ControllerTaskType] = {
         count: data.count,
-        avgTemp: this.round(data.sum / data.count)
+        avgTemp: this.round(data.sum / data.count),
       };
     }
 
     for (const [phase, data] of Object.entries(phaseTotals)) {
       stats.byPhase[phase as ExecutionPhase] = {
         count: data.count,
-        avgTemp: this.round(data.sum / data.count)
+        avgTemp: this.round(data.sum / data.count),
       };
     }
 
@@ -727,7 +850,7 @@ export function getPhaseTemperatureController(): TemperatureController {
  * Initialize the global controller with custom configuration
  */
 export function initializePhaseTemperatureController(
-  config?: Partial<TemperatureControllerConfig>
+  config?: Partial<TemperatureControllerConfig>,
 ): TemperatureController {
   globalController = new TemperatureController(config);
   return globalController;
@@ -748,10 +871,7 @@ export function resetPhaseTemperatureController(): void {
  * Quick function to get optimal temperature for a task and phase
  * Uses the global controller instance
  */
-export function getOptimalTemp(
-  taskType: ControllerTaskType,
-  phase: ExecutionPhase
-): number {
+export function getOptimalTemp(taskType: ControllerTaskType, phase: ExecutionPhase): number {
   return getPhaseTemperatureController().getOptimalTemperature(taskType, phase);
 }
 
@@ -759,10 +879,7 @@ export function getOptimalTemp(
  * Quick function to analyze prompt and get optimal temperature
  * Uses the global controller instance
  */
-export function analyzeAndGetTemp(
-  prompt: string,
-  phase: ExecutionPhase
-): TemperatureResult {
+export function analyzeAndGetTemp(prompt: string, phase: ExecutionPhase): TemperatureResult {
   return getPhaseTemperatureController().getOptimalTemperatureWithAnalysis(prompt, phase);
 }
 
@@ -781,8 +898,4 @@ export function detectControllerTaskType(prompt: string): {
 // EXPORTS
 // =============================================================================
 
-export {
-  DEFAULT_TASK_TYPE_RANGES,
-  DEFAULT_PHASE_TEMPERATURES,
-  DEFAULT_CONFIG
-};
+export { DEFAULT_TASK_TYPE_RANGES, DEFAULT_PHASE_TEMPERATURES, DEFAULT_CONFIG };

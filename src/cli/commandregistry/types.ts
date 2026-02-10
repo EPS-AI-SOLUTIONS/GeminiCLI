@@ -21,7 +21,7 @@ export type { FlagDefinition, ParsedArgs };
 export enum CommandPriority {
   PLUGIN = 0,
   USER = 1,
-  BUILTIN = 2
+  BUILTIN = 2,
 }
 
 // ============================================================================

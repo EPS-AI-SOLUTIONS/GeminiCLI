@@ -3,7 +3,7 @@
  * Topological sort for task dependencies
  */
 
-import { SwarmTask } from '../types/index.js';
+import type { SwarmTask } from '../types/index.js';
 
 /**
  * Topological sort for task execution order
@@ -12,7 +12,7 @@ import { SwarmTask } from '../types/index.js';
 export function topologicalSort(tasks: SwarmTask[]): SwarmTask[] {
   const result: SwarmTask[] = [];
   const visited = new Set<number>();
-  
+
   // Build task map for O(1) lookup
   const taskMap = new Map<number, SwarmTask>();
   for (const task of tasks) {
@@ -46,7 +46,7 @@ export function topologicalSort(tasks: SwarmTask[]): SwarmTask[] {
  * Returns list of missing dependency IDs
  */
 export function validateDependencies(tasks: SwarmTask[]): number[] {
-  const taskIds = new Set(tasks.map(t => t.id));
+  const taskIds = new Set(tasks.map((t) => t.id));
   const missing: number[] = [];
 
   for (const task of tasks) {

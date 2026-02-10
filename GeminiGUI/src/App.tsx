@@ -1,44 +1,51 @@
 // Store & Hooks
-import { useAppStore, selectCurrentMessages } from './store/useAppStore';
-import { useShallow } from 'zustand/shallow';
-import {
-  useAppTheme,
-  useStreamListeners,
-  useEnvLoader,
-  useAppKeyboardShortcuts,
-  useCommandExecution,
-  useContextMenuActions,
-  useCopyToClipboard,
-  useGlassPanel,
-} from './hooks';
-import { useTheme } from './contexts/ThemeContext';
 
+import { invoke } from '@tauri-apps/api/core';
+import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Toaster, toast } from 'sonner';
+import { useShallow } from 'zustand/shallow';
+import { AgentsView } from './components/AgentsView';
 // Components
 import { ChatContainer } from './components/ChatContainer';
-import { StatusFooter } from './components/StatusFooter';
-import { Header } from './components/layout/Header';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { Toaster, toast } from 'sonner';
-import { motion, AnimatePresence } from 'framer-motion';
-import Sidebar from './components/Sidebar';
-
+import { HistoryView } from './components/HistoryView';
 // Lazy-loaded components for code splitting
 import {
   SettingsModalLazy,
   ShortcutsModalLazy,
-  WitcherRunesLazy,
   SystemContextMenuLazy,
+  WitcherRunesLazy,
 } from './components/LazyComponents';
+import { Header } from './components/layout/Header';
+import Sidebar from './components/Sidebar';
+import { StatusFooter } from './components/StatusFooter';
 import { SuspenseFallback } from './components/SuspenseFallback';
-
 // Constants & Utils
-import { STATUS, COMMAND_PATTERNS, TAURI_COMMANDS, GEMINI_MODELS, DEFAULT_GEMINI_MODEL, AUTO_CONTINUE } from './constants';
+import {
+  AUTO_CONTINUE,
+  COMMAND_PATTERNS,
+  DEFAULT_GEMINI_MODEL,
+  GEMINI_MODELS,
+  STATUS,
+  TAURI_COMMANDS,
+} from './constants';
+import { useTheme } from './contexts/ThemeContext';
+import {
+  useAppKeyboardShortcuts,
+  useAppTheme,
+  useCommandExecution,
+  useContextMenuActions,
+  useCopyToClipboard,
+  useEnvLoader,
+  useGlassPanel,
+  useStreamListeners,
+} from './hooks';
 import type { CommandResult } from './hooks/useCommandExecution';
+import { selectCurrentMessages, useAppStore } from './store/useAppStore';
 import { containsDangerousPatterns } from './utils/validators';
-import { useState, useCallback, useEffect, useMemo, useRef, Suspense } from 'react';
-import { invoke } from '@tauri-apps/api/core';
-import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
-import { getCurrentWindow } from '@tauri-apps/api/window';
 
 // WitcherRunes and SystemContextMenu are lazy-loaded via LazyComponents
 
@@ -47,14 +54,14 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
  * Gemini API requires alternating user/model turns.
  */
 function mergeConsecutiveRoles(
-  msgs: Array<{ role: string; content: string }>
+  msgs: Array<{ role: string; content: string }>,
 ): Array<{ role: string; content: string }> {
   if (msgs.length === 0) return msgs;
   const merged: Array<{ role: string; content: string }> = [{ ...msgs[0] }];
   for (let i = 1; i < msgs.length; i++) {
     const prev = merged[merged.length - 1];
     if (msgs[i].role === prev.role) {
-      prev.content += '\n\n' + msgs[i].content;
+      prev.content += `\n\n${msgs[i].content}`;
     } else {
       merged.push({ ...msgs[i] });
     }
@@ -104,7 +111,7 @@ function App() {
         await invoke('greet', { name: 'HealthCheck' });
         setIsTauri(true);
         console.log('[App] Tauri environment detected.');
-      } catch (e) {
+      } catch (_e) {
         console.log('[App] Web environment detected (Tauri unavailable).');
         setIsTauri(false);
       }
@@ -116,8 +123,8 @@ function App() {
     } else if (!currentSessionId) {
       selectSession(sessions[0].id);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessions.length, currentSessionId, createSession, selectSession]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessions.length, currentSessionId, createSession, selectSession, sessions[0].id]);
 
   // ========================================
   // Handlers
@@ -142,7 +149,8 @@ function App() {
     }
     const formatted = currentMessages
       .map((m: { role: string; content: string; timestamp: number }) => {
-        const role = m.role === 'user' ? 'Użytkownik' : m.role === 'assistant' ? 'Asystent' : 'System';
+        const role =
+          m.role === 'user' ? 'Użytkownik' : m.role === 'assistant' ? 'Asystent' : 'System';
         const time = new Date(m.timestamp).toLocaleTimeString('pl-PL');
         return `[${time}] ${role}:\n${m.content}`;
       })
@@ -179,77 +187,95 @@ function App() {
    * Send a follow-up to Gemini (used for auto-continue after command execution).
    * Does NOT add a user message — caller is responsible for adding context.
    */
-  const sendFollowUp = useCallback(async (allMessages: Array<{ role: string; content: string }>) => {
-    if (!isTauri) return;
+  const sendFollowUp = useCallback(
+    async (allMessages: Array<{ role: string; content: string }>) => {
+      if (!isTauri) return;
 
-    addMessage({ role: 'assistant', content: '', timestamp: Date.now() });
-    setIsStreaming(true);
+      addMessage({ role: 'assistant', content: '', timestamp: Date.now() });
+      setIsStreaming(true);
 
-    try {
-      updateLastMessage('🔍 Analizuję wyniki...\n\n');
-      const history = buildGeminiHistory(allMessages);
+      try {
+        updateLastMessage('🔍 Analizuję wyniki...\n\n');
+        const history = buildGeminiHistory(allMessages);
 
-      await invoke(TAURI_COMMANDS.CHAT_WITH_GEMINI, {
-        messages: history,
-        model: settings.selectedModel || null,
-        systemPrompt: settings.systemPrompt || null,
-        temperature: 1.0,
-        maxOutputTokens: 65536,
-      });
-    } catch (error) {
-      updateLastMessage(`\n[Błąd Gemini: ${error}]`);
-      toast.error('Błąd połączenia z Gemini');
-      setIsStreaming(false);
-    }
-  }, [isTauri, addMessage, updateLastMessage, buildGeminiHistory, settings.systemPrompt, settings.selectedModel]);
+        await invoke(TAURI_COMMANDS.CHAT_WITH_GEMINI, {
+          messages: history,
+          model: settings.selectedModel || null,
+          systemPrompt: settings.systemPrompt || null,
+          temperature: 1.0,
+          maxOutputTokens: 65536,
+        });
+      } catch (error) {
+        updateLastMessage(`\n[Błąd Gemini: ${error}]`);
+        toast.error('Błąd połączenia z Gemini');
+        setIsStreaming(false);
+      }
+    },
+    [
+      isTauri,
+      addMessage,
+      updateLastMessage,
+      buildGeminiHistory,
+      settings.systemPrompt,
+      settings.selectedModel,
+    ],
+  );
 
-  const handleSubmit = useCallback(async (userPrompt: string, attachedImage: string | null) => {
-    autoContinueCountRef.current = 0; // Reset auto-continue on user input
+  const handleSubmit = useCallback(
+    async (userPrompt: string, attachedImage: string | null) => {
+      autoContinueCountRef.current = 0; // Reset auto-continue on user input
 
-    let displayContent = userPrompt;
-    if (attachedImage) displayContent = '![Uploaded Image](' + attachedImage + ')\n\n' + userPrompt;
+      let displayContent = userPrompt;
+      if (attachedImage) displayContent = `![Uploaded Image](${attachedImage})\n\n${userPrompt}`;
 
-    addMessage({ role: 'user', content: displayContent, timestamp: Date.now() });
-    addMessage({ role: 'assistant', content: '', timestamp: Date.now() });
+      addMessage({ role: 'user', content: displayContent, timestamp: Date.now() });
+      addMessage({ role: 'assistant', content: '', timestamp: Date.now() });
 
-    setIsStreaming(true);
+      setIsStreaming(true);
 
-    // Web Simulation Mode
-    if (!isTauri) {
+      // Web Simulation Mode
+      if (!isTauri) {
         setTimeout(() => {
-          updateLastMessage(STATUS.SWARM_INIT + '\n\n');
+          updateLastMessage(`${STATUS.SWARM_INIT}\n\n`);
           setTimeout(() => {
-             updateLastMessage("\n[SYMULACJA TRYBU WEB]\nBackend Tauri nie jest dostępny (Web Mode).\nAplikacja działa w trybie offline/demo.\n\nOdebrano: " + userPrompt);
-             setIsStreaming(false);
+            updateLastMessage(
+              `\n[SYMULACJA TRYBU WEB]\nBackend Tauri nie jest dostępny (Web Mode).\nAplikacja działa w trybie offline/demo.\n\nOdebrano: ${userPrompt}`,
+            );
+            setIsStreaming(false);
           }, 800);
         }, 100);
         return;
-    }
+      }
 
-    try {
-      updateLastMessage('🔮 Łączenie z Gemini...\n\n');
-      // Read fresh messages from store to avoid stale closure (H1 fix)
-      const storeState = useAppStore.getState();
-      const freshMessages = storeState.chatHistory[storeState.currentSessionId!] || [];
-      const history = buildGeminiHistory([
-        ...freshMessages.map((m: { role: string; content: string }) => ({ role: m.role, content: m.content })),
-        { role: 'user', content: userPrompt },
-      ]);
+      try {
+        updateLastMessage('🔮 Łączenie z Gemini...\n\n');
+        // Read fresh messages from store to avoid stale closure (H1 fix)
+        const storeState = useAppStore.getState();
+        const freshMessages = storeState.chatHistory[storeState.currentSessionId!] || [];
+        const history = buildGeminiHistory([
+          ...freshMessages.map((m: { role: string; content: string }) => ({
+            role: m.role,
+            content: m.content,
+          })),
+          { role: 'user', content: userPrompt },
+        ]);
 
-      const { selectedModel, systemPrompt } = useAppStore.getState().settings;
-      await invoke(TAURI_COMMANDS.CHAT_WITH_GEMINI, {
-        messages: history,
-        model: selectedModel || null,
-        systemPrompt: systemPrompt || null,
-        temperature: 1.0,
-        maxOutputTokens: 65536,
-      });
-    } catch (error) {
-      updateLastMessage(`\n[Błąd Gemini: ${error}]`);
-      toast.error('Błąd połączenia z Gemini');
-      setIsStreaming(false);
-    }
-  }, [addMessage, updateLastMessage, isTauri, buildGeminiHistory]);
+        const { selectedModel, systemPrompt } = useAppStore.getState().settings;
+        await invoke(TAURI_COMMANDS.CHAT_WITH_GEMINI, {
+          messages: history,
+          model: selectedModel || null,
+          systemPrompt: systemPrompt || null,
+          temperature: 1.0,
+          maxOutputTokens: 65536,
+        });
+      } catch (error) {
+        updateLastMessage(`\n[Błąd Gemini: ${error}]`);
+        toast.error('Błąd połączenia z Gemini');
+        setIsStreaming(false);
+      }
+    },
+    [addMessage, updateLastMessage, isTauri, buildGeminiHistory],
+  );
 
   // ========================================
   // Stream Listeners
@@ -297,6 +323,16 @@ function App() {
   const handleToggleShortcuts = useCallback(() => setIsShortcutsOpen((p) => !p), []);
   const handleCloseShortcuts = useCallback(() => setIsShortcutsOpen(false), []);
 
+  const handleNavigateChat = useCallback(() => useAppStore.getState().setCurrentView('chat'), []);
+  const handleNavigateAgents = useCallback(
+    () => useAppStore.getState().setCurrentView('agents'),
+    [],
+  );
+  const handleNavigateHistory = useCallback(
+    () => useAppStore.getState().setCurrentView('history'),
+    [],
+  );
+
   useAppKeyboardShortcuts({
     onToggleSettings: handleToggleSettings,
     onToggleShortcuts: handleToggleShortcuts,
@@ -304,6 +340,9 @@ function App() {
     onCopySession: handleCopySession,
     onNewSession: createSession,
     onToggleTheme: handleToggleTheme,
+    onNavigateChat: handleNavigateChat,
+    onNavigateAgents: handleNavigateAgents,
+    onNavigateHistory: handleNavigateHistory,
   });
 
   // ========================================
@@ -367,15 +406,16 @@ function App() {
           if (!isTauri || results.length === 0) return;
 
           // Compose follow-up with command results for Gemini analysis
-          const resultsSummary = results.map((r) => {
-            if (r.success) {
-              return `Komenda: ${r.command}\nWynik:\n\`\`\`\n${r.output}\n\`\`\``;
-            }
-            return `Komenda: ${r.command}\nBłąd: ${r.output}`;
-          }).join('\n\n');
+          const resultsSummary = results
+            .map((r) => {
+              if (r.success) {
+                return `Komenda: ${r.command}\nWynik:\n\`\`\`\n${r.output}\n\`\`\``;
+              }
+              return `Komenda: ${r.command}\nBłąd: ${r.output}`;
+            })
+            .join('\n\n');
 
-          const followUpContent =
-            `Wyniki wykonanych komend:\n\n${resultsSummary}\n\nPrzeanalizuj te wyniki i odpowiedz użytkownikowi.`;
+          const followUpContent = `Wyniki wykonanych komend:\n\n${resultsSummary}\n\nPrzeanalizuj te wyniki i odpowiedz użytkownikowi.`;
 
           if (cancelled) return; // H2: bail on unmount
 
@@ -394,25 +434,37 @@ function App() {
           if (cancelled) return; // H2: bail on unmount
 
           // Build full history from current store state (freshest data)
-          const freshMessages = useAppStore.getState().chatHistory[
-            useAppStore.getState().currentSessionId!
-          ] || [];
+          const freshMessages =
+            useAppStore.getState().chatHistory[useAppStore.getState().currentSessionId!] || [];
 
           await sendFollowUp(
-            freshMessages.map((m: { role: string; content: string }) => ({ role: m.role, content: m.content }))
+            freshMessages.map((m: { role: string; content: string }) => ({
+              role: m.role,
+              content: m.content,
+            })),
           );
         };
 
         runCommandsAndContinue();
 
         // H2: cleanup cancels async chain on unmount
-        return () => { cancelled = true; };
+        return () => {
+          cancelled = true;
+        };
       } else {
         // No EXECUTE commands — reset auto-continue counter
         autoContinueCountRef.current = 0;
       }
     }
-  }, [currentMessages, isStreaming, executeCommand, lastProcessedMsgIdx, isTauri, addMessage, sendFollowUp]);
+  }, [
+    currentMessages,
+    isStreaming,
+    executeCommand,
+    lastProcessedMsgIdx,
+    isTauri,
+    addMessage,
+    sendFollowUp,
+  ]);
 
   useEffect(() => {
     if (!(window as any).__TAURI_INTERNALS__) return;
@@ -423,16 +475,32 @@ function App() {
           const livePreview = await WebviewWindow.getByLabel('live-preview');
           livePreview?.show();
         }
-      } catch (e) { console.warn('Window err:', e); }
+      } catch (e) {
+        console.warn('Window err:', e);
+      }
     };
     openPreview();
   }, []);
 
-  const statusBadgeState = useMemo(() =>
-    settings.geminiApiKey
-      ? { className: 'status-approved bg-green-500/10 text-green-400', text: STATUS.GEMINI_READY }
-      : { className: 'status-pending bg-yellow-500/10 text-yellow-400', text: 'Local Only' },
-  [settings.geminiApiKey]);
+  const statusBadgeState = useMemo(
+    () =>
+      settings.geminiApiKey
+        ? {
+            className:
+              resolvedTheme === 'light'
+                ? 'status-approved bg-emerald-500/15 text-emerald-700'
+                : 'status-approved bg-green-500/10 text-green-400',
+            text: STATUS.GEMINI_READY,
+          }
+        : {
+            className:
+              resolvedTheme === 'light'
+                ? 'status-pending bg-amber-500/15 text-amber-700'
+                : 'status-pending bg-yellow-500/10 text-yellow-400',
+            text: 'Local Only',
+          },
+    [settings.geminiApiKey, resolvedTheme],
+  );
 
   const currentModel = useMemo(() => {
     if (!settings.geminiApiKey) return 'Local (llama.cpp)';
@@ -448,8 +516,12 @@ function App() {
     switch (currentView) {
       case 'chat':
         return (
-          <div className="flex-1 flex gap-2 overflow-hidden min-h-0 relative h-full">
-            <ErrorBoundary fallback={() => <div className="glass-panel p-4 text-red-400">Błąd czatu - odśwież stronę</div>}>
+          <div className="w-full h-full overflow-hidden min-h-0 relative flex flex-col">
+            <ErrorBoundary
+              fallback={() => (
+                <div className="glass-panel p-4 text-red-400">Błąd czatu - odśwież stronę</div>
+              )}
+            >
               <ChatContainer
                 messages={currentMessages}
                 isStreaming={isStreaming}
@@ -461,25 +533,28 @@ function App() {
         );
       case 'agents':
         return (
-          <div className="p-6 text-center">
-            <p className={isDark ? 'text-slate-400' : 'text-slate-600'}>
-              Panel agentów - wkrótce dostępny
-            </p>
-          </div>
+          <ErrorBoundary
+            fallback={() => <div className="glass-panel p-4 text-red-400">Błąd panelu agentów</div>}
+          >
+            <AgentsView />
+          </ErrorBoundary>
         );
       case 'history':
         return (
-          <div className="p-6 text-center">
-            <p className={isDark ? 'text-slate-400' : 'text-slate-600'}>
-              Historia sesji - wkrótce dostępna
-            </p>
-          </div>
+          <ErrorBoundary
+            fallback={() => <div className="glass-panel p-4 text-red-400">Błąd historii</div>}
+          >
+            <HistoryView />
+          </ErrorBoundary>
         );
       case 'settings':
         return (
           <div className="p-6">
             <Suspense fallback={<SuspenseFallback message="Ładowanie ustawień..." />}>
-              <SettingsModalLazy isOpen={true} onClose={() => useAppStore.getState().setCurrentView('chat')} />
+              <SettingsModalLazy
+                isOpen={true}
+                onClose={() => useAppStore.getState().setCurrentView('chat')}
+              />
             </Suspense>
           </div>
         );
@@ -503,13 +578,19 @@ function App() {
   // Render - Tissaia Dashboard Layout
   // ========================================
   return (
-    <div className="relative flex h-screen w-full text-slate-100 overflow-hidden font-mono selection:bg-matrix-accent selection:text-black">
+    <div className="relative flex h-screen w-full text-slate-100 overflow-hidden font-mono selection:bg-matrix-accent selection:text-black transition-colors duration-500">
       {/* Background Layer 1 - Image */}
-      <div className={`absolute inset-0 z-[1] bg-cover bg-center bg-no-repeat transition-opacity duration-1000 pointer-events-none ${resolvedTheme === 'light' ? "bg-[url('/backgroundlight.webp')] opacity-30" : "bg-[url('/background.webp')] opacity-25"}`} />
+      <div
+        className={`absolute inset-0 z-[1] bg-cover bg-center bg-no-repeat transition-opacity duration-1000 pointer-events-none ${resolvedTheme === 'light' ? "bg-[url('/backgroundlight.webp')] opacity-15" : "bg-[url('/background.webp')] opacity-20"}`}
+      />
       {/* Background Layer 2 - Gradient overlay for readability */}
-      <div className={`absolute inset-0 z-[2] pointer-events-none transition-opacity duration-1000 ${resolvedTheme === 'light' ? 'bg-gradient-to-b from-white/60 via-white/30 to-slate-100/70' : 'bg-gradient-to-b from-matrix-bg-primary/60 via-matrix-bg-primary/30 to-matrix-bg-secondary/70'}`} />
+      <div
+        className={`absolute inset-0 z-[2] pointer-events-none transition-opacity duration-1000 ${resolvedTheme === 'light' ? 'bg-gradient-to-b from-white/70 via-white/50 to-slate-100/80' : 'bg-gradient-to-b from-matrix-bg-primary/80 via-matrix-bg-primary/60 to-matrix-bg-secondary/85'}`}
+      />
       {/* Background Layer 3 - Radial vignette */}
-      <div className={`absolute inset-0 z-[2] pointer-events-none bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] ${resolvedTheme === 'light' ? 'from-transparent via-transparent to-white/40' : 'from-transparent via-transparent to-black/50'}`} />
+      <div
+        className={`absolute inset-0 z-[2] pointer-events-none bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] ${resolvedTheme === 'light' ? 'from-transparent via-white/20 to-white/50' : 'from-transparent via-black/20 to-black/60'}`}
+      />
 
       <Suspense fallback={null}>
         <WitcherRunesLazy isDark={isDark} />
@@ -531,21 +612,19 @@ function App() {
       <Toaster position="top-right" theme={isDark ? 'dark' : 'light'} />
 
       {/* Main Content */}
-      <div className="relative z-10 flex h-full w-full backdrop-blur-[1px] gap-4 p-4 overflow-hidden">
+      <div className="relative z-10 flex h-full w-full backdrop-blur-[1px] gap-3 p-3 overflow-hidden">
         {/* Sidebar */}
         <Sidebar />
 
         {/* Main Content Area */}
-        <main className={`flex-1 min-w-0 flex flex-col overflow-hidden relative rounded-2xl ${glassPanel}`}>
+        <main
+          className={`flex-1 min-w-0 flex flex-col overflow-hidden relative rounded-2xl ${glassPanel}`}
+        >
           {/* Header with breadcrumbs */}
-          <Header
-            isDark={isDark}
-            statusBadgeState={statusBadgeState}
-            currentModel={currentModel}
-          />
+          <Header isDark={isDark} statusBadgeState={statusBadgeState} currentModel={currentModel} />
 
           {/* View Content */}
-          <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-matrix-accent/20">
+          <div className="flex-1 min-h-0 overflow-hidden">
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentView}
@@ -561,22 +640,45 @@ function App() {
           </div>
 
           {/* Status Bar (footer) */}
-          <footer className={`px-6 py-2 border-t ${resolvedTheme === 'light' ? 'border-slate-200/30 bg-white/20 text-slate-600' : 'border-white/10 bg-black/20 text-slate-400'} text-xs flex items-center justify-between`}>
+          <footer
+            className={`px-6 py-2.5 border-t ${resolvedTheme === 'light' ? 'border-slate-200/30 bg-white/40 text-slate-600' : 'border-white/10 bg-black/40 text-slate-300'} text-xs flex items-center justify-between`}
+          >
             <div className="flex items-center gap-4">
-              <span className={resolvedTheme === 'light' ? 'text-emerald-600' : 'text-matrix-accent'}>GeminiHydra v2.0.0</span>
-              <span className={resolvedTheme === 'light' ? 'text-slate-300' : 'text-white/20'}>|</span>
+              <span
+                className={resolvedTheme === 'light' ? 'text-emerald-600' : 'text-matrix-accent'}
+              >
+                v2.0.0
+              </span>
+              <span className={resolvedTheme === 'light' ? 'text-slate-300' : 'text-white/20'}>
+                |
+              </span>
               <span>
                 {settings.geminiApiKey ? (
-                  <span className={resolvedTheme === 'light' ? 'text-emerald-600' : 'text-matrix-accent'}>● Online</span>
+                  <span
+                    className={
+                      resolvedTheme === 'light' ? 'text-emerald-600' : 'text-matrix-accent'
+                    }
+                  >
+                    ● Online
+                  </span>
                 ) : (
                   <span className="text-yellow-500">● Local</span>
                 )}
               </span>
             </div>
             <div className="flex items-center gap-4">
-              <span>Wolf Swarm</span>
-              <span className={resolvedTheme === 'light' ? 'text-slate-300' : 'text-white/20'}>|</span>
-              <span>{new Date().toLocaleDateString('pl-PL')}</span>
+              <span title="Architektura multi-agentowa">&#x1F43A; Wolf Swarm</span>
+              <span className={resolvedTheme === 'light' ? 'text-slate-300' : 'text-white/20'}>
+                |
+              </span>
+              <span>
+                {new Date().toLocaleDateString('pl-PL', {
+                  weekday: 'short',
+                  day: 'numeric',
+                  month: '2-digit',
+                  year: 'numeric',
+                })}
+              </span>
             </div>
           </footer>
         </main>

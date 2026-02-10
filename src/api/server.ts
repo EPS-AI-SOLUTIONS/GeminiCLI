@@ -3,43 +3,36 @@
  * Fastify server exposing Swarm functionality for GUI
  */
 
-import Fastify from 'fastify';
 import cors from '@fastify/cors';
-
-// Routes
-import {
-  healthRoutes,
-  agentsRoutes,
-  settingsRoutes,
-  executeRoutes,
-  historyRoutes,
-} from './routes/index.js';
+import Fastify from 'fastify';
+// Config
+import { API_CONFIG } from './config/index.js';
 
 // Middleware
 import {
   errorHandler,
+  generateRequestId,
   notFoundHandler,
   onRequest,
   onResponse,
-  generateRequestId,
 } from './middleware/index.js';
-
+// Routes
+import {
+  agentsRoutes,
+  executeRoutes,
+  healthRoutes,
+  historyRoutes,
+  settingsRoutes,
+} from './routes/index.js';
 // Types
-import type { ServerOptions, ServerInfo } from './types/index.js';
-
-// Config
-import { API_CONFIG } from './config/index.js';
+import type { ServerInfo, ServerOptions } from './types/index.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Server Factory
 // ═══════════════════════════════════════════════════════════════════════════
 
 export async function createServer(options: ServerOptions = {}) {
-  const {
-    port = API_CONFIG.server.port,
-    host = API_CONFIG.server.host,
-    logger = true,
-  } = options;
+  const { port = API_CONFIG.server.port, host = API_CONFIG.server.host, logger = true } = options;
 
   // Create Fastify instance
   const fastify = Fastify({

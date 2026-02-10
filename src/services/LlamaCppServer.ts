@@ -4,10 +4,10 @@
  * + automatyczne pobieranie modeli GGUF z Hugging Face
  */
 
-import { spawn, ChildProcess, execSync } from 'child_process';
-import { existsSync, mkdirSync, createWriteStream, statSync, readdirSync } from 'fs';
-import { join, basename } from 'path';
-import { get as httpsGet } from 'https';
+import { type ChildProcess, execSync, spawn } from 'node:child_process';
+import { createWriteStream, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
+import { get as httpsGet } from 'node:https';
+import { basename, join } from 'node:path';
 
 export interface LlamaCppServerConfig {
   modelPath: string;
@@ -120,10 +120,14 @@ class LlamaCppServerManager {
     }
 
     const args = [
-      '-m', 'llama_cpp.server',
-      '--model', config.modelPath,
-      '--port', String(this.port),
-      '--host', config.host || '0.0.0.0',
+      '-m',
+      'llama_cpp.server',
+      '--model',
+      config.modelPath,
+      '--port',
+      String(this.port),
+      '--host',
+      config.host || '0.0.0.0',
     ];
 
     if (config.nCtx) {
@@ -187,7 +191,7 @@ class LlamaCppServerManager {
         console.log(`[llama-cpp] Server ready on port ${this.port}`);
         return true;
       }
-      await new Promise(r => setTimeout(r, interval));
+      await new Promise((r) => setTimeout(r, interval));
     }
 
     console.error('[llama-cpp] Server startup timeout');
@@ -263,7 +267,7 @@ export const llamaCppServer = new LlamaCppServerManager();
  */
 export async function downloadModel(
   modelName: RecommendedModel | string,
-  targetDir: string = './models'
+  targetDir: string = './models',
 ): Promise<string | null> {
   // Sprawdź czy to znany model
   const modelInfo = RECOMMENDED_MODELS[modelName as RecommendedModel];
@@ -367,19 +371,22 @@ export async function downloadModel(
 /**
  * Upewnij się że serwer działa - z automatycznym pobieraniem modelu
  */
-export async function ensureLlamaCppServer(config?: Partial<LlamaCppServerConfig> & {
-  autoDownload?: boolean;
-  preferredModel?: RecommendedModel;
-}): Promise<boolean> {
+export async function ensureLlamaCppServer(
+  config?: Partial<LlamaCppServerConfig> & {
+    autoDownload?: boolean;
+    preferredModel?: RecommendedModel;
+  },
+): Promise<boolean> {
   // Sprawdź czy już działa
   if (await llamaCppServer.isRunning()) {
     return true;
   }
 
   // Pobierz model z env lub auto-detect
-  let modelPath = config?.modelPath
-    || process.env.LLAMA_CPP_MODEL_PATH
-    || LlamaCppServerManager.autoDetectModel();
+  let modelPath =
+    config?.modelPath ||
+    process.env.LLAMA_CPP_MODEL_PATH ||
+    LlamaCppServerManager.autoDetectModel();
 
   // Jeśli brak modelu i autoDownload włączony, pobierz
   if (!modelPath && (config?.autoDownload ?? true)) {
@@ -394,7 +401,9 @@ export async function ensureLlamaCppServer(config?: Partial<LlamaCppServerConfig
     console.warn('[llama-cpp] Options:');
     console.warn('  1. Set LLAMA_CPP_MODEL_PATH=/path/to/model.gguf');
     console.warn('  2. Place .gguf files in ./models/');
-    console.warn('  3. Run: npx tsx -e "import {downloadModel} from \'./src/services/LlamaCppServer.js\'; downloadModel(\'tinyllama\')"');
+    console.warn(
+      "  3. Run: npx tsx -e \"import {downloadModel} from './src/services/LlamaCppServer.js'; downloadModel('tinyllama')\"",
+    );
     return false;
   }
 
@@ -402,7 +411,9 @@ export async function ensureLlamaCppServer(config?: Partial<LlamaCppServerConfig
     modelPath,
     port: config?.port || parseInt(process.env.LLAMA_CPP_PORT || '8000', 10),
     nCtx: config?.nCtx || parseInt(process.env.LLAMA_CPP_CTX || '4096', 10),
-    nGpuLayers: config?.nGpuLayers ?? (process.env.LLAMA_CPP_GPU_LAYERS ? parseInt(process.env.LLAMA_CPP_GPU_LAYERS, 10) : -1),
+    nGpuLayers:
+      config?.nGpuLayers ??
+      (process.env.LLAMA_CPP_GPU_LAYERS ? parseInt(process.env.LLAMA_CPP_GPU_LAYERS, 10) : -1),
     chatFormat: config?.chatFormat || process.env.LLAMA_CPP_CHAT_FORMAT,
     verbose: config?.verbose ?? process.env.LLAMA_CPP_VERBOSE === 'true',
   });

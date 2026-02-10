@@ -5,10 +5,10 @@
  * Loads API keys and settings from .env file on startup.
  */
 
-import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { useAppStore } from '../store/useAppStore';
+import { useEffect, useState } from 'react';
 import { TAURI_COMMANDS } from '../constants';
+import { useAppStore } from '../store/useAppStore';
 
 interface UseEnvLoaderReturn {
   isLoaded: boolean;
@@ -36,9 +36,7 @@ export const useEnvLoader = (): UseEnvLoaderReturn => {
     }
     const loadEnv = async () => {
       try {
-        const env = await invoke<Record<string, string>>(
-          TAURI_COMMANDS.GET_ENV_VARS
-        ) || {};
+        const env = (await invoke<Record<string, string>>(TAURI_COMMANDS.GET_ENV_VARS)) || {};
 
         const newSettings: Record<string, string> = {};
 
@@ -65,8 +63,8 @@ export const useEnvLoader = (): UseEnvLoaderReturn => {
     };
 
     loadEnv();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [updateSettings]);
 
   return {
     isLoaded,

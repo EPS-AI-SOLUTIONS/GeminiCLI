@@ -3,8 +3,8 @@
  * Handles plan creation and JSON parsing
  */
 
-import { SwarmPlan, SwarmTask } from '../types/index.js';
 import { MAX_TASKS } from '../config/constants.js';
+import type { SwarmPlan, SwarmTask } from '../types/index.js';
 import { AppError, logServiceWarning } from './BaseAgentService.js';
 
 export class PlanningService {
@@ -44,7 +44,6 @@ export class PlanningService {
 
       json = json.substring(start, end + 1);
       return JSON.parse(json) as SwarmPlan;
-
     } catch (error) {
       logServiceWarning('PlanningService.parseResponse', 'Failed to parse JSON from response', {
         error: error instanceof Error ? error.message : String(error),
@@ -68,10 +67,14 @@ export class PlanningService {
     }
 
     if (tasks.length > MAX_TASKS) {
-      logServiceWarning('PlanningService.validateTasks', `Truncating task list from ${tasks.length} to ${MAX_TASKS}`, {
-        originalCount: tasks.length,
-        maxTasks: MAX_TASKS,
-      });
+      logServiceWarning(
+        'PlanningService.validateTasks',
+        `Truncating task list from ${tasks.length} to ${MAX_TASKS}`,
+        {
+          originalCount: tasks.length,
+          maxTasks: MAX_TASKS,
+        },
+      );
     }
 
     return tasks.slice(0, MAX_TASKS).map((t, i) => ({
@@ -80,7 +83,7 @@ export class PlanningService {
       task: t.task || '',
       dependencies: t.dependencies || [],
       status: 'pending' as const,
-      retryCount: t.retryCount ?? 0
+      retryCount: t.retryCount ?? 0,
     }));
   }
 
@@ -91,7 +94,8 @@ export class PlanningService {
     if (typeof objective !== 'string' || objective.trim() === '') {
       throw new AppError({
         code: 'PLANNING_INVALID_ARGS',
-        message: 'PlanningService.createFallbackPlan: objective is required and must be a non-empty string',
+        message:
+          'PlanningService.createFallbackPlan: objective is required and must be a non-empty string',
         context: { method: 'createFallbackPlan', field: 'objective' },
       });
     }
@@ -101,14 +105,16 @@ export class PlanningService {
     });
     return {
       objective,
-      tasks: [{
-        id: 1,
-        agent: 'geralt',
-        task: objective,
-        dependencies: [],
-        status: 'pending',
-        retryCount: 0
-      }]
+      tasks: [
+        {
+          id: 1,
+          agent: 'geralt',
+          task: objective,
+          dependencies: [],
+          status: 'pending',
+          retryCount: 0,
+        },
+      ],
     };
   }
 
@@ -119,7 +125,8 @@ export class PlanningService {
     if (typeof objective !== 'string' || objective.trim() === '') {
       throw new AppError({
         code: 'PLANNING_INVALID_ARGS',
-        message: 'PlanningService.buildPrompt: objective is required and must be a non-empty string',
+        message:
+          'PlanningService.buildPrompt: objective is required and must be a non-empty string',
         context: { method: 'buildPrompt', field: 'objective' },
       });
     }

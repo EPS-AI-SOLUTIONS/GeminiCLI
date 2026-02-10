@@ -10,9 +10,9 @@
  * Part of DeveloperTools module refactoring.
  */
 
+import path from 'node:path';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import chalk from 'chalk';
-import path from 'path';
 import 'dotenv/config';
 import { GEMINI_MODELS } from '../../config/models.config.js';
 
@@ -103,18 +103,16 @@ Be concise but complete. Focus on what developers need to know.`;
  */
 export async function generateDocumentation(
   code: string,
-  filename: string
+  filename: string,
 ): Promise<DocumentationResult> {
   console.log(chalk.cyan(`[DocGen] Generating documentation for ${filename}...`));
 
-  const prompt = DOC_GENERATION_PROMPT
-    .replace('{filename}', filename)
-    .replace('{code}', code);
+  const prompt = DOC_GENERATION_PROMPT.replace('{filename}', filename).replace('{code}', code);
 
   try {
     const model = genAI.getGenerativeModel({
       model: QUALITY_MODEL,
-      generationConfig: { temperature: 0.2, maxOutputTokens: 8192 }
+      generationConfig: { temperature: 0.2, maxOutputTokens: 8192 },
     });
 
     const result = await model.generateContent(prompt);
@@ -134,7 +132,7 @@ export async function generateDocumentation(
       title: parsed.title || path.basename(filename),
       overview: parsed.overview || '',
       entries: parsed.entries || [],
-      usageExamples: parsed.usageExamples || []
+      usageExamples: parsed.usageExamples || [],
     };
   } catch (error: any) {
     console.log(chalk.yellow(`[DocGen] Failed: ${error.message}`));
@@ -143,7 +141,7 @@ export async function generateDocumentation(
       title: path.basename(filename),
       overview: 'Documentation generation failed',
       entries: [],
-      usageExamples: []
+      usageExamples: [],
     };
   }
 }
@@ -156,7 +154,7 @@ export async function generateDocumentation(
  */
 export function formatDocumentation(
   doc: DocumentationResult,
-  format: DocumentationFormat = 'markdown'
+  format: DocumentationFormat = 'markdown',
 ): string {
   const lines: string[] = [];
 
@@ -170,7 +168,7 @@ export function formatDocumentation(
 
       if (entry.params && entry.params.length > 0) {
         lines.push('**Parameters:**');
-        entry.params.forEach(p => {
+        entry.params.forEach((p) => {
           lines.push(`- \`${p.name}\` (${p.type}): ${p.description}`);
         });
         lines.push('');
@@ -225,7 +223,7 @@ export function generateJSDoc(entry: DocEntry): string {
 
   if (entry.params && entry.params.length > 0) {
     lines.push(' *');
-    entry.params.forEach(p => {
+    entry.params.forEach((p) => {
       lines.push(` * @param ${p.name} - ${p.description}`);
     });
   }
@@ -235,14 +233,14 @@ export function generateJSDoc(entry: DocEntry): string {
   }
 
   if (entry.tags && entry.tags.length > 0) {
-    entry.tags.forEach(tag => {
+    entry.tags.forEach((tag) => {
       lines.push(` * @${tag}`);
     });
   }
 
   if (entry.examples && entry.examples.length > 0) {
     lines.push(' * @example');
-    entry.examples[0].split('\n').forEach(line => {
+    entry.examples[0].split('\n').forEach((line) => {
       lines.push(` * ${line}`);
     });
   }
@@ -260,7 +258,7 @@ export function generateJSDoc(entry: DocEntry): string {
 export function generateTableOfContents(doc: DocumentationResult): string {
   const lines: string[] = ['## Table of Contents\n'];
 
-  doc.entries.forEach(entry => {
+  doc.entries.forEach((entry) => {
     const anchor = entry.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
     lines.push(`- [${entry.type}: ${entry.name}](#${entry.type}-${anchor})`);
   });
@@ -280,5 +278,5 @@ export default {
   generateDocumentation,
   formatDocumentation,
   generateJSDoc,
-  generateTableOfContents
+  generateTableOfContents,
 };

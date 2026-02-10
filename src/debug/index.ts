@@ -4,28 +4,26 @@
  */
 
 export { DebugLoop, debugWithScreenshot } from './DebugLoop.js';
-
+export type {
+  DryRunResult,
+  LogEntry,
+  LogLevel,
+  Metric,
+  MetricPoint,
+  ReplayEntry,
+  ReplaySession,
+  TraceSpan,
+} from './MonitoringSystem.js';
 // Features #41, #42, #43, #44, #45: Monitoring System
 export {
+  AgentTrace,
+  agentTrace,
+  DryRunMode,
+  dryRun,
   Logger,
   logger,
   MetricsDashboard,
   metrics,
   TaskReplay,
   taskReplay,
-  DryRunMode,
-  dryRun,
-  AgentTrace,
-  agentTrace
-} from './MonitoringSystem.js';
-
-export type {
-  LogLevel,
-  LogEntry,
-  MetricPoint,
-  Metric,
-  ReplayEntry,
-  ReplaySession,
-  DryRunResult,
-  TraceSpan
 } from './MonitoringSystem.js';

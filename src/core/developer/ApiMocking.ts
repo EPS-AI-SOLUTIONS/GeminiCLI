@@ -9,8 +9,8 @@
  * - Random error injection support
  */
 
+import crypto from 'node:crypto';
 import chalk from 'chalk';
-import crypto from 'crypto';
 
 // ============================================================
 // Types
@@ -31,7 +31,7 @@ export interface MockApiConfig {
   endpoints: MockEndpoint[];
   defaultDelay?: number;
   randomErrors?: boolean;
-  errorRate?: number;  // 0-1 probability of random errors
+  errorRate?: number; // 0-1 probability of random errors
 }
 
 export interface ApiEndpointSpec {
@@ -55,18 +55,16 @@ export interface MockServerOptions {
  * @param apiSpec - API specification with endpoint definitions
  * @returns Mock API configuration with generated responses
  */
-export function generateMockEndpoints(
-  apiSpec: { endpoints: ApiEndpointSpec[] }
-): MockApiConfig {
+export function generateMockEndpoints(apiSpec: { endpoints: ApiEndpointSpec[] }): MockApiConfig {
   console.log(chalk.cyan(`[MockAPI] Generating mock endpoints...`));
 
-  const endpoints: MockEndpoint[] = apiSpec.endpoints.map(ep => ({
+  const endpoints: MockEndpoint[] = apiSpec.endpoints.map((ep) => ({
     method: (ep.method.toUpperCase() as MockEndpoint['method']) || 'GET',
     path: ep.path,
     description: ep.description,
     responseSchema: {},
     mockResponse: generateMockData(ep.path),
-    statusCode: 200
+    statusCode: 200,
   }));
 
   console.log(chalk.green(`[MockAPI] Generated ${endpoints.length} mock endpoints`));
@@ -75,7 +73,7 @@ export function generateMockEndpoints(
     basePath: '/api/v1',
     endpoints,
     defaultDelay: 100,
-    randomErrors: false
+    randomErrors: false,
   };
 }
 
@@ -96,7 +94,7 @@ export function generateMockData(path: string): any {
       avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=mock',
       role: 'user',
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     };
   }
 
@@ -110,7 +108,7 @@ export function generateMockData(path: string): any {
       quantity: 10,
       category: 'Electronics',
       inStock: true,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     };
   }
 
@@ -119,12 +117,10 @@ export function generateMockData(path: string): any {
       id: crypto.randomUUID(),
       userId: crypto.randomUUID(),
       status: 'pending',
-      items: [
-        { productId: crypto.randomUUID(), quantity: 2, price: 49.99 }
-      ],
+      items: [{ productId: crypto.randomUUID(), quantity: 2, price: 49.99 }],
       total: 99.98,
       currency: 'USD',
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     };
   }
 
@@ -133,7 +129,7 @@ export function generateMockData(path: string): any {
       token: `mock-jwt-token-${crypto.randomUUID()}`,
       expiresIn: 3600,
       tokenType: 'Bearer',
-      refreshToken: `mock-refresh-${crypto.randomUUID()}`
+      refreshToken: `mock-refresh-${crypto.randomUUID()}`,
     };
   }
 
@@ -142,12 +138,12 @@ export function generateMockData(path: string): any {
       items: [
         { id: crypto.randomUUID(), name: 'Item 1' },
         { id: crypto.randomUUID(), name: 'Item 2' },
-        { id: crypto.randomUUID(), name: 'Item 3' }
+        { id: crypto.randomUUID(), name: 'Item 3' },
       ],
       total: 3,
       page: 1,
       pageSize: 10,
-      hasMore: false
+      hasMore: false,
     };
   }
 
@@ -156,7 +152,7 @@ export function generateMockData(path: string): any {
       status: 'healthy',
       version: '1.0.0',
       uptime: 86400,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
   }
 
@@ -165,7 +161,7 @@ export function generateMockData(path: string): any {
     success: true,
     data: {},
     message: 'Mock response',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   };
 }
 
@@ -175,10 +171,7 @@ export function generateMockData(path: string): any {
  * @param template - Template object for item structure
  * @returns Array of mock items
  */
-export function generateMockList<T extends object>(
-  count: number,
-  template: T
-): T[] {
+export function generateMockList<T extends object>(count: number, template: T): T[] {
   const items: T[] = [];
 
   for (let i = 0; i < count; i++) {
@@ -210,10 +203,7 @@ export function generateMockList<T extends object>(
  * @param options - Server options
  * @returns TypeScript/JavaScript code for the mock server
  */
-export function generateMockServer(
-  config: MockApiConfig,
-  options: MockServerOptions = {}
-): string {
+export function generateMockServer(config: MockApiConfig, options: MockServerOptions = {}): string {
   const lines: string[] = [];
   const port = options.port || 3001;
 
@@ -244,23 +234,31 @@ export function generateMockServer(
   // Generate endpoints
   for (const endpoint of config.endpoints) {
     lines.push(`// ${endpoint.description}`);
-    lines.push(`app.${endpoint.method.toLowerCase()}('${config.basePath}${endpoint.path}', (req, res) => {`);
+    lines.push(
+      `app.${endpoint.method.toLowerCase()}('${config.basePath}${endpoint.path}', (req, res) => {`,
+    );
 
     // Add random error support
     if (config.randomErrors) {
       const errorRate = config.errorRate || 0.1;
       lines.push(`  // Random error injection (${errorRate * 100}% chance)`);
       lines.push(`  if (Math.random() < ${errorRate}) {`);
-      lines.push(`    return res.status(500).json({ error: 'Random mock error', code: 'MOCK_ERROR' });`);
+      lines.push(
+        `    return res.status(500).json({ error: 'Random mock error', code: 'MOCK_ERROR' });`,
+      );
       lines.push(`  }\n`);
     }
 
     if (config.defaultDelay) {
       lines.push(`  setTimeout(() => {`);
-      lines.push(`    res.status(${endpoint.statusCode}).json(${JSON.stringify(endpoint.mockResponse, null, 6).split('\n').join('\n    ')});`);
+      lines.push(
+        `    res.status(${endpoint.statusCode}).json(${JSON.stringify(endpoint.mockResponse, null, 6).split('\n').join('\n    ')});`,
+      );
       lines.push(`  }, ${config.defaultDelay});`);
     } else {
-      lines.push(`  res.status(${endpoint.statusCode}).json(${JSON.stringify(endpoint.mockResponse, null, 4)});`);
+      lines.push(
+        `  res.status(${endpoint.statusCode}).json(${JSON.stringify(endpoint.mockResponse, null, 4)});`,
+      );
     }
     lines.push(`});\n`);
   }
@@ -351,7 +349,7 @@ export function formatMockApiConfig(config: MockApiConfig): string {
       POST: chalk.blue,
       PUT: chalk.yellow,
       DELETE: chalk.red,
-      PATCH: chalk.magenta
+      PATCH: chalk.magenta,
     };
     const colorFn = methodColors[endpoint.method] || chalk.white;
     lines.push(`   ${colorFn(endpoint.method.padEnd(7))} ${config.basePath}${endpoint.path}`);
@@ -371,5 +369,5 @@ export default {
   generateMockList,
   generateMockServer,
   generateMockHandler,
-  formatMockApiConfig
+  formatMockApiConfig,
 };

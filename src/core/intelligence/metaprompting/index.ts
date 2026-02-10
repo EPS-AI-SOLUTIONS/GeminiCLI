@@ -6,44 +6,42 @@
  * @module core/intelligence/metaprompting
  */
 
-// ── Types ──
-export type {
-  PromptOptimization,
-  MetaPromptingConfig,
-  EvolutionConfig,
-  ABTestResult,
-  CompressionResult,
-  DomainOptimizationResult,
-  PromptTemplate,
-  TemplateCategory,
-  PromptIndividual,
-  RecursiveOptimizationResult,
-  DomainType,
-  MetaPromptResult,
-  TaskType,
-} from './types.js';
-
-export { DEFAULT_CONFIG, DEFAULT_EVOLUTION_CONFIG } from './types.js';
-
-// ── Classes ──
-export { PromptTemplateLibrary } from './templates.js';
-export { MetaPrompter } from './MetaPrompter.js';
 export { AdvancedMetaPrompter } from './AdvancedMetaPrompter.js';
-
 // ── Legacy API ──
 export {
   classifyTaskType,
-  generateMetaPrompt,
   executeWithMetaPrompt,
+  generateMetaPrompt,
   getPromptTemplate,
 } from './legacy.js';
+export { MetaPrompter } from './MetaPrompter.js';
+// ── Classes ──
+export { PromptTemplateLibrary } from './templates.js';
+// ── Types ──
+export type {
+  ABTestResult,
+  CompressionResult,
+  DomainOptimizationResult,
+  DomainType,
+  EvolutionConfig,
+  MetaPromptingConfig,
+  MetaPromptingTaskType,
+  MetaPromptResult,
+  PromptIndividual,
+  PromptOptimization,
+  PromptTemplate,
+  RecursiveOptimizationResult,
+  TaskType, // deprecated alias, use MetaPromptingTaskType
+  TemplateCategory,
+} from './types.js';
+export { DEFAULT_CONFIG, DEFAULT_EVOLUTION_CONFIG } from './types.js';
 
 // ============================================================================
 // SINGLETON INSTANCES
 // ============================================================================
 
-import { MetaPrompter } from './MetaPrompter.js';
 import { AdvancedMetaPrompter } from './AdvancedMetaPrompter.js';
+import { MetaPrompter } from './MetaPrompter.js';
 import { PromptTemplateLibrary } from './templates.js';
 
 /**
@@ -52,7 +50,7 @@ import { PromptTemplateLibrary } from './templates.js';
  */
 export const metaPrompter = new MetaPrompter({
   language: 'pl',
-  temperature: 0.4
+  temperature: 0.4,
 });
 
 /**
@@ -62,13 +60,13 @@ export const metaPrompter = new MetaPrompter({
 export const advancedMetaPrompter = new AdvancedMetaPrompter(
   {
     language: 'pl',
-    temperature: 0.4
+    temperature: 0.4,
   },
   {
     populationSize: 8,
     generations: 5,
-    mutationRate: 0.3
-  }
+    mutationRate: 0.3,
+  },
 );
 
 /**
@@ -94,7 +92,7 @@ export async function quickOptimize(prompt: string, context: string = ''): Promi
 export async function quickEvolve(prompt: string, context: string = ''): Promise<string> {
   const result = await advancedMetaPrompter.evolvePrompt(prompt, context, {
     populationSize: 4,
-    generations: 3
+    generations: 3,
   });
   return result.bestPrompt;
 }
@@ -113,7 +111,7 @@ export async function quickCompress(prompt: string): Promise<string> {
 export async function quickABTest(
   variantA: string,
   variantB: string,
-  context: string = ''
+  context: string = '',
 ): Promise<'A' | 'B' | 'tie'> {
   const result = await advancedMetaPrompter.abTestPrompts(variantA, variantB, context);
   return result.winner;
@@ -125,8 +123,8 @@ export async function quickABTest(
 
 import {
   classifyTaskType as _classifyTaskType,
-  generateMetaPrompt as _generateMetaPrompt,
   executeWithMetaPrompt as _executeWithMetaPrompt,
+  generateMetaPrompt as _generateMetaPrompt,
   getPromptTemplate as _getPromptTemplate,
 } from './legacy.js';
 

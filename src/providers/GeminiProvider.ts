@@ -4,12 +4,13 @@
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GeminiError, getErrorMessage, RateLimitError } from '../core/errors.js';
 import type {
-  LLMProvider,
+  ChatCompletionChunk,
   ChatCompletionRequest,
   ChatCompletionResponse,
-  ChatCompletionChunk,
   ChatMessage,
+  LLMProvider,
 } from '../types/index.js';
 
 // Available Gemini models (Updated February 2026)
@@ -25,8 +26,8 @@ export const GEMINI_MODELS = {
   'gemini-2.0-flash': 'gemini-3-pro-preview',
 
   // Convenient aliases
-  'pro': 'gemini-3-pro-preview',
-  'flash': 'gemini-3-pro-preview',
+  pro: 'gemini-3-pro-preview',
+  flash: 'gemini-3-pro-preview',
 } as const;
 
 export type GeminiModelAlias = keyof typeof GEMINI_MODELS;
@@ -61,10 +62,12 @@ export class GeminiProvider implements LLMProvider {
     // Chat start with strict systemInstruction format (Content object)
     const chat = model.startChat({
       history: contents.slice(0, -1),
-      systemInstruction: systemInstruction ? {
-        role: 'system',
-        parts: [{ text: systemInstruction }]
-      } : undefined,
+      systemInstruction: systemInstruction
+        ? {
+            role: 'system',
+            parts: [{ text: systemInstruction }],
+          }
+        : undefined,
     });
 
     try {
@@ -93,13 +96,21 @@ export class GeminiProvider implements LLMProvider {
           totalTokens: 0,
         },
       };
-    } catch (error: any) {
-      throw new Error(`Gemini API Error (${modelName}): ${error.message}`);
+    } catch (error: unknown) {
+      const msg = getErrorMessage(error);
+      // (#21, #24) Structured error codes + RESOURCE_EXHAUSTED handling
+      if (msg.includes('429') || msg.includes('rate limit') || msg.includes('RESOURCE_EXHAUSTED')) {
+        throw new RateLimitError(`Gemini rate limit (${modelName}): ${msg}`);
+      }
+      throw new GeminiError(`Gemini API Error (${modelName}): ${msg}`, {
+        cause: error instanceof Error ? error : undefined,
+        context: { model: modelName },
+      });
     }
   }
 
   async *createChatCompletionStream(
-    request: ChatCompletionRequest
+    request: ChatCompletionRequest,
   ): AsyncIterable<ChatCompletionChunk> {
     const modelName = request.model ? this.resolveModel(request.model) : this.model;
     const model = this.client.getGenerativeModel({ model: modelName });
@@ -108,10 +119,12 @@ export class GeminiProvider implements LLMProvider {
 
     const chat = model.startChat({
       history: contents.slice(0, -1),
-      systemInstruction: systemInstruction ? {
-        role: 'system',
-        parts: [{ text: systemInstruction }]
-      } : undefined,
+      systemInstruction: systemInstruction
+        ? {
+            role: 'system',
+            parts: [{ text: systemInstruction }],
+          }
+        : undefined,
     });
 
     const lastMessage = contents[contents.length - 1];

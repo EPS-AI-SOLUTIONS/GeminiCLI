@@ -32,10 +32,10 @@ process.stdout.setDefaultEncoding('utf8');
 process.stderr.setDefaultEncoding('utf8');
 
 import { Command } from 'commander';
-import { printBanner, initializeSwarm } from './cli-config.js';
-import { runInteractiveMode } from './interactive.js';
+import { initializeSwarm, printBanner } from './cli-config.js';
 import { registerCommands } from './commands.js';
 import { executeSwarm } from './execute.js';
+import { runInteractiveMode } from './interactive.js';
 
 // ═══════════════════════════════════════════════════════════════
 // PROGRAM SETUP

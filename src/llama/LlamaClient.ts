@@ -8,10 +8,10 @@
  * 2. Spawn llama-cli directly for one-shot operations
  */
 
-import { spawn, ChildProcess } from 'child_process';
-import { EventEmitter } from 'events';
-import * as fs from 'fs';
-import * as path from 'path';
+import { type ChildProcess, spawn } from 'node:child_process';
+import { EventEmitter } from 'node:events';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 export interface LlamaClientConfig {
   modelsDir: string;
@@ -106,7 +106,7 @@ export class LlamaClient extends EventEmitter {
   async generate(
     prompt: string,
     systemPrompt?: string,
-    options: GenerateOptions = {}
+    options: GenerateOptions = {},
   ): Promise<string> {
     const messages: ChatMessage[] = [];
 
@@ -124,7 +124,7 @@ export class LlamaClient extends EventEmitter {
   async *generateStream(
     prompt: string,
     systemPrompt?: string,
-    options: GenerateOptions = {}
+    options: GenerateOptions = {},
   ): AsyncGenerator<string, void, unknown> {
     const messages: ChatMessage[] = [];
 
@@ -139,10 +139,7 @@ export class LlamaClient extends EventEmitter {
   /**
    * Chat using llama-server HTTP API (OpenAI-compatible)
    */
-  async chat(
-    messages: ChatMessage[],
-    options: GenerateOptions = {}
-  ): Promise<string> {
+  async chat(messages: ChatMessage[], options: GenerateOptions = {}): Promise<string> {
     const url = `${this.config.serverUrl}/v1/chat/completions`;
 
     const response = await fetch(url, {
@@ -174,7 +171,7 @@ export class LlamaClient extends EventEmitter {
    */
   async *chatStream(
     messages: ChatMessage[],
-    options: GenerateOptions = {}
+    options: GenerateOptions = {},
   ): AsyncGenerator<string, void, unknown> {
     const url = `${this.config.serverUrl}/v1/chat/completions`;
 
@@ -285,22 +282,34 @@ export class LlamaClient extends EventEmitter {
     }
 
     const args = [
-      '-m', modelPath,
-      '--host', '127.0.0.1',
-      '--port', '8080',
-      '-ngl', String(this.config.gpuLayers),
-      '-c', String(this.config.contextSize),
-      '-t', String(this.config.threads),
-      '-np', '4', // parallel slots
+      '-m',
+      modelPath,
+      '--host',
+      '127.0.0.1',
+      '--port',
+      '8080',
+      '-ngl',
+      String(this.config.gpuLayers),
+      '-c',
+      String(this.config.contextSize),
+      '-t',
+      String(this.config.threads),
+      '-np',
+      '4', // parallel slots
       ...(this.config.flashAttention ? ['-fa'] : []),
     ];
 
     return new Promise((resolve, reject) => {
       // Look for llama-server in bin directory first
-      const binServerPath = path.join(this.config.binDir, process.platform === 'win32' ? 'llama-server.exe' : 'llama-server');
+      const binServerPath = path.join(
+        this.config.binDir,
+        process.platform === 'win32' ? 'llama-server.exe' : 'llama-server',
+      );
       const serverPath = fs.existsSync(binServerPath)
         ? binServerPath
-        : (process.platform === 'win32' ? 'llama-server.exe' : 'llama-server');
+        : process.platform === 'win32'
+          ? 'llama-server.exe'
+          : 'llama-server';
 
       this.currentProcess = spawn(serverPath, args, {
         stdio: ['ignore', 'pipe', 'pipe'],

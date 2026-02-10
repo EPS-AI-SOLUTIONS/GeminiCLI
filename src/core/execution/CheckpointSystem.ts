@@ -9,11 +9,11 @@
  * Part of GeminiHydra ExecutionEngine
  */
 
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import chalk from 'chalk';
-import fs from 'fs/promises';
-import path from 'path';
-import { ExecutionResult } from '../../types/index.js';
 import { GEMINIHYDRA_DIR } from '../../config/paths.config.js';
+import type { ExecutionResult } from '../../types/index.js';
 
 // =============================================================================
 // TYPES & INTERFACES
@@ -52,7 +52,7 @@ class CheckpointManager {
     missionId: string,
     phase: string,
     state: Checkpoint['state'],
-    metadata: Record<string, any> = {}
+    metadata: Record<string, any> = {},
   ): Promise<string> {
     const id = `${missionId}_${phase}_${Date.now()}`;
 
@@ -62,7 +62,7 @@ class CheckpointManager {
       timestamp: new Date(),
       phase,
       state,
-      metadata
+      metadata,
     };
 
     this.checkpoints.set(id, checkpoint);
@@ -108,7 +108,7 @@ class CheckpointManager {
       await fs.mkdir(this.storePath, { recursive: true });
       const files = await fs.readdir(this.storePath);
       const missionFiles = files
-        .filter(f => f.startsWith(missionId) && f.endsWith('.json'))
+        .filter((f) => f.startsWith(missionId) && f.endsWith('.json'))
         .sort()
         .reverse();
 
@@ -127,7 +127,11 @@ class CheckpointManager {
     const checkpoint = await this.load(id);
     if (!checkpoint) return null;
 
-    console.log(chalk.cyan(`[Checkpoint] Restoring from ${checkpoint.phase} (${checkpoint.timestamp.toISOString()})`));
+    console.log(
+      chalk.cyan(
+        `[Checkpoint] Restoring from ${checkpoint.phase} (${checkpoint.timestamp.toISOString()})`,
+      ),
+    );
     return checkpoint.state;
   }
 
@@ -138,7 +142,7 @@ class CheckpointManager {
     this.checkpoints.delete(id);
     try {
       await fs.unlink(path.join(this.storePath, `${id}.json`));
-    } catch { }
+    } catch {}
   }
 
   /**
@@ -148,7 +152,7 @@ class CheckpointManager {
     try {
       const files = await fs.readdir(this.storePath);
       const missionFiles = files
-        .filter(f => f.startsWith(missionId) && f.endsWith('.json'))
+        .filter((f) => f.startsWith(missionId) && f.endsWith('.json'))
         .sort()
         .reverse();
 
@@ -171,7 +175,7 @@ class CheckpointManager {
       await fs.mkdir(this.storePath, { recursive: true });
       const files = await fs.readdir(this.storePath);
       const missionFiles = files
-        .filter(f => f.startsWith(missionId) && f.endsWith('.json'))
+        .filter((f) => f.startsWith(missionId) && f.endsWith('.json'))
         .sort()
         .reverse();
 
@@ -231,7 +235,9 @@ export function createCheckpointId(missionId: string, phase: string): string {
 /**
  * Parse checkpoint ID to extract components
  */
-export function parseCheckpointId(id: string): { missionId: string; phase: string; timestamp: number } | null {
+export function parseCheckpointId(
+  id: string,
+): { missionId: string; phase: string; timestamp: number } | null {
   const parts = id.split('_');
   if (parts.length < 3) return null;
 
@@ -252,5 +258,5 @@ export default {
   checkpointManager,
   CheckpointManager,
   createCheckpointId,
-  parseCheckpointId
+  parseCheckpointId,
 };

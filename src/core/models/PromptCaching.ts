@@ -3,7 +3,7 @@
  * Caches compiled prompts to avoid redundant template processing
  */
 
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 
 interface CachedPrompt {
   hash: string;
@@ -41,8 +41,9 @@ class PromptCache {
 
     if (this.cache.size >= this.maxSize) {
       // Remove oldest
-      const oldest = Array.from(this.cache.entries())
-        .sort((a, b) => a[1].timestamp - b[1].timestamp)[0];
+      const oldest = Array.from(this.cache.entries()).sort(
+        (a, b) => a[1].timestamp - b[1].timestamp,
+      )[0];
       if (oldest) this.cache.delete(oldest[0]);
     }
 
@@ -50,7 +51,7 @@ class PromptCache {
       hash: key,
       compiled,
       timestamp: Date.now(),
-      hits: 0
+      hits: 0,
     });
   }
 
@@ -69,7 +70,7 @@ class PromptCache {
 
   getStats(): { size: number; totalHits: number } {
     let totalHits = 0;
-    this.cache.forEach(c => totalHits += c.hits);
+    this.cache.forEach((c) => (totalHits += c.hits));
     return { size: this.cache.size, totalHits };
   }
 

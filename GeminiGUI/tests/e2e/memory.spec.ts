@@ -5,9 +5,9 @@
  * and knowledge graph visualization.
  */
 
-import { test, expect } from '../fixtures/test-setup';
 import { createMockMemories } from '../fixtures/tauri-mocks';
 import { TIMEOUTS, UI_TEXTS } from '../fixtures/test-data';
+import { expect, test } from '../fixtures/test-setup';
 
 test.describe('Memory Panel', () => {
   test('should display memory panel', async ({ page, memory }) => {
@@ -53,9 +53,7 @@ test.describe('Memory Panel', () => {
     expect(availableAgents.length).toBeGreaterThan(0);
 
     // Should include known agents like Dijkstra
-    const hasDijkstra = availableAgents.some(a =>
-      a.toLowerCase().includes('dijkstra')
-    );
+    const hasDijkstra = availableAgents.some((a) => a.toLowerCase().includes('dijkstra'));
     expect(hasDijkstra).toBe(true);
   });
 
@@ -72,7 +70,7 @@ test.describe('Memory Panel', () => {
 
     // Should show memory content
     for (const mem of mockMemories) {
-      const hasContent = await memory.hasMemoryContent(mem.content);
+      const _hasContent = await memory.hasMemoryContent(mem.content);
       // At least some memories should be visible
       // (might be filtered by selected agent)
     }
@@ -93,7 +91,7 @@ test.describe('Memory Panel', () => {
     await page.waitForTimeout(300);
 
     // Empty state should be visible
-    const isEmpty = await memory.isEmptyStateVisible();
+    const _isEmpty = await memory.isEmptyStateVisible();
     // Note: depends on whether agent has default memories
   });
 });

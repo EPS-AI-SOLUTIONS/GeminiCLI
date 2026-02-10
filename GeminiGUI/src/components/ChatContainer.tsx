@@ -5,11 +5,11 @@
  * Main chat interface container using sub-components.
  */
 
-import { useState, useCallback, memo } from 'react';
+import { memo, useCallback, useState } from 'react';
 import type { Message } from '../types';
 
 // Sub-components
-import { MessageList, ChatInput, DragDropZone, ChatMessageContextMenu } from './chat';
+import { ChatInput, ChatMessageContextMenu, DragDropZone, MessageList } from './chat';
 import { WelcomeScreen } from './WelcomeScreen';
 
 // ============================================================================
@@ -28,12 +28,7 @@ export interface ChatContainerProps {
 // ============================================================================
 
 export const ChatContainer = memo<ChatContainerProps>(
-  ({
-    messages,
-    isStreaming,
-    onSubmit,
-    onExecuteCommand,
-  }) => {
+  ({ messages, isStreaming, onSubmit, onExecuteCommand }) => {
     const [pendingImage, setPendingImage] = useState<string | null>(null);
     const [textContext, setTextContext] = useState<string>('');
     const [contextMenu, setContextMenu] = useState<{
@@ -50,7 +45,7 @@ export const ChatContainer = memo<ChatContainerProps>(
     // Handle text file drop
     const handleTextDrop = useCallback((content: string, filename: string) => {
       setTextContext(
-        `[Plik Kontekstowy: ${filename}]\n\`\`\`\n${content}\n\`\`\`\n\nPrzeanalizuj tresc tego pliku.`
+        `[Plik Kontekstowy: ${filename}]\n\`\`\`\n${content}\n\`\`\`\n\nPrzeanalizuj tresc tego pliku.`,
       );
     }, []);
 
@@ -63,7 +58,7 @@ export const ChatContainer = memo<ChatContainerProps>(
         setTextContext('');
         setPendingImage(null);
       },
-      [onSubmit, textContext]
+      [onSubmit, textContext],
     );
 
     // Clear pending image
@@ -94,10 +89,10 @@ export const ChatContainer = memo<ChatContainerProps>(
 
     return (
       <DragDropZone onImageDrop={handleImageDrop} onTextDrop={handleTextDrop}>
-        <div className="flex-1 h-full flex flex-col min-h-0 relative gap-2">
+        <div className="flex-1 w-full h-full flex flex-col min-h-0 relative gap-2">
           {/* Messages Panel or Welcome Screen */}
-          <div className="glass-panel flex-1 min-h-0 flex flex-col">
-            <div className="flex-1 min-h-0">
+          <div className="glass-panel flex-1 min-h-0 flex flex-col overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-hidden">
               {messages.length === 0 ? (
                 <WelcomeScreen onQuickAction={(cmd) => handleSubmit(cmd, null)} />
               ) : (
@@ -134,7 +129,7 @@ export const ChatContainer = memo<ChatContainerProps>(
         </div>
       </DragDropZone>
     );
-  }
+  },
 );
 
 ChatContainer.displayName = 'ChatContainer';

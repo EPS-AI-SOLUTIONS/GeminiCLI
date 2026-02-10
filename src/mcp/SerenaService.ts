@@ -4,7 +4,12 @@
  * Provides semantic code operations: find symbols, edit code, navigate references
  */
 
-import { McpClient, McpTool, McpToolCallResult, createSerenaClient } from './McpClient.js';
+import {
+  createSerenaClient,
+  type McpClient,
+  type McpTool,
+  type McpToolCallResult,
+} from './McpClient.js';
 
 // Serena tool result types
 export interface SymbolInfo {
@@ -87,7 +92,11 @@ export class SerenaService {
    * Find symbol by name (function, class, variable, etc.)
    * Uses name_path_pattern for Serena API
    */
-  async findSymbol(namePathPattern: string, includeBody: boolean = false, depth?: number): Promise<string> {
+  async findSymbol(
+    namePathPattern: string,
+    includeBody: boolean = false,
+    depth?: number,
+  ): Promise<string> {
     await this.ensureConnected();
     const result = await this.client.callTool('find_symbol', {
       name_path_pattern: namePathPattern,
@@ -209,7 +218,7 @@ export class SerenaService {
     relativePath: string,
     pattern: string,
     replacement: string,
-    useRegex: boolean = false
+    useRegex: boolean = false,
   ): Promise<string> {
     await this.ensureConnected();
     const result = await this.client.callTool('replace_content', {

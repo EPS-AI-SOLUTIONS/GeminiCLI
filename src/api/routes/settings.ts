@@ -3,11 +3,11 @@
  * Settings management endpoints
  */
 
-import { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync } from 'fastify';
 import { settingsStore } from '../stores/index.js';
-import { validateSettingsUpdate } from '../validators/index.js';
-import type { Settings } from '../types/index.js';
 import type { SettingsPatchRequest } from '../types/fastify.js';
+import type { Settings } from '../types/index.js';
+import { validateSettingsUpdate } from '../validators/index.js';
 
 export const settingsRoutes: FastifyPluginAsync = async (fastify) => {
   /**
@@ -34,7 +34,7 @@ export const settingsRoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       return result;
-    }
+    },
   );
 
   /**

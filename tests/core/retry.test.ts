@@ -2,19 +2,18 @@
  * GeminiHydra - Retry Logic & Circuit Breaker Unit Tests
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { CircuitOpenError, TimeoutError } from '../../src/core/errors.js';
 import {
-  withRetry,
-  withTimeout,
-  withRetryAndTimeout,
-  isRetryableError,
-  calculateDelay,
   CircuitBreaker,
   CircuitBreakerRegistry,
+  calculateDelay,
+  isRetryableError,
   RETRYABLE_ERROR_CODES,
-  RETRYABLE_STATUS_CODES
+  RETRYABLE_STATUS_CODES,
+  withRetry,
+  withTimeout,
 } from '../../src/core/retry.js';
-import { CircuitOpenError, TimeoutError } from '../../src/core/errors.js';
 
 describe('isRetryableError', () => {
   it('should return true for retryable error codes', () => {
@@ -42,6 +41,11 @@ describe('isRetryableError', () => {
     expect(isRetryableError(new Error('rate limit exceeded'))).toBe(true);
     expect(isRetryableError(new Error('too many requests'))).toBe(true);
     expect(isRetryableError(new Error('Error 429'))).toBe(true);
+  });
+
+  it('should return true for RESOURCE_EXHAUSTED errors (#24)', () => {
+    expect(isRetryableError(new Error('RESOURCE_EXHAUSTED: quota exceeded'))).toBe(true);
+    expect(isRetryableError(new Error('13 RESOURCE_EXHAUSTED'))).toBe(true);
   });
 
   it('should return false for non-retryable errors', () => {
@@ -75,7 +79,12 @@ describe('calculateDelay', () => {
   });
 
   it('should cap at maxDelay', () => {
-    const delay = calculateDelay(10, { baseDelay: 1000, backoffMultiplier: 2, maxDelay: 5000, jitter: false });
+    const delay = calculateDelay(10, {
+      baseDelay: 1000,
+      backoffMultiplier: 2,
+      maxDelay: 5000,
+      jitter: false,
+    });
     expect(delay).toBe(5000);
   });
 
@@ -110,7 +119,8 @@ describe('withRetry', () => {
 
   it('should retry on retryable errors', async () => {
     const error = new Error('timeout');
-    const fn = vi.fn()
+    const fn = vi
+      .fn()
       .mockRejectedValueOnce(error)
       .mockRejectedValueOnce(error)
       .mockResolvedValue('success');
@@ -151,9 +161,7 @@ describe('withRetry', () => {
 
   it('should call onRetry callback', async () => {
     const error = new Error('timeout');
-    const fn = vi.fn()
-      .mockRejectedValueOnce(error)
-      .mockResolvedValue('success');
+    const fn = vi.fn().mockRejectedValueOnce(error).mockResolvedValue('success');
     const onRetry = vi.fn();
 
     const resultPromise = withRetry(fn, { maxRetries: 3, baseDelay: 100, jitter: false, onRetry });
@@ -162,11 +170,13 @@ describe('withRetry', () => {
     await resultPromise;
 
     expect(onRetry).toHaveBeenCalledOnce();
-    expect(onRetry).toHaveBeenCalledWith(expect.objectContaining({
-      attempt: 1,
-      error,
-      willRetry: true
-    }));
+    expect(onRetry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        attempt: 1,
+        error,
+        willRetry: true,
+      }),
+    );
   });
 });
 
@@ -182,7 +192,7 @@ describe('withTimeout', () => {
 
   it('should return result if function completes before timeout', async () => {
     const fn = vi.fn().mockImplementation(async () => {
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
       return 'success';
     });
 
@@ -195,7 +205,7 @@ describe('withTimeout', () => {
 
   it('should throw TimeoutError if function takes too long', async () => {
     const fn = vi.fn().mockImplementation(async () => {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       return 'success';
     });
 
@@ -221,7 +231,7 @@ describe('CircuitBreaker', () => {
       failureThreshold: 3,
       successThreshold: 2,
       timeout: 5000,
-      halfOpenMaxCalls: 2
+      halfOpenMaxCalls: 2,
     });
   });
 
@@ -314,7 +324,8 @@ describe('CircuitBreaker', () => {
   });
 
   it('should respect halfOpenMaxCalls', async () => {
-    const fn = vi.fn()
+    const fn = vi
+      .fn()
       .mockResolvedValueOnce('success1')
       .mockResolvedValueOnce('success2')
       .mockResolvedValueOnce('success3');
@@ -417,7 +428,7 @@ describe('CircuitBreakerRegistry', () => {
   });
 
   it('should list available breakers', async () => {
-    const breaker1 = registry.get('service1');
+    const _breaker1 = registry.get('service1');
     const breaker2 = registry.get('service2');
 
     breaker2.forceOpen();

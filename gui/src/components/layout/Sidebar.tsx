@@ -3,19 +3,10 @@
  */
 
 import { clsx } from 'clsx';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  MessageSquare,
-  Users,
-  Settings,
-  History,
-  ChevronLeft,
-  Zap,
-  Moon,
-  Sun,
-} from 'lucide-react';
-import { useAppStore } from '../../stores/appStore';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ChevronLeft, History, MessageSquare, Moon, Settings, Sun, Users, Zap } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAppStore } from '../../stores/appStore';
 
 type ViewType = 'chat' | 'agents' | 'history' | 'settings';
 
@@ -73,7 +64,7 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
             <ChevronLeft
               className={clsx(
                 'w-5 h-5 text-[var(--matrix-text-dim)] transition-transform',
-                !isSidebarOpen && 'rotate-180'
+                !isSidebarOpen && 'rotate-180',
               )}
             />
           </button>
@@ -93,7 +84,7 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
                   'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all',
                   isActive
                     ? 'bg-[var(--matrix-accent)] text-[var(--matrix-bg-primary)]'
-                    : 'text-[var(--matrix-text-dim)] hover:text-[var(--matrix-text)] hover:bg-[var(--glass-bg)]'
+                    : 'text-[var(--matrix-text-dim)] hover:text-[var(--matrix-text)] hover:bg-[var(--glass-bg)]',
                 )}
               >
                 <Icon className="w-5 h-5 flex-shrink-0" />

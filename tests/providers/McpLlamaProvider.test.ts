@@ -2,15 +2,15 @@
  * Tests for MCP Llama Provider
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  McpLlamaProvider,
-  setMcpToolCaller,
-  getMcpToolCaller,
   createMcpLlamaProvider,
   createMcpLlamaProviders,
+  getMcpToolCaller,
   getRecommendedModel,
+  McpLlamaProvider,
   type McpToolCaller,
+  setMcpToolCaller,
 } from '../../src/providers/McpLlamaProvider.js';
 
 // Create mock MCP caller
@@ -23,7 +23,12 @@ function createMockMcpCaller(): McpToolCaller {
     llama_analyze: vi.fn().mockResolvedValue({ sentiment: { label: 'positive', score: 0.9 } }),
     llama_code: vi.fn().mockResolvedValue({ code: 'function test() {}' }),
     llama_vision: vi.fn().mockResolvedValue({ description: 'Image description' }),
-    llama_embed: vi.fn().mockResolvedValue({ embeddings: [[0.1, 0.2], [0.3, 0.4]] }),
+    llama_embed: vi.fn().mockResolvedValue({
+      embeddings: [
+        [0.1, 0.2],
+        [0.3, 0.4],
+      ],
+    }),
   };
 }
 
@@ -90,9 +95,11 @@ describe('McpLlamaProvider', () => {
         messages: [{ role: 'user', content: 'Hello' }],
       });
 
-      expect(mockCaller.llama_chat).toHaveBeenCalledWith(expect.objectContaining({
-        messages: [{ role: 'user', content: 'Hello' }],
-      }));
+      expect(mockCaller.llama_chat).toHaveBeenCalledWith(
+        expect.objectContaining({
+          messages: [{ role: 'user', content: 'Hello' }],
+        }),
+      );
       expect(response.choices[0].message.content).toBe('Chat response');
     });
 
@@ -103,10 +110,12 @@ describe('McpLlamaProvider', () => {
         max_tokens: 500,
       });
 
-      expect(mockCaller.llama_chat).toHaveBeenCalledWith(expect.objectContaining({
-        temperature: 0.9,
-        max_tokens: 500,
-      }));
+      expect(mockCaller.llama_chat).toHaveBeenCalledWith(
+        expect.objectContaining({
+          temperature: 0.9,
+          max_tokens: 500,
+        }),
+      );
     });
 
     it('should format response correctly', async () => {
@@ -156,10 +165,12 @@ describe('McpLlamaProvider', () => {
 
       await provider.generateJson('Generate JSON', schema);
 
-      expect(mockCaller.llama_json).toHaveBeenCalledWith(expect.objectContaining({
-        prompt: 'Generate JSON',
-        schema,
-      }));
+      expect(mockCaller.llama_json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          prompt: 'Generate JSON',
+          schema,
+        }),
+      );
     });
   });
 
@@ -167,10 +178,12 @@ describe('McpLlamaProvider', () => {
     it('should call llama_analyze for sentiment', async () => {
       const result = await provider.analyzeText('Great product!', 'sentiment');
 
-      expect(mockCaller.llama_analyze).toHaveBeenCalledWith(expect.objectContaining({
-        text: 'Great product!',
-        task: 'sentiment',
-      }));
+      expect(mockCaller.llama_analyze).toHaveBeenCalledWith(
+        expect.objectContaining({
+          text: 'Great product!',
+          task: 'sentiment',
+        }),
+      );
       expect(result.sentiment).toBeDefined();
     });
 
@@ -179,9 +192,11 @@ describe('McpLlamaProvider', () => {
         targetLanguage: 'pl',
       });
 
-      expect(mockCaller.llama_analyze).toHaveBeenCalledWith(expect.objectContaining({
-        target_language: 'pl',
-      }));
+      expect(mockCaller.llama_analyze).toHaveBeenCalledWith(
+        expect.objectContaining({
+          target_language: 'pl',
+        }),
+      );
     });
   });
 
@@ -191,11 +206,13 @@ describe('McpLlamaProvider', () => {
 
       const result = await provider.analyzeCode('generate', 'Create a variable', 'typescript');
 
-      expect(mockCaller.llama_code).toHaveBeenCalledWith(expect.objectContaining({
-        task: 'generate',
-        description: 'Create a variable',
-        language: 'typescript',
-      }));
+      expect(mockCaller.llama_code).toHaveBeenCalledWith(
+        expect.objectContaining({
+          task: 'generate',
+          description: 'Create a variable',
+          language: 'typescript',
+        }),
+      );
       expect(result).toBe('const x = 1;');
     });
 
@@ -204,15 +221,19 @@ describe('McpLlamaProvider', () => {
 
       const result = await provider.analyzeCode('explain', 'const x = 1;');
 
-      expect(mockCaller.llama_code).toHaveBeenCalledWith(expect.objectContaining({
-        task: 'explain',
-        code: 'const x = 1;',
-      }));
+      expect(mockCaller.llama_code).toHaveBeenCalledWith(
+        expect.objectContaining({
+          task: 'explain',
+          code: 'const x = 1;',
+        }),
+      );
       expect(result).toBe('This code does X');
     });
 
     it('should handle suggestions', async () => {
-      mockCaller.llama_code = vi.fn().mockResolvedValue({ suggestions: ['Use const', 'Add types'] });
+      mockCaller.llama_code = vi
+        .fn()
+        .mockResolvedValue({ suggestions: ['Use const', 'Add types'] });
 
       const result = await provider.analyzeCode('refactor', 'code');
       expect(result).toContain('Use const');
@@ -220,7 +241,7 @@ describe('McpLlamaProvider', () => {
 
     it('should handle review', async () => {
       mockCaller.llama_code = vi.fn().mockResolvedValue({
-        review: { issues: ['Issue 1'], improvements: ['Improvement 1'] }
+        review: { issues: ['Issue 1'], improvements: ['Improvement 1'] },
       });
 
       const result = await provider.analyzeCode('review', 'code');
@@ -240,18 +261,22 @@ describe('McpLlamaProvider', () => {
     it('should call llama_vision', async () => {
       const result = await provider.analyzeImage('/path/to/image.jpg');
 
-      expect(mockCaller.llama_vision).toHaveBeenCalledWith(expect.objectContaining({
-        image: '/path/to/image.jpg',
-      }));
+      expect(mockCaller.llama_vision).toHaveBeenCalledWith(
+        expect.objectContaining({
+          image: '/path/to/image.jpg',
+        }),
+      );
       expect(result).toBe('Image description');
     });
 
     it('should use custom prompt', async () => {
       await provider.analyzeImage('/path/to/image.jpg', 'What objects are visible?');
 
-      expect(mockCaller.llama_vision).toHaveBeenCalledWith(expect.objectContaining({
-        prompt: 'What objects are visible?',
-      }));
+      expect(mockCaller.llama_vision).toHaveBeenCalledWith(
+        expect.objectContaining({
+          prompt: 'What objects are visible?',
+        }),
+      );
     });
   });
 
@@ -277,9 +302,11 @@ describe('McpLlamaProvider', () => {
     it('should create new provider with fast generation enabled', async () => {
       const fastProvider = provider.withFastGeneration();
 
-      await fastProvider.createChatCompletionStream({
-        messages: [{ role: 'user', content: 'Test' }],
-      }).next();
+      await fastProvider
+        .createChatCompletionStream({
+          messages: [{ role: 'user', content: 'Test' }],
+        })
+        .next();
 
       expect(mockCaller.llama_generate_fast).toHaveBeenCalled();
     });

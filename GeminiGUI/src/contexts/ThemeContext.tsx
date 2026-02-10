@@ -7,12 +7,12 @@
  */
 import {
   createContext,
+  type ReactNode,
   useContext,
   useEffect,
   useMemo,
   useState,
   useSyncExternalStore,
-  type ReactNode,
 } from 'react';
 import type { Theme } from '../types';
 
@@ -48,7 +48,7 @@ export function ThemeProvider({
       return () => mediaQuery.removeEventListener('change', callback);
     },
     () => window.matchMedia('(prefers-color-scheme: dark)').matches,
-    () => true
+    () => true,
   );
 
   const resolvedTheme = useMemo<'dark' | 'light'>(() => {
@@ -69,10 +69,7 @@ export function ThemeProvider({
 
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (metaThemeColor) {
-      metaThemeColor.setAttribute(
-        'content',
-        resolvedTheme === 'dark' ? '#0a0f0d' : '#ffffff'
-      );
+      metaThemeColor.setAttribute('content', resolvedTheme === 'dark' ? '#0a0f0d' : '#ffffff');
     }
   }, [resolvedTheme]);
 

@@ -3,11 +3,16 @@
  * @module hooks/useLlamaModels
  */
 
-import { useState, useCallback, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { listen } from '@tauri-apps/api/event';
-import { LlamaService, type GGUFModelInfo, type RecommendedModel, type DownloadProgress } from '../services/tauri.service';
+import { useCallback, useEffect, useState } from 'react';
 import { QUERY_KEYS, TAURI_EVENTS } from '../constants';
+import {
+  type DownloadProgress,
+  type GGUFModelInfo,
+  LlamaService,
+  type RecommendedModel,
+} from '../services/tauri.service';
 
 export interface UseLlamaModelsReturn {
   // Available models
@@ -163,7 +168,7 @@ export const useLlamaModels = (): UseLlamaModelsReturn => {
     async (modelPath: string, gpuLayers?: number) => {
       await loadModelMutation.mutateAsync({ modelPath, gpuLayers });
     },
-    [loadModelMutation]
+    [loadModelMutation],
   );
 
   const unloadModel = useCallback(async () => {
@@ -174,7 +179,7 @@ export const useLlamaModels = (): UseLlamaModelsReturn => {
     async (repoId: string, filename: string) => {
       await downloadModelMutation.mutateAsync({ repoId, filename });
     },
-    [downloadModelMutation]
+    [downloadModelMutation],
   );
 
   const cancelDownload = useCallback(async () => {
@@ -190,7 +195,7 @@ export const useLlamaModels = (): UseLlamaModelsReturn => {
       }
       await deleteModelMutation.mutateAsync(modelPath);
     },
-    [currentModel, unloadModel, deleteModelMutation]
+    [currentModel, unloadModel, deleteModelMutation],
   );
 
   return {

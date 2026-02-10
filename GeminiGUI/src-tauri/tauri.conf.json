@@ -14,9 +14,14 @@
       {
         "label": "main",
         "title": "GeminiGUI",
-        "width": 1024,
-        "height": 768,
-        "visible": true
+        "width": 1440,
+        "height": 900,
+        "minWidth": 900,
+        "minHeight": 600,
+        "visible": true,
+        "center": true,
+        "maximizable": true,
+        "resizable": true
       }
     ],
     "security": {

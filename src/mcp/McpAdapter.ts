@@ -17,8 +17,8 @@ export function createStubMcpCaller(): McpToolCaller {
   const notAvailable = (toolName: string) => {
     throw new Error(
       `MCP tool '${toolName}' not available. ` +
-      `GeminiHydra requires MCP llama-cpp tools to be available in the runtime environment. ` +
-      `Run this in an MCP-enabled environment (like Claude Code) or provide a GEMINI_API_KEY for legacy mode.`
+        `GeminiHydra requires MCP llama-cpp tools to be available in the runtime environment. ` +
+        `Run this in an MCP-enabled environment (like Claude Code) or provide a GEMINI_API_KEY for legacy mode.`,
     );
   };
 
@@ -41,8 +41,7 @@ export function createStubMcpCaller(): McpToolCaller {
 export function isMcpEnvironment(): boolean {
   // Check for MCP-specific environment variables or global objects
   // This is a heuristic - in real MCP environments, tools are injected
-  return typeof (globalThis as any).mcp !== 'undefined' ||
-         process.env.MCP_ENABLED === 'true';
+  return typeof (globalThis as any).mcp !== 'undefined' || process.env.MCP_ENABLED === 'true';
 }
 
 /**

@@ -5,8 +5,16 @@
  */
 
 import chalk from 'chalk';
-import { CommandRegistry, Command, commandRegistry, success, error, CommandResult, CommandContext } from './CommandRegistry.js';
-import { formatTable, formatSimpleTable, formatNumber, formatPercent, horizontalLine, box } from './CommandHelpers.js';
+import { formatNumber, formatPercent, horizontalLine } from './CommandHelpers.js';
+import {
+  type Command,
+  type CommandContext,
+  type CommandRegistry,
+  type CommandResult,
+  commandRegistry,
+  error,
+  success,
+} from './CommandRegistry.js';
 
 // ============================================================
 // Diagnostic Types
@@ -130,7 +138,7 @@ export class CommandDiagnostics {
       categoryInfos.push({
         name: category,
         commandCount: cmds.length,
-        commands: cmds.map(c => c.name)
+        commands: cmds.map((c) => c.name),
       });
     }
 
@@ -140,7 +148,7 @@ export class CommandDiagnostics {
       categoryCount: categories.length,
       hiddenCount,
       subcommandCount,
-      categories: categoryInfos
+      categories: categoryInfos,
     };
   }
 
@@ -159,7 +167,7 @@ export class CommandDiagnostics {
         issues.push({
           type: 'error',
           code: 'EMPTY_NAME',
-          message: 'Command has empty or missing name'
+          message: 'Command has empty or missing name',
         });
         continue;
       }
@@ -170,7 +178,7 @@ export class CommandDiagnostics {
           type: 'error',
           code: 'DUPLICATE_NAME',
           message: `Duplicate command name: ${cmd.name}`,
-          command: cmd.name
+          command: cmd.name,
         });
       }
       seenNames.add(cmd.name);
@@ -181,7 +189,7 @@ export class CommandDiagnostics {
           type: 'warning',
           code: 'MISSING_DESCRIPTION',
           message: `Command missing description`,
-          command: cmd.name
+          command: cmd.name,
         });
       }
 
@@ -193,7 +201,7 @@ export class CommandDiagnostics {
             code: 'ALIAS_CONFLICTS_NAME',
             message: `Alias "${alias}" conflicts with command name`,
             command: cmd.name,
-            alias
+            alias,
           });
         }
 
@@ -204,7 +212,7 @@ export class CommandDiagnostics {
             code: 'DUPLICATE_ALIAS',
             message: `Alias "${alias}" is already used by command "${existingCmd}"`,
             command: cmd.name,
-            alias
+            alias,
           });
         }
         seenAliases.set(alias, cmd.name);
@@ -218,7 +226,7 @@ export class CommandDiagnostics {
               type: 'warning',
               code: 'MISSING_ARG_NAME',
               message: `Argument missing name`,
-              command: cmd.name
+              command: cmd.name,
             });
           }
           if (!arg.description) {
@@ -226,7 +234,7 @@ export class CommandDiagnostics {
               type: 'info',
               code: 'MISSING_ARG_DESCRIPTION',
               message: `Argument "${arg.name}" missing description`,
-              command: cmd.name
+              command: cmd.name,
             });
           }
         }
@@ -240,7 +248,7 @@ export class CommandDiagnostics {
               type: 'error',
               code: 'SUBCOMMAND_NO_HANDLER',
               message: `Subcommand "${subName}" has no handler`,
-              command: cmd.name
+              command: cmd.name,
             });
           }
         }
@@ -252,7 +260,7 @@ export class CommandDiagnostics {
           type: 'info',
           code: 'MISSING_CATEGORY',
           message: `Command has no category (defaults to "general")`,
-          command: cmd.name
+          command: cmd.name,
         });
       }
     }
@@ -289,7 +297,7 @@ export class CommandDiagnostics {
       commandsWithSubcommands,
       commandsWithArgs,
       hiddenCommands,
-      categoryCounts
+      categoryCounts,
     };
   }
 
@@ -299,7 +307,7 @@ export class CommandDiagnostics {
   findOrphanedAliases(): string[] {
     const orphaned: string[] = [];
     const commands = this.getAllCommandsIncludingHidden();
-    const commandNames = new Set(commands.map(c => c.name));
+    const _commandNames = new Set(commands.map((c) => c.name));
 
     // Check internal alias map via attempting lookups
     for (const cmd of commands) {
@@ -333,7 +341,7 @@ export class CommandDiagnostics {
           name: cmd.name,
           type: 'name',
           conflictsWith: nameToCommand.get(cmd.name)!,
-          description: `Command name "${cmd.name}" is duplicated`
+          description: `Command name "${cmd.name}" is duplicated`,
         });
       } else {
         nameToCommand.set(cmd.name, cmd.name);
@@ -347,7 +355,7 @@ export class CommandDiagnostics {
             name: alias,
             type: 'cross',
             conflictsWith: nameToCommand.get(alias)!,
-            description: `Alias "${alias}" of command "${cmd.name}" conflicts with command name`
+            description: `Alias "${alias}" of command "${cmd.name}" conflicts with command name`,
           });
         }
 
@@ -357,7 +365,7 @@ export class CommandDiagnostics {
             name: alias,
             type: 'alias',
             conflictsWith: aliasToCommand.get(alias)!,
-            description: `Alias "${alias}" is used by both "${cmd.name}" and "${aliasToCommand.get(alias)}"`
+            description: `Alias "${alias}" is used by both "${cmd.name}" and "${aliasToCommand.get(alias)}"`,
           });
         } else {
           aliasToCommand.set(alias, cmd.name);
@@ -381,18 +389,18 @@ export class CommandDiagnostics {
       description: cmd.description,
       category: cmd.category || 'general',
       usage: cmd.usage,
-      args: cmd.args?.map(arg => ({
+      args: cmd.args?.map((arg) => ({
         name: arg.name,
         description: arg.description,
         required: arg.required || false,
         type: arg.type,
         default: arg.default,
-        choices: arg.choices
+        choices: arg.choices,
       })),
       hasSubcommands: !!(cmd.subcommands && cmd.subcommands.size > 0),
       subcommands: cmd.subcommands ? Array.from(cmd.subcommands.keys()) : undefined,
       hidden: cmd.hidden || false,
-      handlerType: typeof cmd.handler
+      handlerType: typeof cmd.handler,
     };
   }
 
@@ -467,7 +475,9 @@ export class CommandDiagnostics {
 
     lines.push(chalk.white('\n Categories:'));
     for (const cat of status.categories) {
-      lines.push(`   ${chalk.cyan(cat.name.padEnd(15))} ${chalk.yellow(cat.commandCount.toString().padStart(3))} commands`);
+      lines.push(
+        `   ${chalk.cyan(cat.name.padEnd(15))} ${chalk.yellow(cat.commandCount.toString().padStart(3))} commands`,
+      );
     }
 
     lines.push('');
@@ -488,11 +498,13 @@ export class CommandDiagnostics {
       return lines.join('\n');
     }
 
-    const errors = issues.filter(i => i.type === 'error');
-    const warnings = issues.filter(i => i.type === 'warning');
-    const infos = issues.filter(i => i.type === 'info');
+    const errors = issues.filter((i) => i.type === 'error');
+    const warnings = issues.filter((i) => i.type === 'warning');
+    const infos = issues.filter((i) => i.type === 'info');
 
-    lines.push(`\n Found ${chalk.red(errors.length)} errors, ${chalk.yellow(warnings.length)} warnings, ${chalk.blue(infos.length)} info\n`);
+    lines.push(
+      `\n Found ${chalk.red(errors.length)} errors, ${chalk.yellow(warnings.length)} warnings, ${chalk.blue(infos.length)} info\n`,
+    );
 
     if (errors.length > 0) {
       lines.push(chalk.red.bold(' Errors:'));
@@ -539,14 +551,20 @@ export class CommandDiagnostics {
     lines.push(`   Avg aliases/command:   ${chalk.yellow(stats.avgAliasesPerCommand.toFixed(2))}`);
 
     lines.push(chalk.white('\n Features:'));
-    lines.push(`   With subcommands:      ${chalk.yellow(formatNumber(stats.commandsWithSubcommands))} (${formatPercent(stats.commandsWithSubcommands / stats.totalCommands)})`);
-    lines.push(`   With arguments:        ${chalk.yellow(formatNumber(stats.commandsWithArgs))} (${formatPercent(stats.commandsWithArgs / stats.totalCommands)})`);
+    lines.push(
+      `   With subcommands:      ${chalk.yellow(formatNumber(stats.commandsWithSubcommands))} (${formatPercent(stats.commandsWithSubcommands / stats.totalCommands)})`,
+    );
+    lines.push(
+      `   With arguments:        ${chalk.yellow(formatNumber(stats.commandsWithArgs))} (${formatPercent(stats.commandsWithArgs / stats.totalCommands)})`,
+    );
     lines.push(`   Hidden commands:       ${chalk.gray(formatNumber(stats.hiddenCommands))}`);
 
     lines.push(chalk.white('\n By Category:'));
     for (const [category, count] of stats.categoryCounts) {
       const percent = formatPercent(count / stats.totalCommands);
-      lines.push(`   ${chalk.cyan(category.padEnd(15))} ${chalk.yellow(count.toString().padStart(3))} (${percent})`);
+      lines.push(
+        `   ${chalk.cyan(category.padEnd(15))} ${chalk.yellow(count.toString().padStart(3))} (${percent})`,
+      );
     }
 
     lines.push('');
@@ -564,10 +582,14 @@ export class CommandDiagnostics {
 
     lines.push(`\n ${chalk.white('Description:')} ${info.description}`);
     lines.push(`   ${chalk.white('Category:')}    ${chalk.cyan(info.category)}`);
-    lines.push(`   ${chalk.white('Hidden:')}      ${info.hidden ? chalk.yellow('Yes') : chalk.green('No')}`);
+    lines.push(
+      `   ${chalk.white('Hidden:')}      ${info.hidden ? chalk.yellow('Yes') : chalk.green('No')}`,
+    );
 
     if (info.aliases.length > 0) {
-      lines.push(`\n ${chalk.white('Aliases:')} ${info.aliases.map(a => chalk.yellow(`/${a}`)).join(', ')}`);
+      lines.push(
+        `\n ${chalk.white('Aliases:')} ${info.aliases.map((a) => chalk.yellow(`/${a}`)).join(', ')}`,
+      );
     }
 
     if (info.usage) {
@@ -583,13 +605,15 @@ export class CommandDiagnostics {
         const type = arg.type ? chalk.gray(` [${arg.type}]`) : '';
         lines.push(`   ${chalk.cyan(arg.name)}${req}${type} - ${arg.description}${def}`);
         if (arg.choices && arg.choices.length > 0) {
-          lines.push(`      Choices: ${arg.choices.map(c => chalk.green(c)).join(', ')}`);
+          lines.push(`      Choices: ${arg.choices.map((c) => chalk.green(c)).join(', ')}`);
         }
       }
     }
 
     if (info.hasSubcommands && info.subcommands) {
-      lines.push(`\n ${chalk.white('Subcommands:')} ${info.subcommands.map(s => chalk.yellow(s)).join(', ')}`);
+      lines.push(
+        `\n ${chalk.white('Subcommands:')} ${info.subcommands.map((s) => chalk.yellow(s)).join(', ')}`,
+      );
     }
 
     lines.push('');
@@ -602,9 +626,7 @@ export class CommandDiagnostics {
   formatCommandList(commands: Command[], category?: string): string {
     const lines: string[] = [];
 
-    const title = category
-      ? `Commands in "${category}"`
-      : 'All Commands';
+    const title = category ? `Commands in "${category}"` : 'All Commands';
 
     lines.push(chalk.bold.cyan(`\n ${title}\n`));
     lines.push(horizontalLine(60));
@@ -620,24 +642,20 @@ export class CommandDiagnostics {
       for (const cmd of commands) {
         const cat = cmd.category || 'general';
         if (!grouped.has(cat)) grouped.set(cat, []);
-        grouped.get(cat)!.push(cmd);
+        grouped.get(cat)?.push(cmd);
       }
 
       for (const [cat, cmds] of grouped) {
         lines.push(chalk.white(`\n ${cat}:`));
         for (const cmd of cmds) {
-          const aliases = cmd.aliases.length > 0
-            ? chalk.gray(` (${cmd.aliases.join(', ')})`)
-            : '';
+          const aliases = cmd.aliases.length > 0 ? chalk.gray(` (${cmd.aliases.join(', ')})`) : '';
           lines.push(`   ${chalk.yellow(`/${cmd.name}`.padEnd(20))} ${cmd.description}${aliases}`);
         }
       }
     } else {
       lines.push('');
       for (const cmd of commands) {
-        const aliases = cmd.aliases.length > 0
-          ? chalk.gray(` (${cmd.aliases.join(', ')})`)
-          : '';
+        const aliases = cmd.aliases.length > 0 ? chalk.gray(` (${cmd.aliases.join(', ')})`) : '';
         lines.push(`   ${chalk.yellow(`/${cmd.name}`.padEnd(20))} ${cmd.description}${aliases}`);
       }
     }
@@ -661,22 +679,25 @@ async function handleCmdDiagnostics(ctx: CommandContext): Promise<CommandResult>
   const subcommand = ctx.args[0]?.toLowerCase();
 
   switch (subcommand) {
-    case 'status':
+    case 'status': {
       const status = commandDiagnostics.getRegistryStatus();
       console.log(commandDiagnostics.formatRegistryStatus(status));
       return success(status, 'Registry status displayed');
+    }
 
-    case 'validate':
+    case 'validate': {
       const issues = commandDiagnostics.validateRegistry();
       console.log(commandDiagnostics.formatValidationResults(issues));
       return success(issues, `Found ${issues.length} issues`);
+    }
 
-    case 'stats':
+    case 'stats': {
       const stats = commandDiagnostics.getCommandStats();
       console.log(commandDiagnostics.formatCommandStats(stats));
       return success(stats, 'Command stats displayed');
+    }
 
-    case 'orphans':
+    case 'orphans': {
       const orphans = commandDiagnostics.findOrphanedAliases();
       if (orphans.length === 0) {
         console.log(chalk.green('\n No orphaned aliases found.\n'));
@@ -688,8 +709,9 @@ async function handleCmdDiagnostics(ctx: CommandContext): Promise<CommandResult>
         console.log('');
       }
       return success(orphans, `Found ${orphans.length} orphaned aliases`);
+    }
 
-    case 'duplicates':
+    case 'duplicates': {
       const duplicates = commandDiagnostics.findDuplicates();
       if (duplicates.length === 0) {
         console.log(chalk.green('\n No duplicates found.\n'));
@@ -701,9 +723,8 @@ async function handleCmdDiagnostics(ctx: CommandContext): Promise<CommandResult>
         console.log('');
       }
       return success(duplicates, `Found ${duplicates.length} duplicates`);
-
-    case 'full':
-    default:
+    }
+    default: {
       // Run full diagnostics
       console.log(chalk.bold.cyan('\n=== Full Command Registry Diagnostics ===\n'));
 
@@ -716,11 +737,15 @@ async function handleCmdDiagnostics(ctx: CommandContext): Promise<CommandResult>
       const fullStats = commandDiagnostics.getCommandStats();
       console.log(commandDiagnostics.formatCommandStats(fullStats));
 
-      return success({
-        status: fullStatus,
-        issues: fullIssues,
-        stats: fullStats
-      }, 'Full diagnostics completed');
+      return success(
+        {
+          status: fullStatus,
+          issues: fullIssues,
+          stats: fullStats,
+        },
+        'Full diagnostics completed',
+      );
+    }
   }
 }
 
@@ -728,7 +753,7 @@ async function handleCmdList(ctx: CommandContext): Promise<CommandResult> {
   const category = ctx.args[0];
 
   if (category) {
-    const categories = commandDiagnostics.getRegistryStatus().categories.map(c => c.name);
+    const categories = commandDiagnostics.getRegistryStatus().categories.map((c) => c.name);
     if (!categories.includes(category)) {
       console.log(chalk.red(`\n Unknown category: ${category}`));
       console.log(chalk.gray(` Available: ${categories.join(', ')}\n`));
@@ -739,7 +764,10 @@ async function handleCmdList(ctx: CommandContext): Promise<CommandResult> {
   const commands = commandDiagnostics.listCommands(category);
   console.log(commandDiagnostics.formatCommandList(commands, category));
 
-  return success(commands.map(c => c.name), `Listed ${commands.length} commands`);
+  return success(
+    commands.map((c) => c.name),
+    `Listed ${commands.length} commands`,
+  );
 }
 
 async function handleCmdInfo(ctx: CommandContext): Promise<CommandResult> {
@@ -778,8 +806,8 @@ export function registerDiagnosticCommands(): void {
       {
         name: 'subcommand',
         description: 'diagnostics | list | info',
-        required: true
-      }
+        required: true,
+      },
     ],
     handler: async (ctx) => {
       const subcommand = ctx.args[0]?.toLowerCase();
@@ -800,7 +828,9 @@ export function registerDiagnosticCommands(): void {
         default:
           console.log(chalk.cyan('\n Command Registry Management\n'));
           console.log(chalk.gray(horizontalLine(40)));
-          console.log(`\n ${chalk.yellow('/cmd diagnostics')} [status|validate|stats|orphans|duplicates|full]`);
+          console.log(
+            `\n ${chalk.yellow('/cmd diagnostics')} [status|validate|stats|orphans|duplicates|full]`,
+          );
           console.log('   Run diagnostic checks on the command registry\n');
           console.log(`   ${chalk.yellow('/cmd list')} [category]`);
           console.log('   List all commands or filter by category\n');
@@ -808,7 +838,7 @@ export function registerDiagnosticCommands(): void {
           console.log('   Show detailed information about a command\n');
           return success(null, 'Help displayed');
       }
-    }
+    },
   });
 
   console.log(chalk.gray('[CLI] Command diagnostics registered'));
@@ -821,5 +851,5 @@ export function registerDiagnosticCommands(): void {
 export default {
   CommandDiagnostics,
   commandDiagnostics,
-  registerDiagnosticCommands
+  registerDiagnosticCommands,
 };

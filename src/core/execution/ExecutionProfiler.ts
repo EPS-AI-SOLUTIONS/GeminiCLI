@@ -6,7 +6,7 @@
  */
 
 import chalk from 'chalk';
-import { ErrorType } from './AdaptiveRetry.js';
+import type { ErrorType } from './AdaptiveRetry.js';
 
 // =============================================================================
 // TYPES
@@ -70,7 +70,7 @@ class ExecutionProfiler {
       tokensUsed: 0,
       apiCalls: 0,
       retries: 0,
-      phaseTimings: {}
+      phaseTimings: {},
     });
   }
 
@@ -116,7 +116,7 @@ class ExecutionProfiler {
     }
 
     const endTime = new Date();
-    const duration = endTime.getTime() - profile.startTime!.getTime();
+    const duration = endTime.getTime() - profile.startTime?.getTime();
 
     const fullProfile: ExecutionProfile = {
       taskId,
@@ -130,7 +130,7 @@ class ExecutionProfiler {
       success,
       errorType,
       model: profile.model!,
-      phaseTimings: profile.phaseTimings || {}
+      phaseTimings: profile.phaseTimings || {},
     };
 
     this.profiles.push(fullProfile);
@@ -156,11 +156,11 @@ class ExecutionProfiler {
         avgTokens: 0,
         avgRetries: 0,
         byAgent: {},
-        byModel: {}
+        byModel: {},
       };
     }
 
-    const successful = this.profiles.filter(p => p.success);
+    const successful = this.profiles.filter((p) => p.success);
     const totalDuration = this.profiles.reduce((sum, p) => sum + p.duration, 0);
     const totalTokens = this.profiles.reduce((sum, p) => sum + p.tokensUsed, 0);
     const totalRetries = this.profiles.reduce((sum, p) => sum + p.retries, 0);
@@ -177,7 +177,8 @@ class ExecutionProfiler {
     }
 
     // By model
-    const byModel: Record<string, { count: number; totalDuration: number; totalTokens: number }> = {};
+    const byModel: Record<string, { count: number; totalDuration: number; totalTokens: number }> =
+      {};
     for (const profile of this.profiles) {
       if (!byModel[profile.model]) {
         byModel[profile.model] = { count: 0, totalDuration: 0, totalTokens: 0 };
@@ -199,9 +200,9 @@ class ExecutionProfiler {
           {
             count: data.count,
             avgDuration: data.totalDuration / data.count,
-            successRate: data.successes / data.count
-          }
-        ])
+            successRate: data.successes / data.count,
+          },
+        ]),
       ),
       byModel: Object.fromEntries(
         Object.entries(byModel).map(([model, data]) => [
@@ -209,10 +210,10 @@ class ExecutionProfiler {
           {
             count: data.count,
             avgDuration: data.totalDuration / data.count,
-            avgTokens: data.totalTokens / data.count
-          }
-        ])
-      )
+            avgTokens: data.totalTokens / data.count,
+          },
+        ]),
+      ),
     };
   }
 
@@ -227,50 +228,42 @@ class ExecutionProfiler {
    * Get slowest tasks
    */
   getSlowest(count: number = 5): ExecutionProfile[] {
-    return [...this.profiles]
-      .sort((a, b) => b.duration - a.duration)
-      .slice(0, count);
+    return [...this.profiles].sort((a, b) => b.duration - a.duration).slice(0, count);
   }
 
   /**
    * Get fastest tasks
    */
   getFastest(count: number = 5): ExecutionProfile[] {
-    return [...this.profiles]
-      .sort((a, b) => a.duration - b.duration)
-      .slice(0, count);
+    return [...this.profiles].sort((a, b) => a.duration - b.duration).slice(0, count);
   }
 
   /**
    * Get failed tasks
    */
   getFailed(count: number = 10): ExecutionProfile[] {
-    return this.profiles
-      .filter(p => !p.success)
-      .slice(-count);
+    return this.profiles.filter((p) => !p.success).slice(-count);
   }
 
   /**
    * Get profiles by agent
    */
   getByAgent(agent: string): ExecutionProfile[] {
-    return this.profiles.filter(p => p.agent === agent);
+    return this.profiles.filter((p) => p.agent === agent);
   }
 
   /**
    * Get profiles by model
    */
   getByModel(model: string): ExecutionProfile[] {
-    return this.profiles.filter(p => p.model === model);
+    return this.profiles.filter((p) => p.model === model);
   }
 
   /**
    * Get profiles in time range
    */
   getInTimeRange(start: Date, end: Date): ExecutionProfile[] {
-    return this.profiles.filter(
-      p => p.startTime >= start && p.endTime <= end
-    );
+    return this.profiles.filter((p) => p.startTime >= start && p.endTime <= end);
   }
 
   /**
@@ -317,12 +310,16 @@ class ExecutionProfiler {
 
     console.log(chalk.gray('\nBy Agent:'));
     for (const [agent, data] of Object.entries(stats.byAgent)) {
-      console.log(`  ${agent}: ${data.count} tasks, ${(data.avgDuration / 1000).toFixed(2)}s avg, ${(data.successRate * 100).toFixed(0)}% success`);
+      console.log(
+        `  ${agent}: ${data.count} tasks, ${(data.avgDuration / 1000).toFixed(2)}s avg, ${(data.successRate * 100).toFixed(0)}% success`,
+      );
     }
 
     console.log(chalk.gray('\nBy Model:'));
     for (const [model, data] of Object.entries(stats.byModel)) {
-      console.log(`  ${model}: ${data.count} tasks, ${(data.avgDuration / 1000).toFixed(2)}s avg, ${data.avgTokens.toFixed(0)} tokens avg`);
+      console.log(
+        `  ${model}: ${data.count} tasks, ${(data.avgDuration / 1000).toFixed(2)}s avg, ${data.avgTokens.toFixed(0)} tokens avg`,
+      );
     }
   }
 
@@ -330,11 +327,15 @@ class ExecutionProfiler {
    * Export profiles to JSON
    */
   exportToJSON(): string {
-    return JSON.stringify({
-      profiles: this.profiles,
-      stats: this.getStats(),
-      exportedAt: new Date().toISOString()
-    }, null, 2);
+    return JSON.stringify(
+      {
+        profiles: this.profiles,
+        stats: this.getStats(),
+        exportedAt: new Date().toISOString(),
+      },
+      null,
+      2,
+    );
   }
 
   /**
@@ -347,7 +348,7 @@ class ExecutionProfiler {
         const imported = data.profiles.map((p: any) => ({
           ...p,
           startTime: new Date(p.startTime),
-          endTime: new Date(p.endTime)
+          endTime: new Date(p.endTime),
         }));
         this.profiles.push(...imported);
 

@@ -2,16 +2,16 @@
  * GeminiHydra - Classifier Unit Tests
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  classifyPrompt,
-  analyzeComplexity,
-  getAgentForDomain,
   AGENT_SPECS,
+  analyzeComplexity,
+  classifyPrompt,
   DOMAIN_PATTERNS,
-  MODEL_TIERS
+  getAgentForDomain,
+  MODEL_TIERS,
 } from '../../src/swarm/agents/index.js';
-import type { AgentRole, ModelTier } from '../../src/types/swarm.js';
+import type { AgentRole } from '../../src/types/swarm.js';
 
 describe('classifyPrompt', () => {
   describe('security/ops prompts (Geralt)', () => {
@@ -21,7 +21,7 @@ describe('classifyPrompt', () => {
         'Audit the authentication system',
         'Review the encryption implementation',
         'Analyze potential security threats',
-        'Fix the authentication bug'
+        'Fix the authentication bug',
       ];
 
       for (const prompt of prompts) {
@@ -39,7 +39,7 @@ describe('classifyPrompt', () => {
         'Run the test suite',
         'Create integration tests',
         'Debug the failing test',
-        'Add coverage for the API module'
+        'Add coverage for the API module',
       ];
 
       for (const prompt of prompts) {
@@ -57,7 +57,7 @@ describe('classifyPrompt', () => {
         'Check best practices in my code',
         'Mentor me on clean code',
         'Evaluate the code quality',
-        'Is this pattern a good practice?'
+        'Is this pattern a good practice?',
       ];
 
       for (const prompt of prompts) {
@@ -74,7 +74,7 @@ describe('classifyPrompt', () => {
         'Quickly format this JSON',
         'Fast answer: what is 2+2?',
         'Help me briefly with this',
-        'Simple question about TypeScript'
+        'Simple question about TypeScript',
       ];
 
       for (const prompt of prompts) {
@@ -92,7 +92,7 @@ describe('classifyPrompt', () => {
         'Set up the CI/CD pipeline',
         'Configure Docker containers',
         'Write a Kubernetes manifest',
-        'Set up infrastructure with Terraform'
+        'Set up infrastructure with Terraform',
       ];
 
       for (const prompt of prompts) {
@@ -110,7 +110,7 @@ describe('classifyPrompt', () => {
         'Profile the application performance',
         'Why is this function slow?',
         'Trace the bug in my application',
-        'Troubleshoot the crash'
+        'Troubleshoot the crash',
       ];
 
       for (const prompt of prompts) {
@@ -128,7 +128,7 @@ describe('classifyPrompt', () => {
         'Design the database schema',
         'Optimize this database query',
         'Create a migration for the table',
-        'Set up PostgreSQL indexes'
+        'Set up PostgreSQL indexes',
       ];
 
       for (const prompt of prompts) {
@@ -146,7 +146,7 @@ describe('classifyPrompt', () => {
         'Integrate with the external service',
         'Design the REST API',
         'Set up webhooks for notifications',
-        'Connect to the payment gateway'
+        'Connect to the payment gateway',
       ];
 
       for (const prompt of prompts) {
@@ -164,7 +164,7 @@ describe('classifyPrompt', () => {
         'Analyze the market trends',
         'What are the latest developments in AI?',
         'Investigate the root cause',
-        'Study the documentation'
+        'Study the documentation',
       ];
 
       for (const prompt of prompts) {
@@ -182,7 +182,7 @@ describe('classifyPrompt', () => {
         'Create a microservices structure',
         'Refactor the codebase',
         'Plan the software design',
-        'Synthesize the components'
+        'Synthesize the components',
       ];
 
       for (const prompt of prompts) {
@@ -200,7 +200,7 @@ describe('classifyPrompt', () => {
         'Write documentation for the API',
         'Create a changelog entry',
         'Explain this code to a beginner',
-        'Present the findings'
+        'Present the findings',
       ];
 
       for (const prompt of prompts) {
@@ -218,7 +218,7 @@ describe('classifyPrompt', () => {
         'Create a strategy for migration',
         'Coordinate the team tasks',
         'Manage the sprint backlog',
-        'Orchestrate the deployment'
+        'Orchestrate the deployment',
       ];
 
       for (const prompt of prompts) {
@@ -231,11 +231,7 @@ describe('classifyPrompt', () => {
 
   describe('default classification', () => {
     it('should default to Ciri for ambiguous prompts', () => {
-      const prompts = [
-        'Hello',
-        'What time is it?',
-        'Tell me a joke'
-      ];
+      const prompts = ['Hello', 'What time is it?', 'Tell me a joke'];
 
       for (const prompt of prompts) {
         const result = classifyPrompt(prompt);
@@ -279,7 +275,8 @@ describe('analyzeComplexity', () => {
 
   describe('moderate prompts', () => {
     it('should classify medium prompts as Simple or Moderate', () => {
-      const prompt = 'Create a function that takes an array of numbers and returns the sum of all even numbers';
+      const prompt =
+        'Create a function that takes an array of numbers and returns the sum of all even numbers';
       const result = analyzeComplexity(prompt);
       expect(['Simple', 'Moderate']).toContain(result.level);
     });
@@ -330,7 +327,9 @@ describe('analyzeComplexity', () => {
   describe('complexity scoring', () => {
     it('should increase score for longer prompts', () => {
       const short = analyzeComplexity('Hello');
-      const long = analyzeComplexity('This is a much longer prompt that contains many words and should have a higher complexity score');
+      const long = analyzeComplexity(
+        'This is a much longer prompt that contains many words and should have a higher complexity score',
+      );
 
       expect(long.score).toBeGreaterThan(short.score);
     });
@@ -358,7 +357,7 @@ describe('getAgentForDomain', () => {
       ['research', 'regis'],
       ['architecture', 'yennefer'],
       ['communication', 'jaskier'],
-      ['planning', 'dijkstra']
+      ['planning', 'dijkstra'],
     ];
 
     for (const [domain, expectedAgent] of domains) {
@@ -379,7 +378,7 @@ describe('AGENT_SPECS', () => {
   });
 
   it('should have all required fields for each agent', () => {
-    for (const [role, spec] of Object.entries(AGENT_SPECS)) {
+    for (const [_role, spec] of Object.entries(AGENT_SPECS)) {
       expect(spec.persona).toBeDefined();
       expect(spec.focus).toBeDefined();
       expect(spec.tier).toBeDefined();
@@ -388,11 +387,11 @@ describe('AGENT_SPECS', () => {
   });
 
   it('should have correct tier distribution', () => {
-    const tiers = Object.values(AGENT_SPECS).map(spec => spec.tier);
+    const tiers = Object.values(AGENT_SPECS).map((spec) => spec.tier);
 
-    const commanders = tiers.filter(t => t === 'commander');
-    const coordinators = tiers.filter(t => t === 'coordinator');
-    const executors = tiers.filter(t => t === 'executor');
+    const commanders = tiers.filter((t) => t === 'commander');
+    const coordinators = tiers.filter((t) => t === 'coordinator');
+    const executors = tiers.filter((t) => t === 'executor');
 
     expect(commanders).toHaveLength(1); // Dijkstra
     expect(coordinators).toHaveLength(3); // Regis, Yennefer, Jaskier
@@ -417,9 +416,18 @@ describe('MODEL_TIERS', () => {
 describe('DOMAIN_PATTERNS', () => {
   it('should have patterns for all domains', () => {
     const expectedDomains = [
-      'security', 'testing', 'review', 'quick', 'devops',
-      'debugging', 'database', 'api', 'research', 'architecture',
-      'communication', 'planning'
+      'security',
+      'testing',
+      'review',
+      'quick',
+      'devops',
+      'debugging',
+      'database',
+      'api',
+      'research',
+      'architecture',
+      'communication',
+      'planning',
     ];
 
     for (const domain of expectedDomains) {

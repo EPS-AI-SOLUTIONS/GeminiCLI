@@ -4,7 +4,6 @@
  * @module help/formatting
  */
 
-import chalk from 'chalk';
 import type { Command, CommandArg } from '../CommandRegistry.js';
 
 /**

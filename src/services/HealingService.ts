@@ -5,14 +5,14 @@
  */
 
 import type {
-  LLMProvider,
-  ExecutionResult,
-  SwarmTask,
-  RepairTask,
-  HealingEvaluation,
   ChatMessage,
+  ExecutionResult,
+  HealingEvaluation,
+  LLMProvider,
+  RepairTask,
+  SwarmTask,
 } from '../types/index.js';
-import { AppError, withRetry, logServiceWarning } from './BaseAgentService.js';
+import { AppError, logServiceWarning, withRetry } from './BaseAgentService.js';
 
 const HEALING_PROMPT = `You are a task failure analyzer. Given the execution results, identify failed tasks and generate repair strategies.
 
@@ -70,7 +70,7 @@ export class HealingService {
   async evaluate(
     tasks: SwarmTask[],
     results: ExecutionResult[],
-    currentAttempt: number
+    currentAttempt: number,
   ): Promise<HealingEvaluation> {
     if (!Array.isArray(tasks)) {
       throw new AppError({
@@ -95,7 +95,7 @@ export class HealingService {
     }
 
     // Find failed tasks
-    const failedResults = results.filter(r => !r.success);
+    const failedResults = results.filter((r) => !r.success);
 
     // All succeeded
     if (failedResults.length === 0) {
@@ -111,7 +111,7 @@ export class HealingService {
     if (currentAttempt >= this.maxRetries) {
       return {
         success: false,
-        failedTasks: failedResults.map(r => r.id),
+        failedTasks: failedResults.map((r) => r.id),
         repairTasks: [],
         maxRetriesReached: true,
       };
@@ -125,24 +125,25 @@ export class HealingService {
     ];
 
     try {
-      const response = await withRetry(
-        () => this.provider.createChatCompletion({ messages }),
-        {
-          operationName: 'HealingService.evaluate',
-          maxRetries: 2,
-          baseDelay: 1000,
-        },
-      );
+      const response = await withRetry(() => this.provider.createChatCompletion({ messages }), {
+        operationName: 'HealingService.evaluate',
+        maxRetries: 2,
+        baseDelay: 1000,
+      });
       const content = response.choices[0]?.message?.content || '';
 
       // Parse JSON response
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        logServiceWarning('HealingService.evaluate', 'LLM returned non-JSON response, using fallback', {
-          contentLength: content.length,
-          taskCount: tasks.length,
-          failedCount: failedResults.length,
-        });
+        logServiceWarning(
+          'HealingService.evaluate',
+          'LLM returned non-JSON response, using fallback',
+          {
+            contentLength: content.length,
+            taskCount: tasks.length,
+            failedCount: failedResults.length,
+          },
+        );
         return this.createFallbackEvaluation(failedResults, currentAttempt);
       }
 
@@ -170,7 +171,7 @@ export class HealingService {
   async generateRepairPrompt(
     originalTask: SwarmTask,
     error: string,
-    previousAttempts: number
+    previousAttempts: number,
   ): Promise<string> {
     if (!originalTask) {
       throw new AppError({
@@ -189,8 +190,13 @@ export class HealingService {
     if (typeof previousAttempts !== 'number' || previousAttempts < 0) {
       throw new AppError({
         code: 'HEALING_INVALID_ARGS',
-        message: 'HealingService.generateRepairPrompt: previousAttempts must be a non-negative number',
-        context: { method: 'generateRepairPrompt', field: 'previousAttempts', value: previousAttempts },
+        message:
+          'HealingService.generateRepairPrompt: previousAttempts must be a non-negative number',
+        context: {
+          method: 'generateRepairPrompt',
+          field: 'previousAttempts',
+          value: previousAttempts,
+        },
       });
     }
 
@@ -213,21 +219,22 @@ Respond with ONLY the new task prompt, nothing else.`,
     ];
 
     try {
-      const response = await withRetry(
-        () => this.provider.createChatCompletion({ messages }),
-        {
-          operationName: 'HealingService.generateRepairPrompt',
-          maxRetries: 2,
-          baseDelay: 500,
-        },
-      );
+      const response = await withRetry(() => this.provider.createChatCompletion({ messages }), {
+        operationName: 'HealingService.generateRepairPrompt',
+        maxRetries: 2,
+        baseDelay: 500,
+      });
       return response.choices[0]?.message?.content || originalTask.task;
     } catch (err) {
-      logServiceWarning('HealingService.generateRepairPrompt', 'Repair prompt generation failed, using original task', {
-        error: err instanceof Error ? err.message : String(err),
-        taskId: originalTask.id,
-        previousAttempts,
-      });
+      logServiceWarning(
+        'HealingService.generateRepairPrompt',
+        'Repair prompt generation failed, using original task',
+        {
+          error: err instanceof Error ? err.message : String(err),
+          taskId: originalTask.id,
+          previousAttempts,
+        },
+      );
       return originalTask.task;
     }
   }
@@ -257,14 +264,14 @@ Respond with ONLY the new task prompt, nothing else.`,
       'model not found',
     ];
 
-    return !nonRecoverable.some(e => error.includes(e));
+    return !nonRecoverable.some((e) => error.includes(e));
   }
 
   private buildEvaluationContext(tasks: SwarmTask[], results: ExecutionResult[]): string {
     let context = 'Task Execution Results:\n\n';
 
     for (const result of results) {
-      const task = tasks.find(t => t.id === result.id);
+      const task = tasks.find((t) => t.id === result.id);
       context += `Task #${result.id} (${task?.agent || 'unknown'}):\n`;
       context += `  Status: ${result.success ? 'SUCCESS' : 'FAILED'}\n`;
       context += `  Task: ${task?.task.slice(0, 200) || 'N/A'}\n`;
@@ -281,9 +288,9 @@ Respond with ONLY the new task prompt, nothing else.`,
   }
 
   private validateRepairTasks(repairTasks: RepairTask[], originalTasks: SwarmTask[]): RepairTask[] {
-    return repairTasks.filter(repair => {
+    return repairTasks.filter((repair) => {
       // Check if original task exists
-      const exists = originalTasks.some(t => t.id === repair.failedTaskId);
+      const exists = originalTasks.some((t) => t.id === repair.failedTaskId);
       if (!exists) return false;
 
       // Validate strategy
@@ -294,7 +301,7 @@ Respond with ONLY the new task prompt, nothing else.`,
 
       // Ensure repair prompt exists
       if (!repair.repairPrompt || repair.repairPrompt.trim() === '') {
-        const original = originalTasks.find(t => t.id === repair.failedTaskId);
+        const original = originalTasks.find((t) => t.id === repair.failedTaskId);
         repair.repairPrompt = original?.task || '';
       }
 
@@ -304,14 +311,14 @@ Respond with ONLY the new task prompt, nothing else.`,
 
   private createFallbackEvaluation(
     failedResults: ExecutionResult[],
-    currentAttempt: number
+    currentAttempt: number,
   ): HealingEvaluation {
     return {
       success: false,
-      failedTasks: failedResults.map(r => r.id),
+      failedTasks: failedResults.map((r) => r.id),
       repairTasks: failedResults
-        .filter(r => this.isRecoverable(r))
-        .map(r => ({
+        .filter((r) => this.isRecoverable(r))
+        .map((r) => ({
           failedTaskId: r.id,
           reason: r.error || 'Unknown error',
           repairStrategy: 'retry' as const,

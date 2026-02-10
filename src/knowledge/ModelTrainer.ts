@@ -13,14 +13,14 @@
  * - llama.cpp (dla konwersji GGUF)
  */
 
-import fs from 'fs/promises';
-import path from 'path';
-import os from 'os';
+import { exec, spawn } from 'node:child_process';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { promisify } from 'node:util';
 import chalk from 'chalk';
-import { spawn, exec } from 'child_process';
-import { promisify } from 'util';
-import { knowledgeBank } from './KnowledgeBank.js';
 import { KNOWLEDGE_DIR } from '../config/paths.config.js';
+import { knowledgeBank } from './KnowledgeBank.js';
 
 const execAsync = promisify(exec);
 
@@ -34,33 +34,33 @@ const SCRIPTS_DIR = path.join(KNOWLEDGE_DIR, 'scripts');
 
 export interface TrainingConfig {
   // Base model
-  baseModel: string;              // e.g., 'unsloth/Llama-3.2-3B-Instruct-bnb-4bit'
-  outputName: string;             // Name for the trained model
+  baseModel: string; // e.g., 'unsloth/Llama-3.2-3B-Instruct-bnb-4bit'
+  outputName: string; // Name for the trained model
 
   // Training parameters
-  epochs: number;                 // Number of training epochs (1-5)
-  batchSize: number;              // Batch size (1-8)
-  learningRate: number;           // Learning rate (1e-5 to 5e-4)
-  loraRank: number;               // LoRA rank (8, 16, 32, 64)
-  loraAlpha: number;              // LoRA alpha (16, 32, 64)
+  epochs: number; // Number of training epochs (1-5)
+  batchSize: number; // Batch size (1-8)
+  learningRate: number; // Learning rate (1e-5 to 5e-4)
+  loraRank: number; // LoRA rank (8, 16, 32, 64)
+  loraAlpha: number; // LoRA alpha (16, 32, 64)
 
   // Data
-  maxSamples?: number;            // Limit training samples
-  validationSplit: number;        // Validation split (0.1 = 10%)
+  maxSamples?: number; // Limit training samples
+  validationSplit: number; // Validation split (0.1 = 10%)
 
   // Hardware
-  useGpu: boolean;                // Use GPU if available
+  useGpu: boolean; // Use GPU if available
   quantization: '4bit' | '8bit' | 'none';
 
   // Output
-  exportGguf: boolean;            // Convert to GGUF for Ollama
-  ggufQuantization: string;       // e.g., 'Q4_K_M', 'Q5_K_M', 'Q8_0'
-  registerOllama: boolean;        // Auto-register with Ollama
+  exportGguf: boolean; // Convert to GGUF for Ollama
+  ggufQuantization: string; // e.g., 'Q4_K_M', 'Q5_K_M', 'Q8_0'
+  registerOllama: boolean; // Auto-register with Ollama
 }
 
 export interface TrainingProgress {
   stage: 'preparing' | 'training' | 'converting' | 'registering' | 'complete' | 'error';
-  progress: number;               // 0-100
+  progress: number; // 0-100
   currentEpoch?: number;
   totalEpochs?: number;
   loss?: number;
@@ -97,7 +97,7 @@ export const DEFAULT_TRAINING_CONFIG: TrainingConfig = {
   quantization: '4bit',
   exportGguf: true,
   ggufQuantization: 'Q4_K_M',
-  registerOllama: true
+  registerOllama: true,
 };
 
 // Available base models optimized for fine-tuning
@@ -114,7 +114,7 @@ export const AVAILABLE_BASE_MODELS: Record<string, string> = {
 
   // Gemma 2 (Google)
   'gemma-2-2b': 'unsloth/gemma-2-2b-it-bnb-4bit',
-  'gemma-2-9b': 'unsloth/gemma-2-9b-it-bnb-4bit'
+  'gemma-2-9b': 'unsloth/gemma-2-9b-it-bnb-4bit',
 };
 
 // ============================================================
@@ -124,8 +124,6 @@ export const AVAILABLE_BASE_MODELS: Record<string, string> = {
 export class ModelTrainer {
   private pythonPath: string = 'python';
   private initialized = false;
-
-  constructor() {}
 
   /**
    * Initialize trainer - check dependencies
@@ -166,7 +164,9 @@ export class ModelTrainer {
       await execAsync(`${this.pythonPath} -c "import unsloth"`);
     } catch {
       // Unsloth is optional - we can train without it (slower)
-      console.log(chalk.yellow('[ModelTrainer] Unsloth not installed (optional, speeds up training 2x)'));
+      console.log(
+        chalk.yellow('[ModelTrainer] Unsloth not installed (optional, speeds up training 2x)'),
+      );
     }
 
     this.initialized = missing.length === 0;
@@ -188,7 +188,7 @@ export class ModelTrainer {
       cuda: false,
       cudaVersion: undefined as string | undefined,
       memory: os.totalmem() / (1024 * 1024 * 1024), // GB
-      packages: {} as Record<string, boolean>
+      packages: {} as Record<string, boolean>,
     };
 
     // Python
@@ -199,14 +199,24 @@ export class ModelTrainer {
 
     // CUDA
     try {
-      const { stdout } = await execAsync(`${this.pythonPath} -c "import torch; print(torch.cuda.is_available(), torch.version.cuda if torch.cuda.is_available() else '')"`);
+      const { stdout } = await execAsync(
+        `${this.pythonPath} -c "import torch; print(torch.cuda.is_available(), torch.version.cuda if torch.cuda.is_available() else '')"`,
+      );
       const [available, version] = stdout.trim().split(' ');
       result.cuda = available === 'True';
       result.cudaVersion = version || undefined;
     } catch {}
 
     // Packages
-    const packages = ['torch', 'transformers', 'peft', 'datasets', 'trl', 'unsloth', 'bitsandbytes'];
+    const packages = [
+      'torch',
+      'transformers',
+      'peft',
+      'datasets',
+      'trl',
+      'unsloth',
+      'bitsandbytes',
+    ];
     for (const pkg of packages) {
       try {
         await execAsync(`${this.pythonPath} -c "import ${pkg}"`);
@@ -226,22 +236,26 @@ export class ModelTrainer {
     onProgress?.({
       stage: 'preparing',
       progress: 0,
-      message: 'Installing Python dependencies...'
+      message: 'Installing Python dependencies...',
     });
 
     try {
       // Base packages
-      await execAsync(`${this.pythonPath} -m pip install torch transformers peft datasets trl accelerate bitsandbytes`);
+      await execAsync(
+        `${this.pythonPath} -m pip install torch transformers peft datasets trl accelerate bitsandbytes`,
+      );
 
       onProgress?.({
         stage: 'preparing',
         progress: 50,
-        message: 'Installing Unsloth for faster training...'
+        message: 'Installing Unsloth for faster training...',
       });
 
       // Unsloth (optional but recommended)
       try {
-        await execAsync(`${this.pythonPath} -m pip install "unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git"`);
+        await execAsync(
+          `${this.pythonPath} -m pip install "unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git"`,
+        );
       } catch {
         console.log(chalk.yellow('[ModelTrainer] Unsloth installation failed (optional)'));
       }
@@ -249,7 +263,7 @@ export class ModelTrainer {
       onProgress?.({
         stage: 'preparing',
         progress: 100,
-        message: 'Dependencies installed'
+        message: 'Dependencies installed',
       });
 
       return true;
@@ -266,12 +280,14 @@ export class ModelTrainer {
   /**
    * Prepare training data from knowledge bank
    */
-  async prepareTrainingData(options: {
-    maxSamples?: number;
-    includeCodebase?: boolean;
-    includeSessions?: boolean;
-    format: 'alpaca' | 'sharegpt' | 'conversation';
-  } = { format: 'alpaca' }): Promise<string> {
+  async prepareTrainingData(
+    options: {
+      maxSamples?: number;
+      includeCodebase?: boolean;
+      includeSessions?: boolean;
+      format: 'alpaca' | 'sharegpt' | 'conversation';
+    } = { format: 'alpaca' },
+  ): Promise<string> {
     await knowledgeBank.init();
 
     const entries = knowledgeBank.list({ limit: options.maxSamples || 1000 });
@@ -283,7 +299,7 @@ export class ModelTrainer {
         trainingData.push({
           instruction: `Provide information about: ${entry.title}`,
           input: entry.tags.join(', '),
-          output: entry.content
+          output: entry.content,
         });
 
         // Create Q&A variations
@@ -291,7 +307,7 @@ export class ModelTrainer {
           trainingData.push({
             instruction: `What is ${entry.title}?`,
             input: '',
-            output: entry.summary
+            output: entry.summary,
           });
         }
 
@@ -300,32 +316,30 @@ export class ModelTrainer {
           trainingData.push({
             instruction: `How do I implement ${entry.title}?`,
             input: '',
-            output: entry.content
+            output: entry.content,
           });
         } else if (entry.type === 'bug_fix') {
           trainingData.push({
             instruction: `How do I fix ${entry.title}?`,
             input: '',
-            output: entry.content
+            output: entry.content,
           });
         }
-
       } else if (options.format === 'sharegpt') {
         // ShareGPT format: conversations
         trainingData.push({
           conversations: [
             { from: 'human', value: `Tell me about ${entry.title}` },
-            { from: 'gpt', value: entry.content }
-          ]
+            { from: 'gpt', value: entry.content },
+          ],
         });
-
       } else if (options.format === 'conversation') {
         // Simple conversation format
         trainingData.push({
           messages: [
             { role: 'user', content: `What is ${entry.title}?` },
-            { role: 'assistant', content: entry.content }
-          ]
+            { role: 'assistant', content: entry.content },
+          ],
         });
       }
     }
@@ -348,7 +362,7 @@ export class ModelTrainer {
    */
   async train(
     config: Partial<TrainingConfig> = {},
-    onProgress?: ProgressCallback
+    onProgress?: ProgressCallback,
   ): Promise<TrainingResult> {
     const startTime = Date.now();
     const fullConfig = { ...DEFAULT_TRAINING_CONFIG, ...config };
@@ -358,7 +372,7 @@ export class ModelTrainer {
       onProgress?.({
         stage: 'preparing',
         progress: 0,
-        message: 'Checking dependencies...'
+        message: 'Checking dependencies...',
       });
 
       const { ready, missing } = await this.init();
@@ -366,7 +380,7 @@ export class ModelTrainer {
         return {
           success: false,
           trainingTime: 0,
-          error: `Missing dependencies: ${missing.join(', ')}`
+          error: `Missing dependencies: ${missing.join(', ')}`,
         };
       }
 
@@ -374,19 +388,19 @@ export class ModelTrainer {
       onProgress?.({
         stage: 'preparing',
         progress: 10,
-        message: 'Preparing training data...'
+        message: 'Preparing training data...',
       });
 
       const dataPath = await this.prepareTrainingData({
         maxSamples: fullConfig.maxSamples,
-        format: 'alpaca'
+        format: 'alpaca',
       });
 
       // Step 3: Generate training script
       onProgress?.({
         stage: 'preparing',
         progress: 20,
-        message: 'Generating training script...'
+        message: 'Generating training script...',
       });
 
       const scriptPath = await this.generateTrainingScript(fullConfig, dataPath);
@@ -397,7 +411,7 @@ export class ModelTrainer {
         progress: 25,
         currentEpoch: 0,
         totalEpochs: fullConfig.epochs,
-        message: 'Starting training...'
+        message: 'Starting training...',
       });
 
       const modelPath = await this.runTrainingScript(scriptPath, fullConfig, onProgress);
@@ -408,7 +422,7 @@ export class ModelTrainer {
         onProgress?.({
           stage: 'converting',
           progress: 85,
-          message: 'Converting to GGUF format...'
+          message: 'Converting to GGUF format...',
         });
 
         ggufPath = await this.convertToGguf(modelPath, fullConfig);
@@ -420,7 +434,7 @@ export class ModelTrainer {
         onProgress?.({
           stage: 'registering',
           progress: 95,
-          message: 'Registering with Ollama...'
+          message: 'Registering with Ollama...',
         });
 
         ollamaName = await this.registerWithOllama(ggufPath, fullConfig);
@@ -429,7 +443,7 @@ export class ModelTrainer {
       onProgress?.({
         stage: 'complete',
         progress: 100,
-        message: 'Training complete!'
+        message: 'Training complete!',
       });
 
       return {
@@ -437,20 +451,19 @@ export class ModelTrainer {
         modelPath,
         ggufPath,
         ollamaName,
-        trainingTime: Date.now() - startTime
+        trainingTime: Date.now() - startTime,
       };
-
     } catch (error: any) {
       onProgress?.({
         stage: 'error',
         progress: 0,
-        message: error.message
+        message: error.message,
       });
 
       return {
         success: false,
         trainingTime: Date.now() - startTime,
-        error: error.message
+        error: error.message,
       };
     }
   }
@@ -636,15 +649,15 @@ print(f"[Training] Complete! Model saved to: {OUTPUT_DIR}")
   private async runTrainingScript(
     scriptPath: string,
     config: TrainingConfig,
-    onProgress?: ProgressCallback
+    onProgress?: ProgressCallback,
   ): Promise<string> {
     return new Promise((resolve, reject) => {
       const childProcess = spawn(this.pythonPath, [scriptPath], {
         env: {
           ...globalThis.process.env,
           CUDA_VISIBLE_DEVICES: config.useGpu ? '0' : '',
-          PYTORCH_CUDA_ALLOC_CONF: 'expandable_segments:True'
-        }
+          PYTORCH_CUDA_ALLOC_CONF: 'expandable_segments:True',
+        },
       });
 
       let currentEpoch = 0;
@@ -657,14 +670,14 @@ print(f"[Training] Complete! Model saved to: {OUTPUT_DIR}")
         if (line.includes('Epoch')) {
           const match = line.match(/Epoch (\d+)/);
           if (match) {
-            currentEpoch = parseInt(match[1]);
+            currentEpoch = parseInt(match[1], 10);
             const progress = 25 + (currentEpoch / config.epochs) * 60;
             onProgress?.({
               stage: 'training',
               progress,
               currentEpoch,
               totalEpochs: config.epochs,
-              message: `Training epoch ${currentEpoch}/${config.epochs}`
+              message: `Training epoch ${currentEpoch}/${config.epochs}`,
             });
           }
         }
@@ -678,7 +691,7 @@ print(f"[Training] Complete! Model saved to: {OUTPUT_DIR}")
               currentEpoch,
               totalEpochs: config.epochs,
               loss: parseFloat(match[1]),
-              message: `Loss: ${match[1]}`
+              message: `Loss: ${match[1]}`,
             });
           }
         }
@@ -710,7 +723,7 @@ print(f"[Training] Complete! Model saved to: {OUTPUT_DIR}")
    * Convert model to GGUF format for Ollama
    */
   private async convertToGguf(modelPath: string, config: TrainingConfig): Promise<string> {
-    const mergedPath = modelPath + '_merged';
+    const mergedPath = `${modelPath}_merged`;
     const ggufPath = path.join(MODELS_DIR, `${config.outputName}.gguf`);
 
     // Check if llama.cpp convert script exists
@@ -815,7 +828,9 @@ Always provide accurate, helpful responses based on your training."""
       return ollamaName;
     } catch (error: any) {
       console.warn(chalk.yellow(`[ModelTrainer] Ollama registration failed: ${error.message}`));
-      console.log(chalk.gray(`To manually register: ollama create ${ollamaName} -f ${modelfilePath}`));
+      console.log(
+        chalk.gray(`To manually register: ollama create ${ollamaName} -f ${modelfilePath}`),
+      );
       return ollamaName;
     }
   }
@@ -844,7 +859,7 @@ Always provide accurate, helpful responses based on your training."""
         batchSize: 1,
         epochs: 2,
         loraRank: 8,
-        quantization: '4bit'
+        quantization: '4bit',
       };
     }
 
@@ -855,7 +870,7 @@ Always provide accurate, helpful responses based on your training."""
         baseModel: AVAILABLE_BASE_MODELS['llama-3.2-3b'],
         batchSize: 4,
         epochs: 3,
-        loraRank: 16
+        loraRank: 16,
       };
     }
 
@@ -864,7 +879,7 @@ Always provide accurate, helpful responses based on your training."""
       baseModel: AVAILABLE_BASE_MODELS['llama-3.2-1b'],
       batchSize: 2,
       epochs: 3,
-      loraRank: 16
+      loraRank: 16,
     };
   }
 
@@ -886,12 +901,14 @@ Always provide accurate, helpful responses based on your training."""
   /**
    * List trained models
    */
-  async listTrainedModels(): Promise<Array<{
-    name: string;
-    path: string;
-    size: number;
-    createdAt: Date;
-  }>> {
+  async listTrainedModels(): Promise<
+    Array<{
+      name: string;
+      path: string;
+      size: number;
+      createdAt: Date;
+    }>
+  > {
     const models: Array<{ name: string; path: string; size: number; createdAt: Date }> = [];
 
     try {
@@ -906,7 +923,7 @@ Always provide accurate, helpful responses based on your training."""
             name: entry.name,
             path: modelPath,
             size: 0, // Would need to calculate directory size
-            createdAt: stats.birthtime
+            createdAt: stats.birthtime,
           });
         }
       }

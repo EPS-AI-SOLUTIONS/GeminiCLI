@@ -13,7 +13,7 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public statusCode: number = 500,
-    public code?: string
+    public code?: string,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -52,10 +52,7 @@ export interface ErrorResponse {
   timestamp: string;
 }
 
-function createErrorResponse(
-  error: Error | FastifyError,
-  statusCode: number
-): ErrorResponse {
+function createErrorResponse(error: Error | FastifyError, statusCode: number): ErrorResponse {
   const response: ErrorResponse = {
     error: error.message,
     statusCode,
@@ -76,7 +73,7 @@ function createErrorResponse(
 export function errorHandler(
   error: FastifyError,
   request: FastifyRequest,
-  reply: FastifyReply
+  reply: FastifyReply,
 ): void {
   // Log error
   request.log.error(error);
@@ -101,10 +98,7 @@ export function errorHandler(
 // Not Found Handler
 // ═══════════════════════════════════════════════════════════════════════════
 
-export function notFoundHandler(
-  request: FastifyRequest,
-  reply: FastifyReply
-): void {
+export function notFoundHandler(request: FastifyRequest, reply: FastifyReply): void {
   const response: ErrorResponse = {
     error: `Route ${request.method} ${request.url} not found`,
     code: 'NOT_FOUND',

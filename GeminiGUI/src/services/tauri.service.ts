@@ -8,7 +8,13 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { TAURI_COMMANDS } from '../constants';
-import type { BridgeState, AgentMemory, KnowledgeNode, KnowledgeEdge, KnowledgeGraph } from '../types';
+import type {
+  AgentMemory,
+  BridgeState,
+  KnowledgeEdge,
+  KnowledgeGraph,
+  KnowledgeNode,
+} from '../types';
 
 // ============================================================================
 // TYPES
@@ -66,7 +72,7 @@ export interface DownloadProgress {
 }
 
 // Re-export types from centralized types for convenience
-export type { AgentMemory, KnowledgeNode, KnowledgeEdge, KnowledgeGraph } from '../types';
+export type { AgentMemory, KnowledgeEdge, KnowledgeGraph, KnowledgeNode } from '../types';
 
 // ============================================================================
 // BRIDGE SERVICE
@@ -171,7 +177,10 @@ export const LlamaService = {
   /**
    * Chat with streaming
    */
-  async chatStream(messages: ChatMessage[], options?: Omit<GenerateOptions, 'system'>): Promise<void> {
+  async chatStream(
+    messages: ChatMessage[],
+    options?: Omit<GenerateOptions, 'system'>,
+  ): Promise<void> {
     return invoke(TAURI_COMMANDS.LLAMA_CHAT_STREAM, {
       messages,
       temperature: options?.temperature,
@@ -247,11 +256,7 @@ export const GeminiService = {
   /**
    * Start Gemini streaming prompt
    */
-  async promptStream(
-    model: string,
-    messages: ChatMessage[],
-    apiKey: string
-  ): Promise<void> {
+  async promptStream(model: string, messages: ChatMessage[], apiKey: string): Promise<void> {
     return invoke(TAURI_COMMANDS.PROMPT_GEMINI_STREAM, {
       model,
       messages,
@@ -314,7 +319,7 @@ export const MemoryService = {
   async addAgentMemory(
     agentName: string,
     content: string,
-    metadata?: Record<string, unknown>
+    metadata?: Record<string, unknown>,
   ): Promise<void> {
     return invoke(TAURI_COMMANDS.ADD_AGENT_MEMORY, {
       agentName,

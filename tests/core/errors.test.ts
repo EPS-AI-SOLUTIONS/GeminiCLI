@@ -2,27 +2,27 @@
  * Tests for error hierarchy
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  HydraError,
-  ProviderError,
-  GeminiError,
-  LlamaCppError,
-  OllamaError,
-  NetworkError,
-  TimeoutError,
-  ConfigurationError,
-  RoutingError,
-  PipelineError,
-  RateLimitError,
-  CircuitOpenError,
-  ValidationError,
-  PoolExhaustedError,
   AggregateHydraError,
-  normalizeError,
-  isRetryable,
-  isRecoverable,
+  CircuitOpenError,
+  ConfigurationError,
+  GeminiError,
   getErrorCode,
+  HydraError,
+  isRecoverable,
+  isRetryable,
+  LlamaCppError,
+  NetworkError,
+  normalizeError,
+  OllamaError,
+  PipelineError,
+  PoolExhaustedError,
+  ProviderError,
+  RateLimitError,
+  RoutingError,
+  TimeoutError,
+  ValidationError,
   withRetryContext,
 } from '../../src/core/errors.js';
 
@@ -302,11 +302,7 @@ describe('Error Hierarchy', () => {
 
   describe('AggregateHydraError', () => {
     it('should aggregate multiple errors', () => {
-      const errors = [
-        new Error('Error 1'),
-        new HydraError('Error 2'),
-        new NetworkError('Error 3'),
-      ];
+      const errors = [new Error('Error 1'), new HydraError('Error 2'), new NetworkError('Error 3')];
 
       const aggregate = new AggregateHydraError('Multiple errors', errors);
 

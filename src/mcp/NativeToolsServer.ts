@@ -7,17 +7,13 @@
  * - Supports full Serena alias compatibility
  */
 
+import path from 'node:path';
 import chalk from 'chalk';
-import path from 'path';
-import { MCPTool, MCPToolResult, MCPToolInputSchema } from './MCPTypes.js';
-import { mcpToolRegistry } from './MCPToolRegistry.js';
-import { sanitizeNumericParams } from './MCPAliases.js';
-import {
-  NativeSerenaTools,
-  createNativeSerenaTools,
-  NativeToolDefinition
-} from '../native/NativeSerenaTools.js';
 import { createDocumentToolDefinitions } from '../native/NativeDocumentTools.js';
+import { createNativeSerenaTools, type NativeSerenaTools } from '../native/NativeSerenaTools.js';
+import { sanitizeNumericParams } from './MCPAliases.js';
+import { mcpToolRegistry } from './MCPToolRegistry.js';
+import type { MCPTool, MCPToolResult } from './MCPTypes.js';
 
 // ============================================================
 // Constants
@@ -31,14 +27,14 @@ export const NATIVE_SERVER_NAME = 'native';
 
 export const NATIVE_TOOL_ALIASES: Record<string, string> = {
   // === Glob (file finding) ===
-  'glob': 'native__find_file',
-  'find': 'native__find_file',
-  'files': 'native__find_file',
+  glob: 'native__find_file',
+  find: 'native__find_file',
+  files: 'native__find_file',
 
   // === Grep (content search) ===
-  'grep': 'native__search_for_pattern',
-  'search': 'native__search_for_pattern',
-  'rg': 'native__search_for_pattern',
+  grep: 'native__search_for_pattern',
+  search: 'native__search_for_pattern',
+  rg: 'native__search_for_pattern',
 
   // === Code Operations (Serena-compatible) ===
   'code:find': 'native__find_symbol',
@@ -105,9 +101,9 @@ export const NATIVE_TOOL_ALIASES: Record<string, string> = {
   'doc:csv2excel': 'native__convert_csv_to_excel',
   'doc:pdf': 'native__create_pdf_file',
   'doc:create-pdf': 'native__create_pdf_file',
-  'word': 'native__create_word_document',
-  'excel': 'native__create_excel_file',
-  'pdf': 'native__create_pdf_file',
+  word: 'native__create_word_document',
+  excel: 'native__create_excel_file',
+  pdf: 'native__create_pdf_file',
 
   // === Native Prefix (new style) ===
   'native:find': 'native__find_symbol',
@@ -121,7 +117,7 @@ export const NATIVE_TOOL_ALIASES: Record<string, string> = {
   'native:refs': 'native__find_referencing_symbols',
   'native:replace': 'native__replace_content',
   'native:rename': 'native__rename_symbol',
-  'native:mem': 'native__list_memories'
+  'native:mem': 'native__list_memories',
 };
 
 // ============================================================
@@ -130,17 +126,31 @@ export const NATIVE_TOOL_ALIASES: Record<string, string> = {
 
 /** Parameter keys that represent filesystem paths */
 const PATH_PARAM_KEYS = new Set([
-  'filepath', 'file_path', 'filePath',
-  'path', 'source_path', 'target_path',
-  'sourcePath', 'targetPath',
-  'directory', 'dir', 'root', 'rootDir',
-  'cwd', 'workingDirectory'
+  'filepath',
+  'file_path',
+  'filePath',
+  'path',
+  'source_path',
+  'target_path',
+  'sourcePath',
+  'targetPath',
+  'directory',
+  'dir',
+  'root',
+  'rootDir',
+  'cwd',
+  'workingDirectory',
 ]);
 
 /** Parameter keys that represent filenames (not full paths) */
 const FILENAME_PARAM_KEYS = new Set([
-  'filename', 'fileName', 'name', 'file',
-  'sheetName', 'sheet_name', 'sheet'
+  'filename',
+  'fileName',
+  'name',
+  'file',
+  'sheetName',
+  'sheet_name',
+  'sheet',
 ]);
 
 /** Maximum allowed filename length (prevents filesystem issues) */
@@ -154,13 +164,13 @@ const MAX_PATH_LENGTH = 260;
  * Includes the project root and common safe user directories.
  */
 function getAllowedDirs(rootDir: string): string[] {
-  const os = require('os');
+  const os = require('node:os');
   return [
     path.resolve(rootDir),
     path.join(os.homedir(), 'Documents'),
     path.join(os.homedir(), 'Desktop'),
     path.join(os.homedir(), 'Downloads'),
-    os.tmpdir()
+    os.tmpdir(),
   ];
 }
 
@@ -187,12 +197,14 @@ function sanitizePath(value: string, rootDir: string): string {
 
   // Layer 3: Defense-in-depth - reject paths containing '..' traversal sequences
   const forwardSlashPath = sanitized.replace(/\\/g, '/');
-  if (forwardSlashPath.includes('/../') ||
-      forwardSlashPath.startsWith('../') ||
-      forwardSlashPath.endsWith('/..') ||
-      forwardSlashPath === '..') {
+  if (
+    forwardSlashPath.includes('/../') ||
+    forwardSlashPath.startsWith('../') ||
+    forwardSlashPath.endsWith('/..') ||
+    forwardSlashPath === '..'
+  ) {
     throw new Error(
-      `Path security violation: "${value}" contains directory traversal sequences (..)`
+      `Path security violation: "${value}" contains directory traversal sequences (..)`,
     );
   }
 
@@ -203,13 +215,13 @@ function sanitizePath(value: string, rootDir: string): string {
   // Layer 5: Enforce maximum path length
   if (resolved.length > MAX_PATH_LENGTH) {
     throw new Error(
-      `Path security violation: resolved path exceeds maximum length of ${MAX_PATH_LENGTH} characters`
+      `Path security violation: resolved path exceeds maximum length of ${MAX_PATH_LENGTH} characters`,
     );
   }
 
   // Layer 6: Verify the resolved path stays within allowed directories
   const allowedDirs = getAllowedDirs(rootDir);
-  const isAllowed = allowedDirs.some(baseDir => {
+  const isAllowed = allowedDirs.some((baseDir) => {
     const normalizedBase = path.resolve(baseDir) + path.sep;
     const normalizedResolved = resolved + path.sep;
     return normalizedResolved.startsWith(normalizedBase) || resolved === path.resolve(baseDir);
@@ -217,7 +229,7 @@ function sanitizePath(value: string, rootDir: string): string {
 
   if (!isAllowed) {
     throw new Error(
-      `Path security violation: "${value}" resolves to "${resolved}" which is outside allowed directories: ${allowedDirs.join(', ')}`
+      `Path security violation: "${value}" resolves to "${resolved}" which is outside allowed directories: ${allowedDirs.join(', ')}`,
     );
   }
 
@@ -242,21 +254,23 @@ function sanitizeFilename(value: string): string {
   }
 
   const sanitized = value
-    .replace(/\0/g, '')                    // null bytes
-    .replace(/[\x00-\x1f\x7f]/g, '')      // control characters
-    .replace(/[<>:"|?*]/g, '')             // Windows-illegal characters
-    .replace(/\.\./g, '')                   // directory traversal
-    .replace(/[/\\]/g, '')                  // any slash characters (path separators)
-    .replace(/^\.+/, '')                    // leading dots (hidden files)
+    .replace(/\0/g, '') // null bytes
+    .replace(/[\x00-\x1f\x7f]/g, '') // control characters
+    .replace(/[<>:"|?*]/g, '') // Windows-illegal characters
+    .replace(/\.\./g, '') // directory traversal
+    .replace(/[/\\]/g, '') // any slash characters (path separators)
+    .replace(/^\.+/, '') // leading dots (hidden files)
     .trim();
 
   if (sanitized.length === 0) {
-    throw new Error(`Filename security violation: "${value}" results in empty filename after sanitization`);
+    throw new Error(
+      `Filename security violation: "${value}" results in empty filename after sanitization`,
+    );
   }
 
   if (sanitized.length > MAX_FILENAME_LENGTH) {
     throw new Error(
-      `Filename security violation: filename exceeds maximum length of ${MAX_FILENAME_LENGTH} characters`
+      `Filename security violation: filename exceeds maximum length of ${MAX_FILENAME_LENGTH} characters`,
     );
   }
 
@@ -294,7 +308,7 @@ function sanitizeNestedObject(obj: Record<string, any>, rootDir: string): Record
  */
 function sanitizeToolParams(params: Record<string, any>, rootDir: string): Record<string, any> {
   // First apply numeric range sanitization
-  let sanitized = sanitizeNumericParams(params);
+  const sanitized = sanitizeNumericParams(params);
 
   // Then sanitize path, filename, and nested params
   for (const [key, value] of Object.entries(sanitized)) {
@@ -307,7 +321,7 @@ function sanitizeToolParams(params: Record<string, any>, rootDir: string): Recor
     }
     // Handle nested objects in arrays (e.g. operations arrays with path fields)
     else if (Array.isArray(value)) {
-      sanitized[key] = value.map(item => {
+      sanitized[key] = value.map((item) => {
         if (typeof item === 'object' && item !== null && !Array.isArray(item)) {
           return sanitizeNestedObject(item, rootDir);
         }
@@ -359,7 +373,7 @@ export class NativeToolsServer {
         name: tool.name,
         serverName: NATIVE_SERVER_NAME,
         description: `[Native] ${tool.description}`,
-        inputSchema: tool.inputSchema
+        inputSchema: tool.inputSchema,
       };
 
       mcpToolRegistry.registerTool(mcpTool);
@@ -380,9 +394,11 @@ export class NativeToolsServer {
     try {
       return JSON.parse(value);
     } catch (err: any) {
-      console.warn(chalk.yellow(
-        `[NativeToolsServer] JSON.parse failed for ${context}: ${err.message}. Using raw string value.`
-      ));
+      console.warn(
+        chalk.yellow(
+          `[NativeToolsServer] JSON.parse failed for ${context}: ${err.message}. Using raw string value.`,
+        ),
+      );
       return value;
     }
   }
@@ -425,12 +441,21 @@ export class NativeToolsServer {
       try {
         processedParams = this.preprocessParams(params);
       } catch (err: any) {
-        console.error(chalk.red(`[NativeToolsServer] Parameter preprocessing failed for tool "${toolName}": ${err.message}`));
+        console.error(
+          chalk.red(
+            `[NativeToolsServer] Parameter preprocessing failed for tool "${toolName}": ${err.message}`,
+          ),
+        );
         return {
           success: false,
-          content: [{ type: 'text', text: `Error: Parameter preprocessing failed for tool "${toolName}": ${err.message}` }],
+          content: [
+            {
+              type: 'text',
+              text: `Error: Parameter preprocessing failed for tool "${toolName}": ${err.message}`,
+            },
+          ],
           error: `Parameter preprocessing failed: ${err.message}`,
-          isError: true
+          isError: true,
         };
       }
 
@@ -439,12 +464,21 @@ export class NativeToolsServer {
       try {
         sanitizedParams = sanitizeToolParams(processedParams, this.rootDir);
       } catch (err: any) {
-        console.error(chalk.red(`[NativeToolsServer] Parameter sanitization failed for tool "${toolName}": ${err.message}`));
+        console.error(
+          chalk.red(
+            `[NativeToolsServer] Parameter sanitization failed for tool "${toolName}": ${err.message}`,
+          ),
+        );
         return {
           success: false,
-          content: [{ type: 'text', text: `Error: Parameter sanitization failed for tool "${toolName}": ${err.message}` }],
+          content: [
+            {
+              type: 'text',
+              text: `Error: Parameter sanitization failed for tool "${toolName}": ${err.message}`,
+            },
+          ],
           error: `Parameter sanitization failed: ${err.message}`,
-          isError: true
+          isError: true,
         };
       }
 
@@ -454,12 +488,16 @@ export class NativeToolsServer {
         result = await this.tools.executeTool(toolName, sanitizedParams);
       } catch (execErr: any) {
         const execMessage = execErr.message || String(execErr);
-        console.error(chalk.red(`[NativeToolsServer] Tool execution threw for "${toolName}": ${execMessage}`));
+        console.error(
+          chalk.red(`[NativeToolsServer] Tool execution threw for "${toolName}": ${execMessage}`),
+        );
         return {
           success: false,
-          content: [{ type: 'text', text: `Error: Tool "${toolName}" threw an exception: ${execMessage}` }],
+          content: [
+            { type: 'text', text: `Error: Tool "${toolName}" threw an exception: ${execMessage}` },
+          ],
           error: execMessage,
-          isError: true
+          isError: true,
         };
       }
 
@@ -467,14 +505,14 @@ export class NativeToolsServer {
         return {
           success: true,
           content: result.data,
-          isError: false
+          isError: false,
         };
       } else {
         return {
           success: false,
           content: [{ type: 'text', text: `Error: Tool "${toolName}" failed: ${result.error}` }],
           error: result.error,
-          isError: true
+          isError: true,
         };
       }
     } catch (error: any) {
@@ -482,14 +520,21 @@ export class NativeToolsServer {
       // but guarantees the server never crashes from a tool call.
       const errorMessage = error.message || String(error);
       const paramKeys = Object.keys(params || {}).join(', ');
-      console.error(chalk.red(
-        `[NativeToolsServer] Unhandled error in callTool("${toolName}", {${paramKeys}}): ${errorMessage}`
-      ));
+      console.error(
+        chalk.red(
+          `[NativeToolsServer] Unhandled error in callTool("${toolName}", {${paramKeys}}): ${errorMessage}`,
+        ),
+      );
       return {
         success: false,
-        content: [{ type: 'text', text: `Error: Unexpected failure executing tool "${toolName}": ${errorMessage}` }],
+        content: [
+          {
+            type: 'text',
+            text: `Error: Unexpected failure executing tool "${toolName}": ${errorMessage}`,
+          },
+        ],
         error: errorMessage,
-        isError: true
+        isError: true,
       };
     }
   }
@@ -498,11 +543,11 @@ export class NativeToolsServer {
    * Get all native tools as MCP format
    */
   getAllTools(): MCPTool[] {
-    return this.tools.getAllTools().map(tool => ({
+    return this.tools.getAllTools().map((tool) => ({
       name: tool.name,
       serverName: NATIVE_SERVER_NAME,
       description: `[Native] ${tool.description}`,
-      inputSchema: tool.inputSchema
+      inputSchema: tool.inputSchema,
     }));
   }
 
@@ -517,7 +562,7 @@ export class NativeToolsServer {
       name: tool.name,
       serverName: NATIVE_SERVER_NAME,
       description: `[Native] ${tool.description}`,
-      inputSchema: tool.inputSchema
+      inputSchema: tool.inputSchema,
     };
   }
 

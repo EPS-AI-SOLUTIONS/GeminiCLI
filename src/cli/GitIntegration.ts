@@ -3,10 +3,10 @@
  * Feature #27: Git Integration
  */
 
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import chalk from 'chalk';
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import chalk from 'chalk';
 import 'dotenv/config';
 
 const execAsync = promisify(exec);
@@ -132,7 +132,7 @@ export class GitIntegration {
 
     const model = genAI.getGenerativeModel({
       model: 'gemini-3-pro-preview',
-      generationConfig: { temperature: 0.9, maxOutputTokens: 512 }
+      generationConfig: { temperature: 0.9, maxOutputTokens: 512 },
     });
 
     const prompt = `Generate a concise git commit message for these changes.
@@ -161,7 +161,7 @@ Commit message (one line, max 72 chars):`;
     if (files === 'all') {
       await this.git('add -A');
     } else {
-      await this.git(`add ${files.map(f => `"${f}"`).join(' ')}`);
+      await this.git(`add ${files.map((f) => `"${f}"`).join(' ')}`);
     }
   }
 
@@ -169,13 +169,7 @@ Commit message (one line, max 72 chars):`;
    * Create commit
    */
   async commit(options: CommitOptions = {}): Promise<string> {
-    const {
-      message,
-      autoMessage = false,
-      files,
-      amend = false,
-      push = false
-    } = options;
+    const { message, autoMessage = false, files, amend = false, push = false } = options;
 
     // Stage files if specified
     if (files) {
@@ -246,14 +240,16 @@ Commit message (one line, max 72 chars):`;
   /**
    * Generate PR description using AI
    */
-  async generatePRDescription(baseBranch: string = 'main'): Promise<{ title: string; body: string }> {
+  async generatePRDescription(
+    baseBranch: string = 'main',
+  ): Promise<{ title: string; body: string }> {
     const currentBranch = await this.git('branch --show-current');
     const commits = await this.git(`log ${baseBranch}..HEAD --oneline`);
     const diff = await this.git(`diff ${baseBranch}...HEAD --stat`);
 
     const model = genAI.getGenerativeModel({
       model: 'gemini-3-pro-preview',
-      generationConfig: { temperature: 1.0, maxOutputTokens: 1024 }
+      generationConfig: { temperature: 1.0, maxOutputTokens: 1024 },
     });
 
     const prompt = `Generate a pull request title and description.
@@ -287,7 +283,7 @@ BODY:
 
     return {
       title: titleMatch ? titleMatch[1].trim() : currentBranch,
-      body: bodyMatch ? bodyMatch[1].trim() : 'No description provided.'
+      body: bodyMatch ? bodyMatch[1].trim() : 'No description provided.',
     };
   }
 
@@ -295,13 +291,7 @@ BODY:
    * Create pull request (requires gh CLI)
    */
   async createPR(options: PROptions = {}): Promise<string> {
-    const {
-      title,
-      body,
-      base = 'main',
-      draft = false,
-      autoGenerate = false
-    } = options;
+    const { title, body, base = 'main', draft = false, autoGenerate = false } = options;
 
     let prTitle = title;
     let prBody = body;
@@ -317,7 +307,7 @@ BODY:
     // Use gh CLI
     const { stdout } = await execAsync(
       `gh pr create --title "${prTitle}" --body "${prBody?.replace(/"/g, '\\"')}" --base ${base} ${draftFlag}`,
-      { cwd: this.cwd }
+      { cwd: this.cwd },
     );
 
     return stdout.trim();
@@ -330,7 +320,7 @@ BODY:
     try {
       const { stdout } = await execAsync('gh pr status', { cwd: this.cwd });
       return stdout;
-    } catch (error) {
+    } catch (_error) {
       return 'No pull requests found';
     }
   }
@@ -345,17 +335,17 @@ BODY:
 
     if (status.staged.length > 0) {
       console.log(chalk.green('Staged:'));
-      status.staged.forEach(f => console.log(chalk.green(`  + ${f}`)));
+      status.staged.forEach((f) => console.log(chalk.green(`  + ${f}`)));
     }
 
     if (status.modified.length > 0) {
       console.log(chalk.yellow('Modified:'));
-      status.modified.forEach(f => console.log(chalk.yellow(`  M ${f}`)));
+      status.modified.forEach((f) => console.log(chalk.yellow(`  M ${f}`)));
     }
 
     if (status.untracked.length > 0) {
       console.log(chalk.gray('Untracked:'));
-      status.untracked.forEach(f => console.log(chalk.gray(`  ? ${f}`)));
+      status.untracked.forEach((f) => console.log(chalk.gray(`  ? ${f}`)));
     }
 
     if (status.ahead > 0 || status.behind > 0) {
@@ -364,7 +354,11 @@ BODY:
       if (status.behind > 0) console.log(chalk.red(`↓ ${status.behind} commits behind`));
     }
 
-    if (status.staged.length === 0 && status.modified.length === 0 && status.untracked.length === 0) {
+    if (
+      status.staged.length === 0 &&
+      status.modified.length === 0 &&
+      status.untracked.length === 0
+    ) {
       console.log(chalk.gray('Working tree clean'));
     }
 
@@ -402,7 +396,7 @@ export const gitCommands = {
     const gitInt = new GitIntegration();
     return gitInt.createPR({
       autoGenerate: true,
-      base: args || 'main'
+      base: args || 'main',
     });
   },
 
@@ -410,7 +404,7 @@ export const gitCommands = {
     const gitInt = new GitIntegration();
     await gitInt.printStatus();
     return '';
-  }
+  },
 };
 
 export default git;

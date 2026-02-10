@@ -145,7 +145,7 @@ export function createTauriMockScript(customHandlers: Partial<MockInvokeHandlers
  */
 export async function injectTauriMocks(
   page: Page,
-  customHandlers: Partial<MockInvokeHandlers> = {}
+  customHandlers: Partial<MockInvokeHandlers> = {},
 ): Promise<void> {
   await page.addInitScript(createTauriMockScript(customHandlers));
 }
@@ -156,13 +156,13 @@ export async function injectTauriMocks(
 export async function emitTauriEvent(
   page: Page,
   eventName: string,
-  payload: unknown
+  payload: unknown,
 ): Promise<void> {
   await page.evaluate(
     ([name, data]) => {
       (window as any).__emitTauriEvent(name, data);
     },
-    [eventName, payload]
+    [eventName, payload],
   );
 }
 
@@ -172,13 +172,13 @@ export async function emitTauriEvent(
 export async function setMockInvokeResult(
   page: Page,
   command: string,
-  result: unknown
+  result: unknown,
 ): Promise<void> {
   await page.evaluate(
     ([cmd, res]) => {
       (window as any).__setMockInvokeResult(cmd, res);
     },
-    [command, result]
+    [command, result],
   );
 }
 
@@ -186,7 +186,7 @@ export async function setMockInvokeResult(
  * Get invoke history for assertions
  */
 export async function getInvokeHistory(
-  page: Page
+  page: Page,
 ): Promise<Array<{ cmd: string; args: unknown; timestamp: number }>> {
   return page.evaluate(() => (window as any).__getInvokeHistory());
 }
@@ -205,7 +205,7 @@ export async function emitStreamChunk(
   page: Page,
   chunk: string,
   done: boolean = false,
-  eventType: 'ollama-event' | 'swarm-data' | 'gemini-stream' = 'swarm-data'
+  eventType: 'ollama-event' | 'swarm-data' | 'gemini-stream' = 'swarm-data',
 ): Promise<void> {
   const payload: StreamPayload = { chunk, done };
   await emitTauriEvent(page, eventType, payload);
@@ -217,7 +217,7 @@ export async function emitStreamChunk(
 export async function emitStreamError(
   page: Page,
   error: string,
-  eventType: 'ollama-event' | 'swarm-data' | 'gemini-stream' = 'swarm-data'
+  eventType: 'ollama-event' | 'swarm-data' | 'gemini-stream' = 'swarm-data',
 ): Promise<void> {
   const payload: StreamPayload = { chunk: '', done: true, error };
   await emitTauriEvent(page, eventType, payload);

@@ -5,16 +5,16 @@
  * Virtualized list of chat messages with Markdown rendering.
  */
 
-import { useRef, memo } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, Terminal, Copy, Check } from 'lucide-react';
-import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
+import { Bot, Check, Copy, FileText, Terminal, User } from 'lucide-react';
+import { memo, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 import remarkGfm from 'remark-gfm';
-import { CodeBlock } from '../CodeBlock';
-import type { Message } from '../../types';
 import { UI } from '../../constants';
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
+import type { Message } from '../../types';
+import { CodeBlock } from '../CodeBlock';
 
 // ============================================================================
 // TYPES
@@ -46,17 +46,22 @@ const MessageItem = memo<MessageItemProps>(
     const { copied, copyToClipboard } = useCopyToClipboard();
 
     const handleCopyMessage = () => {
-        copyToClipboard(message.content);
+      copyToClipboard(message.content);
     };
 
     return (
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: 4 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className={`flex ${isUser ? 'justify-end' : 'justify-start'} py-2 px-4 group relative`}
+        className={`flex items-end gap-2 ${isUser ? 'justify-end' : 'justify-start'} py-2 px-4 group relative`}
         onContextMenu={(e) => onContextMenu(e, message)}
       >
+        {!isUser && !isSystem && (
+          <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-[var(--matrix-accent)]/10 flex items-center justify-center mb-1">
+            <Bot size={14} className="text-[var(--matrix-accent)]" />
+          </div>
+        )}
         <div
           className={
             isUser
@@ -68,22 +73,22 @@ const MessageItem = memo<MessageItemProps>(
         >
           {/* Copy Button (Now inside bubble, top-right) */}
           <button
-              onClick={handleCopyMessage}
-              className={`
+            onClick={handleCopyMessage}
+            className={`
                   absolute top-2 right-2
                   p-1.5 rounded-lg
                   bg-black/30 text-white/80
                   hover:bg-[var(--matrix-accent)] hover:text-black
-                  opacity-0 group-hover:opacity-100 transition-all duration-200 z-20
+                  opacity-15 group-hover:opacity-100 transition-all duration-200 z-20
                   shadow-sm transform hover:scale-110 backdrop-blur-sm
               `}
-              title="Kopiuj wiadomość"
+            title="Kopiuj wiadomość"
           >
-              {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+            {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
           </button>
 
           {isSystem && (
-            <div className="flex items-center gap-2 mb-1 border-b border-blue-500/20 pb-1 text-blue-400">
+            <div className="flex items-center gap-2 mb-1.5 border-b border-blue-500/15 pb-1.5 text-blue-500/70">
               <Terminal size={14} />
               <span className="font-bold">SYSTEM OUTPUT</span>
             </div>
@@ -114,13 +119,30 @@ const MessageItem = memo<MessageItemProps>(
             </ReactMarkdown>
           </div>
 
+          {/* Timestamp */}
+          {message.timestamp && (
+            <div
+              className={`text-[10px] mt-1.5 ${isUser ? 'text-black/40' : 'text-[var(--matrix-text-dim)]/40'} font-mono`}
+            >
+              {new Date(message.timestamp).toLocaleTimeString('pl-PL', {
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </div>
+          )}
+
           {message.role === 'assistant' && isStreaming && isLast && (
-            <span className="inline-block w-2 h-4 ml-1 bg-[var(--matrix-accent)] animate-pulse align-middle" />
+            <span className="inline-block w-1.5 h-3.5 ml-1 rounded-sm bg-[var(--matrix-accent)] animate-pulse align-middle" />
           )}
         </div>
+        {isUser && (
+          <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-[var(--matrix-accent)]/20 flex items-center justify-center mb-1">
+            <User size={14} className="text-black" />
+          </div>
+        )}
       </motion.div>
     );
-  }
+  },
 );
 
 MessageItem.displayName = 'MessageItem';
@@ -143,12 +165,7 @@ EmptyState.displayName = 'EmptyState';
 // ============================================================================
 
 export const MessageList = memo<MessageListProps>(
-  ({
-    messages,
-    isStreaming = false,
-    onExecuteCommand = () => {},
-    onContextMenu = () => {}
-  }) => {
+  ({ messages, isStreaming = false, onExecuteCommand = () => {}, onContextMenu = () => {} }) => {
     const virtuosoRef = useRef<VirtuosoHandle>(null);
 
     if (messages.length === 0) {
@@ -173,7 +190,7 @@ export const MessageList = memo<MessageListProps>(
         className="h-full scrollbar-thin"
       />
     );
-  }
+  },
 );
 
 MessageList.displayName = 'MessageList';

@@ -111,7 +111,7 @@ export enum ClaimCategory {
   AGENT_OUTPUT = 'agent_output',
   CODE_SYNTAX = 'code_syntax',
   DEPENDENCY = 'dependency',
-  GENERAL = 'general'
+  GENERAL = 'general',
 }
 
 /**
@@ -161,7 +161,7 @@ const DEFAULT_CONFIG: FactCheckerConfig = {
   debug: false,
   maxClaimAge: 3600000, // 1 hour
   enableCrossAgentValidation: true,
-  strictMode: false
+  strictMode: false,
 };
 
 // =============================================================================
@@ -176,31 +176,31 @@ const CLAIM_PATTERNS = {
     /file\s+['"`]?([^'"`\s]+)['"`]?\s+exists/i,
     /exists?\s+(?:at|in)?\s*['"`]?([^'"`\s]+)['"`]?/i,
     /found\s+(?:file|path)?\s*['"`]?([^'"`\s]+)['"`]?/i,
-    /['"`]([^'"`\s]+\.[a-z0-9]+)['"`]\s+is\s+(?:present|available)/i
+    /['"`]([^'"`\s]+\.[a-z0-9]+)['"`]\s+is\s+(?:present|available)/i,
   ],
   fileCreated: [
     /created?\s+(?:file|directory)?\s*['"`]?([^'"`\s]+)['"`]?/i,
     /wrote\s+(?:to|file)?\s*['"`]?([^'"`\s]+)['"`]?/i,
     /generated?\s+['"`]?([^'"`\s]+)['"`]?/i,
-    /added\s+(?:new\s+)?file\s+['"`]?([^'"`\s]+)['"`]?/i
+    /added\s+(?:new\s+)?file\s+['"`]?([^'"`\s]+)['"`]?/i,
   ],
   fileModified: [
     /modified?\s+['"`]?([^'"`\s]+)['"`]?/i,
     /updated?\s+['"`]?([^'"`\s]+)['"`]?/i,
     /changed?\s+['"`]?([^'"`\s]+)['"`]?/i,
-    /edited?\s+['"`]?([^'"`\s]+)['"`]?/i
+    /edited?\s+['"`]?([^'"`\s]+)['"`]?/i,
   ],
   commandExecuted: [
     /(?:ran|executed?|run)\s+[`'"]([^`'"]+)[`'"]/i,
     /command\s+[`'"]([^`'"]+)[`'"]\s+(?:completed|succeeded|finished)/i,
     /\$\s*([a-z0-9_-]+(?:\s+[^\n]+)?)/i,
-    /(?:npm|yarn|pnpm|cargo|go|pip|python)\s+[a-z]+/i
+    /(?:npm|yarn|pnpm|cargo|go|pip|python)\s+[a-z]+/i,
   ],
   agentClaimed: [
     /agent\s+#?(\d+)\s+(?:said|claimed|reported|output)/i,
     /task\s+#?(\d+)\s+(?:result|output|response)/i,
-    /according\s+to\s+(?:agent|task)\s+#?(\d+)/i
-  ]
+    /according\s+to\s+(?:agent|task)\s+#?(\d+)/i,
+  ],
 };
 
 // =============================================================================
@@ -260,7 +260,7 @@ export class RealTimeFactChecker {
    * @returns The fact check result
    */
   checkClaim(claim: string, context: CheckContext, taskId?: number): FactCheckResult {
-    const timestamp = Date.now();
+    const _timestamp = Date.now();
     const category = this.categorizeClam(claim);
 
     let result: FactCheckResult;
@@ -301,7 +301,7 @@ export class RealTimeFactChecker {
    * @returns Array of fact check results
    */
   batchCheckClaims(claims: string[], context: CheckContext, taskId?: number): FactCheckResult[] {
-    return claims.map(claim => this.checkClaim(claim, context, taskId));
+    return claims.map((claim) => this.checkClaim(claim, context, taskId));
   }
 
   /**
@@ -323,7 +323,7 @@ export class RealTimeFactChecker {
    */
   getCheckLog(taskId: number): FactCheckResult[] {
     const entries = this.checkLog.get(taskId) || [];
-    return entries.map(entry => entry.result);
+    return entries.map((entry) => entry.result);
   }
 
   /**
@@ -341,9 +341,13 @@ export class RealTimeFactChecker {
    */
   getStats(): FactCheckerStats {
     const allEntries = Array.from(this.checkLog.values()).flat();
-    const verified = allEntries.filter(e => e.result.verified);
-    const unverified = allEntries.filter(e => !e.result.verified && (!e.result.contradicts || e.result.contradicts.length === 0));
-    const contradicted = allEntries.filter(e => e.result.contradicts && e.result.contradicts.length > 0);
+    const verified = allEntries.filter((e) => e.result.verified);
+    const unverified = allEntries.filter(
+      (e) => !e.result.verified && (!e.result.contradicts || e.result.contradicts.length === 0),
+    );
+    const contradicted = allEntries.filter(
+      (e) => e.result.contradicts && e.result.contradicts.length > 0,
+    );
 
     const totalConfidence = allEntries.reduce((sum, e) => sum + e.result.confidence, 0);
 
@@ -355,7 +359,7 @@ export class RealTimeFactChecker {
       [ClaimCategory.AGENT_OUTPUT]: 0,
       [ClaimCategory.CODE_SYNTAX]: 0,
       [ClaimCategory.DEPENDENCY]: 0,
-      [ClaimCategory.GENERAL]: 0
+      [ClaimCategory.GENERAL]: 0,
     };
 
     for (const entry of allEntries) {
@@ -369,7 +373,7 @@ export class RealTimeFactChecker {
       contradictedClaims: contradicted.length,
       averageConfidence: allEntries.length > 0 ? totalConfidence / allEntries.length : 0,
       verificationRate: allEntries.length > 0 ? verified.length / allEntries.length : 0,
-      checksByCategory
+      checksByCategory,
     };
   }
 
@@ -426,7 +430,7 @@ export class RealTimeFactChecker {
   private checkFileSystemClaim(
     claim: string,
     context: CheckContext,
-    category: ClaimCategory
+    category: ClaimCategory,
   ): FactCheckResult {
     const filePath = this.extractFilePath(claim);
     const contradicts: string[] = [];
@@ -443,7 +447,7 @@ export class RealTimeFactChecker {
         contradicts: ['Could not extract file path from claim'],
         timestamp: Date.now(),
         claim,
-        details: 'Failed to parse file path from claim text'
+        details: 'Failed to parse file path from claim text',
       };
     }
 
@@ -466,13 +470,19 @@ export class RealTimeFactChecker {
         confidence = 0.3;
         details = `File "${filePath}" status unknown (not in file system map)`;
       }
-    } else if (category === ClaimCategory.FILE_CREATED || category === ClaimCategory.FILE_MODIFIED) {
+    } else if (
+      category === ClaimCategory.FILE_CREATED ||
+      category === ClaimCategory.FILE_MODIFIED
+    ) {
       // For created/modified, we need to check MCP calls or commands
       if (context.mcpCalls) {
-        const relevantCalls = context.mcpCalls.filter(call =>
-          (call.tool.includes('write') || call.tool.includes('create') || call.tool.includes('edit')) &&
-          call.success &&
-          JSON.stringify(call.args).includes(filePath)
+        const relevantCalls = context.mcpCalls.filter(
+          (call) =>
+            (call.tool.includes('write') ||
+              call.tool.includes('create') ||
+              call.tool.includes('edit')) &&
+            call.success &&
+            JSON.stringify(call.args).includes(filePath),
         );
 
         if (relevantCalls.length > 0) {
@@ -485,15 +495,16 @@ export class RealTimeFactChecker {
 
       // Also check executed commands
       if (!verified && context.executedCommands.length > 0) {
-        const writeCommands = context.executedCommands.filter(cmd =>
-          (cmd.includes('echo') && cmd.includes('>')) ||
-          cmd.includes('touch') ||
-          cmd.includes('mkdir') ||
-          cmd.includes('cp ') ||
-          cmd.includes('mv ')
+        const writeCommands = context.executedCommands.filter(
+          (cmd) =>
+            (cmd.includes('echo') && cmd.includes('>')) ||
+            cmd.includes('touch') ||
+            cmd.includes('mkdir') ||
+            cmd.includes('cp ') ||
+            cmd.includes('mv '),
         );
 
-        if (writeCommands.some(cmd => cmd.includes(filePath))) {
+        if (writeCommands.some((cmd) => cmd.includes(filePath))) {
           verified = true;
           confidence = 0.7;
           source = 'executedCommands';
@@ -516,7 +527,7 @@ export class RealTimeFactChecker {
       contradicts: contradicts.length > 0 ? contradicts : undefined,
       timestamp: Date.now(),
       claim,
-      details
+      details,
     };
   }
 
@@ -538,12 +549,12 @@ export class RealTimeFactChecker {
         contradicts: ['Could not extract command from claim'],
         timestamp: Date.now(),
         claim,
-        details: 'Failed to parse command from claim text'
+        details: 'Failed to parse command from claim text',
       };
     }
 
     // Check against executedCommands list
-    const matchingCommands = context.executedCommands.filter(executed => {
+    const matchingCommands = context.executedCommands.filter((executed) => {
       // Exact match
       if (executed === command) return true;
       // Contains match (for partial commands)
@@ -557,18 +568,21 @@ export class RealTimeFactChecker {
     if (matchingCommands.length > 0) {
       verified = true;
       // Higher confidence for exact match
-      const exactMatch = matchingCommands.some(m => m === command);
+      const exactMatch = matchingCommands.some((m) => m === command);
       confidence = exactMatch ? 0.95 : 0.75;
       details = `Found matching command in execution log: "${matchingCommands[0]}"`;
     } else {
       // Check MCP calls for shell/exec operations
       if (context.mcpCalls) {
-        const execCalls = context.mcpCalls.filter(call =>
-          (call.tool.includes('shell') || call.tool.includes('exec') || call.tool.includes('command')) &&
-          call.success
+        const execCalls = context.mcpCalls.filter(
+          (call) =>
+            (call.tool.includes('shell') ||
+              call.tool.includes('exec') ||
+              call.tool.includes('command')) &&
+            call.success,
         );
 
-        if (execCalls.some(call => JSON.stringify(call.args).includes(command.split(/\s+/)[0]))) {
+        if (execCalls.some((call) => JSON.stringify(call.args).includes(command.split(/\s+/)[0]))) {
           verified = true;
           confidence = 0.7;
           details = `Found related MCP shell/exec call`;
@@ -588,7 +602,7 @@ export class RealTimeFactChecker {
       contradicts: contradicts.length > 0 ? contradicts : undefined,
       timestamp: Date.now(),
       claim,
-      details
+      details,
     };
   }
 
@@ -610,7 +624,7 @@ export class RealTimeFactChecker {
         contradicts: ['Could not extract agent/task ID from claim'],
         timestamp: Date.now(),
         claim,
-        details: 'Failed to parse agent/task ID from claim text'
+        details: 'Failed to parse agent/task ID from claim text',
       };
     }
 
@@ -649,7 +663,7 @@ export class RealTimeFactChecker {
       contradicts: contradicts.length > 0 ? contradicts : undefined,
       timestamp: Date.now(),
       claim,
-      details
+      details,
     };
   }
 
@@ -685,12 +699,13 @@ export class RealTimeFactChecker {
 
     // Check against error log for contradiction
     if (context.errorLog) {
-      const relatedErrors = context.errorLog.filter(err =>
-        claim.toLowerCase().includes(err.source.toLowerCase()) ||
-        err.message.toLowerCase().includes(claim.toLowerCase().substring(0, 30))
+      const relatedErrors = context.errorLog.filter(
+        (err) =>
+          claim.toLowerCase().includes(err.source.toLowerCase()) ||
+          err.message.toLowerCase().includes(claim.toLowerCase().substring(0, 30)),
       );
 
-      if (relatedErrors.length > 0 && !relatedErrors.some(e => e.recovered)) {
+      if (relatedErrors.length > 0 && !relatedErrors.some((e) => e.recovered)) {
         contradicts.push(`Related error found: ${relatedErrors[0].message}`);
         confidence = Math.max(0, confidence - 0.3);
       }
@@ -706,7 +721,7 @@ export class RealTimeFactChecker {
       contradicts: contradicts.length > 0 ? contradicts : undefined,
       timestamp: Date.now(),
       claim,
-      details
+      details,
     };
   }
 
@@ -766,14 +781,14 @@ export class RealTimeFactChecker {
       /['"`]([a-zA-Z0-9_\-./\\:]+\.[a-zA-Z0-9]+)['"`]/,
       /file\s+['"`]?([a-zA-Z0-9_\-./\\:]+\.[a-zA-Z0-9]+)['"`]?/i,
       /(?:created?|modified?|updated?|wrote|exists?)\s+['"`]?([a-zA-Z0-9_\-./\\:]+\.[a-zA-Z0-9]+)['"`]?/i,
-      /([a-zA-Z0-9_\-]+\/[a-zA-Z0-9_\-./\\]+\.[a-zA-Z0-9]+)/,
+      /([a-zA-Z0-9_-]+\/[a-zA-Z0-9_\-./\\]+\.[a-zA-Z0-9]+)/,
       /([a-zA-Z]:\\[a-zA-Z0-9_\-./\\]+\.[a-zA-Z0-9]+)/i,
-      /(\.\/[a-zA-Z0-9_\-./\\]+\.[a-zA-Z0-9]+)/
+      /(\.\/[a-zA-Z0-9_\-./\\]+\.[a-zA-Z0-9]+)/,
     ];
 
     for (const pattern of patterns) {
       const match = claim.match(pattern);
-      if (match && match[1]) {
+      if (match?.[1]) {
         return match[1];
       }
     }
@@ -790,18 +805,19 @@ export class RealTimeFactChecker {
       /command\s+[`'"]([^`'"]+)[`'"]/i,
       /`([^`]+)`/,
       /'([^']+)'/,
-      /"([^"]+)"/
+      /"([^"]+)"/,
     ];
 
     for (const pattern of patterns) {
       const match = claim.match(pattern);
-      if (match && match[1]) {
+      if (match?.[1]) {
         return match[1].trim();
       }
     }
 
     // Try to extract command-like patterns
-    const cmdPattern = /\b(npm|yarn|pnpm|cargo|go|pip|python|node|npx|git|make|docker)\s+[a-z]+(?:\s+[^\n.,;]+)?/i;
+    const cmdPattern =
+      /\b(npm|yarn|pnpm|cargo|go|pip|python|node|npx|git|make|docker)\s+[a-z]+(?:\s+[^\n.,;]+)?/i;
     const cmdMatch = claim.match(cmdPattern);
     if (cmdMatch) {
       return cmdMatch[0].trim();
@@ -815,7 +831,7 @@ export class RealTimeFactChecker {
    */
   private extractClaimContent(claim: string): string | null {
     // Remove common claim prefixes/suffixes
-    let content = claim
+    const content = claim
       .replace(/(?:agent|task)\s*#?\d+\s*(?:said|claimed|reported|output)/gi, '')
       .replace(/according\s+to\s+(?:agent|task)\s*#?\d+/gi, '')
       .replace(/that\s+/gi, '')
@@ -844,8 +860,8 @@ export class RealTimeFactChecker {
 
     for (const sentence of sentences) {
       // Check if sentence contains a claim-like pattern
-      const hasClaimPattern = Object.values(CLAIM_PATTERNS).some(patterns =>
-        patterns.some(pattern => pattern.test(sentence))
+      const hasClaimPattern = Object.values(CLAIM_PATTERNS).some((patterns) =>
+        patterns.some((pattern) => pattern.test(sentence)),
       );
 
       if (hasClaimPattern) {
@@ -863,7 +879,7 @@ export class RealTimeFactChecker {
     taskId: number,
     claim: string,
     category: ClaimCategory,
-    result: FactCheckResult
+    result: FactCheckResult,
   ): void {
     if (!this.checkLog.has(taskId)) {
       this.checkLog.set(taskId, []);
@@ -876,10 +892,10 @@ export class RealTimeFactChecker {
       claim,
       category,
       result,
-      checkedAt: new Date()
+      checkedAt: new Date(),
     };
 
-    this.checkLog.get(taskId)!.push(entry);
+    this.checkLog.get(taskId)?.push(entry);
   }
 
   /**
@@ -887,11 +903,14 @@ export class RealTimeFactChecker {
    */
   private logCheckResult(claim: string, result: FactCheckResult, category: ClaimCategory): void {
     const statusIcon = result.verified ? chalk.green('[VERIFIED]') : chalk.red('[UNVERIFIED]');
-    const confidenceColor = result.confidence >= 0.7 ? chalk.green : result.confidence >= 0.4 ? chalk.yellow : chalk.red;
+    const confidenceColor =
+      result.confidence >= 0.7 ? chalk.green : result.confidence >= 0.4 ? chalk.yellow : chalk.red;
 
     console.log(chalk.cyan(`\n[FactChecker] Claim Check:`));
     console.log(chalk.gray(`  Category: ${category}`));
-    console.log(chalk.gray(`  Claim: "${claim.substring(0, 80)}${claim.length > 80 ? '...' : ''}"`));
+    console.log(
+      chalk.gray(`  Claim: "${claim.substring(0, 80)}${claim.length > 80 ? '...' : ''}"`),
+    );
     console.log(`  Status: ${statusIcon}`);
     console.log(`  Confidence: ${confidenceColor(`${(result.confidence * 100).toFixed(1)}%`)}`);
     console.log(chalk.gray(`  Source: ${result.source}`));
@@ -902,7 +921,7 @@ export class RealTimeFactChecker {
 
     if (result.contradicts && result.contradicts.length > 0) {
       console.log(chalk.red(`  Contradictions:`));
-      result.contradicts.forEach(c => console.log(chalk.red(`    - ${c}`)));
+      result.contradicts.forEach((c) => console.log(chalk.red(`    - ${c}`)));
     }
   }
 }
@@ -957,7 +976,11 @@ export function getCheckLog(taskId: number): FactCheckResult[] {
  * @param taskId Optional task ID
  * @returns Array of fact check results
  */
-export function checkResponseClaims(response: string, context: CheckContext, taskId?: number): FactCheckResult[] {
+export function checkResponseClaims(
+  response: string,
+  context: CheckContext,
+  taskId?: number,
+): FactCheckResult[] {
   return realTimeFactChecker.checkResponseClaims(response, context, taskId);
 }
 
@@ -1007,12 +1030,12 @@ export function createCheckContext(
   fileSystemState: Map<string, boolean> | string[],
   executedCommands: string[],
   agentOutputs: Map<number, string> | Record<number, string>,
-  mcpCalls?: MCPCallRecord[]
+  mcpCalls?: MCPCallRecord[],
 ): CheckContext {
   // Convert array to Map if needed
   let fileSystem: Map<string, boolean>;
   if (Array.isArray(fileSystemState)) {
-    fileSystem = new Map(fileSystemState.map(path => [path, true]));
+    fileSystem = new Map(fileSystemState.map((path) => [path, true]));
   } else {
     fileSystem = fileSystemState;
   }
@@ -1029,7 +1052,7 @@ export function createCheckContext(
     fileSystem,
     executedCommands,
     agentOutputs: outputs,
-    mcpCalls
+    mcpCalls,
   };
 }
 
@@ -1041,7 +1064,11 @@ export function createCheckContext(
  * @param minConfidence Minimum confidence for verification (default: 0.6)
  * @returns Whether the claim is verified with sufficient confidence
  */
-export function quickVerify(claim: string, context: CheckContext, minConfidence: number = 0.6): boolean {
+export function quickVerify(
+  claim: string,
+  context: CheckContext,
+  minConfidence: number = 0.6,
+): boolean {
   const result = realTimeFactChecker.checkClaim(claim, context);
   return result.verified && result.confidence >= minConfidence;
 }

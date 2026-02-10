@@ -21,104 +21,94 @@
 // Re-export all features from conversation module
 // ============================================================
 
+// #22 Smart Context Pruning
+export {
+  contextPruner,
+  type PrunedContext,
+  type PruningItem,
+  type PruningStrategy,
+  SmartContextPruner,
+} from './conversation/ContextPruner.js';
 // #21 Conversation Memory
 export {
   ConversationMemory,
-  conversationMemory,
+  type ConversationSession,
   type ConversationTurn,
-  type ConversationSession
+  conversationMemory,
 } from './conversation/ConversationMemory.js';
-
-// #22 Smart Context Pruning
+// #25 Learning from Corrections
 export {
-  SmartContextPruner,
-  contextPruner,
-  type PruningStrategy,
-  type PrunedContext,
-  type PruningItem
-} from './conversation/ContextPruner.js';
-
+  type Correction,
+  CorrectionLearner,
+  type CorrectionStats,
+  correctionLearner,
+  type LearnedPattern,
+} from './conversation/CorrectionLearner.js';
+// #29 Dry-Run Preview
+export {
+  type ActionType,
+  calculateImpact,
+  createAction,
+  type DryRunAction,
+  type DryRunPreview,
+  formatDryRunPreview,
+  generateDryRunPreview,
+  type ImpactLevel,
+  isDestructive,
+  type TotalImpactLevel,
+} from './conversation/DryRunPreview.js';
+// #30 Explanation Mode
+export {
+  type Explanation,
+  ExplanationMode,
+  type ExplanationStep,
+  explanationMode,
+  type VerbosityLevel,
+} from './conversation/ExplanationMode.js';
 // #23 Intent Detection
 export {
+  type DetectedIntent,
   detectIntent,
-  getSuggestedAgents,
   getIntentCategories,
-  matchesIntent,
+  getSuggestedAgents,
   type IntentCategory,
-  type DetectedIntent
+  matchesIntent,
 } from './conversation/IntentDetection.js';
-
+// Initialization helpers
+export {
+  initConversationSubsystems,
+  persistConversationData,
+} from './conversation/index.js';
 // #24 Proactive Suggestions
 export {
   ProactiveSuggestions,
   proactiveSuggestions,
   type Suggestion,
-  type SuggestionContext
+  type SuggestionContext,
 } from './conversation/ProactiveSuggestions.js';
-
-// #25 Learning from Corrections
-export {
-  CorrectionLearner,
-  correctionLearner,
-  type Correction,
-  type LearnedPattern,
-  type CorrectionStats
-} from './conversation/CorrectionLearner.js';
-
-// #26 Task Estimation
-export {
-  estimateTask,
-  determineComplexity,
-  getEstimatesForComplexity,
-  type TaskEstimate
-} from './conversation/TaskEstimation.js';
-
 // #27 Progress Tracking
 export {
+  type ProgressListener,
+  type ProgressReport,
+  type ProgressStep,
   ProgressTracker,
   progressTracker,
-  type ProgressStep,
-  type ProgressReport,
-  type ProgressListener
 } from './conversation/ProgressTracking.js';
-
 // #28 Rollback Capability
 export {
-  RollbackManager,
-  rollbackManager,
   type FileSnapshot,
+  RollbackManager,
   type RollbackPoint,
-  type RollbackResult
+  type RollbackResult,
+  rollbackManager,
 } from './conversation/RollbackManager.js';
-
-// #29 Dry-Run Preview
+// #26 Task Estimation
 export {
-  generateDryRunPreview,
-  formatDryRunPreview,
-  createAction,
-  calculateImpact,
-  isDestructive,
-  type ActionType,
-  type ImpactLevel,
-  type TotalImpactLevel,
-  type DryRunAction,
-  type DryRunPreview
-} from './conversation/DryRunPreview.js';
-
-// #30 Explanation Mode
-export {
-  ExplanationMode,
-  explanationMode,
-  type VerbosityLevel,
-  type ExplanationStep,
-  type Explanation
-} from './conversation/ExplanationMode.js';
-
-// Initialization helpers
-export {
-  initConversationSubsystems,
-  persistConversationData
-} from './conversation/index.js';
+  determineComplexity,
+  estimateTask,
+  getEstimatesForComplexity,
+  type TaskEstimate,
+} from './conversation/TaskEstimation.js';
 
 // ============================================================
 // Legacy Initialization (for backward compatibility)
@@ -139,19 +129,16 @@ export async function initConversationLayer(): Promise<void> {
 // ============================================================
 
 import {
-  conversationMemory,
   contextPruner,
-  proactiveSuggestions,
+  conversationMemory,
   correctionLearner,
-  progressTracker,
-  rollbackManager,
-  explanationMode
-} from './conversation/index.js';
-
-import {
   detectIntent,
   estimateTask,
-  generateDryRunPreview
+  explanationMode,
+  generateDryRunPreview,
+  proactiveSuggestions,
+  progressTracker,
+  rollbackManager,
 } from './conversation/index.js';
 
 export default {
@@ -171,5 +158,5 @@ export default {
   initConversationLayer,
 
   // Re-export all from conversation module
-  ...require('./conversation/index.js')
+  ...require('./conversation/index.js'),
 };

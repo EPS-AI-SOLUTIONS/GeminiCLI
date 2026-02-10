@@ -9,7 +9,7 @@ import { afterAll } from 'vitest';
 // These typically come from intentional promise rejections in tests
 const originalOnUnhandledRejection = process.listeners('unhandledRejection');
 process.removeAllListeners('unhandledRejection');
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', (reason, _promise) => {
   // Only log if it's not a known test-related rejection
   const knownPatterns = [
     'Pool drained',
@@ -20,7 +20,7 @@ process.on('unhandledRejection', (reason, promise) => {
   ];
 
   const reasonStr = String(reason);
-  const isKnown = knownPatterns.some(pattern => reasonStr.includes(pattern));
+  const isKnown = knownPatterns.some((pattern) => reasonStr.includes(pattern));
 
   if (!isKnown) {
     console.error('Unhandled Rejection:', reason);
@@ -30,7 +30,7 @@ process.on('unhandledRejection', (reason, promise) => {
 afterAll(() => {
   // Restore original handlers after all tests
   process.removeAllListeners('unhandledRejection');
-  originalOnUnhandledRejection.forEach(listener => {
+  originalOnUnhandledRejection.forEach((listener) => {
     process.on('unhandledRejection', listener);
   });
 });

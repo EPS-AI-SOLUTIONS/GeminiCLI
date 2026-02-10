@@ -14,10 +14,8 @@ export const VALIDATION_ERRORS = {
     `${field} must be one of: ${values.join(', ')}`,
   OUT_OF_RANGE: (field: string, min: number, max: number) =>
     `${field} must be between ${min} and ${max}`,
-  TOO_SHORT: (field: string, min: number) =>
-    `${field} must be at least ${min} characters`,
-  TOO_LONG: (field: string, max: number) =>
-    `${field} must be at most ${max} characters`,
+  TOO_SHORT: (field: string, min: number) => `${field} must be at least ${min} characters`,
+  TOO_LONG: (field: string, max: number) => `${field} must be at most ${max} characters`,
   EMPTY_STRING: (field: string) => `${field} cannot be empty`,
 } as const;
 

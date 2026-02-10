@@ -3,5 +3,5 @@
  * Centralized constants for API
  */
 
-export * from './validationValues.js';
 export * from './messages.js';
+export * from './validationValues.js';

@@ -3,9 +3,9 @@
  * Validators for agents endpoint requests
  */
 
+import { VALIDATION_ERRORS } from '../constants/index.js';
 import { ValidationError } from '../middleware/index.js';
 import { validatePrompt } from './prompt.js';
-import { VALIDATION_ERRORS } from '../constants/index.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Types

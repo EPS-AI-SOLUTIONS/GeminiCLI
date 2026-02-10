@@ -11,14 +11,14 @@
 
 // Re-export all knowledge graph types
 export type {
-  KnowledgeNodeType,
-  KnowledgeNode,
+  IKnowledgeGraph,
   KnowledgeEdge,
   KnowledgeGraphData,
-  IKnowledgeGraph,
+  KnowledgeNode,
+  KnowledgeNodeType,
 } from './knowledge.types.js';
 
 export {
-  createKnowledgeNode,
   createKnowledgeEdge,
+  createKnowledgeNode,
 } from './knowledge.types.js';

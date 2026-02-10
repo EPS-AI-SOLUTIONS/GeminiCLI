@@ -3,9 +3,15 @@
  * GeminiCLI-style configuration with .hydrarc, .hydraignore support
  */
 
-import { readFileSync, existsSync } from 'fs';
-import { join, resolve } from 'path';
-import type { HydraConfig, ProviderConfig, SwarmConfig, PathConfig, FeatureFlags, PipelineModels, LocalLLMConfig } from '../types/index.js';
+import { existsSync, readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import type {
+  FeatureFlags,
+  HydraConfig,
+  PathConfig,
+  ProviderConfig,
+  SwarmConfig,
+} from '../types/index.js';
 
 // Default configuration
 const DEFAULT_CONFIG: HydraConfig = {
@@ -21,11 +27,26 @@ const DEFAULT_CONFIG: HydraConfig = {
     phaseD: 'gemini-3-pro-preview',
   },
   localLLM: {
-    baseUrl: 'http://localhost:8000',  // llama-cpp-python default port
+    baseUrl: 'http://localhost:8000', // llama-cpp-python default port
     models: [
-      { name: 'qwen3-0.6b', difficulty: ['simple'], contextSize: 32768, description: 'Ultra-fast scout' },
-      { name: 'qwen3-4b', difficulty: ['simple', 'medium'], contextSize: 262144, description: 'Primary workhorse' },
-      { name: 'qwen3-8b', difficulty: ['medium', 'complex'], contextSize: 131072, description: 'High quality' },
+      {
+        name: 'qwen3-0.6b',
+        difficulty: ['simple'],
+        contextSize: 32768,
+        description: 'Ultra-fast scout',
+      },
+      {
+        name: 'qwen3-4b',
+        difficulty: ['simple', 'medium'],
+        contextSize: 262144,
+        description: 'Primary workhorse',
+      },
+      {
+        name: 'qwen3-8b',
+        difficulty: ['medium', 'complex'],
+        contextSize: 131072,
+        description: 'High quality',
+      },
     ],
     defaultModel: 'qwen3-4b',
   },
@@ -39,14 +60,7 @@ const DEFAULT_CONFIG: HydraConfig = {
   paths: {
     projectRoot: process.cwd(),
     trustedFolders: [],
-    ignorePatterns: [
-      'node_modules',
-      '.git',
-      'dist',
-      'build',
-      '*.log',
-      '.env*',
-    ],
+    ignorePatterns: ['node_modules', '.git', 'dist', 'build', '*.log', '.env*'],
   },
   features: {
     streaming: true,
@@ -112,8 +126,8 @@ export class ConfigManager {
         const content = readFileSync(ignorePath, 'utf-8');
         const patterns = content
           .split('\n')
-          .map(line => line.trim())
-          .filter(line => line && !line.startsWith('#'));
+          .map((line) => line.trim())
+          .filter((line) => line && !line.startsWith('#'));
         this.config.paths.ignorePatterns.push(...patterns);
       } catch {
         // Skip invalid ignore file
@@ -156,14 +170,14 @@ export class ConfigManager {
     // Swarm settings
     if (process.env.HYDRA_MAX_TASKS) {
       const parsed = parseInt(process.env.HYDRA_MAX_TASKS, 10);
-      if (!isNaN(parsed) && parsed > 0) {
+      if (!Number.isNaN(parsed) && parsed > 0) {
         this.config.swarm.maxTasks = parsed;
       }
     }
 
     if (process.env.HYDRA_TIMEOUT) {
       const parsed = parseInt(process.env.HYDRA_TIMEOUT, 10);
-      if (!isNaN(parsed) && parsed > 0) {
+      if (!Number.isNaN(parsed) && parsed > 0) {
         this.config.swarm.timeout = parsed;
       }
     }
@@ -238,9 +252,7 @@ export class ConfigManager {
     return this.config.paths.ignorePatterns.some((pattern: string) => {
       if (pattern.includes('*')) {
         // Simple glob matching
-        const regex = new RegExp(
-          '^' + pattern.replace(/\*/g, '.*').replace(/\?/g, '.') + '$'
-        );
+        const regex = new RegExp(`^${pattern.replace(/\*/g, '.*').replace(/\?/g, '.')}$`);
         return regex.test(path);
       }
       return path.includes(pattern);
@@ -277,7 +289,11 @@ export function validateEnvVars(): void {
     { name: 'HYDRA_HEADLESS', description: 'Headless mode', defaultHint: 'false' },
     { name: 'HYDRA_VERBOSE', description: 'Verbose logging', defaultHint: 'false' },
     { name: 'HYDRA_STREAMING', description: 'Enable streaming', defaultHint: 'true' },
-    { name: 'LOCAL_LLM_URL', description: 'Local LLM server URL', defaultHint: 'http://localhost:8000' },
+    {
+      name: 'LOCAL_LLM_URL',
+      description: 'Local LLM server URL',
+      defaultHint: 'http://localhost:8000',
+    },
   ];
 
   // Check required vars
@@ -292,14 +308,16 @@ export function validateEnvVars(): void {
   // Warn about missing optional vars
   for (const v of optionalVars) {
     if (!process.env[v.name]) {
-      console.warn(`[config] Optional env var ${v.name} not set (${v.description}). Using default: ${v.defaultHint}`);
+      console.warn(
+        `[config] Optional env var ${v.name} not set (${v.description}). Using default: ${v.defaultHint}`,
+      );
     }
   }
 
   // Throw if any required vars are missing
   if (missing.length > 0) {
     throw new Error(
-      `Missing required environment variables:\n${missing.join('\n')}\n\nSet them in your .env file or shell environment.`
+      `Missing required environment variables:\n${missing.join('\n')}\n\nSet them in your .env file or shell environment.`,
     );
   }
 }

@@ -4,29 +4,29 @@
  * @module bin/interactive
  */
 
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import * as readline from 'node:readline/promises'; // FIX #4: Use promises API
 import chalk from 'chalk';
-import fs from 'fs/promises';
-import path from 'path';
-import os from 'os';
-import * as readline from 'readline/promises';  // FIX #4: Use promises API
-import { AGENT_PERSONAS } from '../src/core/agent/Agent.js';
 import { costTracker } from '../src/cli/CostTracker.js';
-import { sessionMemory } from '../src/memory/SessionMemory.js';
-import { longTermMemory } from '../src/memory/LongTermMemory.js';
-import { promptCommands } from '../src/cli/PromptCommands.js';
-import { mcpManager, mcpBridge } from '../src/mcp/index.js';
-import { startupLogger } from '../src/utils/startupLogger.js';
-import { getIdentityContext } from '../src/core/PromptSystem.js';
 import { PipelineMode } from '../src/cli/PipelineMode.js';
+import { promptCommands } from '../src/cli/PromptCommands.js';
+import { AGENT_PERSONAS } from '../src/core/agent/Agent.js';
+import { getIdentityContext } from '../src/core/PromptSystem.js';
+import { mcpManager } from '../src/mcp/index.js';
+import { longTermMemory } from '../src/memory/LongTermMemory.js';
+import { sessionMemory } from '../src/memory/SessionMemory.js';
+import { startupLogger } from '../src/utils/startupLogger.js';
 import {
   execAsync,
-  useInquirer,
   inquirerInput,
   loadInquirer,
-  setUseInquirer,
-  ROOT_DIR,
-  swarm,
   printBanner,
+  ROOT_DIR,
+  setUseInquirer,
+  swarm,
+  useInquirer,
 } from './cli-config.js';
 import { executeSwarmWithReturn } from './execute.js';
 
@@ -46,7 +46,7 @@ export interface QueuedTask {
 let taskQueue: QueuedTask[] = [];
 let taskIdCounter = 1;
 let isProcessingQueue = false;
-let isShuttingDown = false;  // FIX #5: Flag to prevent premature close
+let isShuttingDown = false; // FIX #5: Flag to prevent premature close
 
 // ============================================================================
 // STDIN MANAGEMENT
@@ -64,7 +64,7 @@ function ensureStdinReady(): void {
     try {
       // Note: readline handles this, but ensure it's not disabled
       // process.stdin.setRawMode(true); // Let readline manage this
-    } catch (e) {
+    } catch (_e) {
       // Ignore if already set or unavailable
     }
   }
@@ -83,8 +83,8 @@ async function processTaskQueue() {
   if (isProcessingQueue) return;
   isProcessingQueue = true;
 
-  while (taskQueue.some(t => t.status === 'pending')) {
-    const task = taskQueue.find(t => t.status === 'pending');
+  while (taskQueue.some((t) => t.status === 'pending')) {
+    const task = taskQueue.find((t) => t.status === 'pending');
     if (!task) break;
 
     task.status = 'running';
@@ -101,7 +101,6 @@ async function processTaskQueue() {
       console.log(chalk.green(`\n✓ Zadanie #${task.id} zakończone pomyślnie`));
       console.log(chalk.green('═══ FINAL REPORT ═══\n'));
       console.log(report);
-
     } catch (error: any) {
       task.status = 'failed';
       task.error = error.message;
@@ -109,7 +108,7 @@ async function processTaskQueue() {
     }
 
     // Pokaż status kolejki
-    const pending = taskQueue.filter(t => t.status === 'pending').length;
+    const pending = taskQueue.filter((t) => t.status === 'pending').length;
     if (pending > 0) {
       console.log(chalk.yellow(`\n📋 Pozostało w kolejce: ${pending} zadań\n`));
     }
@@ -166,7 +165,9 @@ function ensureReadline(): readline.Interface {
 
     // Handle SIGINT (Ctrl+C)
     globalRL.on('SIGINT', async () => {
-      const pending = taskQueue.filter(t => t.status === 'pending' || t.status === 'running').length;
+      const pending = taskQueue.filter(
+        (t) => t.status === 'pending' || t.status === 'running',
+      ).length;
       if (pending > 0) {
         console.log(chalk.yellow(`\n⚠ ${pending} zadań wciąż w kolejce/wykonywane.`));
         console.log(chalk.gray('Wciśnij Ctrl+C ponownie aby wymusić wyjście.\n'));
@@ -193,7 +194,7 @@ async function promptLoop(): Promise<void> {
     try {
       const line = await inquirerInput({
         message: getPromptString(),
-        theme: { prefix: '' }
+        theme: { prefix: '' },
       });
       await handleInput(line);
     } catch (error: any) {
@@ -225,7 +226,7 @@ async function promptLoop(): Promise<void> {
     } else if (!isShuttingDown) {
       console.error(chalk.red(`[stdin] Error: ${error.message}`));
       // FIX #7: Try Inquirer as fallback
-      if (!useInquirer && await loadInquirer()) {
+      if (!useInquirer && (await loadInquirer())) {
         console.log(chalk.cyan('[stdin] Switching to Inquirer.js mode...'));
         setUseInquirer(true);
       }
@@ -248,7 +249,7 @@ function addTaskToQueue(objective: string): QueuedTask {
     id: taskIdCounter++,
     objective: objective,
     status: 'pending',
-    addedAt: new Date()
+    addedAt: new Date(),
   };
   taskQueue.push(task);
   return task;
@@ -264,7 +265,7 @@ const HISTORY_FILE = path.join(os.homedir(), '.geminihydra_history');
 async function loadCommandHistory(): Promise<void> {
   try {
     const data = await fs.readFile(HISTORY_FILE, 'utf-8');
-    commandHistory = data.split('\n').filter(line => line.trim());
+    commandHistory = data.split('\n').filter((line) => line.trim());
   } catch {
     commandHistory = [];
   }
@@ -292,14 +293,16 @@ async function handleInput(line: string): Promise<void> {
 
   // Handle special commands (działają zawsze)
   if (trimmed === 'exit' || trimmed === 'quit') {
-    const pending = taskQueue.filter(t => t.status === 'pending' || t.status === 'running').length;
+    const pending = taskQueue.filter(
+      (t) => t.status === 'pending' || t.status === 'running',
+    ).length;
     if (pending > 0) {
       console.log(chalk.yellow(`\n⚠ ${pending} zadań wciąż w kolejce/wykonywane.`));
       console.log(chalk.gray('Użyj Ctrl+C aby wymusić wyjście.\n'));
       promptLoop();
       return;
     }
-    isShuttingDown = true;  // FIX #5: Set flag before close
+    isShuttingDown = true; // FIX #5: Set flag before close
     await saveCommandHistory();
     if (globalRL) globalRL.close();
     console.log(chalk.gray('\nFarewell, Witcher. 🐺\n'));
@@ -308,32 +311,38 @@ async function handleInput(line: string): Promise<void> {
 
   if (trimmed === '/help') {
     console.log(chalk.cyan('\nAvailable Commands:'));
-    console.log(chalk.gray('  @<agent>      ') + 'Switch to specific agent (e.g., @geralt)');
-    console.log(chalk.yellow('  @serena       ') + 'Serena Agent - Real MCP code intelligence');
-    console.log(chalk.gray('  /help         ') + 'Show this help');
-    console.log(chalk.gray('  /history      ') + 'Show command history');
-    console.log(chalk.gray('  /clear        ') + 'Clear screen');
-    console.log(chalk.gray('  /status       ') + 'Show session status');
-    console.log(chalk.gray('  /cost         ') + 'Show token usage');
-    console.log(chalk.gray('  /prompt       ') + 'Zarządzanie zapisanymi promptami');
-    console.log(chalk.gray('  /stdin-fix    ') + 'Napraw stdin (jeśli prompt nie działa)');
-    console.log(chalk.gray('  /inquirer     ') + 'Przełącz na Inquirer.js (alternatywny input)');
-    console.log(chalk.gray('  exit, quit    ') + 'Exit interactive mode');
-    console.log(chalk.gray('  /queue        ') + 'Pokaż kolejkę zadań');
-    console.log(chalk.gray('  /cancel <id>  ') + 'Anuluj zadanie z kolejki\n');
+    console.log(`${chalk.gray('  @<agent>      ')}Switch to specific agent (e.g., @geralt)`);
+    console.log(`${chalk.yellow('  @serena       ')}Serena Agent - Real MCP code intelligence`);
+    console.log(`${chalk.gray('  /help         ')}Show this help`);
+    console.log(`${chalk.gray('  /history      ')}Show command history`);
+    console.log(`${chalk.gray('  /clear        ')}Clear screen`);
+    console.log(`${chalk.gray('  /status       ')}Show session status`);
+    console.log(`${chalk.gray('  /cost         ')}Show token usage`);
+    console.log(`${chalk.gray('  /prompt       ')}Zarządzanie zapisanymi promptami`);
+    console.log(`${chalk.gray('  /stdin-fix    ')}Napraw stdin (jeśli prompt nie działa)`);
+    console.log(`${chalk.gray('  /inquirer     ')}Przełącz na Inquirer.js (alternatywny input)`);
+    console.log(`${chalk.gray('  exit, quit    ')}Exit interactive mode`);
+    console.log(
+      `${chalk.gray('  /compact      ')}Kompaktuj kontekst konwersacji (light|medium|aggressive)`,
+    );
+    console.log(`${chalk.gray('  /queue        ')}Pokaż kolejkę zadań`);
+    console.log(`${chalk.gray('  /cancel <id>  ')}Anuluj zadanie z kolejki\n`);
     console.log(chalk.cyan('Serena Agent Commands:'));
-    console.log(chalk.gray('  @serena status    ') + 'Show Serena MCP connection status');
-    console.log(chalk.gray('  @serena find      ') + 'Find symbol by pattern (LSP)');
-    console.log(chalk.gray('  @serena overview  ') + 'Get file structure/outline');
-    console.log(chalk.gray('  @serena search    ') + 'Search code with regex');
-    console.log(chalk.gray('  @serena help      ') + 'Show all Serena commands\n');
+    console.log(`${chalk.gray('  @serena status    ')}Show Serena MCP connection status`);
+    console.log(`${chalk.gray('  @serena find      ')}Find symbol by pattern (LSP)`);
+    console.log(`${chalk.gray('  @serena overview  ')}Get file structure/outline`);
+    console.log(`${chalk.gray('  @serena search    ')}Search code with regex`);
+    console.log(`${chalk.gray('  @serena help      ')}Show all Serena commands\n`);
     promptLoop();
     return;
   }
 
   // Prompt Memory commands
   if (trimmed.startsWith('/prompt') || trimmed.startsWith('/p ')) {
-    const args = trimmed.replace(/^\/p(rompt)?\s*/, '').trim().split(/\s+/);
+    const args = trimmed
+      .replace(/^\/p(rompt)?\s*/, '')
+      .trim()
+      .split(/\s+/);
     promptCommands.setLastInput(commandHistory[commandHistory.length - 2] || '');
     promptCommands.setContext(commandHistory.slice(-5).join(' '));
     const result = await promptCommands.handle(args);
@@ -341,10 +350,52 @@ async function handleInput(line: string): Promise<void> {
       // Użytkownik chce użyć prompta - dodaj do kolejki
       addToCommandHistory(result.compiledPrompt);
       const task = addTaskToQueue(result.compiledPrompt);
-      console.log(chalk.cyan(`\n📋 Prompt "${result.prompt?.title}" dodany jako zadanie #${task.id}\n`));
+      console.log(
+        chalk.cyan(`\n📋 Prompt "${result.prompt?.title}" dodany jako zadanie #${task.id}\n`),
+      );
       // FIX: await processTaskQueue() aby uniknąć przedwczesnego zakończenia CLI
       await processTaskQueue();
       return;
+    }
+    promptLoop();
+    return;
+  }
+
+  // AutoCompact command: /compact [light|medium|aggressive]
+  if (trimmed.startsWith('/compact')) {
+    const level = trimmed.replace('/compact', '').trim() || undefined;
+    const validLevels = ['light', 'medium', 'aggressive'];
+    if (level && !validLevels.includes(level)) {
+      console.log(chalk.red(`\nNieprawidłowy poziom: ${level}. Użyj: light, medium, aggressive\n`));
+      promptLoop();
+      return;
+    }
+
+    try {
+      const { autoCompact } = await import('../src/core/conversation/AutoCompact.js');
+      console.log(chalk.cyan(`\n🗜️  Kompaktuję kontekst (${level || 'medium'})...\n`));
+      const result = await autoCompact.manualCompact(level as any);
+
+      if (result.turnsCompacted === 0) {
+        console.log(chalk.gray('Brak wiadomości do kompaktowania.\n'));
+      } else {
+        console.log(chalk.green(`✓ Skompaktowano ${result.turnsCompacted} wiadomości`));
+        console.log(
+          chalk.gray(
+            `  Tokeny: ${result.originalTokens} → ${result.compactedTokens} (oszczędność: ${result.tokensSaved})`,
+          ),
+        );
+        console.log(
+          chalk.gray(`  Współczynnik kompresji: ${(result.compressionRatio * 100).toFixed(0)}%`),
+        );
+        console.log(chalk.gray(`  Czas: ${result.durationMs}ms\n`));
+      }
+
+      // Show stats
+      console.log(autoCompact.formatStats());
+      console.log('');
+    } catch (error: any) {
+      console.log(chalk.red(`\n✗ Kompaktowanie nieudane: ${error.message}\n`));
     }
     promptLoop();
     return;
@@ -354,7 +405,7 @@ async function handleInput(line: string): Promise<void> {
   if (trimmed === '/stdin-fix') {
     console.log(chalk.cyan('\n🔧 Naprawiam stdin...'));
     ensureStdinReady();
-    globalRL = null;  // Force recreation
+    globalRL = null; // Force recreation
     console.log(chalk.green('✓ stdin naprawiony!\n'));
     promptLoop();
     return;
@@ -370,7 +421,11 @@ async function handleInput(line: string): Promise<void> {
         globalRL = null;
       }
     } else {
-      console.log(chalk.red('\n✗ Inquirer.js nie jest zainstalowany. Uruchom: npm install @inquirer/prompts\n'));
+      console.log(
+        chalk.red(
+          '\n✗ Inquirer.js nie jest zainstalowany. Uruchom: npm install @inquirer/prompts\n',
+        ),
+      );
     }
     promptLoop();
     return;
@@ -381,16 +436,26 @@ async function handleInput(line: string): Promise<void> {
     if (taskQueue.length === 0) {
       console.log(chalk.gray('Kolejka jest pusta.\n'));
     } else {
-      taskQueue.forEach(task => {
-        const statusIcon = task.status === 'completed' ? chalk.green('✓') :
-                          task.status === 'running' ? chalk.yellow('⟳') :
-                          task.status === 'failed' ? chalk.red('✗') :
-                          chalk.gray('○');
-        const statusText = task.status === 'completed' ? chalk.green(task.status) :
-                          task.status === 'running' ? chalk.yellow(task.status) :
-                          task.status === 'failed' ? chalk.red(task.status) :
-                          chalk.gray(task.status);
-        console.log(`${statusIcon} #${task.id} [${statusText}] ${task.objective.substring(0, 50)}${task.objective.length > 50 ? '...' : ''}`);
+      taskQueue.forEach((task) => {
+        const statusIcon =
+          task.status === 'completed'
+            ? chalk.green('✓')
+            : task.status === 'running'
+              ? chalk.yellow('⟳')
+              : task.status === 'failed'
+                ? chalk.red('✗')
+                : chalk.gray('○');
+        const statusText =
+          task.status === 'completed'
+            ? chalk.green(task.status)
+            : task.status === 'running'
+              ? chalk.yellow(task.status)
+              : task.status === 'failed'
+                ? chalk.red(task.status)
+                : chalk.gray(task.status);
+        console.log(
+          `${statusIcon} #${task.id} [${statusText}] ${task.objective.substring(0, 50)}${task.objective.length > 50 ? '...' : ''}`,
+        );
       });
       console.log('');
     }
@@ -401,14 +466,14 @@ async function handleInput(line: string): Promise<void> {
   if (trimmed.startsWith('/cancel ')) {
     const idStr = trimmed.replace('/cancel ', '').trim();
     const id = parseInt(idStr, 10);
-    if (isNaN(id)) {
+    if (Number.isNaN(id)) {
       console.log(chalk.red(`\nNieprawidłowy ID zadania: ${idStr}\n`));
       promptLoop();
       return;
     }
-    const task = taskQueue.find(t => t.id === id && t.status === 'pending');
+    const task = taskQueue.find((t) => t.id === id && t.status === 'pending');
     if (task) {
-      taskQueue = taskQueue.filter(t => t.id !== id);
+      taskQueue = taskQueue.filter((t) => t.id !== id);
       console.log(chalk.green(`\nAnulowano zadanie #${id}\n`));
     } else {
       console.log(chalk.red(`\nNie znaleziono oczekującego zadania #${id}\n`));
@@ -446,7 +511,7 @@ async function handleInput(line: string): Promise<void> {
     const tools = mcpManager.getAllTools();
     if (tools.length > 0) {
       console.log(chalk.cyan('\nAvailable MCP Tools:'));
-      tools.slice(0, 10).forEach(t => {
+      tools.slice(0, 10).forEach((t) => {
         console.log(chalk.gray(`  mcp__${t.serverName}__${t.name}`));
       });
       if (tools.length > 10) {
@@ -493,7 +558,7 @@ async function handleInput(line: string): Promise<void> {
             try {
               await longTermMemory.init();
               await longTermMemory.autoExtract(resultText, `mcp-tool-${toolName}`);
-            } catch (memError) {
+            } catch (_memError) {
               // Silently ignore memory extraction errors
             }
           }
@@ -519,9 +584,7 @@ async function handleInput(line: string): Promise<void> {
   // Agent switch: @agent
   if (trimmed.startsWith('@')) {
     const agentName = trimmed.slice(1).toLowerCase();
-    const matchedAgent = Object.keys(AGENT_PERSONAS).find(
-      a => a.toLowerCase() === agentName
-    );
+    const matchedAgent = Object.keys(AGENT_PERSONAS).find((a) => a.toLowerCase() === agentName);
     if (matchedAgent) {
       console.log(chalk.gray(`Switched to ${matchedAgent}`));
     } else {
@@ -544,7 +607,7 @@ async function handleInput(line: string): Promise<void> {
     addToCommandHistory(trimmed);
 
     const task = addTaskToQueue(trimmed);
-    const runningCount = taskQueue.filter(t => t.status === 'running').length;
+    const runningCount = taskQueue.filter((t) => t.status === 'running').length;
 
     if (runningCount > 0) {
       console.log(chalk.yellow(`\n📋 Zadanie #${task.id} dodane do kolejki`));

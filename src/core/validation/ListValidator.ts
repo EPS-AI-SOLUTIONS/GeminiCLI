@@ -2,12 +2,14 @@
  * List validation and auto-correction
  */
 
-import type { FormatSpec, FormatError } from './types.js';
+import type { FormatError, FormatSpec } from './types.js';
 
 /**
  * Extract list items from text
  */
-export function extractListItems(text: string): Array<{ type: 'bullet' | 'numbered'; content: string; line: number }> {
+export function extractListItems(
+  text: string,
+): Array<{ type: 'bullet' | 'numbered'; content: string; line: number }> {
   const items: Array<{ type: 'bullet' | 'numbered'; content: string; line: number }> = [];
   const lines = text.split('\n');
 
@@ -34,7 +36,7 @@ export function validateList(
   output: string,
   spec: FormatSpec,
   errors: FormatError[],
-  suggestions: string[]
+  suggestions: string[],
 ): void {
   const listItems = extractListItems(output);
 
@@ -43,7 +45,7 @@ export function validateList(
       type: 'structure',
       message: 'No list items found',
       expected: 'Bullet points (-) or numbered items (1.)',
-      actual: 'No list structure detected'
+      actual: 'No list structure detected',
     });
     suggestions.push('Format output as a list using - or 1. prefixes');
     return;
@@ -54,21 +56,21 @@ export function validateList(
       type: 'invalid',
       message: `Too few list items`,
       expected: `>= ${spec.minItems} items`,
-      actual: `${listItems.length} items`
+      actual: `${listItems.length} items`,
     });
     suggestions.push(`Add at least ${spec.minItems - listItems.length} more items`);
   }
 
   if (spec.listStyle) {
-    const hasBullets = listItems.some(item => item.type === 'bullet');
-    const hasNumbered = listItems.some(item => item.type === 'numbered');
+    const hasBullets = listItems.some((item) => item.type === 'bullet');
+    const hasNumbered = listItems.some((item) => item.type === 'numbered');
 
     if (spec.listStyle === 'bullet' && hasNumbered && !hasBullets) {
       errors.push({
         type: 'structure',
         message: 'Expected bullet list, found numbered list',
         expected: 'Bullet points (-, *, +)',
-        actual: 'Numbered items'
+        actual: 'Numbered items',
       });
       suggestions.push('Convert numbered list to bullet points');
     } else if (spec.listStyle === 'numbered' && hasBullets && !hasNumbered) {
@@ -76,19 +78,19 @@ export function validateList(
         type: 'structure',
         message: 'Expected numbered list, found bullet list',
         expected: 'Numbered items (1., 2., etc.)',
-        actual: 'Bullet points'
+        actual: 'Bullet points',
       });
       suggestions.push('Convert bullet points to numbered list');
     }
   }
 
-  const emptyItems = listItems.filter(item => !item.content.trim());
+  const emptyItems = listItems.filter((item) => !item.content.trim());
   if (emptyItems.length > 0) {
     errors.push({
       type: 'invalid',
       message: `${emptyItems.length} empty list item(s) found`,
       expected: 'Non-empty content',
-      actual: 'Empty items'
+      actual: 'Empty items',
     });
   }
 }

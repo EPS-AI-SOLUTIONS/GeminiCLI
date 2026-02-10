@@ -24,11 +24,11 @@ export default {
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        'glow': 'glow 2s ease-in-out infinite alternate',
+        glow: 'glow 2s ease-in-out infinite alternate',
         'fade-in': 'fadeIn 0.3s ease-out',
         'slide-up': 'slideUp 0.3s ease-out',
         'slide-down': 'slideDown 0.3s ease-out',
-        'shimmer': 'shimmer 1.5s infinite',
+        shimmer: 'shimmer 1.5s infinite',
       },
       keyframes: {
         glow: {
@@ -55,7 +55,7 @@ export default {
       boxShadow: {
         'matrix-glow': '0 0 20px var(--matrix-accent-glow)',
         'matrix-glow-sm': '0 0 10px var(--matrix-accent-glow)',
-        'glass': '0 8px 32px rgba(0, 0, 0, 0.3)',
+        glass: '0 8px 32px rgba(0, 0, 0, 0.3)',
       },
     },
   },

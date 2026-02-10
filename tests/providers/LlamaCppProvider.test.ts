@@ -2,11 +2,11 @@
  * Tests for LlamaCpp Provider
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  LlamaCppProvider,
   createLlamaCppProvider,
   LLAMA_CPP_MODELS,
+  LlamaCppProvider,
 } from '../../src/providers/LlamaCppProvider.js';
 
 // Mock fetch
@@ -63,7 +63,7 @@ describe('LlamaCppProvider', () => {
       expect(result).toBe(true);
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:8000/health',
-        expect.objectContaining({ method: 'GET' })
+        expect.objectContaining({ method: 'GET' }),
       );
     });
 
@@ -88,9 +88,10 @@ describe('LlamaCppProvider', () => {
     it('should return models from server', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          data: [{ id: 'model-1' }, { id: 'model-2' }]
-        }),
+        json: () =>
+          Promise.resolve({
+            data: [{ id: 'model-1' }, { id: 'model-2' }],
+          }),
       });
 
       const models = await provider.getAvailableModels();
@@ -119,9 +120,10 @@ describe('LlamaCppProvider', () => {
     it('should return server info', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          data: [{ id: 'test-model' }]
-        }),
+        json: () =>
+          Promise.resolve({
+            data: [{ id: 'test-model' }],
+          }),
       });
 
       const info = await provider.getServerInfo();
@@ -157,11 +159,13 @@ describe('LlamaCppProvider', () => {
         object: 'chat.completion',
         created: Date.now(),
         model: 'test-model',
-        choices: [{
-          index: 0,
-          message: { role: 'assistant', content: 'Response' },
-          finish_reason: 'stop',
-        }],
+        choices: [
+          {
+            index: 0,
+            message: { role: 'assistant', content: 'Response' },
+            finish_reason: 'stop',
+          },
+        ],
       };
 
       mockFetch.mockResolvedValueOnce({
@@ -180,7 +184,7 @@ describe('LlamaCppProvider', () => {
         expect.objectContaining({
           method: 'POST',
           body: expect.stringContaining('"temperature":0.8'),
-        })
+        }),
       );
       expect(response).toEqual(mockResponse);
     });
@@ -208,9 +212,11 @@ describe('LlamaCppProvider', () => {
         text: () => Promise.resolve('Internal server error'),
       });
 
-      await expect(provider.createChatCompletion({
-        messages: [{ role: 'user', content: 'Hello' }],
-      })).rejects.toThrow('llama-cpp-python error: 500');
+      await expect(
+        provider.createChatCompletion({
+          messages: [{ role: 'user', content: 'Hello' }],
+        }),
+      ).rejects.toThrow('llama-cpp-python error: 500');
     });
 
     it('should include API key in headers when provided', async () => {
@@ -242,7 +248,8 @@ describe('LlamaCppProvider', () => {
       ];
 
       const mockReader = {
-        read: vi.fn()
+        read: vi
+          .fn()
           .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode(chunks[0]) })
           .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode(chunks[1]) })
           .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode(chunks[2]) })
@@ -301,7 +308,8 @@ describe('LlamaCppProvider', () => {
       ];
 
       const mockReader = {
-        read: vi.fn()
+        read: vi
+          .fn()
           .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode(chunks.join('')) })
           .mockResolvedValueOnce({ done: true, value: undefined }),
       };

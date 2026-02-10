@@ -13,14 +13,14 @@ export type FormatType = 'json' | 'markdown' | 'code' | 'list' | 'freeform';
  */
 export interface FormatSpec {
   type: FormatType;
-  schema?: JsonSchema;                    // JSON schema for 'json' type
-  requiredSections?: string[];            // Required headers for 'markdown'
-  codeLanguage?: string;                  // Expected language for 'code'
-  listStyle?: 'bullet' | 'numbered' | 'both';  // List style for 'list'
-  minItems?: number;                      // Minimum items for 'list'
-  maxLength?: number;                     // Maximum output length
-  allowEmpty?: boolean;                   // Allow empty output
-  customValidator?: (output: string) => FormatError[];  // Custom validation
+  schema?: JsonSchema; // JSON schema for 'json' type
+  requiredSections?: string[]; // Required headers for 'markdown'
+  codeLanguage?: string; // Expected language for 'code'
+  listStyle?: 'bullet' | 'numbered' | 'both'; // List style for 'list'
+  minItems?: number; // Minimum items for 'list'
+  maxLength?: number; // Maximum output length
+  allowEmpty?: boolean; // Allow empty output
+  customValidator?: (output: string) => FormatError[]; // Custom validation
 }
 
 /**
@@ -53,7 +53,7 @@ export interface FormatError {
   column?: number;
   expected?: string;
   actual?: string;
-  path?: string;                          // JSON path or section name
+  path?: string; // JSON path or section name
 }
 
 /**

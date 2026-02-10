@@ -5,12 +5,12 @@
  * duplicate beforeEach initialization across test files.
  */
 
-import { test as base, expect, Page } from '@playwright/test';
-import { injectTauriMocks } from './tauri-mocks';
+import { test as base, expect, type Page } from '@playwright/test';
 import { ChatPage } from '../page-objects/ChatPage';
-import { SettingsModal } from '../page-objects/SettingsModal';
-import { SessionSidebar } from '../page-objects/SessionSidebar';
 import { MemoryPanel } from '../page-objects/MemoryPanel';
+import { SessionSidebar } from '../page-objects/SessionSidebar';
+import { SettingsModal } from '../page-objects/SettingsModal';
+import { injectTauriMocks } from './tauri-mocks';
 
 /**
  * Custom fixture types for test context
@@ -79,7 +79,7 @@ export interface SetupOptions {
  */
 export async function setupTest(
   page: Page,
-  options: SetupOptions = {}
+  options: SetupOptions = {},
 ): Promise<{
   chat: ChatPage;
   settings: SettingsModal;

@@ -3,10 +3,9 @@
  * Features #48: Input Sanitization, #50: Secure Config
  */
 
-import chalk from 'chalk';
-import crypto from 'crypto';
-import fs from 'fs/promises';
-import path from 'path';
+import crypto from 'node:crypto';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 
 import { GEMINIHYDRA_DIR } from '../config/paths.config.js';
 
@@ -41,25 +40,25 @@ export interface SanitizationOptions {
 export const DEFAULT_BLOCKED_PATTERNS: RegExp[] = [
   // === Shell injection patterns ===
   /;\s*rm\s+-rf/i,
-  /rm\s+-rf/i,                    // from validators.ts
+  /rm\s+-rf/i, // from validators.ts
   /;\s*dd\s+if=/i,
-  /dd\s+if=/i,                    // from validators.ts
+  /dd\s+if=/i, // from validators.ts
   /;\s*mkfs\./i,
-  /mkfs/i,                        // from validators.ts
+  /mkfs/i, // from validators.ts
   />\s*\/dev\/(sda|hda|nvme)/i,
-  />\s*\/dev\//i,                 // from validators.ts (broader)
+  />\s*\/dev\//i, // from validators.ts (broader)
   /\|\s*sh\s*$/i,
-  /\|\s*bash\s*$/i,               // from validators.ts
+  /\|\s*bash\s*$/i, // from validators.ts
   /\$\(.*\)/,
   /`[^`]+`/,
 
   // === File system destruction (Windows) ===
-  /del\s+\/[sfq]/i,               // from validators.ts
-  /format\s+[a-z]:/i,             // from validators.ts
+  /del\s+\/[sfq]/i, // from validators.ts
+  /format\s+[a-z]:/i, // from validators.ts
 
   // === Remote code execution via pipe ===
-  /curl.*\|\s*(ba)?sh/i,          // from validators.ts
-  /wget.*\|\s*(ba)?sh/i,          // from validators.ts
+  /curl.*\|\s*(ba)?sh/i, // from validators.ts
+  /wget.*\|\s*(ba)?sh/i, // from validators.ts
 
   // === Path traversal ===
   /\.\.\/\.\.\/\.\.\//,
@@ -84,20 +83,20 @@ export const DEFAULT_BLOCKED_PATTERNS: RegExp[] = [
   /Invoke-Expression/i,
   /IEX\s*\(/i,
   /-EncodedCommand/i,
-  /powershell.*-enc/i,            // from validators.ts
+  /powershell.*-enc/i, // from validators.ts
   /Start-Process.*-Verb\s+RunAs/i,
 
   // === Code evaluation patterns ===
-  /eval\s*\(/i,                   // from validators.ts
-  /exec\s*\(/i,                   // from validators.ts
+  /eval\s*\(/i, // from validators.ts
+  /exec\s*\(/i, // from validators.ts
 
   // === Python-specific dangerous patterns ===
-  /__import__\s*\(/i,             // from validators.ts
-  /subprocess/i,                  // from validators.ts
-  /os\.system/i,                  // from validators.ts
+  /__import__\s*\(/i, // from validators.ts
+  /subprocess/i, // from validators.ts
+  /os\.system/i, // from validators.ts
 
   // === Node.js dangerous patterns ===
-  /child_process/i,               // from validators.ts
+  /child_process/i, // from validators.ts
 ];
 
 /**
@@ -105,7 +104,7 @@ export const DEFAULT_BLOCKED_PATTERNS: RegExp[] = [
  * Use this for code validation before execution.
  */
 export function containsDangerousPatterns(code: string): boolean {
-  return DEFAULT_BLOCKED_PATTERNS.some(pattern => pattern.test(code));
+  return DEFAULT_BLOCKED_PATTERNS.some((pattern) => pattern.test(code));
 }
 
 const DANGEROUS_COMMANDS = [
@@ -116,7 +115,7 @@ const DANGEROUS_COMMANDS = [
   'reboot',
   'mkfs',
   'dd if=',
-  ':(){:|:&};:',  // Fork bomb
+  ':(){:|:&};:', // Fork bomb
   'chmod -R 777 /',
   'chown -R',
 ];
@@ -131,7 +130,7 @@ export class InputSanitizer {
       blockedPatterns: options.blockedPatterns ?? DEFAULT_BLOCKED_PATTERNS,
       stripHtml: options.stripHtml ?? true,
       stripControlChars: options.stripControlChars ?? true,
-      normalizeWhitespace: options.normalizeWhitespace ?? true
+      normalizeWhitespace: options.normalizeWhitespace ?? true,
     };
   }
 
@@ -155,7 +154,7 @@ export class InputSanitizer {
           sanitized: '',
           warnings,
           blocked: true,
-          blockedReason: `Dangerous command detected: ${dangerous}`
+          blockedReason: `Dangerous command detected: ${dangerous}`,
         };
       }
     }
@@ -167,7 +166,7 @@ export class InputSanitizer {
           sanitized: '',
           warnings,
           blocked: true,
-          blockedReason: `Blocked pattern detected: ${pattern.source.substring(0, 30)}...`
+          blockedReason: `Blocked pattern detected: ${pattern.source.substring(0, 30)}...`,
         };
       }
     }
@@ -184,7 +183,8 @@ export class InputSanitizer {
     // Strip control characters
     if (this.options.stripControlChars) {
       const beforeControl = sanitized;
-      // Keep newlines and tabs
+      // Keep newlines and tabs — intentional control character matching for security sanitization
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional security sanitization of control chars
       sanitized = sanitized.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
       if (beforeControl !== sanitized) {
         warnings.push('Control characters stripped');
@@ -226,13 +226,14 @@ export class InputSanitizer {
           sanitized: '',
           warnings,
           blocked: true,
-          blockedReason: `Access to system path blocked: ${dangerous}`
+          blockedReason: `Access to system path blocked: ${dangerous}`,
         };
       }
     }
 
     // Prevent null byte injection
     if (sanitized.includes('\x00')) {
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional null byte removal for security
       sanitized = sanitized.replace(/\x00/g, '');
       warnings.push('Null bytes removed from path');
     }
@@ -281,7 +282,7 @@ export class InputSanitizer {
     }
 
     if (Array.isArray(obj)) {
-      return obj.map(item => this.deepSanitizeObject(item, warnings, depth + 1));
+      return obj.map((item) => this.deepSanitizeObject(item, warnings, depth + 1));
     }
 
     if (obj && typeof obj === 'object') {
@@ -301,7 +302,10 @@ export class InputSanitizer {
   /**
    * Validate and sanitize MCP tool call
    */
-  sanitizeMCPToolCall(toolName: string, params: Record<string, any>): SanitizationResult & { params?: Record<string, any> } {
+  sanitizeMCPToolCall(
+    toolName: string,
+    params: Record<string, any>,
+  ): SanitizationResult & { params?: Record<string, any> } {
     const warnings: string[] = [];
 
     // Sanitize tool name
@@ -324,7 +328,7 @@ export class InputSanitizer {
               warnings: [...warnings, ...pathResult.warnings],
               blocked: true,
               blockedReason: pathResult.blockedReason,
-              params: undefined
+              params: undefined,
             };
           }
           sanitizedParams[key] = pathResult.sanitized;
@@ -337,7 +341,7 @@ export class InputSanitizer {
               warnings: [...warnings, ...strResult.warnings],
               blocked: true,
               blockedReason: strResult.blockedReason,
-              params: undefined
+              params: undefined,
             };
           }
           sanitizedParams[key] = strResult.sanitized;
@@ -352,12 +356,222 @@ export class InputSanitizer {
       sanitized: toolResult.sanitized,
       warnings,
       blocked: false,
-      params: sanitizedParams
+      params: sanitizedParams,
     };
   }
 }
 
 export const sanitizer = new InputSanitizer();
+
+// ============================================================
+// Feature #50: Secure Configuration
+// ============================================================
+
+// ============================================================
+// Feature #47: API Key Rotation & Multi-Key Support
+// ============================================================
+
+export interface ApiKeyEntry {
+  key: string;
+  label: string;
+  addedAt: number;
+  lastUsedAt?: number;
+  usageCount: number;
+  failureCount: number;
+  disabled: boolean;
+}
+
+export type ApiKeySelectionStrategy = 'round-robin' | 'least-used' | 'random';
+
+/**
+ * Multi-key API key manager with rotation, health tracking,
+ * and configurable selection strategies.
+ */
+export class ApiKeyRotator {
+  private keys: Map<string, ApiKeyEntry[]> = new Map();
+  private indices: Map<string, number> = new Map();
+  private strategy: ApiKeySelectionStrategy;
+  private maxFailures: number;
+
+  constructor(strategy: ApiKeySelectionStrategy = 'round-robin', maxFailures = 5) {
+    this.strategy = strategy;
+    this.maxFailures = maxFailures;
+  }
+
+  /**
+   * Add an API key for a provider
+   */
+  addKey(provider: string, key: string, label?: string): void {
+    const list = this.keys.get(provider) ?? [];
+    // Don't add duplicates
+    if (list.some((e) => e.key === key)) return;
+    list.push({
+      key,
+      label: label ?? `key-${list.length + 1}`,
+      addedAt: Date.now(),
+      usageCount: 0,
+      failureCount: 0,
+      disabled: false,
+    });
+    this.keys.set(provider, list);
+    if (!this.indices.has(provider)) this.indices.set(provider, 0);
+  }
+
+  /**
+   * Remove an API key by label
+   */
+  removeKey(provider: string, label: string): boolean {
+    const list = this.keys.get(provider);
+    if (!list) return false;
+    const idx = list.findIndex((e) => e.label === label);
+    if (idx === -1) return false;
+    list.splice(idx, 1);
+    return true;
+  }
+
+  /**
+   * Get next healthy API key using configured strategy
+   */
+  getKey(provider: string): string | undefined {
+    const list = this.keys.get(provider);
+    if (!list || list.length === 0) return undefined;
+
+    const healthy = list.filter((e) => !e.disabled && e.failureCount < this.maxFailures);
+    if (healthy.length === 0) {
+      // All keys exhausted — reset failures and try again (circuit-breaker-style)
+      for (const entry of list) {
+        if (!entry.disabled) entry.failureCount = 0;
+      }
+      const retryList = list.filter((e) => !e.disabled);
+      if (retryList.length === 0) return undefined;
+      return this.selectKey(provider, retryList);
+    }
+
+    return this.selectKey(provider, healthy);
+  }
+
+  private selectKey(provider: string, candidates: ApiKeyEntry[]): string {
+    let selected: ApiKeyEntry;
+
+    switch (this.strategy) {
+      case 'round-robin': {
+        const idx = (this.indices.get(provider) ?? 0) % candidates.length;
+        selected = candidates[idx]!;
+        this.indices.set(provider, idx + 1);
+        break;
+      }
+      case 'least-used': {
+        selected = candidates.reduce((a, b) => (a.usageCount <= b.usageCount ? a : b));
+        break;
+      }
+      case 'random': {
+        selected = candidates[Math.floor(Math.random() * candidates.length)]!;
+        break;
+      }
+      default:
+        selected = candidates[0]!;
+    }
+
+    selected.usageCount++;
+    selected.lastUsedAt = Date.now();
+    return selected.key;
+  }
+
+  /**
+   * Report a failure for a key (mark unhealthy after threshold)
+   */
+  reportFailure(provider: string, key: string): void {
+    const entry = this.findEntry(provider, key);
+    if (entry) entry.failureCount++;
+  }
+
+  /**
+   * Report a success — resets failure count
+   */
+  reportSuccess(provider: string, key: string): void {
+    const entry = this.findEntry(provider, key);
+    if (entry) entry.failureCount = 0;
+  }
+
+  /**
+   * Disable a specific key permanently
+   */
+  disableKey(provider: string, label: string): boolean {
+    const list = this.keys.get(provider);
+    if (!list) return false;
+    const entry = list.find((e) => e.label === label);
+    if (!entry) return false;
+    entry.disabled = true;
+    return true;
+  }
+
+  /**
+   * Get status of all keys for a provider
+   */
+  getStatus(provider: string): Array<{
+    label: string;
+    usageCount: number;
+    failureCount: number;
+    disabled: boolean;
+    healthy: boolean;
+    lastUsedAt?: number;
+  }> {
+    const list = this.keys.get(provider) ?? [];
+    return list.map((e) => ({
+      label: e.label,
+      usageCount: e.usageCount,
+      failureCount: e.failureCount,
+      disabled: e.disabled,
+      healthy: !e.disabled && e.failureCount < this.maxFailures,
+      lastUsedAt: e.lastUsedAt,
+    }));
+  }
+
+  /**
+   * Get all providers and their key counts
+   */
+  getProviders(): Array<{ provider: string; totalKeys: number; healthyKeys: number }> {
+    const result: Array<{ provider: string; totalKeys: number; healthyKeys: number }> = [];
+    for (const [provider, list] of this.keys) {
+      result.push({
+        provider,
+        totalKeys: list.length,
+        healthyKeys: list.filter((e) => !e.disabled && e.failureCount < this.maxFailures).length,
+      });
+    }
+    return result;
+  }
+
+  /**
+   * Export state for persistence
+   */
+  exportState(): Record<string, ApiKeyEntry[]> {
+    const result: Record<string, ApiKeyEntry[]> = {};
+    for (const [provider, list] of this.keys) {
+      result[provider] = list.map((e) => ({ ...e }));
+    }
+    return result;
+  }
+
+  /**
+   * Import state from persistence
+   */
+  importState(state: Record<string, ApiKeyEntry[]>): void {
+    this.keys.clear();
+    this.indices.clear();
+    for (const [provider, list] of Object.entries(state)) {
+      this.keys.set(provider, list);
+      this.indices.set(provider, 0);
+    }
+  }
+
+  private findEntry(provider: string, key: string): ApiKeyEntry | undefined {
+    return this.keys.get(provider)?.find((e) => e.key === key);
+  }
+}
+
+/** Singleton API key rotator */
+export const apiKeyRotator = new ApiKeyRotator();
 
 // ============================================================
 // Feature #50: Secure Configuration
@@ -376,7 +590,7 @@ export class SecureConfig {
     apiKeys: {},
     credentials: {},
     tokens: {},
-    custom: {}
+    custom: {},
   };
   private initialized = false;
 
@@ -425,7 +639,7 @@ export class SecureConfig {
     return JSON.stringify({
       iv: iv.toString('hex'),
       encrypted,
-      authTag: authTag.toString('hex')
+      authTag: authTag.toString('hex'),
     });
   }
 
@@ -437,11 +651,7 @@ export class SecureConfig {
 
     const { iv, encrypted, authTag } = JSON.parse(encryptedData);
 
-    const decipher = crypto.createDecipheriv(
-      'aes-256-gcm',
-      this.key,
-      Buffer.from(iv, 'hex')
-    );
+    const decipher = crypto.createDecipheriv('aes-256-gcm', this.key, Buffer.from(iv, 'hex'));
 
     decipher.setAuthTag(Buffer.from(authTag, 'hex'));
 
@@ -548,7 +758,7 @@ export class SecureConfig {
       apiKeys: Object.keys(this.data.apiKeys),
       credentials: Object.keys(this.data.credentials),
       tokens: Object.keys(this.data.tokens),
-      custom: Object.keys(this.data.custom)
+      custom: Object.keys(this.data.custom),
     };
   }
 
@@ -604,7 +814,7 @@ export class SecureConfig {
       apiKeys: {},
       credentials: {},
       tokens: {},
-      custom: {}
+      custom: {},
     };
     await this.save();
   }
@@ -623,24 +833,31 @@ export function maskSensitive(text: string): string {
   let masked = text;
 
   // Mask API keys
-  masked = masked.replace(/(api[_-]?key|apikey)\s*[:=]\s*['"]?([a-zA-Z0-9_-]{20,})['"]?/gi,
-    '$1=***MASKED***');
+  masked = masked.replace(
+    /(api[_-]?key|apikey)\s*[:=]\s*['"]?([a-zA-Z0-9_-]{20,})['"]?/gi,
+    '$1=***MASKED***',
+  );
 
   // Mask passwords
-  masked = masked.replace(/(password|passwd|pwd)\s*[:=]\s*['"]?([^'"\s]+)['"]?/gi,
-    '$1=***MASKED***');
+  masked = masked.replace(
+    /(password|passwd|pwd)\s*[:=]\s*['"]?([^'"\s]+)['"]?/gi,
+    '$1=***MASKED***',
+  );
 
   // Mask tokens
-  masked = masked.replace(/(token|bearer|auth)\s*[:=]\s*['"]?([a-zA-Z0-9_.-]{20,})['"]?/gi,
-    '$1=***MASKED***');
+  masked = masked.replace(
+    /(token|bearer|auth)\s*[:=]\s*['"]?([a-zA-Z0-9_.-]{20,})['"]?/gi,
+    '$1=***MASKED***',
+  );
 
   // Mask credit card numbers
-  masked = masked.replace(/\b(\d{4})[- ]?(\d{4})[- ]?(\d{4})[- ]?(\d{4})\b/g,
-    '$1-****-****-$4');
+  masked = masked.replace(/\b(\d{4})[- ]?(\d{4})[- ]?(\d{4})[- ]?(\d{4})\b/g, '$1-****-****-$4');
 
   // Mask email addresses partially
-  masked = masked.replace(/([a-zA-Z0-9._%+-]+)@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g,
-    (match, local, domain) => `${local.substring(0, 2)}***@${domain}`);
+  masked = masked.replace(
+    /([a-zA-Z0-9._%+-]+)@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g,
+    (_match, local, domain) => `${local.substring(0, 2)}***@${domain}`,
+  );
 
   return masked;
 }
@@ -683,7 +900,7 @@ export class RateLimiter {
     let requests = this.requests.get(key) || [];
 
     // Filter to current window
-    requests = requests.filter(time => time > windowStart);
+    requests = requests.filter((time) => time > windowStart);
 
     // Check limit
     if (requests.length >= this.maxRequests) {
@@ -704,7 +921,7 @@ export class RateLimiter {
     const now = Date.now();
     const windowStart = now - this.windowMs;
 
-    const requests = (this.requests.get(key) || []).filter(time => time > windowStart);
+    const requests = (this.requests.get(key) || []).filter((time) => time > windowStart);
     return Math.max(0, this.maxRequests - requests.length);
   }
 
@@ -734,9 +951,11 @@ export default {
   sanitizer,
   SecureConfig,
   secureConfig,
+  ApiKeyRotator,
+  apiKeyRotator,
   maskSensitive,
   generateSecureToken,
   hashSensitive,
   RateLimiter,
-  rateLimiter
+  rateLimiter,
 };

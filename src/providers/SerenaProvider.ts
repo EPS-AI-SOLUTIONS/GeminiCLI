@@ -4,13 +4,13 @@
  * Enables semantic code operations for agents
  */
 
+import { createSerenaService, type SerenaConfig, type SerenaService } from '../mcp/index.js';
 import type {
-  LLMProvider,
+  ChatCompletionChunk,
   ChatCompletionRequest,
   ChatCompletionResponse,
-  ChatCompletionChunk,
+  LLMProvider,
 } from '../types/index.js';
-import { SerenaService, createSerenaService, type SerenaConfig } from '../mcp/index.js';
 
 export interface SerenaProviderConfig {
   baseProvider: LLMProvider;
@@ -169,7 +169,7 @@ export class SerenaProvider implements LLMProvider {
    * Create streaming chat completion
    */
   async *createChatCompletionStream(
-    request: ChatCompletionRequest
+    request: ChatCompletionRequest,
   ): AsyncIterable<ChatCompletionChunk> {
     if (this.baseProvider.createChatCompletionStream) {
       if (this.enableTools) {
@@ -189,11 +189,9 @@ export class SerenaProvider implements LLMProvider {
    * Add Serena tools context to messages
    */
   private addToolsContext(
-    messages: ChatCompletionRequest['messages']
+    messages: ChatCompletionRequest['messages'],
   ): ChatCompletionRequest['messages'] {
-    const toolsDescription = SERENA_TOOLS.map(
-      (t) => `- ${t.name}: ${t.description}`
-    ).join('\n');
+    const toolsDescription = SERENA_TOOLS.map((t) => `- ${t.name}: ${t.description}`).join('\n');
 
     const systemMessage = messages.find((m) => m.role === 'system');
     const otherMessages = messages.filter((m) => m.role !== 'system');
@@ -272,7 +270,7 @@ Use these tools when you need to:
  */
 export function createSerenaProvider(
   baseProvider: LLMProvider,
-  serenaConfig?: SerenaConfig
+  serenaConfig?: SerenaConfig,
 ): SerenaProvider {
   return new SerenaProvider({
     baseProvider,

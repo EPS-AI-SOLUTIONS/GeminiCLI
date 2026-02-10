@@ -4,8 +4,8 @@
  */
 
 import type { FastifyReply, FastifyRequest, RouteGenericInterface } from 'fastify';
-import { ApiError } from '../middleware/errorHandler.js';
 import { API_ERRORS } from '../constants/index.js';
+import { ApiError } from '../middleware/errorHandler.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Types
@@ -13,7 +13,7 @@ import { API_ERRORS } from '../constants/index.js';
 
 export type RouteHandler<TRequest extends RouteGenericInterface, TResponse> = (
   request: FastifyRequest<TRequest>,
-  reply: FastifyReply
+  reply: FastifyReply,
 ) => Promise<TResponse>;
 
 export interface ErrorResult {
@@ -68,7 +68,7 @@ export function getErrorStatusCode(error: unknown): number {
  * Returns error response instead of throwing
  */
 export function wrapRoute<TRequest extends RouteGenericInterface, TResponse>(
-  handler: RouteHandler<TRequest, TResponse>
+  handler: RouteHandler<TRequest, TResponse>,
 ): RouteHandler<TRequest, TResponse | ErrorResult> {
   return async (request, reply) => {
     try {
@@ -86,7 +86,7 @@ export function wrapRoute<TRequest extends RouteGenericInterface, TResponse>(
  * Uses 500 status for execution failures
  */
 export function wrapExecutionRoute<TRequest extends RouteGenericInterface, TResponse>(
-  handler: RouteHandler<TRequest, TResponse>
+  handler: RouteHandler<TRequest, TResponse>,
 ): RouteHandler<TRequest, TResponse | ErrorResult> {
   return async (request, reply) => {
     try {
@@ -116,7 +116,10 @@ export function successResponse<T>(data: T): T {
 /**
  * Create error response
  */
-export function errorResponse(message: string, statusCode: number = 500): ErrorResult & { statusCode: number } {
+export function errorResponse(
+  message: string,
+  statusCode: number = 500,
+): ErrorResult & { statusCode: number } {
   return {
     error: message,
     statusCode,

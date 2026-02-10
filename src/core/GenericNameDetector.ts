@@ -18,7 +18,7 @@ export interface GenericNameMatch {
 export interface GenericNameResult {
   hasGenericNames: boolean;
   matches: GenericNameMatch[];
-  score: number;  // 0-100
+  score: number; // 0-100
   recommendation: string;
 }
 
@@ -28,10 +28,11 @@ export interface GenericNameResult {
 const GENERIC_PATTERNS = {
   // File names with numbers
   numberedFiles: {
-    pattern: /\b(?:file|class|component|module|service|helper|util|test|spec)\d+\.(ts|js|tsx|jsx|py|java|go|rs)\b/gi,
+    pattern:
+      /\b(?:file|class|component|module|service|helper|util|test|spec)\d+\.(ts|js|tsx|jsx|py|java|go|rs)\b/gi,
     type: 'file' as const,
     severity: 'high' as const,
-    reason: 'Plik z numerem (file1.ts) - prawdopodobnie halucynacja'
+    reason: 'Plik z numerem (file1.ts) - prawdopodobnie halucynacja',
   },
 
   // Classes with numbers
@@ -39,7 +40,7 @@ const GENERIC_PATTERNS = {
     pattern: /\b(?:Class|Component|Service|Helper|Utils?|Handler|Manager|Controller|Factory)\d+\b/g,
     type: 'class' as const,
     severity: 'high' as const,
-    reason: 'Klasa z numerem (Class1) - prawdopodobnie halucynacja'
+    reason: 'Klasa z numerem (Class1) - prawdopodobnie halucynacja',
   },
 
   // Common placeholder names
@@ -47,7 +48,7 @@ const GENERIC_PATTERNS = {
     pattern: /\b(?:foo|bar|baz|qux|quux|corge|grault|garply|waldo|fred|plugh|xyzzy|thud)\b/gi,
     type: 'variable' as const,
     severity: 'medium' as const,
-    reason: 'Placeholder programistyczny (foo, bar)'
+    reason: 'Placeholder programistyczny (foo, bar)',
   },
 
   // Example/sample files
@@ -55,7 +56,7 @@ const GENERIC_PATTERNS = {
     pattern: /\b(?:example|sample|demo|test|dummy|mock|fake|temp|tmp)\.(ts|js|tsx|jsx)\b/gi,
     type: 'file' as const,
     severity: 'medium' as const,
-    reason: 'Plik przykładowy (example.ts)'
+    reason: 'Plik przykładowy (example.ts)',
   },
 
   // Generic function names
@@ -63,15 +64,16 @@ const GENERIC_PATTERNS = {
     pattern: /\bfunction\s+(?:doSomething|handleIt|processData|myFunction|testFunc|func\d*)\b/gi,
     type: 'function' as const,
     severity: 'medium' as const,
-    reason: 'Generyczna nazwa funkcji'
+    reason: 'Generyczna nazwa funkcji',
   },
 
   // Fake paths
   fakePaths: {
-    pattern: /(?:\/path\/to\/|C:\\path\\to\\|\/your\/|\/user\/project\/|src\/components\/Example)/gi,
+    pattern:
+      /(?:\/path\/to\/|C:\\path\\to\\|\/your\/|\/user\/project\/|src\/components\/Example)/gi,
     type: 'path' as const,
     severity: 'high' as const,
-    reason: 'Fikcyjna ścieżka (/path/to/)'
+    reason: 'Fikcyjna ścieżka (/path/to/)',
   },
 
   // MyXxx naming pattern
@@ -79,7 +81,7 @@ const GENERIC_PATTERNS = {
     pattern: /\b(?:My[A-Z][a-zA-Z]+|my[A-Z][a-zA-Z]+)\.(ts|js|tsx|jsx)\b/g,
     type: 'file' as const,
     severity: 'low' as const,
-    reason: 'Wzorzec MyXxx (MyComponent.ts)'
+    reason: 'Wzorzec MyXxx (MyComponent.ts)',
   },
 
   // Numbered variables
@@ -87,8 +89,8 @@ const GENERIC_PATTERNS = {
     pattern: /\b(?:var|let|const)\s+(?:data|result|value|item|element|obj|arr)\d+\b/gi,
     type: 'variable' as const,
     severity: 'low' as const,
-    reason: 'Zmienna z numerem (data1, result2)'
-  }
+    reason: 'Zmienna z numerem (data1, result2)',
+  },
 };
 
 /**
@@ -111,12 +113,12 @@ export function detectGenericNames(text: string): GenericNameResult {
   const matches: GenericNameMatch[] = [];
   let totalScore = 0;
 
-  for (const [key, config] of Object.entries(GENERIC_PATTERNS)) {
+  for (const [_key, config] of Object.entries(GENERIC_PATTERNS)) {
     const found = text.match(config.pattern);
     if (found) {
       for (const name of found) {
         // Skip whitelisted names
-        if (WHITELIST_PATTERNS.some(wp => wp.test(name))) {
+        if (WHITELIST_PATTERNS.some((wp) => wp.test(name))) {
           continue;
         }
 
@@ -124,12 +126,11 @@ export function detectGenericNames(text: string): GenericNameResult {
           name,
           type: config.type,
           severity: config.severity,
-          reason: config.reason
+          reason: config.reason,
         });
 
         // Add to score based on severity
-        totalScore += config.severity === 'high' ? 25 :
-                      config.severity === 'medium' ? 15 : 5;
+        totalScore += config.severity === 'high' ? 25 : config.severity === 'medium' ? 15 : 5;
       }
     }
   }
@@ -153,7 +154,7 @@ export function detectGenericNames(text: string): GenericNameResult {
     hasGenericNames: matches.length > 0,
     matches,
     score: totalScore,
-    recommendation
+    recommendation,
   };
 }
 
@@ -165,11 +166,11 @@ export function logGenericNameResults(result: GenericNameResult, prefix: string 
     return;
   }
 
-  const color = result.score >= 50 ? chalk.red :
-                result.score >= 25 ? chalk.yellow :
-                chalk.gray;
+  const color = result.score >= 50 ? chalk.red : result.score >= 25 ? chalk.yellow : chalk.gray;
 
-  console.log(color(`${prefix}[GenericNames] Score: ${result.score}/100 - ${result.recommendation}`));
+  console.log(
+    color(`${prefix}[GenericNames] Score: ${result.score}/100 - ${result.recommendation}`),
+  );
 
   // Group by type
   const byType = new Map<string, GenericNameMatch[]>();
@@ -177,11 +178,11 @@ export function logGenericNameResults(result: GenericNameResult, prefix: string 
     if (!byType.has(match.type)) {
       byType.set(match.type, []);
     }
-    byType.get(match.type)!.push(match);
+    byType.get(match.type)?.push(match);
   }
 
   for (const [type, typeMatches] of byType) {
-    console.log(chalk.gray(`  ${type}: ${typeMatches.map(m => m.name).join(', ')}`));
+    console.log(chalk.gray(`  ${type}: ${typeMatches.map((m) => m.name).join(', ')}`));
   }
 }
 
@@ -195,5 +196,5 @@ export function hasGenericNames(text: string): boolean {
 export default {
   detectGenericNames,
   logGenericNameResults,
-  hasGenericNames
+  hasGenericNames,
 };

@@ -71,7 +71,7 @@ impl ModelDownloader {
             .user_agent("GeminiHydra/1.0")
             .timeout(std::time::Duration::from_secs(3600)) // 1 hour timeout
             .build()
-            .expect("Failed to create HTTP client");
+            .unwrap_or_else(|_| Client::new());
 
         Self {
             client,

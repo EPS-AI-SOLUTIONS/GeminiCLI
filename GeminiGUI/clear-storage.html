@@ -126,19 +126,19 @@
             `;
         }
 
-        function fixModelName() {
+        function _fixModelName() {
             try {
                 const keys = Object.keys(localStorage);
                 let fixed = false;
 
                 keys.forEach(key => {
                     const value = localStorage.getItem(key);
-                    if (value && value.includes('gemini-3.0-flash')) {
+                    if (value?.includes('gemini-3.0-flash')) {
                         const newValue = value.replace(/gemini-3\.0-flash/g, 'gemini-3-flash-preview');
                         localStorage.setItem(key, newValue);
                         fixed = true;
                     }
-                    if (value && value.includes('gemini-3.0-pro')) {
+                    if (value?.includes('gemini-3.0-pro')) {
                         const newValue = value.replace(/gemini-3\.0-pro/g, 'gemini-3-pro-preview');
                         localStorage.setItem(key, newValue);
                         fixed = true;
@@ -156,11 +156,11 @@
             } catch (e) {
                 const result = document.getElementById('result');
                 result.className = 'result error';
-                result.textContent = '❌ Błąd: ' + e.message;
+                result.textContent = `❌ Błąd: ${e.message}`;
             }
         }
 
-        function clearStorage(clearAll) {
+        function _clearStorage(clearAll) {
             try {
                 if (clearAll) {
                     if (!confirm('Czy na pewno chcesz usunąć WSZYSTKIE dane (włącznie z historią czatu)?')) {
@@ -185,7 +185,7 @@
             } catch (e) {
                 const result = document.getElementById('result');
                 result.className = 'result error';
-                result.textContent = '❌ Błąd: ' + e.message;
+                result.textContent = `❌ Błąd: ${e.message}`;
             }
         }
 

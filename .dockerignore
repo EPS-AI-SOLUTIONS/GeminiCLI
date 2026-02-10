@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+GeminiGUI/node_modules/
+
+# Build output (rebuilt in container)
+dist/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# Testing
+tests/
+coverage/
+*.test.ts
+
+# GUI (separate build)
+GeminiGUI/
+
+# MCP servers (separate containers)
+serena/
+document-edit-mcp-pkg/
+mcp/
+
+# Local config
+.geminihydra/
+.env
+.env.*
+
+# Misc
+*.md
+*.log
+.husky/
+.biome/
+biome.jsonc
+CLAUDE.md
+IMPROVEMENTS_50.md

@@ -1,6 +1,6 @@
 /**
  * Keyboard Shortcuts Integration Examples
- * 
+ *
  * Real-world examples of how to use useHotkey and useKeyboardShortcuts
  * in GeminiHydra GUI components.
  */
@@ -9,9 +9,9 @@
 // EXAMPLE 1: Chat Input with Submit Shortcut
 // =============================================================================
 
-import { useState, useRef } from 'react';
-import { useHotkey, useKeyboardShortcuts } from '@/hooks';
+import { useRef, useState } from 'react';
 import { KEYBOARD_SHORTCUTS } from '@/constants';
+import { useHotkey, useKeyboardShortcuts } from '@/hooks';
 
 export function ChatInputExample() {
   const [message, setMessage] = useState('');
@@ -50,9 +50,7 @@ export function ChatInputExample() {
         placeholder="Type your message... (Ctrl+Enter to send)"
         rows={3}
       />
-      <div className="shortcuts-hint">
-        Ctrl+Enter: Send | Ctrl+L: Clear | Ctrl+Shift+I: Focus
-      </div>
+      <div className="shortcuts-hint">Ctrl+Enter: Send | Ctrl+L: Clear | Ctrl+Shift+I: Focus</div>
       <button onClick={handleSubmit}>Send Message</button>
     </div>
   );
@@ -172,11 +170,7 @@ export function DynamicShortcutsExample() {
 // EXAMPLE 5: Conditional Shortcuts (Modal vs Normal)
 // =============================================================================
 
-export function ConditionalShortcutsExample({
-  isModalOpen,
-}: {
-  isModalOpen: boolean;
-}) {
+export function ConditionalShortcutsExample({ isModalOpen }: { isModalOpen: boolean }) {
   // Different shortcuts based on context
   useKeyboardShortcuts(
     isModalOpen
@@ -197,7 +191,7 @@ export function ConditionalShortcutsExample({
             console.log('Open settings');
             // TODO: Open settings
           },
-        }
+        },
   );
 
   return (
@@ -243,16 +237,14 @@ export function KeyboardShortcutsHelpModal({
               </tr>
             </thead>
             <tbody>
-              {Object.entries(KEYBOARD_SHORTCUTS_LABELS).map(
-                ([shortcut, label]) => (
-                  <tr key={shortcut}>
-                    <td className="shortcut-code">
-                      <kbd>{shortcut.toUpperCase().replace(/\+/g, ' + ')}</kbd>
-                    </td>
-                    <td>{label}</td>
-                  </tr>
-                )
-              )}
+              {Object.entries(KEYBOARD_SHORTCUTS_LABELS).map(([shortcut, label]) => (
+                <tr key={shortcut}>
+                  <td className="shortcut-code">
+                    <kbd>{shortcut.toUpperCase().replace(/\+/g, ' + ')}</kbd>
+                  </td>
+                  <td>{label}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -316,9 +308,7 @@ export function CompleteChattingExample() {
           onChange={(e) => setCurrentMessage(e.target.value)}
           placeholder="Type message (Ctrl+Enter to send)..."
         />
-        <button onClick={() => setMessages([...messages, currentMessage])}>
-          Send
-        </button>
+        <button onClick={() => setMessages([...messages, currentMessage])}>Send</button>
         <button onClick={() => setIsSettingsOpen(true)}>Settings</button>
       </div>
 
@@ -362,13 +352,7 @@ export function CustomKeyHandlerExample() {
     }
   };
 
-  return (
-    <input
-      type="text"
-      placeholder="Custom key handler"
-      onKeyDown={handleKeyDown}
-    />
-  );
+  return <input type="text" placeholder="Custom key handler" onKeyDown={handleKeyDown} />;
 }
 
 // =============================================================================

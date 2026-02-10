@@ -9,21 +9,19 @@
 
 // Re-export unified knowledge types from shared canonical location
 // See shared/types/knowledge.types.ts for the source of truth
+// Alias for backward compatibility - use KnowledgeGraphData for new code
 export type {
-  KnowledgeNode,
+  IKnowledgeGraph,
   KnowledgeEdge,
   KnowledgeGraphData,
+  KnowledgeGraphData as KnowledgeGraph,
+  KnowledgeNode,
   KnowledgeNodeType,
-  IKnowledgeGraph,
 } from '@shared/types/knowledge.types';
-
 export {
-  createKnowledgeNode,
   createKnowledgeEdge,
+  createKnowledgeNode,
 } from '@shared/types/knowledge.types';
-
-// Alias for backward compatibility - use KnowledgeGraphData for new code
-export type { KnowledgeGraphData as KnowledgeGraph } from '@shared/types/knowledge.types';
 
 // ============================================================================
 // MESSAGE TYPES
@@ -148,8 +146,18 @@ export interface AgentMemory {
 // ============================================================================
 
 export type AgentRole =
-  | 'geralt' | 'dijkstra' | 'yennefer' | 'regis' | 'triss' | 'vesemir'
-  | 'jaskier' | 'ciri' | 'eskel' | 'lambert' | 'zoltan' | 'philippa';
+  | 'geralt'
+  | 'dijkstra'
+  | 'yennefer'
+  | 'regis'
+  | 'triss'
+  | 'vesemir'
+  | 'jaskier'
+  | 'ciri'
+  | 'eskel'
+  | 'lambert'
+  | 'zoltan'
+  | 'philippa';
 
 export type AgentTier = 'commander' | 'coordinator' | 'executor';
 

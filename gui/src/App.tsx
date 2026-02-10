@@ -3,9 +3,9 @@
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ThemeProvider } from './contexts/ThemeContext';
 import { Layout } from './components/layout';
-import { ChatView, AgentsView, HistoryView, SettingsView } from './views';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { AgentsView, ChatView, HistoryView, SettingsView } from './views';
 
 // Create a client
 const queryClient = new QueryClient({

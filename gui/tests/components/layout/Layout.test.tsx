@@ -2,12 +2,11 @@
  * Layout Component Tests
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Layout } from '../../../src/components/layout/Layout';
+import { mockUseHealthCheck, QueryWrapper } from '../../mocks/query';
 import { createMockAppState } from '../../mocks/store';
-import { mockUseHealthCheck } from '../../mocks/query';
-import { QueryWrapper } from '../../mocks/query';
 
 // Mock framer-motion
 vi.mock('framer-motion', async () => {
@@ -39,7 +38,7 @@ const renderLayout = (children = (view: string) => <div data-testid="view">{view
   return render(
     <QueryWrapper>
       <Layout>{children}</Layout>
-    </QueryWrapper>
+    </QueryWrapper>,
   );
 };
 

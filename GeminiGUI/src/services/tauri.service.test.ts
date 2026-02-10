@@ -6,20 +6,20 @@
  * Tests all service methods and their invoke calls.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { TAURI_COMMANDS } from '../constants';
+import type { BridgeState } from '../types';
 import {
+  type AgentMemory,
   BridgeService,
+  type KnowledgeEdge,
+  type KnowledgeNode,
+  MemoryService,
   ModelService,
   PromptService,
   SystemService,
-  MemoryService,
   TauriService,
-  type AgentMemory,
-  type KnowledgeNode,
-  type KnowledgeEdge,
 } from './tauri.service';
-import { TAURI_COMMANDS } from '../constants';
-import type { BridgeState } from '../types';
 
 // Mock @tauri-apps/api/core
 vi.mock('@tauri-apps/api/core', () => ({
@@ -64,9 +64,7 @@ describe('BridgeService', () => {
       const error = new Error('Tauri invoke failed');
       mockInvoke.mockRejectedValueOnce(error);
 
-      await expect(BridgeService.getState()).rejects.toThrow(
-        'Tauri invoke failed'
-      );
+      await expect(BridgeService.getState()).rejects.toThrow('Tauri invoke failed');
     });
   });
 
@@ -181,9 +179,7 @@ describe('ModelService', () => {
       const error = new Error('Invalid API key');
       mockInvoke.mockRejectedValueOnce(error);
 
-      await expect(
-        ModelService.getGeminiModels('invalid-key')
-      ).rejects.toThrow('Invalid API key');
+      await expect(ModelService.getGeminiModels('invalid-key')).rejects.toThrow('Invalid API key');
     });
   });
 
@@ -196,10 +192,7 @@ describe('ModelService', () => {
       const result = await ModelService.getGeminiModelsSorted(apiKey);
 
       expect(mockInvoke).toHaveBeenCalledOnce();
-      expect(mockInvoke).toHaveBeenCalledWith(
-        TAURI_COMMANDS.GET_GEMINI_MODELS_SORTED,
-        { apiKey }
-      );
+      expect(mockInvoke).toHaveBeenCalledWith(TAURI_COMMANDS.GET_GEMINI_MODELS_SORTED, { apiKey });
       expect(result).toEqual(mockModels);
     });
 
@@ -231,11 +224,7 @@ describe('PromptService', () => {
       const systemPrompt = 'You are a helpful assistant';
       mockInvoke.mockResolvedValueOnce('Response');
 
-      const result = await PromptService.promptOllama(
-        model,
-        prompt,
-        systemPrompt
-      );
+      const result = await PromptService.promptOllama(model, prompt, systemPrompt);
 
       expect(mockInvoke).toHaveBeenCalledOnce();
       expect(mockInvoke).toHaveBeenCalledWith(TAURI_COMMANDS.PROMPT_OLLAMA, {
@@ -301,36 +290,23 @@ describe('PromptService', () => {
       const imageBase64 = 'base64-encoded-image';
       mockInvoke.mockResolvedValueOnce(undefined);
 
-      await PromptService.promptGeminiStream(
+      await PromptService.promptGeminiStream(model, prompt, apiKey, systemPrompt, imageBase64);
+
+      expect(mockInvoke).toHaveBeenCalledOnce();
+      expect(mockInvoke).toHaveBeenCalledWith(TAURI_COMMANDS.PROMPT_GEMINI_STREAM, {
         model,
         prompt,
         apiKey,
         systemPrompt,
-        imageBase64
-      );
-
-      expect(mockInvoke).toHaveBeenCalledOnce();
-      expect(mockInvoke).toHaveBeenCalledWith(
-        TAURI_COMMANDS.PROMPT_GEMINI_STREAM,
-        {
-          model,
-          prompt,
-          apiKey,
-          systemPrompt,
-          imageBase64,
-        }
-      );
+        imageBase64,
+      });
     });
 
     it('should pass apiKey correctly to invoke', async () => {
       const apiKey = 'critical-api-key';
       mockInvoke.mockResolvedValueOnce(undefined);
 
-      await PromptService.promptGeminiStream(
-        'gemini-3-pro-preview',
-        'prompt',
-        apiKey
-      );
+      await PromptService.promptGeminiStream('gemini-3-pro-preview', 'prompt', apiKey);
 
       const callArgs = mockInvoke.mock.calls[0];
       expect(callArgs[1].apiKey).toBe(apiKey);
@@ -339,11 +315,7 @@ describe('PromptService', () => {
     it('should handle optional systemPrompt and imageBase64', async () => {
       mockInvoke.mockResolvedValueOnce(undefined);
 
-      await PromptService.promptGeminiStream(
-        'gemini-3-pro-preview',
-        'Simple prompt',
-        'api-key'
-      );
+      await PromptService.promptGeminiStream('gemini-3-pro-preview', 'Simple prompt', 'api-key');
 
       const callArgs = mockInvoke.mock.calls[0];
       expect(callArgs[1].systemPrompt).toBeUndefined();
@@ -355,11 +327,7 @@ describe('PromptService', () => {
       mockInvoke.mockRejectedValueOnce(error);
 
       await expect(
-        PromptService.promptGeminiStream(
-          'gemini-3-pro-preview',
-          'prompt',
-          'invalid-key'
-        )
+        PromptService.promptGeminiStream('gemini-3-pro-preview', 'prompt', 'invalid-key'),
       ).rejects.toThrow('Unauthorized');
     });
   });
@@ -414,9 +382,9 @@ describe('SystemService', () => {
       const error = new Error('Command execution failed');
       mockInvoke.mockRejectedValueOnce(error);
 
-      await expect(
-        SystemService.runCommand('invalid-command')
-      ).rejects.toThrow('Command execution failed');
+      await expect(SystemService.runCommand('invalid-command')).rejects.toThrow(
+        'Command execution failed',
+      );
     });
   });
 
@@ -580,22 +548,15 @@ describe('MemoryService', () => {
       await MemoryService.clearAgentMemories(agentName);
 
       expect(mockInvoke).toHaveBeenCalledOnce();
-      expect(mockInvoke).toHaveBeenCalledWith(
-        TAURI_COMMANDS.CLEAR_AGENT_MEMORIES,
-        { agentName }
-      );
+      expect(mockInvoke).toHaveBeenCalledWith(TAURI_COMMANDS.CLEAR_AGENT_MEMORIES, { agentName });
     });
   });
 
   describe('getKnowledgeGraph', () => {
     it('should call invoke with GET_KNOWLEDGE_GRAPH command', async () => {
       const mockGraph = {
-        nodes: [
-          { id: '1', label: 'Node 1', type: 'concept' },
-        ],
-        edges: [
-          { source: '1', target: '2', label: 'relates_to' },
-        ],
+        nodes: [{ id: '1', label: 'Node 1', type: 'concept' }],
+        edges: [{ source: '1', target: '2', label: 'relates_to' }],
       };
       mockInvoke.mockResolvedValueOnce(mockGraph);
 

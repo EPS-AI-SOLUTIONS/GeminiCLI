@@ -7,19 +7,27 @@
  * @module core/agent/Agent
  */
 
-import chalk from 'chalk';
 import ollama from 'ollama';
 import { GEMINI_MODELS } from '../../config/models.config.js';
 import type { AgentPersona, AgentRole } from '../../types/index.js';
 import { antiCreativityMode } from '../AntiCreativityMode.js';
+import { CircuitOpenError, getErrorMessage } from '../errors.js';
 import { logger } from '../LiveLogger.js';
 import { promptInjectionDetector } from '../PromptInjectionDetector.js';
 import { AGENT_SYSTEM_PROMPTS, EXECUTION_EVIDENCE_RULES } from '../PromptSystem.js';
+import { CircuitBreaker as ModernCircuitBreaker } from '../retry.js';
 import { geminiSemaphore, ollamaSemaphore } from '../TrafficControl.js';
-import { AGENT_PERSONAS, DIJKSTRA_CHAIN, genAI, initializeGeminiModels, MODEL_TIERS } from './models.js';
+import {
+  AGENT_PERSONAS,
+  DIJKSTRA_CHAIN,
+  genAI,
+  initializeGeminiModels,
+  MODEL_TIERS,
+} from './models.js';
 
 // Re-export symbols that consumers expect to import from this module
 export { AGENT_PERSONAS, initializeGeminiModels };
+
 import { getEnhancedAdaptiveTemperature, getTemperatureController } from './temperature.js';
 import type { ThinkOptions } from './types.js';
 import {
@@ -27,6 +35,80 @@ import {
   estimateResponseQuality as _estimateResponseQuality,
   validateCodeBlocks as _validateCodeBlocks,
 } from './validation.js';
+
+// ============================================================================
+// CONSTANTS (FIX #28: Extract magic numbers)
+// ============================================================================
+
+/** Maximum output tokens for Gemini API calls */
+const GEMINI_MAX_OUTPUT_TOKENS = 8192;
+/** Maximum output tokens for Ollama local models */
+const OLLAMA_MAX_PREDICT_TOKENS = 4096;
+/** Default timeout for agent think() calls (ms) */
+const DEFAULT_THINK_TIMEOUT_MS = 180000;
+/** Maximum retry attempts for Ollama before Gemini fallback */
+const MAX_OLLAMA_RETRIES = 2;
+/** Fallback temperature safety multiplier */
+const FALLBACK_TEMP_SAFETY_FACTOR = 0.85;
+/** Minimum fallback temperature */
+const MIN_FALLBACK_TEMPERATURE = 0.3;
+
+/**
+ * FIX #27: DRY - Centralized Ollama model detection
+ * Checks if a model string refers to an Ollama/local model (vs Gemini cloud)
+ */
+function isOllamaModel(model: string | undefined): boolean {
+  if (!model) return false;
+  return (
+    model.includes(':') ||
+    model.startsWith('qwen') ||
+    model.startsWith('llama') ||
+    model.startsWith('mistral') ||
+    model.startsWith('codellama') ||
+    model.startsWith('deepseek') ||
+    model.startsWith('phi')
+  );
+}
+
+// ============================================================================
+// CIRCUIT BREAKERS (#22: Provider-level circuit breakers)
+// ============================================================================
+
+/** Circuit breaker for Ollama provider - trips after 3 consecutive failures */
+const ollamaCircuit = new ModernCircuitBreaker({
+  failureThreshold: 3,
+  successThreshold: 2,
+  timeout: 60000, // 60s cooldown before retry
+  halfOpenMaxCalls: 1,
+});
+
+/** Circuit breaker for Gemini provider - trips after 5 consecutive failures */
+const _geminiCircuit = new ModernCircuitBreaker({
+  failureThreshold: 5,
+  successThreshold: 2,
+  timeout: 30000, // 30s cooldown
+  halfOpenMaxCalls: 2,
+});
+
+// ============================================================================
+// AGENT INSTANCE CACHE (FIX #7: Reuse Agent instances)
+// ============================================================================
+
+const agentCache = new Map<string, Agent>();
+
+/**
+ * Get or create an Agent instance for the given role.
+ * Reuses cached instances to avoid repeated construction overhead.
+ */
+export function getAgent(role: AgentRole, modelOverride?: string): Agent {
+  const cacheKey = `${role}:${modelOverride || ''}`;
+  let agent = agentCache.get(cacheKey);
+  if (!agent) {
+    agent = new Agent(role, modelOverride);
+    agentCache.set(cacheKey, agent);
+  }
+  return agent;
+}
 
 // ============================================================================
 // AGENT CLASS
@@ -38,10 +120,15 @@ export class Agent {
 
   constructor(role: AgentRole, modelOverride?: string) {
     this.persona = AGENT_PERSONAS[role];
-    // Defensive check: fallback to geralt if persona not found (prevents "Cannot read properties of undefined")
+    // FIX #4: Log warning with structured info when persona not found
     if (!this.persona) {
-      console.log(chalk.yellow(`[Agent] Invalid role "${role}" - falling back to geralt`));
-      this.persona = AGENT_PERSONAS['geralt'];
+      const validRoles = Object.keys(AGENT_PERSONAS).join(', ');
+      logger.agentError(
+        role,
+        `Invalid agent role "${role}" — valid roles: [${validRoles}]. Falling back to geralt.`,
+        false,
+      );
+      this.persona = AGENT_PERSONAS.geralt;
     }
     this.modelOverride = modelOverride;
   }
@@ -53,7 +140,7 @@ export class Agent {
    * @param options - Timeout and abort options
    */
   async think(prompt: string, context: string = '', options?: ThinkOptions): Promise<string> {
-    const timeoutMs = options?.timeout || 180000; // Default 180 seconds (3 min) for Ollama
+    const timeoutMs = options?.timeout || DEFAULT_THINK_TIMEOUT_MS;
     const externalSignal = options?.signal;
 
     // Create timeout promise
@@ -74,10 +161,11 @@ export class Agent {
     // Execute actual thinking with timeout race
     try {
       return await Promise.race([this.thinkInternal(prompt, context), timeoutPromise]);
-    } catch (error: any) {
-      // Re-throw with better context
-      if (error.message.includes('timeout') || error.message.includes('aborted')) {
-        console.log(chalk.red(`[${this.persona.name}] ${error.message}`));
+    } catch (error: unknown) {
+      // Re-throw with better context (#16: type-safe catch)
+      const msg = getErrorMessage(error);
+      if (msg.includes('timeout') || msg.includes('aborted')) {
+        logger.agentError(this.persona.name, msg, false);
       }
       throw error;
     }
@@ -97,14 +185,13 @@ export class Agent {
     if (enableInjectionDetection) {
       const injectionCheck = promptInjectionDetector.detectInjection(prompt);
       if (injectionCheck.detected) {
-        console.log(chalk.red(`[PromptInjection] Detected potential injection attack!`));
-        console.log(
-          chalk.yellow(
-            `[PromptInjection] Severity: ${injectionCheck.severity}, Risk Score: ${injectionCheck.riskScore}`,
-          ),
+        // (#29) Use logger instead of console.log
+        logger.system(
+          `[PromptInjection] Detected! Severity: ${injectionCheck.severity}, Risk: ${injectionCheck.riskScore}`,
+          'warn',
         );
         injectionCheck.details.forEach((d) => {
-          console.log(chalk.gray(`  - ${d.type}: ${d.description}`));
+          logger.system(`  [Injection] ${d.type}: ${d.description}`, 'warn');
         });
 
         // For high/critical severity, reject the prompt entirely
@@ -117,8 +204,9 @@ export class Agent {
         // For medium severity, sanitize the prompt
         if (injectionCheck.sanitizedContent && injectionCheck.severity === 'medium') {
           prompt = injectionCheck.sanitizedContent;
-          console.log(
-            chalk.yellow(`[PromptInjection] Prompt sanitized, continuing with cleaned version`),
+          logger.system(
+            '[PromptInjection] Prompt sanitized, continuing with cleaned version',
+            'info',
           );
         }
       }
@@ -142,9 +230,7 @@ export class Agent {
       const wrappedPrompt = antiCreativityMode.conditionalWrap(prompt, prompt);
       if (wrappedPrompt !== prompt) {
         prompt = wrappedPrompt;
-        console.log(
-          chalk.gray(`[AntiCreativity] Applied strict factual mode for ${this.persona.name}`),
-        );
+        logger.agentThinking(this.persona.name, '[AntiCreativity] Strict factual mode applied');
       }
     }
 
@@ -184,9 +270,13 @@ WAŻNE: Dołącz dowody wykonania (===ZAPIS===, [ODCZYTANO], EXEC:, [MCP:], etc.
       return this.geminiThink(fullPrompt);
     }
 
-    // OTHER AGENTS: Primary Ollama with retry + Gemini fallback
-    const MAX_OLLAMA_RETRIES = 2;
+    // (#22) Check circuit breaker - if Ollama circuit is open, skip directly to Gemini fallback
+    if (ollamaCircuit.getState() === 'open') {
+      logger.agentFallback(this.persona.name, 'Ollama (circuit open)', 'Gemini');
+      return this.geminiFallback(fullPrompt);
+    }
 
+    // OTHER AGENTS: Primary Ollama with retry + Gemini fallback
     for (let attempt = 1; attempt <= MAX_OLLAMA_RETRIES; attempt++) {
       try {
         // Get adaptive temperature for this agent
@@ -194,18 +284,8 @@ WAŻNE: Dołącz dowody wykonania (===ZAPIS===, [ODCZYTANO], EXEC:, [MCP:], etc.
           taskType: 'general',
         });
 
-        // Use modelOverride only if it's a valid Ollama model, otherwise use persona model or default
-        // Ollama models typically contain ':' (e.g., llama3.2:3b) or start with known prefixes
-        const isOllamaModelOverride =
-          this.modelOverride &&
-          (this.modelOverride.includes(':') ||
-            this.modelOverride.startsWith('qwen') ||
-            this.modelOverride.startsWith('llama') ||
-            this.modelOverride.startsWith('mistral') ||
-            this.modelOverride.startsWith('codellama') ||
-            this.modelOverride.startsWith('deepseek') ||
-            this.modelOverride.startsWith('phi'));
-        const modelToUse: string = isOllamaModelOverride
+        // FIX #27: Use centralized isOllamaModel() helper instead of duplicated logic
+        const modelToUse: string = isOllamaModel(this.modelOverride)
           ? this.modelOverride!
           : this.persona.model && this.persona.model !== 'gemini-cloud'
             ? this.persona.model
@@ -230,41 +310,43 @@ WAŻNE: Dołącz dowody wykonania (===ZAPIS===, [ODCZYTANO], EXEC:, [MCP:], etc.
           );
         }
 
-        // Use semaphore to limit concurrent Ollama requests
-        const responseText = await ollamaSemaphore.withPermit(async () => {
-          logger.agentThinking(this.persona.name, 'Acquired semaphore, streaming...');
+        // (#22) Use circuit breaker + semaphore to limit concurrent Ollama requests
+        const responseText = await ollamaCircuit.execute(() =>
+          ollamaSemaphore.withPermit(async () => {
+            logger.agentThinking(this.persona.name, 'Acquired semaphore, streaming...');
 
-          // Stream response for live output
-          let fullResponse = '';
-          let tokenCount = 0;
-          let lastPreview = '';
-          const streamStart = Date.now();
+            // Stream response for live output
+            let fullResponse = '';
+            let tokenCount = 0;
+            let lastPreview = '';
+            const _streamStart = Date.now();
 
-          const stream = await ollama.generate({
-            model: modelToUse,
-            prompt: fullPrompt,
-            stream: true,
-            options: {
-              temperature: tempResult.temperature,
-              num_predict: 4096,
-            },
-          });
+            const stream = await ollama.generate({
+              model: modelToUse,
+              prompt: fullPrompt,
+              stream: true,
+              options: {
+                temperature: tempResult.temperature,
+                num_predict: OLLAMA_MAX_PREDICT_TOKENS,
+              },
+            });
 
-          for await (const chunk of stream) {
-            fullResponse += chunk.response;
-            tokenCount++;
+            for await (const chunk of stream) {
+              fullResponse += chunk.response;
+              tokenCount++;
 
-            // Show live streaming with content preview every 10 tokens
-            if (tokenCount % 10 === 0) {
-              const newContent = fullResponse.substring(lastPreview.length);
-              logger.agentStream(this.persona.name, newContent.substring(0, 50), tokenCount);
-              lastPreview = fullResponse;
+              // Show live streaming with content preview every 10 tokens
+              if (tokenCount % 10 === 0) {
+                const newContent = fullResponse.substring(lastPreview.length);
+                logger.agentStream(this.persona.name, newContent.substring(0, 50), tokenCount);
+                lastPreview = fullResponse;
+              }
             }
-          }
 
-          logger.agentStreamEnd(this.persona.name);
-          return fullResponse;
-        });
+            logger.agentStreamEnd(this.persona.name);
+            return fullResponse;
+          }),
+        );
 
         const elapsed = Date.now() - startTime;
         logger.agentSuccess(this.persona.name, {
@@ -280,8 +362,14 @@ WAŻNE: Dołącz dowody wykonania (===ZAPIS===, [ODCZYTANO], EXEC:, [MCP:], etc.
         );
 
         return responseText;
-      } catch (error: any) {
-        const errorMsg = error?.message || String(error);
+      } catch (error: unknown) {
+        // (#22) If circuit breaker tripped, go directly to fallback
+        if (error instanceof CircuitOpenError) {
+          logger.agentFallback(this.persona.name, 'Ollama (circuit tripped)', 'Gemini');
+          return this.geminiFallback(fullPrompt);
+        }
+
+        const errorMsg = getErrorMessage(error); // (#16) type-safe error extraction
         const isTimeout = errorMsg.includes('timeout') || errorMsg.includes('ETIMEDOUT');
         const isConnection =
           errorMsg.includes('ECONNREFUSED') ||
@@ -290,17 +378,29 @@ WAŻNE: Dołącz dowody wykonania (===ZAPIS===, [ODCZYTANO], EXEC:, [MCP:], etc.
         const isBusy = errorMsg.includes('busy') || errorMsg.includes('overloaded');
         const isModelNotFound = errorMsg.includes('not found') || errorMsg.includes('model');
 
-        // Detailed error logging
+        // (#23) Detailed error categorization with user-friendly messages
         let errorType = 'UNKNOWN';
-        if (isTimeout) errorType = 'TIMEOUT';
-        else if (isConnection) errorType = 'CONNECTION';
-        else if (isBusy) errorType = 'BUSY';
-        else if (isModelNotFound) errorType = 'MODEL_NOT_FOUND';
+        let userHint = '';
+        if (isTimeout) {
+          errorType = 'TIMEOUT';
+          userHint = 'Ollama is responding too slowly. Check if model is loaded: `ollama list`';
+        } else if (isConnection) {
+          errorType = 'CONNECTION';
+          userHint = 'Cannot connect to Ollama. Is it running? Start with: `ollama serve`';
+        } else if (isBusy) {
+          errorType = 'BUSY';
+          userHint = 'Ollama is overloaded. Too many concurrent requests.';
+        } else if (isModelNotFound) {
+          errorType = 'MODEL_NOT_FOUND';
+          userHint = `Model not found. Pull it with: \`ollama pull ${this.modelOverride || 'qwen3:4b'}\``;
+        }
+
+        // (#22) Note: Circuit breaker state is checked at loop entry
 
         const willRetry = attempt < MAX_OLLAMA_RETRIES;
         logger.agentError(
           this.persona.name,
-          `Ollama ${errorType}: ${errorMsg.substring(0, 100)}`,
+          `Ollama ${errorType}: ${errorMsg.substring(0, 100)}${userHint ? ` | 💡 ${userHint}` : ''}`,
           willRetry,
         );
         logger.apiCall(
@@ -330,15 +430,19 @@ WAŻNE: Dołącz dowody wykonania (===ZAPIS===, [ODCZYTANO], EXEC:, [MCP:], etc.
   private async geminiThink(prompt: string): Promise<string> {
     try {
       // OPTIMIZATION: Skip initializeGeminiModels() - already done in Swarm.initialize()
-      // OPTIMIZATION: Skip per-task classification - use PRE-A result or safe default
 
-      // IMPORTANT: Don't use modelOverride if it's an Ollama model (not valid for Gemini API)
-      const isOllamaModel =
-        this.modelOverride?.includes(':') ||
-        this.modelOverride?.startsWith('llama') ||
-        this.modelOverride?.startsWith('qwen');
-      const selectedModel =
-        this.modelOverride && !isOllamaModel ? this.modelOverride : MODEL_TIERS.fast;
+      // FIX #27: Use centralized isOllamaModel() helper
+      // PER-AGENT MODEL SELECTION: Use geminiTier from AgentPersona
+      // Pro agents (geralt, yennefer, dijkstra) get Gemini 3 Pro
+      // Flash agents (lambert, triss, jaskier, etc.) get Gemini 3 Flash
+      let selectedModel: string;
+      if (this.modelOverride && !isOllamaModel(this.modelOverride)) {
+        selectedModel = this.modelOverride;
+      } else if (this.persona.geminiTier === 'pro') {
+        selectedModel = MODEL_TIERS.pro; // gemini-3-pro-preview
+      } else {
+        selectedModel = MODEL_TIERS.fast; // gemini-3-flash-preview (default)
+      }
 
       // ENHANCED ADAPTIVE TEMPERATURE v2.0:
       // Use agent-specific temperature profile with context awareness
@@ -347,11 +451,12 @@ WAŻNE: Dołącz dowody wykonania (===ZAPIS===, [ODCZYTANO], EXEC:, [MCP:], etc.
       });
 
       // Enhanced logging
+      const tierLabel = this.persona.geminiTier === 'pro' ? '🔷 PRO' : '⚡ FLASH';
       logger.apiCall('gemini', selectedModel, 'start');
       logger.agentStart(this.persona.name, prompt.substring(0, 80), selectedModel);
       logger.agentThinking(
         this.persona.name,
-        `Task: ${tempResult.taskType} | Temp: ${tempResult.temperature} | MaxTokens: 8192`,
+        `${tierLabel} | Task: ${tempResult.taskType} | Temp: ${tempResult.temperature} | MaxTokens: 8192`,
       );
 
       // Execute with selected model and adaptive temperature
@@ -359,7 +464,7 @@ WAŻNE: Dołącz dowody wykonania (===ZAPIS===, [ODCZYTANO], EXEC:, [MCP:], etc.
         model: selectedModel,
         generationConfig: {
           temperature: tempResult.temperature, // Agent-specific adaptive temperature
-          maxOutputTokens: 8192, // Increased for longer reports
+          maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS,
         },
       });
 
@@ -430,23 +535,41 @@ WAŻNE: Dołącz dowody wykonania (===ZAPIS===, [ODCZYTANO], EXEC:, [MCP:], etc.
   }
 
   private async geminiFallback(prompt: string): Promise<string> {
-    // IMPORTANT: Don't use modelOverride if it's an Ollama model (not valid for Gemini API)
-    const isOllamaModel =
-      this.modelOverride?.includes(':') ||
-      this.modelOverride?.startsWith('llama') ||
-      this.modelOverride?.startsWith('qwen');
+    // FIX #27: Use centralized isOllamaModel() helper
+    // For fallback, use Flash (fast + cheap) regardless of agent tier
     const fallbackModel =
-      this.modelOverride && !isOllamaModel ? this.modelOverride : GEMINI_MODELS.FLASH;
+      this.modelOverride && !isOllamaModel(this.modelOverride)
+        ? this.modelOverride
+        : GEMINI_MODELS.FLASH;
+
+    // FIX: Use agent-specific adaptive temperature instead of hardcoded 0.3
+    // Slightly reduce temperature for fallback (safety margin) but preserve agent personality
+    const tempResult = getEnhancedAdaptiveTemperature(this.persona.name, prompt, {
+      taskType: 'general',
+      retryCount: 2, // Signal this is a fallback attempt
+      confidenceLevel: 0.6, // Lower confidence since Ollama already failed
+    });
+    // Apply safety reduction for fallback, but never below minimum
+    const fallbackTemp = Math.max(
+      MIN_FALLBACK_TEMPERATURE,
+      Math.round(tempResult.temperature * FALLBACK_TEMP_SAFETY_FACTOR * 100) / 100,
+    );
 
     return geminiSemaphore.withPermit(async () => {
       try {
         logger.apiCall('gemini', fallbackModel, 'start');
-        logger.agentThinking(this.persona.name, `Fallback to Gemini: ${fallbackModel} | Temp: 0.3`);
+        logger.agentThinking(
+          this.persona.name,
+          `Fallback to Gemini: ${fallbackModel} | Temp: ${fallbackTemp} (adaptive)`,
+        );
 
         const startTime = Date.now();
         const model = genAI.getGenerativeModel({
           model: fallbackModel,
-          generationConfig: { temperature: 0.3, maxOutputTokens: 8192 },
+          generationConfig: {
+            temperature: fallbackTemp,
+            maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS,
+          },
         });
 
         const result = await model.generateContent(prompt);
@@ -463,6 +586,18 @@ WAŻNE: Dołącz dowody wykonania (===ZAPIS===, [ODCZYTANO], EXEC:, [MCP:], etc.
           fallbackModel,
           'end',
           `Fallback success: ${responseText.length} chars in ${(elapsed / 1000).toFixed(1)}s`,
+        );
+
+        // Learn from fallback result for temperature optimization
+        const estimatedQuality = this.estimateResponseQuality(responseText, prompt);
+        const controller = getTemperatureController();
+        controller.learnFromResult(
+          this.persona.name,
+          fallbackTemp,
+          tempResult.taskType,
+          estimatedQuality,
+          elapsed,
+          true,
         );
 
         return responseText;
@@ -486,7 +621,7 @@ WAŻNE: Dołącz dowody wykonania (===ZAPIS===, [ODCZYTANO], EXEC:, [MCP:], etc.
    * Ported from AgentSwarm.psm1 lines 354-427
    */
   private async dijkstraChainThink(prompt: string): Promise<string> {
-    console.log(chalk.magenta(`[Dijkstra] Activating Gemini Strategic Chain v2.0...`));
+    logger.system(`[Dijkstra] Activating Gemini Strategic Chain v2.0...`, 'info');
 
     const controller = getTemperatureController();
 
@@ -503,11 +638,10 @@ WAŻNE: Dołącz dowody wykonania (===ZAPIS===, [ODCZYTANO], EXEC:, [MCP:], etc.
       totalSteps: DIJKSTRA_CHAIN.length,
     });
 
-    console.log(
-      chalk.gray(
-        `[Dijkstra] Base Adaptive Temperature: ${tempResult.temperature} | ` +
-          `Adjustments: ${tempResult.adjustments.join(', ')}`,
-      ),
+    logger.system(
+      `[Dijkstra] Base Adaptive Temperature: ${tempResult.temperature} | ` +
+        `Adjustments: ${tempResult.adjustments.join(', ')}`,
+      'debug',
     );
 
     for (let i = 0; i < DIJKSTRA_CHAIN.length; i++) {
@@ -527,11 +661,10 @@ WAŻNE: Dołącz dowody wykonania (===ZAPIS===, [ODCZYTANO], EXEC:, [MCP:], etc.
 
         const currentTemp = stepTempResult.temperature;
 
-        console.log(
-          chalk.gray(
-            `[Dijkstra] Attempting: ${modelConfig.name} [${modelConfig.role}] | ` +
-              `Temp: ${currentTemp} | Step: ${i + 1}/${DIJKSTRA_CHAIN.length}`,
-          ),
+        logger.system(
+          `[Dijkstra] Attempting: ${modelConfig.name} [${modelConfig.role}] | ` +
+            `Temp: ${currentTemp} | Step: ${i + 1}/${DIJKSTRA_CHAIN.length}`,
+          'debug',
         );
 
         const startTime = Date.now();
@@ -541,7 +674,7 @@ WAŻNE: Dołącz dowody wykonania (===ZAPIS===, [ODCZYTANO], EXEC:, [MCP:], etc.
             model: modelConfig.name,
             generationConfig: {
               temperature: currentTemp, // Context-aware adaptive temperature
-              maxOutputTokens: 8192,
+              maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS,
             },
           });
 
@@ -575,16 +708,16 @@ WAŻNE: Dołącz dowody wykonania (===ZAPIS===, [ODCZYTANO], EXEC:, [MCP:], etc.
           true,
         );
 
-        console.log(
-          chalk.green(
-            `[Dijkstra] SUCCESS with ${modelConfig.name} | ` +
-              `Temp: ${currentTemp} | Quality: ${(estimatedQuality * 100).toFixed(0)}% | ` +
-              `Time: ${responseTime}ms`,
-          ),
+        logger.system(
+          `[Dijkstra] ✓ SUCCESS with ${modelConfig.name} | ` +
+            `Temp: ${currentTemp} | Quality: ${(estimatedQuality * 100).toFixed(0)}% | ` +
+            `Time: ${responseTime}ms`,
+          'info',
         );
 
         return response;
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const errMsg = getErrorMessage(error);
         // Record failed attempt
         chainResults.push({
           temperature: tempResult.temperature + i * 0.05,
@@ -602,11 +735,10 @@ WAŻNE: Dołącz dowody wykonania (===ZAPIS===, [ODCZYTANO], EXEC:, [MCP:], etc.
           false,
         );
 
-        console.log(
-          chalk.yellow(
-            `[Dijkstra] ${modelConfig.name} failed: ${error.message} | ` +
-              `Attempting next model with adjusted temperature...`,
-          ),
+        logger.system(
+          `[Dijkstra] ${modelConfig.name} failed: ${errMsg} | ` +
+            `Attempting next model with adjusted temperature...`,
+          'warn',
         );
         // Continue to next model in chain
       }

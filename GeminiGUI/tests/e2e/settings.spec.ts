@@ -5,8 +5,8 @@
  * editing, and persisting settings.
  */
 
-import { test, expect } from '../fixtures/test-setup';
-import { TEST_SETTINGS, SHORTCUTS, TIMEOUTS, UI_TEXTS } from '../fixtures/test-data';
+import { SHORTCUTS, TEST_SETTINGS, TIMEOUTS, UI_TEXTS } from '../fixtures/test-data';
+import { expect, test } from '../fixtures/test-setup';
 
 test.describe('Settings Modal', () => {
   test('should open settings with Ctrl+,', async ({ page, settings }) => {

@@ -27,8 +27,8 @@
  * ```
  */
 
-import { useCallback, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { useCallback, useMemo } from 'react';
 import { useModels } from './useModels';
 
 // ============================================================================
@@ -119,7 +119,7 @@ export function useModelFetcher({
   const memoizedFallback = useMemo(
     () => [...fallbackModels],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [fallbackModels.join(',')]
+    [fallbackModels],
   );
 
   // Determine the credential parameter name

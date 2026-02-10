@@ -19,7 +19,13 @@
  */
 export interface CoherenceIssue {
   /** Type of coherence issue */
-  type: 'contradiction' | 'topic_drift' | 'logical_gap' | 'incomplete_claim' | 'inconsistent_naming' | 'ambiguity';
+  type:
+    | 'contradiction'
+    | 'topic_drift'
+    | 'logical_gap'
+    | 'incomplete_claim'
+    | 'inconsistent_naming'
+    | 'ambiguity';
   /** Human-readable description of the issue */
   description: string;
   /** Location in the response where issue was found */
@@ -125,16 +131,37 @@ export class ResponseCoherenceAnalyzer {
 
   // Topic indicator keywords for drift detection
   private readonly topicKeywords = new Set([
-    'however', 'but', 'although', 'nevertheless', 'on the other hand',
-    'in contrast', 'alternatively', 'meanwhile', 'incidentally',
-    'by the way', 'speaking of', 'unrelated', 'separately',
+    'however',
+    'but',
+    'although',
+    'nevertheless',
+    'on the other hand',
+    'in contrast',
+    'alternatively',
+    'meanwhile',
+    'incidentally',
+    'by the way',
+    'speaking of',
+    'unrelated',
+    'separately',
   ]);
 
   // Logical connectors for flow analysis
   private readonly logicalConnectors = new Set([
-    'therefore', 'thus', 'hence', 'consequently', 'as a result',
-    'because', 'since', 'so', 'accordingly', 'for this reason',
-    'it follows that', 'which means', 'leading to', 'resulting in',
+    'therefore',
+    'thus',
+    'hence',
+    'consequently',
+    'as a result',
+    'because',
+    'since',
+    'so',
+    'accordingly',
+    'for this reason',
+    'it follows that',
+    'which means',
+    'leading to',
+    'resulting in',
   ]);
 
   // Incomplete claim indicators
@@ -170,12 +197,14 @@ export class ResponseCoherenceAnalyzer {
       return {
         coherent: false,
         score: 0,
-        issues: [{
-          type: 'incomplete_claim',
-          description: 'Response is empty',
-          location: 'entire response',
-          severity: 'high',
-        }],
+        issues: [
+          {
+            type: 'incomplete_claim',
+            description: 'Response is empty',
+            location: 'entire response',
+            severity: 'high',
+          },
+        ],
         suggestions: ['Provide a non-empty response'],
       };
     }
@@ -210,7 +239,7 @@ export class ResponseCoherenceAnalyzer {
       topicDriftIssues,
       logicalFlowIssues,
       completenessIssues,
-      namingIssues
+      namingIssues,
     );
 
     const score = this.calculateOverallScore(breakdown, issues);
@@ -271,7 +300,7 @@ export class ResponseCoherenceAnalyzer {
 
   private findContradiction(
     sent1: SentenceInfo,
-    sent2: SentenceInfo
+    sent2: SentenceInfo,
   ): { description: string } | null {
     const text1 = sent1.text.toLowerCase();
     const text2 = sent2.text.toLowerCase();
@@ -349,9 +378,18 @@ export class ResponseCoherenceAnalyzer {
 
     // Check for self-contradicting patterns
     const selfContradictPatterns = [
-      { pattern: /\b(is|are)\s+(?:both\s+)?(\w+)\s+and\s+(?:not\s+)?\2\b/i, desc: 'Self-contradicting property' },
-      { pattern: /\b(always|never)\s+\w+\s+but\s+sometimes\b/i, desc: 'Contradicting frequency terms' },
-      { pattern: /\b(all|every)\s+\w+\s+except\s+(?:some|most|many)\b/i, desc: 'Contradicting quantifiers' },
+      {
+        pattern: /\b(is|are)\s+(?:both\s+)?(\w+)\s+and\s+(?:not\s+)?\2\b/i,
+        desc: 'Self-contradicting property',
+      },
+      {
+        pattern: /\b(always|never)\s+\w+\s+but\s+sometimes\b/i,
+        desc: 'Contradicting frequency terms',
+      },
+      {
+        pattern: /\b(all|every)\s+\w+\s+except\s+(?:some|most|many)\b/i,
+        desc: 'Contradicting quantifiers',
+      },
     ];
 
     for (const { pattern, desc } of selfContradictPatterns) {
@@ -365,7 +403,7 @@ export class ResponseCoherenceAnalyzer {
 
   private getContradictionSeverity(
     sent1: SentenceInfo,
-    sent2: SentenceInfo
+    sent2: SentenceInfo,
   ): 'low' | 'medium' | 'high' {
     // Closer sentences with contradictions are more severe
     const distance = Math.abs(sent1.index - sent2.index);
@@ -380,7 +418,7 @@ export class ResponseCoherenceAnalyzer {
 
   private checkTopicDrift(response: string): CoherenceIssue[] {
     const issues: CoherenceIssue[] = [];
-    const paragraphs = response.split(/\n\s*\n/).filter(p => p.trim());
+    const paragraphs = response.split(/\n\s*\n/).filter((p) => p.trim());
 
     if (paragraphs.length < 2) {
       return issues;
@@ -440,9 +478,7 @@ export class ResponseCoherenceAnalyzer {
 
   private checkDriftSignal(paragraph: string): boolean {
     const lowerParagraph = paragraph.toLowerCase();
-    return Array.from(this.topicKeywords).some(keyword =>
-      lowerParagraph.includes(keyword)
-    );
+    return Array.from(this.topicKeywords).some((keyword) => lowerParagraph.includes(keyword));
   }
 
   // ============================================================================
@@ -492,7 +528,7 @@ export class ResponseCoherenceAnalyzer {
   private checkLogicalSetup(
     sentences: SentenceInfo[],
     currentIndex: number,
-    connector: string
+    _connector: string,
   ): boolean {
     // Look back up to 3 sentences for a logical setup
     const lookbackRange = Math.min(3, currentIndex);
@@ -524,10 +560,10 @@ export class ResponseCoherenceAnalyzer {
       /\b(the (result|conclusion|finding) is)\b/,
     ];
 
-    return conclusionPatterns.some(pattern => pattern.test(sentence));
+    return conclusionPatterns.some((pattern) => pattern.test(sentence));
   }
 
-  private checkConclusionSupport(sentences: SentenceInfo[], conclusionIndex: number): boolean {
+  private checkConclusionSupport(_sentences: SentenceInfo[], conclusionIndex: number): boolean {
     // Need at least 2 sentences before a conclusion
     return conclusionIndex >= 2;
   }
@@ -611,7 +647,7 @@ export class ResponseCoherenceAnalyzer {
 
     for (const [baseName, variations] of groups) {
       if (variations.length > 1) {
-        const uniqueVariations = [...new Set(variations.map(v => v.name))];
+        const uniqueVariations = [...new Set(variations.map((v) => v.name))];
         if (uniqueVariations.length > 1) {
           issues.push({
             type: 'inconsistent_naming',
@@ -634,10 +670,12 @@ export class ResponseCoherenceAnalyzer {
     const identifiers: NameOccurrence[] = [];
 
     // Extract code identifiers (camelCase, snake_case, PascalCase)
-    const identifierPattern = /\b([a-z][a-zA-Z0-9_]*[A-Z][a-zA-Z0-9]*|[a-z]+_[a-z_]+|[A-Z][a-z]+[A-Z][a-zA-Z]*)\b/g;
+    const identifierPattern =
+      /\b([a-z][a-zA-Z0-9_]*[A-Z][a-zA-Z0-9]*|[a-z]+_[a-z_]+|[A-Z][a-z]+[A-Z][a-zA-Z]*)\b/g;
 
     // Extract file paths and names
-    const filePattern = /\b[\w.-]+\.(ts|js|tsx|jsx|py|java|go|rs|cpp|c|h|css|scss|json|yaml|yml|md|txt)\b/gi;
+    const filePattern =
+      /\b[\w.-]+\.(ts|js|tsx|jsx|py|java|go|rs|cpp|c|h|css|scss|json|yaml|yml|md|txt)\b/gi;
 
     // Extract function calls
     const functionPattern = /\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/g;
@@ -647,7 +685,10 @@ export class ResponseCoherenceAnalyzer {
     while ((match = identifierPattern.exec(response)) !== null) {
       identifiers.push({
         name: match[1],
-        context: response.substring(Math.max(0, match.index - 20), match.index + match[0].length + 20),
+        context: response.substring(
+          Math.max(0, match.index - 20),
+          match.index + match[0].length + 20,
+        ),
         position: match.index,
       });
     }
@@ -655,7 +696,10 @@ export class ResponseCoherenceAnalyzer {
     while ((match = filePattern.exec(response)) !== null) {
       identifiers.push({
         name: match[0],
-        context: response.substring(Math.max(0, match.index - 20), match.index + match[0].length + 20),
+        context: response.substring(
+          Math.max(0, match.index - 20),
+          match.index + match[0].length + 20,
+        ),
         position: match.index,
       });
     }
@@ -663,7 +707,10 @@ export class ResponseCoherenceAnalyzer {
     while ((match = functionPattern.exec(response)) !== null) {
       identifiers.push({
         name: match[1],
-        context: response.substring(Math.max(0, match.index - 20), match.index + match[0].length + 20),
+        context: response.substring(
+          Math.max(0, match.index - 20),
+          match.index + match[0].length + 20,
+        ),
         position: match.index,
       });
     }
@@ -681,7 +728,7 @@ export class ResponseCoherenceAnalyzer {
       if (!groups.has(baseName)) {
         groups.set(baseName, []);
       }
-      groups.get(baseName)!.push(id);
+      groups.get(baseName)?.push(id);
     }
 
     return groups;
@@ -699,17 +746,18 @@ export class ResponseCoherenceAnalyzer {
       if (!caseMap.has(lower)) {
         caseMap.set(lower, new Set());
       }
-      caseMap.get(lower)!.add(word);
+      caseMap.get(lower)?.add(word);
     }
 
     for (const [lower, variations] of caseMap) {
       if (variations.size > 1) {
         const variationsArray = [...variations];
         // Check if it's just capitalization at start of sentence vs elsewhere
-        const isCapitalizationIssue = variationsArray.length === 2 &&
+        const isCapitalizationIssue =
+          variationsArray.length === 2 &&
           variationsArray[0].toLowerCase() === variationsArray[1].toLowerCase() &&
           (variationsArray[0][0] === variationsArray[0][0].toUpperCase() ||
-           variationsArray[1][0] === variationsArray[1][0].toUpperCase());
+            variationsArray[1][0] === variationsArray[1][0].toUpperCase());
 
         if (!isCapitalizationIssue && this.isLikelyCodeIdentifier(lower)) {
           issues.push({
@@ -728,13 +776,16 @@ export class ResponseCoherenceAnalyzer {
   private isLikelyCodeIdentifier(word: string): boolean {
     // Check if word looks like a code identifier
     const codePatterns = [
-      /^get[A-Z]/, /^set[A-Z]/, /^is[A-Z]/, /^has[A-Z]/,
+      /^get[A-Z]/,
+      /^set[A-Z]/,
+      /^is[A-Z]/,
+      /^has[A-Z]/,
       /[A-Z][a-z]+[A-Z]/, // camelCase
       /_[a-z]/, // snake_case
       /^[A-Z][a-z]+$/, // PascalCase component
     ];
 
-    return codePatterns.some(pattern => pattern.test(word));
+    return codePatterns.some((pattern) => pattern.test(word));
   }
 
   // ============================================================================
@@ -746,7 +797,7 @@ export class ResponseCoherenceAnalyzer {
     topicDrift: CoherenceIssue[],
     logicalFlow: CoherenceIssue[],
     completeness: CoherenceIssue[],
-    naming: CoherenceIssue[]
+    naming: CoherenceIssue[],
   ): CoherenceBreakdown {
     const scoreFromIssues = (issues: CoherenceIssue[]): number => {
       if (issues.length === 0) return 100;
@@ -754,9 +805,15 @@ export class ResponseCoherenceAnalyzer {
       let penalty = 0;
       for (const issue of issues) {
         switch (issue.severity) {
-          case 'high': penalty += 30; break;
-          case 'medium': penalty += 15; break;
-          case 'low': penalty += 5; break;
+          case 'high':
+            penalty += 30;
+            break;
+          case 'medium':
+            penalty += 15;
+            break;
+          case 'low':
+            penalty += 5;
+            break;
         }
       }
 
@@ -775,11 +832,11 @@ export class ResponseCoherenceAnalyzer {
   private calculateOverallScore(breakdown: CoherenceBreakdown, issues: CoherenceIssue[]): number {
     // Weighted average of breakdown scores
     const weights = {
-      contradictions: 0.30,      // Most important
-      logicalFlow: 0.25,         // Second most important
-      completeness: 0.20,        // Third
-      topicCoherence: 0.15,      // Fourth
-      namingConsistency: 0.10,   // Least weighted
+      contradictions: 0.3, // Most important
+      logicalFlow: 0.25, // Second most important
+      completeness: 0.2, // Third
+      topicCoherence: 0.15, // Fourth
+      namingConsistency: 0.1, // Least weighted
     };
 
     let score = 0;
@@ -790,16 +847,13 @@ export class ResponseCoherenceAnalyzer {
     score += breakdown.namingConsistency * weights.namingConsistency;
 
     // Apply additional penalty for high-severity issues
-    const highSeverityCount = issues.filter(i => i.severity === 'high').length;
+    const highSeverityCount = issues.filter((i) => i.severity === 'high').length;
     score = score * (1 - highSeverityCount * 0.1);
 
     return Math.round(Math.max(0, Math.min(100, score)));
   }
 
-  private generateSuggestions(
-    issues: CoherenceIssue[],
-    breakdown: CoherenceBreakdown
-  ): string[] {
+  private generateSuggestions(issues: CoherenceIssue[], breakdown: CoherenceBreakdown): string[] {
     const suggestions: string[] = [];
 
     // Group issues by type
@@ -808,38 +862,34 @@ export class ResponseCoherenceAnalyzer {
       if (!issuesByType.has(issue.type)) {
         issuesByType.set(issue.type, []);
       }
-      issuesByType.get(issue.type)!.push(issue);
+      issuesByType.get(issue.type)?.push(issue);
     }
 
     // Generate type-specific suggestions
     if (issuesByType.has('contradiction')) {
-      const count = issuesByType.get('contradiction')!.length;
+      const count = issuesByType.get('contradiction')?.length;
       suggestions.push(
-        `Review ${count} contradicting statement(s) and ensure consistent messaging throughout the response.`
+        `Review ${count} contradicting statement(s) and ensure consistent messaging throughout the response.`,
       );
     }
 
     if (issuesByType.has('topic_drift')) {
-      suggestions.push(
-        'Add transition phrases when changing topics to maintain narrative flow.'
-      );
+      suggestions.push('Add transition phrases when changing topics to maintain narrative flow.');
     }
 
     if (issuesByType.has('logical_gap')) {
       suggestions.push(
-        'Ensure logical connectors (therefore, thus, because) have clear premises and conclusions.'
+        'Ensure logical connectors (therefore, thus, because) have clear premises and conclusions.',
       );
     }
 
     if (issuesByType.has('incomplete_claim')) {
-      suggestions.push(
-        'Complete all references and ensure no claims are left unfinished.'
-      );
+      suggestions.push('Complete all references and ensure no claims are left unfinished.');
     }
 
     if (issuesByType.has('inconsistent_naming')) {
       suggestions.push(
-        'Standardize naming conventions for identifiers, functions, and file names.'
+        'Standardize naming conventions for identifiers, functions, and file names.',
       );
     }
 
@@ -849,14 +899,18 @@ export class ResponseCoherenceAnalyzer {
     }
 
     if (breakdown.logicalFlow < 70) {
-      suggestions.push('Strengthen the logical structure with clearer cause-and-effect relationships.');
+      suggestions.push(
+        'Strengthen the logical structure with clearer cause-and-effect relationships.',
+      );
     }
 
     if (breakdown.completeness < 70) {
       suggestions.push('Ensure all started thoughts and lists are completed.');
     }
 
-    return suggestions.length > 0 ? suggestions : ['Response appears coherent. No major suggestions.'];
+    return suggestions.length > 0
+      ? suggestions
+      : ['Response appears coherent. No major suggestions.'];
   }
 
   // ============================================================================
@@ -893,16 +947,102 @@ export class ResponseCoherenceAnalyzer {
 
   private isStopWord(word: string): boolean {
     const stopWords = new Set([
-      'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
-      'of', 'with', 'by', 'from', 'up', 'about', 'into', 'over', 'after',
-      'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had',
-      'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might',
-      'must', 'shall', 'can', 'need', 'dare', 'ought', 'used', 'this', 'that',
-      'these', 'those', 'it', 'its', 'they', 'them', 'their', 'we', 'us', 'our',
-      'you', 'your', 'he', 'she', 'him', 'her', 'his', 'hers', 'which', 'what',
-      'who', 'whom', 'whose', 'when', 'where', 'why', 'how', 'all', 'each',
-      'every', 'both', 'few', 'more', 'most', 'other', 'some', 'such', 'no',
-      'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 'just', 'also',
+      'the',
+      'a',
+      'an',
+      'and',
+      'or',
+      'but',
+      'in',
+      'on',
+      'at',
+      'to',
+      'for',
+      'of',
+      'with',
+      'by',
+      'from',
+      'up',
+      'about',
+      'into',
+      'over',
+      'after',
+      'is',
+      'are',
+      'was',
+      'were',
+      'be',
+      'been',
+      'being',
+      'have',
+      'has',
+      'had',
+      'do',
+      'does',
+      'did',
+      'will',
+      'would',
+      'could',
+      'should',
+      'may',
+      'might',
+      'must',
+      'shall',
+      'can',
+      'need',
+      'dare',
+      'ought',
+      'used',
+      'this',
+      'that',
+      'these',
+      'those',
+      'it',
+      'its',
+      'they',
+      'them',
+      'their',
+      'we',
+      'us',
+      'our',
+      'you',
+      'your',
+      'he',
+      'she',
+      'him',
+      'her',
+      'his',
+      'hers',
+      'which',
+      'what',
+      'who',
+      'whom',
+      'whose',
+      'when',
+      'where',
+      'why',
+      'how',
+      'all',
+      'each',
+      'every',
+      'both',
+      'few',
+      'more',
+      'most',
+      'other',
+      'some',
+      'such',
+      'no',
+      'not',
+      'only',
+      'own',
+      'same',
+      'so',
+      'than',
+      'too',
+      'very',
+      'just',
+      'also',
     ]);
 
     return stopWords.has(word.toLowerCase());
@@ -920,10 +1060,10 @@ export class ResponseCoherenceAnalyzer {
   }
 
   private logAnalysis(
-    response: string,
+    _response: string,
     score: number,
     issues: CoherenceIssue[],
-    breakdown: CoherenceBreakdown
+    breakdown: CoherenceBreakdown,
   ): void {
     console.log('\n[CoherenceAnalyzer] Analysis Results:');
     console.log(`  Overall Score: ${score}/100`);
@@ -957,7 +1097,8 @@ export class ResponseCoherenceAnalyzer {
     this.config = {
       ...this.config,
       ...config,
-      customContradictionPatterns: config.customContradictionPatterns ?? this.config.customContradictionPatterns,
+      customContradictionPatterns:
+        config.customContradictionPatterns ?? this.config.customContradictionPatterns,
       ignoreIssueTypes: config.ignoreIssueTypes ?? this.config.ignoreIssueTypes,
     };
   }
@@ -1010,7 +1151,7 @@ export function getCoherenceScore(response: string): number {
  */
 export function analyzeCoherence(
   response: string,
-  config?: CoherenceAnalyzerConfig
+  config?: CoherenceAnalyzerConfig,
 ): CoherenceAnalysis {
   const analyzer = new ResponseCoherenceAnalyzer(config);
   return analyzer.analyzeCoherence(response);

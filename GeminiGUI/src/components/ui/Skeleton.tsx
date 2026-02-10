@@ -6,7 +6,7 @@
  * Features pulse and shimmer effects with CSS animations.
  */
 
-import { forwardRef, type HTMLAttributes, type CSSProperties } from 'react';
+import { type CSSProperties, forwardRef, type HTMLAttributes } from 'react';
 
 // ============================================================================
 // SKELETON STYLES & ANIMATIONS
@@ -149,7 +149,7 @@ export const SkeletonText = forwardRef<HTMLDivElement, SkeletonTextProps>(
       style,
       ...props
     },
-    ref
+    ref,
   ) => {
     const lineHeights = Array.from({ length: lines }).map((_, i) => (
       <div
@@ -166,16 +166,18 @@ export const SkeletonText = forwardRef<HTMLDivElement, SkeletonTextProps>(
       <div
         ref={ref}
         className={`space-y flex flex-col ${className}`}
-        style={{
-          gap,
-          ...style,
-        } as CSSProperties}
+        style={
+          {
+            gap,
+            ...style,
+          } as CSSProperties
+        }
         {...props}
       >
         {lineHeights}
       </div>
     );
-  }
+  },
 );
 
 SkeletonText.displayName = 'SkeletonText';
@@ -186,30 +188,24 @@ SkeletonText.displayName = 'SkeletonText';
 
 export const SkeletonAvatar = forwardRef<HTMLDivElement, SkeletonAvatarProps>(
   (
-    {
-      size = 40,
-      width = size,
-      height = size,
-      variant = 'pulse',
-      className = '',
-      style,
-      ...props
-    },
-    ref
+    { size = 40, width = size, height = size, variant = 'pulse', className = '', style, ...props },
+    ref,
   ) => {
     return (
       <div
         ref={ref}
         className={`skeleton-${variant} rounded-full flex-shrink-0 ${className}`}
-        style={{
-          width,
-          height,
-          ...style,
-        } as CSSProperties}
+        style={
+          {
+            width,
+            height,
+            ...style,
+          } as CSSProperties
+        }
         {...props}
       />
     );
-  }
+  },
 );
 
 SkeletonAvatar.displayName = 'SkeletonAvatar';
@@ -229,17 +225,19 @@ export const SkeletonCard = forwardRef<HTMLDivElement, SkeletonCardProps>(
       style,
       ...props
     },
-    ref
+    ref,
   ) => {
     return (
       <div
         ref={ref}
         className={`skeleton-${variant} rounded-lg p-4 ${className}`}
-        style={{
-          width,
-          minHeight: height,
-          ...style,
-        } as CSSProperties}
+        style={
+          {
+            width,
+            minHeight: height,
+            ...style,
+          } as CSSProperties
+        }
         {...props}
       >
         {/* Header skeleton */}
@@ -252,12 +250,8 @@ export const SkeletonCard = forwardRef<HTMLDivElement, SkeletonCardProps>(
             }}
           />
           <div className="flex-1 space-y-2">
-            <div
-              className={`skeleton-${variant} rounded h-4 w-3/4`}
-            />
-            <div
-              className={`skeleton-${variant} rounded h-3 w-1/2`}
-            />
+            <div className={`skeleton-${variant} rounded h-4 w-3/4`} />
+            <div className={`skeleton-${variant} rounded h-3 w-1/2`} />
           </div>
         </div>
 
@@ -266,15 +260,13 @@ export const SkeletonCard = forwardRef<HTMLDivElement, SkeletonCardProps>(
           {Array.from({ length: lines }).map((_, i) => (
             <div
               key={i}
-              className={`skeleton-${variant} rounded h-3 ${
-                i === lines - 1 ? 'w-4/5' : 'w-full'
-              }`}
+              className={`skeleton-${variant} rounded h-3 ${i === lines - 1 ? 'w-4/5' : 'w-full'}`}
             />
           ))}
         </div>
       </div>
     );
-  }
+  },
 );
 
 SkeletonCard.displayName = 'SkeletonCard';
@@ -294,7 +286,7 @@ export const SkeletonMessage = forwardRef<HTMLDivElement, SkeletonMessageProps>(
       style,
       ...props
     },
-    ref
+    ref,
   ) => {
     return (
       <div
@@ -304,15 +296,17 @@ export const SkeletonMessage = forwardRef<HTMLDivElement, SkeletonMessageProps>(
       >
         <div
           className={`skeleton-${variant} rounded-lg ${className}`}
-          style={{
-            width,
-            minHeight: height,
-            ...style,
-          } as CSSProperties}
+          style={
+            {
+              width,
+              minHeight: height,
+              ...style,
+            } as CSSProperties
+          }
         />
       </div>
     );
-  }
+  },
 );
 
 SkeletonMessage.displayName = 'SkeletonMessage';
@@ -323,29 +317,24 @@ SkeletonMessage.displayName = 'SkeletonMessage';
 
 export const Skeleton = forwardRef<HTMLDivElement, SkeletonBaseProps>(
   (
-    {
-      width = '100%',
-      height = '1rem',
-      variant = 'pulse',
-      className = '',
-      style,
-      ...props
-    },
-    ref
+    { width = '100%', height = '1rem', variant = 'pulse', className = '', style, ...props },
+    ref,
   ) => {
     return (
       <div
         ref={ref}
         className={`skeleton-${variant} ${className}`}
-        style={{
-          width,
-          height,
-          ...style,
-        } as CSSProperties}
+        style={
+          {
+            width,
+            height,
+            ...style,
+          } as CSSProperties
+        }
         {...props}
       />
     );
-  }
+  },
 );
 
 Skeleton.displayName = 'Skeleton';

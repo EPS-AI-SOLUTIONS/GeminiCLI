@@ -12,9 +12,9 @@
  */
 
 import chalk from 'chalk';
-import { commandRegistry, CommandResult, success, error } from './CommandRegistry.js';
-import { box } from './CommandHelpers.js';
 import { getNativeToolsServer } from '../mcp/NativeToolsServer.js';
+import { box } from './CommandHelpers.js';
+import { type CommandResult, commandRegistry, error, success } from './CommandRegistry.js';
 
 // ============================================================
 // Helper
@@ -61,13 +61,16 @@ export const documentCommands = {
       const operations = JSON.parse(opsJson);
       return callDocTool('edit_word_document', { filepath, operations });
     } catch {
-      return error('Invalid JSON for operations. Example: [{"type":"add_paragraph","text":"Hello"}]');
+      return error(
+        'Invalid JSON for operations. Example: [{"type":"add_paragraph","text":"Hello"}]',
+      );
     }
   },
 
   async txt2word(args: string[]): Promise<CommandResult> {
     const [source_path, target_path] = args;
-    if (!source_path || !target_path) return error('Usage: /doc txt2word <source.txt> <target.docx>');
+    if (!source_path || !target_path)
+      return error('Usage: /doc txt2word <source.txt> <target.docx>');
 
     return callDocTool('convert_txt_to_word', { source_path, target_path });
   },
@@ -76,7 +79,10 @@ export const documentCommands = {
     const [filepath, ...contentParts] = args;
     if (!filepath) return error('Usage: /doc excel <filepath> <content>');
     const content = contentParts.join(' ');
-    if (!content) return error('Content is required (JSON array or CSV). Usage: /doc excel <filepath> <content>');
+    if (!content)
+      return error(
+        'Content is required (JSON array or CSV). Usage: /doc excel <filepath> <content>',
+      );
 
     return callDocTool('create_excel_file', { filepath, content });
   },
@@ -91,13 +97,16 @@ export const documentCommands = {
       const operations = JSON.parse(opsJson);
       return callDocTool('edit_excel_file', { filepath, operations });
     } catch {
-      return error('Invalid JSON for operations. Example: [{"type":"update_cell","cell":"A1","value":"Hello"}]');
+      return error(
+        'Invalid JSON for operations. Example: [{"type":"update_cell","cell":"A1","value":"Hello"}]',
+      );
     }
   },
 
   async csv2excel(args: string[]): Promise<CommandResult> {
     const [source_path, target_path] = args;
-    if (!source_path || !target_path) return error('Usage: /doc csv2excel <source.csv> <target.xlsx>');
+    if (!source_path || !target_path)
+      return error('Usage: /doc csv2excel <source.csv> <target.xlsx>');
 
     return callDocTool('convert_csv_to_excel', { source_path, target_path });
   },
@@ -109,7 +118,7 @@ export const documentCommands = {
     if (!content) return error('Content is required. Usage: /doc pdf <filepath> <content>');
 
     return callDocTool('create_pdf_file', { filepath, content });
-  }
+  },
 };
 
 // ============================================================
@@ -120,20 +129,20 @@ function showDocHelp(): CommandResult {
   return success(
     box(
       `${chalk.cyan('Word Documents')}\n` +
-      `  /doc word <path> <content>        Create Word document\n` +
-      `  /doc edit-word <path> <ops-json>   Edit Word document\n` +
-      `  /doc txt2word <src> <dst>          Convert TXT to Word\n\n` +
-      `${chalk.cyan('Excel Spreadsheets')}\n` +
-      `  /doc excel <path> <content>        Create Excel file\n` +
-      `  /doc edit-excel <path> <ops-json>  Edit Excel file\n` +
-      `  /doc csv2excel <src> <dst>         Convert CSV to Excel\n\n` +
-      `${chalk.cyan('PDF Documents')}\n` +
-      `  /doc pdf <path> <content>          Create PDF file\n\n` +
-      `${chalk.gray('Content format: text with \\n for newlines, # for headings')}\n` +
-      `${chalk.gray('Excel content: JSON 2D array or CSV text')}\n` +
-      `${chalk.gray('Edit operations: JSON array of operation objects')}`,
-      'Document Operations (/doc)'
-    )
+        `  /doc word <path> <content>        Create Word document\n` +
+        `  /doc edit-word <path> <ops-json>   Edit Word document\n` +
+        `  /doc txt2word <src> <dst>          Convert TXT to Word\n\n` +
+        `${chalk.cyan('Excel Spreadsheets')}\n` +
+        `  /doc excel <path> <content>        Create Excel file\n` +
+        `  /doc edit-excel <path> <ops-json>  Edit Excel file\n` +
+        `  /doc csv2excel <src> <dst>         Convert CSV to Excel\n\n` +
+        `${chalk.cyan('PDF Documents')}\n` +
+        `  /doc pdf <path> <content>          Create PDF file\n\n` +
+        `${chalk.gray('Content format: text with \\n for newlines, # for headings')}\n` +
+        `${chalk.gray('Excel content: JSON 2D array or CSV text')}\n` +
+        `${chalk.gray('Edit operations: JSON array of operation objects')}`,
+      'Document Operations (/doc)',
+    ),
   );
 }
 
@@ -171,7 +180,7 @@ export function registerDocumentCommands(): void {
         default:
           return showDocHelp();
       }
-    }
+    },
   });
 
   console.log(chalk.gray('[CLI] Document commands registered (/doc)'));

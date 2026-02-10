@@ -14,11 +14,20 @@
  * - Selectors and derived state
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
-import type { AppState, Message, Session, Settings } from '../types';
-import { useAppStore, selectCurrentMessages, selectIsApiKeySet, selectSessionById, selectMessageCount, selectHasMessages, selectUseSwarm, selectOllamaEndpoint } from './useAppStore';
+import { act, renderHook } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SETTINGS, LIMITS } from '../constants';
+import type { AppState, Message } from '../types';
+import {
+  selectCurrentMessages,
+  selectHasMessages,
+  selectIsApiKeySet,
+  selectMessageCount,
+  selectOllamaEndpoint,
+  selectSessionById,
+  selectUseSwarm,
+  useAppStore,
+} from './useAppStore';
 
 // ============================================================================
 // MOCKS & SETUP
@@ -31,7 +40,7 @@ const localStorageMock = (() => {
     getItem: vi.fn((key: string) => store[key] || null),
     setItem: vi.fn((key: string, value: string) => {
       // Ensure value is a string, although persist should send a string
-      store[key] = String(value); 
+      store[key] = String(value);
     }),
     removeItem: vi.fn((key: string) => {
       delete store[key];
@@ -85,7 +94,7 @@ vi.stubGlobal('crypto', {
 describe('useAppStore', () => {
   beforeEach(() => {
     // Reset store before each test
-    const store = useAppStore.getState();
+    const _store = useAppStore.getState();
     useAppStore.setState({
       count: 0,
       theme: 'dark',
@@ -530,7 +539,9 @@ describe('useAppStore', () => {
           result.current.updateSessionTitle(sessionId, longTitle);
         });
 
-        expect(result.current.sessions[0].title.length).toBeLessThanOrEqual(LIMITS.MAX_TITLE_LENGTH);
+        expect(result.current.sessions[0].title.length).toBeLessThanOrEqual(
+          LIMITS.MAX_TITLE_LENGTH,
+        );
       });
 
       it('should not update with empty title', () => {
@@ -618,7 +629,9 @@ describe('useAppStore', () => {
         });
 
         const sessionId = result.current.currentSessionId!;
-        expect(result.current.chatHistory[sessionId][0].content.length).toBeLessThanOrEqual(LIMITS.MAX_CONTENT_LENGTH);
+        expect(result.current.chatHistory[sessionId][0].content.length).toBeLessThanOrEqual(
+          LIMITS.MAX_CONTENT_LENGTH,
+        );
       });
 
       it('should auto-update session title on first user message', () => {
@@ -752,7 +765,9 @@ describe('useAppStore', () => {
         });
 
         const sessionId = result.current.currentSessionId!;
-        expect(result.current.chatHistory[sessionId][0].content.length).toBeLessThanOrEqual(LIMITS.MAX_CONTENT_LENGTH);
+        expect(result.current.chatHistory[sessionId][0].content.length).toBeLessThanOrEqual(
+          LIMITS.MAX_CONTENT_LENGTH,
+        );
       });
 
       it('should only update last message in sequence', () => {
@@ -861,7 +876,7 @@ describe('useAppStore', () => {
 
       it('should accept valid Gemini API key', () => {
         const { result } = renderHook(() => useAppStore());
-        const validKey = 'AIza' + 'a'.repeat(35);
+        const validKey = `AIza${'a'.repeat(35)}`;
 
         act(() => {
           result.current.updateSettings({ geminiApiKey: validKey });
@@ -900,7 +915,9 @@ describe('useAppStore', () => {
           result.current.updateSettings({ systemPrompt: longPrompt });
         });
 
-        expect(result.current.settings.systemPrompt.length).toBeLessThanOrEqual(LIMITS.MAX_SYSTEM_PROMPT_LENGTH);
+        expect(result.current.settings.systemPrompt.length).toBeLessThanOrEqual(
+          LIMITS.MAX_SYSTEM_PROMPT_LENGTH,
+        );
       });
 
       it('should accept valid defaultProvider', () => {
@@ -1000,7 +1017,7 @@ describe('useAppStore', () => {
         const { result } = renderHook(() => useAppStore());
 
         act(() => {
-          result.current.updateSettings({ geminiApiKey: 'AIza' + 'a'.repeat(35) });
+          result.current.updateSettings({ geminiApiKey: `AIza${'a'.repeat(35)}` });
         });
 
         const state = result.current as unknown as AppState;
@@ -1022,8 +1039,8 @@ describe('useAppStore', () => {
         const session = sessionSelector(state);
 
         expect(session).toBeDefined();
-        expect(session!.id).toBe(sessionId);
-        expect(session!.title).toBe('New Chat');
+        expect(session?.id).toBe(sessionId);
+        expect(session?.title).toBe('New Chat');
       });
 
       it('should return undefined when session does not exist', () => {
@@ -1205,14 +1222,18 @@ describe('useAppStore', () => {
         result.current.selectSession(session1Id);
       });
 
-      expect(selectCurrentMessages(result.current as unknown as AppState)[0].content).toBe('Session 1');
+      expect(selectCurrentMessages(result.current as unknown as AppState)[0].content).toBe(
+        'Session 1',
+      );
 
       // Switch back to second session
       act(() => {
         result.current.selectSession(session2Id);
       });
 
-      expect(selectCurrentMessages(result.current as unknown as AppState)[0].content).toBe('Session 2');
+      expect(selectCurrentMessages(result.current as unknown as AppState)[0].content).toBe(
+        'Session 2',
+      );
     });
 
     it('should persist state to localStorage', () => {

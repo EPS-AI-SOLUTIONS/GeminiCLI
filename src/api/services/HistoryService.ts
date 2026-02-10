@@ -4,7 +4,7 @@
  */
 
 import { historyStore } from '../stores/index.js';
-import type { Message, ExecutePlan, MessageMetadata, ExecutionMode } from '../types/index.js';
+import type { ExecutePlan, ExecutionMode, Message, MessageMetadata } from '../types/index.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Service Class
@@ -31,7 +31,7 @@ export class HistoryService {
       duration: number;
       mode: ExecutionMode;
       streaming?: boolean;
-    }
+    },
   ): Message {
     return historyStore.add({
       role: 'assistant',

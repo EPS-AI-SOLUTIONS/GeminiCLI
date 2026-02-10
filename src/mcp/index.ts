@@ -15,18 +15,18 @@
 // ============================================================
 
 export type {
-  MCPServerConfig,
-  MCPTool,
-  MCPPrompt,
-  MCPResource,
-  MCPServerStatus,
-  MCPServerInfo,
-  MCPToolResult,
+  ConnectedServer,
   MCPBatchOperation,
   MCPBatchResult,
-  MCPValidationResult,
+  MCPPrompt,
+  MCPResource,
+  MCPServerConfig,
+  MCPServerInfo,
+  MCPServerStatus,
+  MCPTool,
   MCPToolDiscoveryOptions,
-  ConnectedServer
+  MCPToolResult,
+  MCPValidationResult,
 } from './MCPTypes.js';
 
 // ============================================================
@@ -34,18 +34,18 @@ export type {
 // ============================================================
 
 export {
-  resolveAlias,
-  isAlias,
   addAlias,
-  removeAlias,
-  getAllAliases,
-  getAliasesByPrefix,
-  findAliasForTool,
   clampNumber,
-  sanitizeNumericParams,
-  NUMERIC_LIMITS,
+  findAliasForTool,
+  getAliasesByPrefix,
+  getAllAliases,
+  isAlias,
   MCP_ALIASES,
-  PREDEFINED_ALIASES
+  NUMERIC_LIMITS,
+  PREDEFINED_ALIASES,
+  removeAlias,
+  resolveAlias,
+  sanitizeNumericParams,
 } from './MCPAliases.js';
 
 // ============================================================
@@ -61,7 +61,7 @@ export { MCPManager, mcpManager } from './MCPManager.js';
 export {
   MCPToolRegistry,
   mcpToolRegistry,
-  type ParsedServerName
+  type ParsedServerName,
 } from './MCPToolRegistry.js';
 
 // ============================================================
@@ -69,10 +69,10 @@ export {
 // ============================================================
 
 export {
+  type MCPCircuitBreakerConfig,
   MCPCircuitBreakerManager,
   mcpCircuitBreakerManager,
-  type MCPCircuitBreakerConfig,
-  type ReconnectionHandler
+  type ReconnectionHandler,
 } from './MCPCircuitBreaker.js';
 
 // ============================================================
@@ -80,11 +80,11 @@ export {
 // ============================================================
 
 export {
-  MCPBatchExecutor,
-  mcpBatchExecutor,
   type BatchExecutionOptions,
   type BatchStats,
-  type ToolExecutor
+  MCPBatchExecutor,
+  mcpBatchExecutor,
+  type ToolExecutor,
 } from './MCPBatchOperations.js';
 
 // ============================================================
@@ -92,11 +92,11 @@ export {
 // ============================================================
 
 export {
+  type DiscoveryStatus,
   MCPAutoDiscovery,
   mcpAutoDiscovery,
   type ToolChangeEvent,
-  type DiscoveryStatus,
-  type ToolProvider
+  type ToolProvider,
 } from './MCPAutoDiscovery.js';
 
 // ============================================================
@@ -109,31 +109,29 @@ export { MCPAgentBridge, mcpBridge } from './MCPAgentBridge.js';
 // Serena Integration (Code Intelligence)
 // ============================================================
 
-export {
-  SerenaIntegration,
-  serenaIntegration
-} from './SerenaIntegration.js';
-
 export type {
   SerenaProject,
+  SerenaSearchResult,
   SerenaSymbol,
-  SerenaSearchResult
+} from './SerenaIntegration.js';
+export {
+  SerenaIntegration,
+  serenaIntegration,
 } from './SerenaIntegration.js';
 
 // ============================================================
 // Serena Service (High-level wrapper)
 // ============================================================
 
-export {
-  SerenaService,
-  createSerenaService,
-  getSerenaService
-} from './SerenaService.js';
-
 export type {
+  FileInfo,
   SerenaConfig,
   SymbolInfo,
-  FileInfo
+} from './SerenaService.js';
+export {
+  createSerenaService,
+  getSerenaService,
+  SerenaService,
 } from './SerenaService.js';
 
 // ============================================================
@@ -141,9 +139,9 @@ export type {
 // ============================================================
 
 export {
-  NativeToolsServer,
   getNativeToolsServer,
-  nativeToolsServer,
   NATIVE_SERVER_NAME,
-  NATIVE_TOOL_ALIASES
+  NATIVE_TOOL_ALIASES,
+  NativeToolsServer,
+  nativeToolsServer,
 } from './NativeToolsServer.js';

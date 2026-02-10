@@ -1,5 +1,5 @@
-import { useState, memo } from 'react';
-import { Plus, Search, MessageSquare, Edit2, Trash2, X } from 'lucide-react';
+import { Edit2, MessageSquare, Plus, Search, Trash2, X } from 'lucide-react';
+import { memo, useState } from 'react';
 import type { Session } from '../types';
 
 interface SessionSidebarProps {
@@ -17,14 +17,14 @@ const SessionSidebarComponent: React.FC<SessionSidebarProps> = ({
   onCreateSession,
   onSelectSession,
   onDeleteSession,
-  onUpdateTitle
+  onUpdateTitle,
 }) => {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
-  const [editTitle, setEditTitle] = useState("");
+  const [editTitle, setEditTitle] = useState('');
 
-  const filteredSessions = sessions.filter(s =>
-    s.title.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredSessions = sessions.filter((s) =>
+    s.title.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const startEditing = (session: Session) => {
@@ -76,12 +76,14 @@ const SessionSidebarComponent: React.FC<SessionSidebarProps> = ({
 
       {/* Sessions label */}
       <div className="px-3 pb-1">
-        <span className="text-[10px] uppercase tracking-wider text-[var(--matrix-text-dim)] opacity-50">Sesje</span>
+        <span className="text-[10px] uppercase tracking-wider text-[var(--matrix-text-dim)] opacity-50">
+          Sesje
+        </span>
       </div>
 
       {/* List */}
       <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-1">
-        {filteredSessions.map(session => {
+        {filteredSessions.map((session) => {
           const isActive = session.id === currentSessionId;
           return (
             <div
@@ -99,7 +101,6 @@ const SessionSidebarComponent: React.FC<SessionSidebarProps> = ({
                   onChange={(e) => setEditTitle(e.target.value)}
                   onBlur={saveTitle}
                   onKeyDown={(e) => e.key === 'Enter' && saveTitle()}
-                  autoFocus
                   className="bg-white/90 text-black text-xs rounded px-1 w-full"
                   onClick={(e) => e.stopPropagation()}
                 />
@@ -115,13 +116,19 @@ const SessionSidebarComponent: React.FC<SessionSidebarProps> = ({
 
               <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
-                  onClick={(e) => { e.stopPropagation(); startEditing(session); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    startEditing(session);
+                  }}
                   className="text-[var(--matrix-text-dim)] hover:text-[var(--matrix-accent)]"
                 >
                   <Edit2 size={11} />
                 </button>
                 <button
-                  onClick={(e) => { e.stopPropagation(); onDeleteSession(session.id); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteSession(session.id);
+                  }}
                   className="text-[var(--matrix-text-dim)] hover:text-red-500"
                 >
                   <Trash2 size={11} />

@@ -50,7 +50,7 @@ function formatBytes(bytes: number, decimals = 1): string {
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(decimals))} ${sizes[i]}`;
+  return `${parseFloat((bytes / k ** i).toFixed(decimals))} ${sizes[i]}`;
 }
 
 /**
@@ -74,7 +74,7 @@ export function createNodeFileSchema(options: NodeFileSchemaOptions = {}) {
     },
     {
       message: `File size exceeds limit (${formatBytes(maxSizeBytes)})`,
-    }
+    },
   );
 
   // MIME type validation
@@ -88,12 +88,12 @@ export function createNodeFileSchema(options: NodeFileSchemaOptions = {}) {
   if (allowedExtensions?.length) {
     schema = schema.refine(
       (file) => {
-        const ext = '.' + file.filename.split('.').pop()?.toLowerCase();
+        const ext = `.${file.filename.split('.').pop()?.toLowerCase()}`;
         return allowedExtensions.includes(ext);
       },
       {
         message: `Extension not allowed. Allowed: ${allowedExtensions.join(', ')}`,
-      }
+      },
     );
   }
 
@@ -184,7 +184,7 @@ export type FileUploadRequest = z.infer<typeof fileUploadRequestSchema>;
  */
 export function validateNodeFile<T>(
   schema: z.ZodSchema<T>,
-  input: unknown
+  input: unknown,
 ): { success: true; data: T } | { success: false; error: z.ZodError } {
   const result = schema.safeParse(input);
   if (result.success) {

@@ -2,8 +2,8 @@
  * Format detection utilities
  */
 
-import type { FormatType } from './types.js';
 import { extractListItems } from './ListValidator.js';
+import type { FormatType } from './types.js';
 
 /**
  * Detect the format of output text
@@ -12,12 +12,16 @@ export function detectFormat(output: string): FormatType {
   const trimmed = output.trim();
 
   // Check for JSON
-  if ((trimmed.startsWith('{') && trimmed.endsWith('}')) ||
-      (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+  if (
+    (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+    (trimmed.startsWith('[') && trimmed.endsWith(']'))
+  ) {
     try {
       JSON.parse(trimmed);
       return 'json';
-    } catch { /* Not valid JSON */ }
+    } catch {
+      /* Not valid JSON */
+    }
   }
 
   // Check for code blocks
@@ -32,7 +36,11 @@ export function detectFormat(output: string): FormatType {
   }
 
   // Check for markdown
-  if (/^#{1,6}\s+.+$/m.test(output) || /\*\*[^*]+\*\*/.test(output) || /\[[^\]]+\]\([^)]+\)/.test(output)) {
+  if (
+    /^#{1,6}\s+.+$/m.test(output) ||
+    /\*\*[^*]+\*\*/.test(output) ||
+    /\[[^\]]+\]\([^)]+\)/.test(output)
+  ) {
     return 'markdown';
   }
 
@@ -54,7 +62,9 @@ export function getCorrections(original: string, corrected: string): string[] {
     const correctedLines = corrected.split('\n');
 
     if (originalLines.length !== correctedLines.length) {
-      corrections.push(`Line count changed from ${originalLines.length} to ${correctedLines.length}`);
+      corrections.push(
+        `Line count changed from ${originalLines.length} to ${correctedLines.length}`,
+      );
     }
 
     let changedCount = 0;

@@ -7,8 +7,8 @@
  * logs those errors, and displays a fallback UI instead of crashing.
  */
 
-import { Component, ReactNode, ErrorInfo } from 'react';
 import { AlertCircle, RotateCcw } from 'lucide-react';
+import { Component, type ErrorInfo, type ReactNode } from 'react';
 
 // ============================================================================
 // TYPES
@@ -116,11 +116,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           <div className="error-boundary-panel">
             {/* Header with Icon */}
             <div className="error-boundary-header">
-              <AlertCircle
-                size={32}
-                className="error-boundary-icon"
-                strokeWidth={1.5}
-              />
+              <AlertCircle size={32} className="error-boundary-icon" strokeWidth={1.5} />
               <h1 className="error-boundary-title">Something went wrong</h1>
             </div>
 
@@ -133,12 +129,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             {/* Stack Trace (in development) */}
             {this.state.errorInfo?.componentStack && (
               <details className="error-boundary-details">
-                <summary className="error-boundary-summary">
-                  Component Stack
-                </summary>
-                <pre className="error-boundary-stack">
-                  {this.state.errorInfo.componentStack}
-                </pre>
+                <summary className="error-boundary-summary">Component Stack</summary>
+                <pre className="error-boundary-stack">{this.state.errorInfo.componentStack}</pre>
               </details>
             )}
 
@@ -166,9 +158,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
             {/* Help Text */}
             <div className="error-boundary-help">
-              <p>
-                If the problem persists, please check the browser console for more details.
-              </p>
+              <p>If the problem persists, please check the browser console for more details.</p>
             </div>
           </div>
 

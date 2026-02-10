@@ -2,15 +2,16 @@
  * KnowledgeCommands - CLI commands for knowledge management
  */
 
+import path from 'node:path';
 import chalk from 'chalk';
-import path from 'path';
-import { knowledgeBank, KnowledgeType, KnowledgeEntry } from './KnowledgeBank.js';
 import { knowledgeAgent } from './KnowledgeAgent.js';
-import { modelTrainer, AVAILABLE_BASE_MODELS, DEFAULT_TRAINING_CONFIG } from './ModelTrainer.js';
+import { type KnowledgeType, knowledgeBank } from './KnowledgeBank.js';
+import { AVAILABLE_BASE_MODELS, DEFAULT_TRAINING_CONFIG, modelTrainer } from './ModelTrainer.js';
 
 // Re-export CommandContext from centralized location
 export type { CommandContext } from '../cli/CommandRegistry.js';
-import { CommandContext } from '../cli/CommandRegistry.js';
+
+import type { CommandContext } from '../cli/CommandRegistry.js';
 
 /**
  * @deprecated Use CommandContext from '../cli/CommandRegistry.js' instead
@@ -21,7 +22,10 @@ export interface LegacyCommandContext {
   args: string[];
 }
 
-function parseArgs(args: string[]): { positional: string[]; flags: Record<string, string | boolean> } {
+function parseArgs(args: string[]): {
+  positional: string[];
+  flags: Record<string, string | boolean>;
+} {
   const positional: string[] = [];
   const flags: Record<string, string | boolean> = {};
 
@@ -111,7 +115,7 @@ async function showStatus(): Promise<string> {
   await knowledgeBank.init();
 
   const stats = knowledgeBank.getStats();
-  const agentStats = knowledgeAgent.getStats();
+  const _agentStats = knowledgeAgent.getStats();
 
   const lines: string[] = [];
   lines.push(chalk.bold.cyan('\n Knowledge Bank Status\n'));
@@ -137,25 +141,30 @@ async function showStatus(): Promise<string> {
 
   if (stats.topTags.length > 0) {
     lines.push(chalk.bold('\n Top Tags:'));
-    lines.push(`  ${stats.topTags.map(t => `${t.tag}(${t.count})`).join(', ')}`);
+    lines.push(`  ${stats.topTags.map((t) => `${t.tag}(${t.count})`).join(', ')}`);
   }
 
   lines.push(chalk.gray('\n─'.repeat(50)));
   return lines.join('\n');
 }
 
-async function addKnowledge(args: string[], flags: Record<string, string | boolean>): Promise<string> {
+async function addKnowledge(
+  args: string[],
+  flags: Record<string, string | boolean>,
+): Promise<string> {
   if (args.length < 2) {
-    return chalk.yellow('\nUsage: /knowledge add <type> <title> --content "content" [--tags "tag1,tag2"]');
+    return chalk.yellow(
+      '\nUsage: /knowledge add <type> <title> --content "content" [--tags "tag1,tag2"]',
+    );
   }
 
   await knowledgeBank.init();
 
   const type = args[0] as KnowledgeType;
   const title = args.slice(1).join(' ');
-  const content = flags.content as string || flags.c as string || '';
-  const tags = (flags.tags as string || '').split(',').filter(Boolean);
-  const importance = parseFloat(flags.importance as string || '0.5');
+  const content = (flags.content as string) || (flags.c as string) || '';
+  const tags = ((flags.tags as string) || '').split(',').filter(Boolean);
+  const importance = parseFloat((flags.importance as string) || '0.5');
 
   if (!content) {
     return chalk.yellow('\nContent is required. Use --content "your content"');
@@ -164,26 +173,31 @@ async function addKnowledge(args: string[], flags: Record<string, string | boole
   const entry = await knowledgeBank.add(type, title, content, {
     source: 'user',
     tags,
-    importance
+    importance,
   });
 
-  return chalk.green(`\n Knowledge added: ${entry.title}\n  ID: ${entry.id}\n  Type: ${entry.type}`);
+  return chalk.green(
+    `\n Knowledge added: ${entry.title}\n  ID: ${entry.id}\n  Type: ${entry.type}`,
+  );
 }
 
-async function searchKnowledge(query: string, flags: Record<string, string | boolean>): Promise<string> {
+async function searchKnowledge(
+  query: string,
+  flags: Record<string, string | boolean>,
+): Promise<string> {
   if (!query.trim()) {
     return chalk.yellow('\nProvide search query: /knowledge search <query>');
   }
 
   await knowledgeBank.init();
 
-  const limit = parseInt(flags.limit as string || '10');
+  const limit = parseInt((flags.limit as string) || '10', 10);
   const type = flags.type as KnowledgeType | undefined;
 
   const results = await knowledgeBank.search(query, {
     limit,
     types: type ? [type] : undefined,
-    useSemanticSearch: !flags.keyword
+    useSemanticSearch: !flags.keyword,
   });
 
   if (results.length === 0) {
@@ -197,7 +211,9 @@ async function searchKnowledge(query: string, flags: Record<string, string | boo
     const icon = result.matchType === 'semantic' ? '🧠' : '🔤';
     lines.push(`${icon} ${chalk.bold(result.entry.title)} [${result.entry.type}]`);
     lines.push(chalk.gray(`   ID: ${result.entry.id} | Score: ${result.score.toFixed(2)}`));
-    lines.push(`   ${result.entry.summary?.slice(0, 100) || result.entry.content.slice(0, 100)}...`);
+    lines.push(
+      `   ${result.entry.summary?.slice(0, 100) || result.entry.content.slice(0, 100)}...`,
+    );
     lines.push(`   Tags: ${result.entry.tags.slice(0, 5).join(', ')}`);
     lines.push('');
   }
@@ -205,7 +221,10 @@ async function searchKnowledge(query: string, flags: Record<string, string | boo
   return lines.join('\n');
 }
 
-async function askKnowledge(question: string, flags: Record<string, string | boolean>): Promise<string> {
+async function askKnowledge(
+  question: string,
+  flags: Record<string, string | boolean>,
+): Promise<string> {
   if (!question.trim()) {
     return chalk.yellow('\nProvide a question: /knowledge ask <question>');
   }
@@ -216,8 +235,8 @@ async function askKnowledge(question: string, flags: Record<string, string | boo
 
   const response = await knowledgeAgent.query(question, {
     useLocalModel: !!flags.local,
-    maxKnowledge: parseInt(flags.sources as string || '5'),
-    includeProjectContext: !flags['no-project']
+    maxKnowledge: parseInt((flags.sources as string) || '5', 10),
+    includeProjectContext: !flags['no-project'],
   });
 
   const lines: string[] = [];
@@ -238,7 +257,11 @@ async function askKnowledge(question: string, flags: Record<string, string | boo
   return lines.join('\n');
 }
 
-async function learnCommand(source: string | undefined, cwd: string, flags: Record<string, string | boolean>): Promise<string> {
+async function learnCommand(
+  source: string | undefined,
+  cwd: string,
+  flags: Record<string, string | boolean>,
+): Promise<string> {
   await knowledgeAgent.init();
 
   const lines: string[] = [];
@@ -248,7 +271,7 @@ async function learnCommand(source: string | undefined, cwd: string, flags: Reco
     lines.push(chalk.cyan('\n Learning from all sources...\n'));
 
     // Learn from codebase
-    const codebasePath = flags.path as string || cwd;
+    const codebasePath = (flags.path as string) || cwd;
     console.log(chalk.gray(`[Learn] Analyzing codebase: ${codebasePath}`));
     const codebaseResult = await knowledgeAgent.learnFromCodebase(codebasePath);
     lines.push(`  📁 Codebase: ${codebaseResult.extracted} entries`);
@@ -260,16 +283,13 @@ async function learnCommand(source: string | undefined, cwd: string, flags: Reco
 
     const total = codebaseResult.extracted + sessionResult.extracted;
     lines.push(chalk.green(`\n Total learned: ${total} entries`));
-
   } else if (source === 'codebase' || source === 'code') {
-    const codebasePath = flags.path as string || cwd;
+    const codebasePath = (flags.path as string) || cwd;
     const result = await knowledgeAgent.learnFromCodebase(codebasePath);
     lines.push(chalk.green(`\n Learned ${result.extracted} entries from codebase`));
-
   } else if (source === 'sessions' || source === 'history') {
     const result = await knowledgeAgent.learnFromSessions();
     lines.push(chalk.green(`\n Learned ${result.extracted} entries from sessions`));
-
   } else {
     return chalk.yellow('\nUsage: /knowledge learn [all|codebase|sessions] [--path <dir>]');
   }
@@ -281,7 +301,7 @@ async function listKnowledge(flags: Record<string, string | boolean>): Promise<s
   await knowledgeBank.init();
 
   const type = flags.type as KnowledgeType | undefined;
-  const limit = parseInt(flags.limit as string || '20');
+  const limit = parseInt((flags.limit as string) || '20', 10);
   const sortBy = (flags.sort as 'recent' | 'accessed' | 'importance') || 'recent';
 
   const entries = knowledgeBank.list({ type, limit, sortBy });
@@ -345,7 +365,11 @@ async function deleteEntry(id: string): Promise<string> {
   return chalk.red(`\n Entry not found: ${id}`);
 }
 
-async function importKnowledge(source: string, cwd: string, flags: Record<string, string | boolean>): Promise<string> {
+async function importKnowledge(
+  source: string,
+  cwd: string,
+  flags: Record<string, string | boolean>,
+): Promise<string> {
   if (!source) {
     return chalk.yellow('\nProvide file or directory: /knowledge import <path>');
   }
@@ -356,14 +380,14 @@ async function importKnowledge(source: string, cwd: string, flags: Record<string
   const type = (flags.type as KnowledgeType) || 'documentation';
 
   try {
-    const stats = await import('fs/promises').then(fs => fs.stat(fullPath));
+    const stats = await import('node:fs/promises').then((fs) => fs.stat(fullPath));
 
     if (stats.isDirectory()) {
-      const extensions = (flags.ext as string || '.md,.txt').split(',');
+      const extensions = ((flags.ext as string) || '.md,.txt').split(',');
       const count = await knowledgeBank.importFromDirectory(fullPath, {
         extensions,
         type,
-        recursive: !flags['no-recursive']
+        recursive: !flags['no-recursive'],
       });
       return chalk.green(`\n Imported ${count} files from ${source}`);
     } else {
@@ -375,7 +399,10 @@ async function importKnowledge(source: string, cwd: string, flags: Record<string
   }
 }
 
-async function exportKnowledge(output: string | undefined, flags: Record<string, string | boolean>): Promise<string> {
+async function exportKnowledge(
+  output: string | undefined,
+  flags: Record<string, string | boolean>,
+): Promise<string> {
   await knowledgeBank.init();
 
   if (flags.training) {
@@ -400,7 +427,9 @@ async function trainModel(flags: Record<string, string | boolean>): Promise<stri
     lines.push(chalk.bold.cyan('\n🖥️ System Status for Model Training\n'));
     lines.push(chalk.gray('─'.repeat(50)));
     lines.push(`Python: ${system.python ? chalk.green('✓') : chalk.red('✗')}`);
-    lines.push(`CUDA/GPU: ${system.cuda ? chalk.green(`✓ (${system.cudaVersion})`) : chalk.yellow('✗ (CPU only)')}`);
+    lines.push(
+      `CUDA/GPU: ${system.cuda ? chalk.green(`✓ (${system.cudaVersion})`) : chalk.yellow('✗ (CPU only)')}`,
+    );
     lines.push(`Memory: ${system.memory.toFixed(1)} GB`);
     lines.push(chalk.bold('\nPackages:'));
     for (const [pkg, installed] of Object.entries(system.packages)) {
@@ -455,7 +484,9 @@ async function trainModel(flags: Record<string, string | boolean>): Promise<stri
       lines.push(chalk.gray('You can now train models with: /knowledge train'));
     } else {
       lines.push(chalk.red('\n✗ Dependency installation failed.'));
-      lines.push(chalk.gray('Try manually: pip install torch transformers peft datasets trl unsloth'));
+      lines.push(
+        chalk.gray('Try manually: pip install torch transformers peft datasets trl unsloth'),
+      );
     }
     return lines.join('\n');
   }
@@ -463,17 +494,21 @@ async function trainModel(flags: Record<string, string | boolean>): Promise<stri
   // Quick model (use KnowledgeAgent - just system prompt, no real training)
   if (flags.quick) {
     await knowledgeAgent.init();
-    const baseModel = flags.base as string || 'llama3.2:3b';
-    const modelName = flags.name as string || 'geminihydra-quick';
+    const baseModel = (flags.base as string) || 'llama3.2:3b';
+    const modelName = (flags.name as string) || 'geminihydra-quick';
 
     lines.push(chalk.cyan(`\n⚡ Creating quick model (custom system prompt): ${modelName}`));
     try {
       const createdModel = await knowledgeAgent.createCustomModel({
         baseModel,
-        modelName
+        modelName,
       });
       lines.push(chalk.green(`\n✓ Quick model created: ${createdModel}`));
-      lines.push(chalk.gray('Note: This is not fine-tuned. For real training, use /knowledge train without --quick'));
+      lines.push(
+        chalk.gray(
+          'Note: This is not fine-tuned. For real training, use /knowledge train without --quick',
+        ),
+      );
     } catch (error: any) {
       lines.push(chalk.red(`\n✗ Failed: ${error.message}`));
     }
@@ -481,12 +516,13 @@ async function trainModel(flags: Record<string, string | boolean>): Promise<stri
   }
 
   // REAL TRAINING
-  const baseModelKey = flags.base as string || 'llama-3.2-3b';
-  const baseModel = AVAILABLE_BASE_MODELS[baseModelKey as keyof typeof AVAILABLE_BASE_MODELS] || baseModelKey;
-  const outputName = flags.name as string || 'geminihydra-assistant';
-  const epochs = parseInt(flags.epochs as string || '3');
-  const batchSize = parseInt(flags.batch as string || '2');
-  const loraRank = parseInt(flags.rank as string || '16');
+  const baseModelKey = (flags.base as string) || 'llama-3.2-3b';
+  const baseModel =
+    AVAILABLE_BASE_MODELS[baseModelKey as keyof typeof AVAILABLE_BASE_MODELS] || baseModelKey;
+  const outputName = (flags.name as string) || 'geminihydra-assistant';
+  const epochs = parseInt((flags.epochs as string) || '3', 10);
+  const batchSize = parseInt((flags.batch as string) || '2', 10);
+  const loraRank = parseInt((flags.rank as string) || '16', 10);
 
   lines.push(chalk.bold.cyan('\n🚀 Starting Real Model Training\n'));
   lines.push(chalk.gray('─'.repeat(50)));
@@ -509,7 +545,7 @@ async function trainModel(flags: Record<string, string | boolean>): Promise<stri
   const stats = knowledgeBank.getStats();
   const estimate = modelTrainer.estimateTrainingTime(
     { ...DEFAULT_TRAINING_CONFIG, epochs, batchSize, baseModel, outputName },
-    stats.totalEntries
+    stats.totalEntries,
   );
   lines.push(`Training samples: ${stats.totalEntries}`);
   lines.push(`Estimated time: ${chalk.yellow(estimate)}`);
@@ -521,22 +557,27 @@ async function trainModel(flags: Record<string, string | boolean>): Promise<stri
   // Start training
   lines.push(chalk.cyan('\n🔄 Training in progress...\n'));
 
-  const result = await modelTrainer.train({
-    baseModel,
-    outputName,
-    epochs,
-    batchSize,
-    loraRank,
-    loraAlpha: loraRank * 2,
-    exportGguf: !flags['no-gguf'],
-    registerOllama: !flags['no-ollama']
-  }, (progress) => {
-    const bar = '█'.repeat(Math.floor(progress.progress / 5)) + '░'.repeat(20 - Math.floor(progress.progress / 5));
-    console.log(chalk.gray(`[${bar}] ${progress.progress}% - ${progress.message}`));
-    if (progress.loss) {
-      console.log(chalk.gray(`  Loss: ${progress.loss.toFixed(4)}`));
-    }
-  });
+  const result = await modelTrainer.train(
+    {
+      baseModel,
+      outputName,
+      epochs,
+      batchSize,
+      loraRank,
+      loraAlpha: loraRank * 2,
+      exportGguf: !flags['no-gguf'],
+      registerOllama: !flags['no-ollama'],
+    },
+    (progress) => {
+      const bar =
+        '█'.repeat(Math.floor(progress.progress / 5)) +
+        '░'.repeat(20 - Math.floor(progress.progress / 5));
+      console.log(chalk.gray(`[${bar}] ${progress.progress}% - ${progress.message}`));
+      if (progress.loss) {
+        console.log(chalk.gray(`  Loss: ${progress.loss.toFixed(4)}`));
+      }
+    },
+  );
 
   if (result.success) {
     lines.push(chalk.green('\n✅ Training Complete!\n'));
@@ -565,12 +606,12 @@ async function trainModel(flags: Record<string, string | boolean>): Promise<stri
 async function pruneKnowledge(flags: Record<string, string | boolean>): Promise<string> {
   await knowledgeBank.init();
 
-  const maxAgeDays = parseInt(flags.days as string || '90');
-  const minImportance = parseFloat(flags.importance as string || '0.1');
+  const maxAgeDays = parseInt((flags.days as string) || '90', 10);
+  const minImportance = parseFloat((flags.importance as string) || '0.1');
 
   const pruned = await knowledgeBank.prune({
     maxAgeDays,
-    minImportance
+    minImportance,
   });
 
   return chalk.green(`\n Pruned ${pruned} old/unused entries`);
@@ -629,7 +670,7 @@ ${chalk.bold('Knowledge Types:')}
 }
 
 export const knowledgeCommands = {
-  knowledge: knowledgeCommand
+  knowledge: knowledgeCommand,
 };
 
 export default knowledgeCommands;

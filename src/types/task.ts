@@ -32,4 +32,11 @@ export type TaskPriority = 'critical' | 'high' | 'medium' | 'low' | 'background'
 /**
  * Difficulty level for model routing
  */
-export type TaskDifficulty = 'trivial' | 'simple' | 'medium' | 'moderate' | 'complex' | 'expert' | 'critical';
+export type TaskDifficulty =
+  | 'trivial'
+  | 'simple'
+  | 'medium'
+  | 'moderate'
+  | 'complex'
+  | 'expert'
+  | 'critical';

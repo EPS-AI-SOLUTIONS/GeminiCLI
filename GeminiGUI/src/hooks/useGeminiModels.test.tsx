@@ -6,14 +6,13 @@
  * Tests loading states, error handling, API key validation, and refetching.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
-
-import { useGeminiModels } from './useGeminiModels';
-import { useAppStore } from '../store/useAppStore';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FALLBACK_MODELS, TAURI_COMMANDS } from '../constants';
+import { useAppStore } from '../store/useAppStore';
+import { useGeminiModels } from './useGeminiModels';
 
 // ============================================================================
 // MOCKS
@@ -44,7 +43,7 @@ function createTestQueryClient() {
     defaultOptions: {
       queries: {
         retry: false, // Disable retries in tests
-        gcTime: 0,    // Disable garbage collection timer
+        gcTime: 0, // Disable garbage collection timer
       },
     },
   });
@@ -55,9 +54,7 @@ function createTestQueryClient() {
  */
 function createWrapper(queryClient: QueryClient) {
   return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
 }
 
@@ -93,7 +90,7 @@ describe('useGeminiModels', () => {
 
     // Setup: Mock invoke to delay response
     (invoke as any).mockImplementation(
-      () => new Promise(resolve => setTimeout(() => resolve(['gemini-model']), 100))
+      () => new Promise((resolve) => setTimeout(() => resolve(['gemini-model']), 100)),
     );
 
     // Act
@@ -175,10 +172,7 @@ describe('useGeminiModels', () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    expect(invoke).toHaveBeenCalledWith(
-      TAURI_COMMANDS.GET_GEMINI_MODELS,
-      { apiKey: mockApiKey }
-    );
+    expect(invoke).toHaveBeenCalledWith(TAURI_COMMANDS.GET_GEMINI_MODELS, { apiKey: mockApiKey });
 
     expect(result.current.models).toEqual(mockModels);
     expect(result.current.hasApiKey).toBe(true);
@@ -238,9 +232,7 @@ describe('useGeminiModels', () => {
     });
 
     // First call returns initial models, second call returns refetched models
-    (invoke as any)
-      .mockResolvedValueOnce(initialModels)
-      .mockResolvedValueOnce(refetchedModels);
+    (invoke as any).mockResolvedValueOnce(initialModels).mockResolvedValueOnce(refetchedModels);
 
     // Act
     const { result, rerender } = renderHook(() => useGeminiModels(), {
@@ -343,9 +335,7 @@ describe('useGeminiModels', () => {
         return selector(state);
       });
 
-    (invoke as any)
-      .mockResolvedValueOnce(initialModels)
-      .mockResolvedValueOnce(newModels);
+    (invoke as any).mockResolvedValueOnce(initialModels).mockResolvedValueOnce(newModels);
 
     // Act: Render with initial key
     const { result, rerender } = renderHook(() => useGeminiModels(), {

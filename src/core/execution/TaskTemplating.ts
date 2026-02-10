@@ -5,11 +5,11 @@
  * new feature implementation, bug fixes, etc.
  */
 
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
 import chalk from 'chalk';
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import { SwarmTask } from '../../types/index.js';
 import { GEMINIHYDRA_DIR } from '../../config/paths.config.js';
+import type { SwarmTask } from '../../types/index.js';
 
 // =============================================================================
 // TYPES
@@ -54,29 +54,46 @@ const BUILT_IN_TEMPLATES: TaskTemplate[] = [
     description: 'Review code for quality and issues',
     pattern: /(?:review|przejrzyj|sprawdź)\s+(?:kod|code|plik|file)/i,
     taskStructure: [
-      { agent: 'geralt', taskTemplate: 'Przeanalizuj bezpieczeństwo kodu w {file}', dependencies: [] },
-      { agent: 'yennefer', taskTemplate: 'Sprawdź architekturę i wzorce w {file}', dependencies: [] },
+      {
+        agent: 'geralt',
+        taskTemplate: 'Przeanalizuj bezpieczeństwo kodu w {file}',
+        dependencies: [],
+      },
+      {
+        agent: 'yennefer',
+        taskTemplate: 'Sprawdź architekturę i wzorce w {file}',
+        dependencies: [],
+      },
       { agent: 'lambert', taskTemplate: 'Znajdź potencjalne bugi w {file}', dependencies: [] },
-      { agent: 'regis', taskTemplate: 'Podsumuj wyniki review dla {file}', dependencies: [1, 2, 3] }
+      {
+        agent: 'regis',
+        taskTemplate: 'Podsumuj wyniki review dla {file}',
+        dependencies: [1, 2, 3],
+      },
     ],
     variables: ['file'],
     usageCount: 0,
-    lastUsed: new Date()
+    lastUsed: new Date(),
   },
   {
     id: 'new_feature',
     name: 'New Feature',
     description: 'Implement a new feature',
-    pattern: /(?:dodaj|add|implement|zaimplementuj|stwórz|create)\s+(?:feature|funkcję|funkcjonalność)/i,
+    pattern:
+      /(?:dodaj|add|implement|zaimplementuj|stwórz|create)\s+(?:feature|funkcję|funkcjonalność)/i,
     taskStructure: [
       { agent: 'dijkstra', taskTemplate: 'Zaplanuj implementację {feature}', dependencies: [] },
-      { agent: 'yennefer', taskTemplate: 'Zaprojektuj architekturę dla {feature}', dependencies: [1] },
+      {
+        agent: 'yennefer',
+        taskTemplate: 'Zaprojektuj architekturę dla {feature}',
+        dependencies: [1],
+      },
       { agent: 'ciri', taskTemplate: 'Zaimplementuj {feature}', dependencies: [2] },
-      { agent: 'triss', taskTemplate: 'Napisz testy dla {feature}', dependencies: [3] }
+      { agent: 'triss', taskTemplate: 'Napisz testy dla {feature}', dependencies: [3] },
     ],
     variables: ['feature'],
     usageCount: 0,
-    lastUsed: new Date()
+    lastUsed: new Date(),
   },
   {
     id: 'bug_fix',
@@ -86,11 +103,11 @@ const BUILT_IN_TEMPLATES: TaskTemplate[] = [
     taskStructure: [
       { agent: 'lambert', taskTemplate: 'Zdiagnozuj przyczynę {bug}', dependencies: [] },
       { agent: 'ciri', taskTemplate: 'Napraw {bug}', dependencies: [1] },
-      { agent: 'triss', taskTemplate: 'Zweryfikuj poprawkę dla {bug}', dependencies: [2] }
+      { agent: 'triss', taskTemplate: 'Zweryfikuj poprawkę dla {bug}', dependencies: [2] },
     ],
     variables: ['bug'],
     usageCount: 0,
-    lastUsed: new Date()
+    lastUsed: new Date(),
   },
   {
     id: 'refactoring',
@@ -101,11 +118,11 @@ const BUILT_IN_TEMPLATES: TaskTemplate[] = [
       { agent: 'yennefer', taskTemplate: 'Przeanalizuj architekturę {target}', dependencies: [] },
       { agent: 'dijkstra', taskTemplate: 'Zaplanuj refaktoryzację {target}', dependencies: [1] },
       { agent: 'ciri', taskTemplate: 'Przeprowadź refaktoryzację {target}', dependencies: [2] },
-      { agent: 'triss', taskTemplate: 'Zweryfikuj refaktoryzację {target}', dependencies: [3] }
+      { agent: 'triss', taskTemplate: 'Zweryfikuj refaktoryzację {target}', dependencies: [3] },
     ],
     variables: ['target'],
     usageCount: 0,
-    lastUsed: new Date()
+    lastUsed: new Date(),
   },
   {
     id: 'testing',
@@ -113,14 +130,18 @@ const BUILT_IN_TEMPLATES: TaskTemplate[] = [
     description: 'Create tests for code',
     pattern: /(?:test|przetestuj|napisz testy|create tests)/i,
     taskStructure: [
-      { agent: 'triss', taskTemplate: 'Zaprojektuj strategię testowania dla {target}', dependencies: [] },
+      {
+        agent: 'triss',
+        taskTemplate: 'Zaprojektuj strategię testowania dla {target}',
+        dependencies: [],
+      },
       { agent: 'triss', taskTemplate: 'Napisz testy jednostkowe dla {target}', dependencies: [1] },
-      { agent: 'triss', taskTemplate: 'Napisz testy integracyjne dla {target}', dependencies: [2] }
+      { agent: 'triss', taskTemplate: 'Napisz testy integracyjne dla {target}', dependencies: [2] },
     ],
     variables: ['target'],
     usageCount: 0,
-    lastUsed: new Date()
-  }
+    lastUsed: new Date(),
+  },
 ];
 
 // =============================================================================
@@ -170,10 +191,10 @@ class TaskTemplateManager {
             const template: TaskTemplate = {
               ...templateJSON,
               pattern: new RegExp(templateJSON.pattern, 'i'),
-              lastUsed: new Date(templateJSON.lastUsed)
+              lastUsed: new Date(templateJSON.lastUsed),
             };
             this.templates.set(template.id, template);
-          } catch (error) {
+          } catch (_error) {
             console.log(chalk.yellow(`[Templates] Failed to load ${file}`));
           }
         }
@@ -199,10 +220,7 @@ class TaskTemplateManager {
   /**
    * Apply template to create tasks
    */
-  applyTemplate(
-    template: TaskTemplate,
-    variables: Record<string, string>
-  ): SwarmTask[] {
+  applyTemplate(template: TaskTemplate, variables: Record<string, string>): SwarmTask[] {
     template.usageCount++;
     template.lastUsed = new Date();
 
@@ -220,7 +238,7 @@ class TaskTemplateManager {
         task: taskText,
         dependencies: struct.dependencies,
         status: 'pending' as const,
-        retryCount: 0
+        retryCount: 0,
       };
     });
   }
@@ -236,8 +254,8 @@ class TaskTemplateManager {
       // Try to find the variable value in the objective
       const patterns: RegExp[] = [
         new RegExp(`${varName}[:\\s]+["']?([^"']+)["']?`, 'i'),
-        new RegExp(`["']([^"']+)["']`, 'i'),
-        new RegExp(`\\b(\\S+\\.\\w+)\\b`, 'i')  // File pattern
+        /["']([^"']+)["']/i,
+        /\b(\S+\.\w+)\b/i, // File pattern
       ];
 
       for (const pattern of patterns) {
@@ -264,7 +282,7 @@ class TaskTemplateManager {
     const fullTemplate: TaskTemplate = {
       ...template,
       usageCount: 0,
-      lastUsed: new Date()
+      lastUsed: new Date(),
     };
 
     this.templates.set(template.id, fullTemplate);
@@ -275,7 +293,7 @@ class TaskTemplateManager {
     const templateJSON: TaskTemplateJSON = {
       ...fullTemplate,
       pattern: fullTemplate.pattern.source,
-      lastUsed: fullTemplate.lastUsed.toISOString()
+      lastUsed: fullTemplate.lastUsed.toISOString(),
     };
     await fs.writeFile(filePath, JSON.stringify(templateJSON, null, 2));
 
@@ -357,12 +375,12 @@ class TaskTemplateManager {
     description: string,
     pattern: RegExp,
     tasks: SwarmTask[],
-    variables: string[]
+    variables: string[],
   ): TaskTemplate {
-    const taskStructure: TaskTemplateStructure[] = tasks.map(task => ({
+    const taskStructure: TaskTemplateStructure[] = tasks.map((task) => ({
       agent: task.agent,
       taskTemplate: task.task,
-      dependencies: task.dependencies
+      dependencies: task.dependencies,
     }));
 
     const template: TaskTemplate = {
@@ -373,7 +391,7 @@ class TaskTemplateManager {
       taskStructure,
       variables,
       usageCount: 1,
-      lastUsed: new Date()
+      lastUsed: new Date(),
     };
 
     this.templates.set(id, template);

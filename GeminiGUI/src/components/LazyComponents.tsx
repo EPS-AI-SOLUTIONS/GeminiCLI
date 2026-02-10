@@ -21,7 +21,7 @@ import { lazy } from 'react';
 const SettingsModalLazy = lazy(() =>
   import('./SettingsModal').then((m) => ({
     default: m.SettingsModal,
-  }))
+  })),
 );
 
 /**
@@ -31,7 +31,7 @@ const SettingsModalLazy = lazy(() =>
 const MemoryPanelLazy = lazy(() =>
   import('./MemoryPanel').then((m) => ({
     default: m.MemoryPanel,
-  }))
+  })),
 );
 
 /**
@@ -41,7 +41,7 @@ const MemoryPanelLazy = lazy(() =>
 const ShortcutsModalLazy = lazy(() =>
   import('./ShortcutsModal').then((m) => ({
     default: m.ShortcutsModal,
-  }))
+  })),
 );
 
 /**
@@ -52,7 +52,7 @@ const ShortcutsModalLazy = lazy(() =>
 const WitcherRunesLazy = lazy(() =>
   import('./effects/WitcherRunes').then((m) => ({
     default: m.WitcherRunes,
-  }))
+  })),
 );
 
 /**
@@ -63,7 +63,7 @@ const WitcherRunesLazy = lazy(() =>
 const SystemContextMenuLazy = lazy(() =>
   import('./SystemContextMenu').then((m) => ({
     default: m.SystemContextMenu,
-  }))
+  })),
 );
 
 export {

@@ -25,7 +25,7 @@ const QUALITY_MODEL = GEMINI_MODELS.FLASH;
 export interface SecurityVulnerability {
   id: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
-  type: string;  // OWASP category or CWE
+  type: string; // OWASP category or CWE
   title: string;
   description: string;
   location: string;
@@ -91,20 +91,15 @@ Focus on real security issues. Check for:
  * @param filename - Name of the file being scanned
  * @returns Security scan results including vulnerabilities and recommendations
  */
-export async function scanSecurity(
-  code: string,
-  filename: string
-): Promise<SecurityScanResult> {
+export async function scanSecurity(code: string, filename: string): Promise<SecurityScanResult> {
   console.log(chalk.cyan(`[Security] Scanning ${filename}...`));
 
-  const prompt = SECURITY_SCAN_PROMPT
-    .replace('{filename}', filename)
-    .replace('{code}', code);
+  const prompt = SECURITY_SCAN_PROMPT.replace('{filename}', filename).replace('{code}', code);
 
   try {
     const model = genAI.getGenerativeModel({
       model: QUALITY_MODEL,
-      generationConfig: { temperature: 0.1, maxOutputTokens: 4096 }
+      generationConfig: { temperature: 0.1, maxOutputTokens: 4096 },
     });
 
     const result = await model.generateContent(prompt);
@@ -120,14 +115,16 @@ export async function scanSecurity(
     // Add IDs
     const vulnerabilities = (parsed.vulnerabilities || []).map((v: any, i: number) => ({
       ...v,
-      id: `vuln-${i + 1}`
+      id: `vuln-${i + 1}`,
     }));
 
     const criticalCount = vulnerabilities.filter((v: any) => v.severity === 'critical').length;
     const highCount = vulnerabilities.filter((v: any) => v.severity === 'high').length;
 
     if (criticalCount > 0) {
-      console.log(chalk.red(`[Security] CRITICAL: ${criticalCount} critical vulnerabilities found!`));
+      console.log(
+        chalk.red(`[Security] CRITICAL: ${criticalCount} critical vulnerabilities found!`),
+      );
     } else if (highCount > 0) {
       console.log(chalk.yellow(`[Security] WARNING: ${highCount} high severity issues found`));
     } else {
@@ -139,7 +136,7 @@ export async function scanSecurity(
       riskLevel: parsed.riskLevel || 'low',
       vulnerabilities,
       securePatterns: parsed.securePatterns || [],
-      recommendations: parsed.recommendations || []
+      recommendations: parsed.recommendations || [],
     };
   } catch (error: any) {
     console.log(chalk.yellow(`[Security] Scan failed: ${error.message}`));
@@ -148,7 +145,7 @@ export async function scanSecurity(
       riskLevel: 'low',
       vulnerabilities: [],
       securePatterns: [],
-      recommendations: []
+      recommendations: [],
     };
   }
 }
@@ -171,7 +168,7 @@ export function formatSecurityScan(result: SecurityScanResult): string {
     low: chalk.blue,
     medium: chalk.yellow,
     high: chalk.red,
-    critical: chalk.bgRed.white
+    critical: chalk.bgRed.white,
   };
 
   const colorFn = riskColors[result.riskLevel] || chalk.white;
@@ -180,14 +177,14 @@ export function formatSecurityScan(result: SecurityScanResult): string {
   lines.push('');
 
   // Vulnerabilities by severity
-  const critical = result.vulnerabilities.filter(v => v.severity === 'critical');
-  const high = result.vulnerabilities.filter(v => v.severity === 'high');
-  const medium = result.vulnerabilities.filter(v => v.severity === 'medium');
-  const low = result.vulnerabilities.filter(v => v.severity === 'low');
+  const critical = result.vulnerabilities.filter((v) => v.severity === 'critical');
+  const high = result.vulnerabilities.filter((v) => v.severity === 'high');
+  const medium = result.vulnerabilities.filter((v) => v.severity === 'medium');
+  const low = result.vulnerabilities.filter((v) => v.severity === 'low');
 
   if (critical.length > 0) {
     lines.push(chalk.bgRed.white(' CRITICAL VULNERABILITIES '));
-    critical.forEach(v => {
+    critical.forEach((v) => {
       lines.push(chalk.red(`  [${v.id}] ${v.title}`));
       lines.push(chalk.gray(`      Type: ${v.type}${v.cwe ? ` (${v.cwe})` : ''}`));
       lines.push(chalk.gray(`      Location: ${v.location}`));
@@ -199,7 +196,7 @@ export function formatSecurityScan(result: SecurityScanResult): string {
 
   if (high.length > 0) {
     lines.push(chalk.red('🔴 HIGH SEVERITY:'));
-    high.forEach(v => {
+    high.forEach((v) => {
       lines.push(`   [${v.id}] ${v.title} (${v.type})`);
       lines.push(chalk.gray(`   → ${v.remediation}`));
     });
@@ -208,7 +205,7 @@ export function formatSecurityScan(result: SecurityScanResult): string {
 
   if (medium.length > 0) {
     lines.push(chalk.yellow('🟡 MEDIUM SEVERITY:'));
-    medium.forEach(v => {
+    medium.forEach((v) => {
       lines.push(`   [${v.id}] ${v.title}`);
     });
     lines.push('');
@@ -216,7 +213,7 @@ export function formatSecurityScan(result: SecurityScanResult): string {
 
   if (low.length > 0) {
     lines.push(chalk.blue('🔵 LOW SEVERITY:'));
-    low.forEach(v => {
+    low.forEach((v) => {
       lines.push(`   [${v.id}] ${v.title}`);
     });
     lines.push('');
@@ -225,14 +222,14 @@ export function formatSecurityScan(result: SecurityScanResult): string {
   // Secure patterns found
   if (result.securePatterns.length > 0) {
     lines.push(chalk.green('✅ SECURE PATTERNS FOUND:'));
-    result.securePatterns.forEach(p => lines.push(`   • ${p}`));
+    result.securePatterns.forEach((p) => lines.push(`   • ${p}`));
     lines.push('');
   }
 
   // Recommendations
   if (result.recommendations.length > 0) {
     lines.push(chalk.cyan('💡 RECOMMENDATIONS:'));
-    result.recommendations.forEach(r => lines.push(`   • ${r}`));
+    result.recommendations.forEach((r) => lines.push(`   • ${r}`));
   }
 
   return lines.join('\n');
@@ -244,5 +241,5 @@ export function formatSecurityScan(result: SecurityScanResult): string {
 
 export default {
   scanSecurity,
-  formatSecurityScan
+  formatSecurityScan,
 };

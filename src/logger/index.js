@@ -7,11 +7,11 @@
  * @module logger
  */
 
-import fs from 'fs';
-import fsPromises from 'fs/promises';
-import path from 'path';
-import { AsyncLocalStorage } from 'async_hooks';
-import crypto from 'crypto';
+import { AsyncLocalStorage } from 'node:async_hooks';
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import fsPromises from 'node:fs/promises';
+import path from 'node:path';
 import { COLORS } from './colors.js';
 
 // Re-export colors for convenience
@@ -47,9 +47,8 @@ export function withCorrelationId(correlationId, fn) {
  * Express middleware for correlation ID tracking
  */
 export function correlationMiddleware(req, res, next) {
-  const existingId = req.headers['x-correlation-id'] ||
-                     req.headers['x-request-id'] ||
-                     req.headers['traceparent'];
+  const existingId =
+    req.headers['x-correlation-id'] || req.headers['x-request-id'] || req.headers.traceparent;
   const correlationId = existingId || generateCorrelationId();
   res.setHeader('X-Correlation-ID', correlationId);
   correlationStorage.run({ correlationId }, () => {
@@ -108,9 +107,6 @@ class Logger {
   #currentFileSize = 0;
   #writeBuffer = [];
   #flushTimer = null;
-  #isWriting = false;
-  #writeQueue = [];
-  #initialized = false;
   #currentDate = null;
 
   constructor(config = {}) {
@@ -154,13 +150,27 @@ class Logger {
 
   // ==================== Core Logging Methods ====================
 
-  error(message, meta = {}) { this.#log('error', message, meta); }
-  warn(message, meta = {}) { this.#log('warn', message, meta); }
-  info(message, meta = {}) { this.#log('info', message, meta); }
-  http(message, meta = {}) { this.#log('http', message, meta); }
-  debug(message, meta = {}) { this.#log('debug', message, meta); }
-  trace(message, meta = {}) { this.#log('trace', message, meta); }
-  log(level, message, meta = {}) { this.#log(level, message, meta); }
+  error(message, meta = {}) {
+    this.#log('error', message, meta);
+  }
+  warn(message, meta = {}) {
+    this.#log('warn', message, meta);
+  }
+  info(message, meta = {}) {
+    this.#log('info', message, meta);
+  }
+  http(message, meta = {}) {
+    this.#log('http', message, meta);
+  }
+  debug(message, meta = {}) {
+    this.#log('debug', message, meta);
+  }
+  trace(message, meta = {}) {
+    this.#log('trace', message, meta);
+  }
+  log(level, message, meta = {}) {
+    this.#log(level, message, meta);
+  }
 
   // ==================== Internal Methods ====================
 
@@ -223,15 +233,14 @@ class Logger {
         ? `${COLORS.gray}[${timestamp}]${COLORS.reset} `
         : '';
       const levelStr = `${levelConfig.color}${COLORS.bright}${levelConfig.label.padEnd(5)}${COLORS.reset}`;
-      const moduleStr = meta.module || meta.context
-        ? `${COLORS.cyan}[${meta.module || meta.context}]${COLORS.reset} `
-        : '';
+      const moduleStr =
+        meta.module || meta.context
+          ? `${COLORS.cyan}[${meta.module || meta.context}]${COLORS.reset} `
+          : '';
       const corrStr = correlationId
         ? `${COLORS.dim}(${correlationId.slice(-8)})${COLORS.reset} `
         : '';
-      const messageStr = level === 'error'
-        ? `${COLORS.red}${message}${COLORS.reset}`
-        : message;
+      const messageStr = level === 'error' ? `${COLORS.red}${message}${COLORS.reset}` : message;
       output = `${timeStr}${levelStr} ${moduleStr}${corrStr}${messageStr}`;
 
       const displayMeta = { ...meta };
@@ -270,8 +279,8 @@ class Logger {
 
   #addToBuffer(logEntry) {
     const logLine = this.#config.file.prettyPrint
-      ? JSON.stringify(logEntry, null, 2) + '\n'
-      : JSON.stringify(logEntry) + '\n';
+      ? `${JSON.stringify(logEntry, null, 2)}\n`
+      : `${JSON.stringify(logEntry)}\n`;
     this.#writeBuffer.push(logLine);
     if (this.#writeBuffer.length >= this.#config.performance.batchSize) {
       this.flush();
@@ -352,12 +361,16 @@ class Logger {
           } else {
             await fsPromises.rename(oldFile, newFile);
           }
-        } catch { /* File doesn't exist */ }
+        } catch {
+          /* File doesn't exist */
+        }
       }
       try {
         await fsPromises.access(baseName);
         await fsPromises.rename(baseName, `${baseName}.1`);
-      } catch { /* Current file doesn't exist */ }
+      } catch {
+        /* Current file doesn't exist */
+      }
       this.#currentFileSize = 0;
     } catch (err) {
       console.error('Log rotation failed:', err.message);
@@ -379,7 +392,9 @@ class Logger {
           this.debug(`Deleted old log file: ${file}`);
         }
       }
-    } catch { /* Ignore cleanup errors */ }
+    } catch {
+      /* Ignore cleanup errors */
+    }
   }
 
   // ==================== Utility Methods ====================
@@ -422,7 +437,7 @@ class Logger {
   #startFlushTimer() {
     if (this.#flushTimer) return;
     this.#flushTimer = setInterval(() => {
-      this.flush().catch(err => console.error('Auto-flush failed:', err.message));
+      this.flush().catch((err) => console.error('Auto-flush failed:', err.message));
     }, this.#config.performance.flushInterval);
     this.#flushTimer.unref();
   }
@@ -440,8 +455,14 @@ class Logger {
       this.flushSync();
     };
     process.on('exit', exitHandler);
-    process.on('SIGINT', () => { exitHandler(); process.exit(0); });
-    process.on('SIGTERM', () => { exitHandler(); process.exit(0); });
+    process.on('SIGINT', () => {
+      exitHandler();
+      process.exit(0);
+    });
+    process.on('SIGTERM', () => {
+      exitHandler();
+      process.exit(0);
+    });
     process.on('uncaughtException', (err) => {
       this.error('Uncaught exception', { error: err.message, stack: err.stack });
       exitHandler();
@@ -452,19 +473,54 @@ class Logger {
   // ==================== Child Logger Factory ====================
 
   child(context, options = {}) {
-    const parent = this;
     const fixedCorrelationId = options.correlationId || null;
 
     return {
-      error: (msg, meta = {}) => parent.error(msg, { ...meta, context, ...(fixedCorrelationId && { correlationId: fixedCorrelationId }) }),
-      warn: (msg, meta = {}) => parent.warn(msg, { ...meta, context, ...(fixedCorrelationId && { correlationId: fixedCorrelationId }) }),
-      info: (msg, meta = {}) => parent.info(msg, { ...meta, context, ...(fixedCorrelationId && { correlationId: fixedCorrelationId }) }),
-      http: (msg, meta = {}) => parent.http(msg, { ...meta, context, ...(fixedCorrelationId && { correlationId: fixedCorrelationId }) }),
-      debug: (msg, meta = {}) => parent.debug(msg, { ...meta, context, ...(fixedCorrelationId && { correlationId: fixedCorrelationId }) }),
-      trace: (msg, meta = {}) => parent.trace(msg, { ...meta, context, ...(fixedCorrelationId && { correlationId: fixedCorrelationId }) }),
-      log: (level, msg, meta = {}) => parent.log(level, msg, { ...meta, context, ...(fixedCorrelationId && { correlationId: fixedCorrelationId }) }),
-      child: (childContext) => parent.child(`${context}:${childContext}`, { correlationId: fixedCorrelationId }),
-      withCorrelation: (correlationId) => parent.child(context, { correlationId }),
+      error: (msg, meta = {}) =>
+        this.error(msg, {
+          ...meta,
+          context,
+          ...(fixedCorrelationId && { correlationId: fixedCorrelationId }),
+        }),
+      warn: (msg, meta = {}) =>
+        this.warn(msg, {
+          ...meta,
+          context,
+          ...(fixedCorrelationId && { correlationId: fixedCorrelationId }),
+        }),
+      info: (msg, meta = {}) =>
+        this.info(msg, {
+          ...meta,
+          context,
+          ...(fixedCorrelationId && { correlationId: fixedCorrelationId }),
+        }),
+      http: (msg, meta = {}) =>
+        this.http(msg, {
+          ...meta,
+          context,
+          ...(fixedCorrelationId && { correlationId: fixedCorrelationId }),
+        }),
+      debug: (msg, meta = {}) =>
+        this.debug(msg, {
+          ...meta,
+          context,
+          ...(fixedCorrelationId && { correlationId: fixedCorrelationId }),
+        }),
+      trace: (msg, meta = {}) =>
+        this.trace(msg, {
+          ...meta,
+          context,
+          ...(fixedCorrelationId && { correlationId: fixedCorrelationId }),
+        }),
+      log: (level, msg, meta = {}) =>
+        this.log(level, msg, {
+          ...meta,
+          context,
+          ...(fixedCorrelationId && { correlationId: fixedCorrelationId }),
+        }),
+      child: (childContext) =>
+        this.child(`${context}:${childContext}`, { correlationId: fixedCorrelationId }),
+      withCorrelation: (correlationId) => this.child(context, { correlationId }),
       getContext: () => context,
       getCorrelationId: () => fixedCorrelationId,
     };

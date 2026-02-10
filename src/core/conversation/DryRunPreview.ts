@@ -41,7 +41,7 @@ export interface DryRunPreview {
 const IMPACT_SCORES: Record<ImpactLevel, number> = {
   low: 1,
   medium: 2,
-  high: 3
+  high: 3,
 };
 
 // ============================================================
@@ -56,7 +56,7 @@ const IMPACT_SCORES: Record<ImpactLevel, number> = {
  */
 export async function generateDryRunPreview(
   taskDescription: string,
-  context?: string
+  _context?: string,
 ): Promise<DryRunPreview> {
   const actions: DryRunAction[] = [];
   const warnings: string[] = [];
@@ -65,22 +65,33 @@ export async function generateDryRunPreview(
   // Analyze task for potential actions
 
   // File creation operations
-  if (lowerTask.includes('stworz') || lowerTask.includes('create') || lowerTask.includes('napisz') || lowerTask.includes('write')) {
+  if (
+    lowerTask.includes('stworz') ||
+    lowerTask.includes('create') ||
+    lowerTask.includes('napisz') ||
+    lowerTask.includes('write')
+  ) {
     actions.push({
       type: 'file_create',
       target: 'new file(s)',
       description: 'Utworzenie nowych plikow',
-      impact: 'low'
+      impact: 'low',
     });
   }
 
   // File modification operations
-  if (lowerTask.includes('zmien') || lowerTask.includes('modify') || lowerTask.includes('napraw') || lowerTask.includes('fix') || lowerTask.includes('update')) {
+  if (
+    lowerTask.includes('zmien') ||
+    lowerTask.includes('modify') ||
+    lowerTask.includes('napraw') ||
+    lowerTask.includes('fix') ||
+    lowerTask.includes('update')
+  ) {
     actions.push({
       type: 'file_modify',
       target: 'existing file(s)',
       description: 'Modyfikacja istniejacych plikow',
-      impact: 'medium'
+      impact: 'medium',
     });
     warnings.push('Zmiany w istniejacych plikach - rozwaz utworzenie punktu rollback');
   }
@@ -91,49 +102,69 @@ export async function generateDryRunPreview(
       type: 'file_delete',
       target: 'file(s)',
       description: 'Usuniecie plikow',
-      impact: 'high'
+      impact: 'high',
     });
     warnings.push('USUWANIE PLIKOW - upewnij sie, ze masz backup!');
   }
 
   // NPM/Yarn commands
-  if (lowerTask.includes('npm') || lowerTask.includes('install') || lowerTask.includes('build') || lowerTask.includes('yarn')) {
+  if (
+    lowerTask.includes('npm') ||
+    lowerTask.includes('install') ||
+    lowerTask.includes('build') ||
+    lowerTask.includes('yarn')
+  ) {
     actions.push({
       type: 'command',
       target: 'npm/yarn',
       description: 'Wykonanie polecen npm/yarn',
-      impact: 'medium'
+      impact: 'medium',
     });
   }
 
   // Git operations
-  if (lowerTask.includes('git') || lowerTask.includes('commit') || lowerTask.includes('push') || lowerTask.includes('merge')) {
+  if (
+    lowerTask.includes('git') ||
+    lowerTask.includes('commit') ||
+    lowerTask.includes('push') ||
+    lowerTask.includes('merge')
+  ) {
     actions.push({
       type: 'command',
       target: 'git',
       description: 'Operacje git',
-      impact: 'high'
+      impact: 'high',
     });
     warnings.push('Operacje git moga wplynac na historie repozytorium');
   }
 
   // API calls
-  if (lowerTask.includes('api') || lowerTask.includes('request') || lowerTask.includes('fetch') || lowerTask.includes('http')) {
+  if (
+    lowerTask.includes('api') ||
+    lowerTask.includes('request') ||
+    lowerTask.includes('fetch') ||
+    lowerTask.includes('http')
+  ) {
     actions.push({
       type: 'api_call',
       target: 'external API',
       description: 'Wywolanie zewnetrznego API',
-      impact: 'medium'
+      impact: 'medium',
     });
   }
 
   // Database operations
-  if (lowerTask.includes('database') || lowerTask.includes('db') || lowerTask.includes('sql') || lowerTask.includes('migration')) {
+  if (
+    lowerTask.includes('database') ||
+    lowerTask.includes('db') ||
+    lowerTask.includes('sql') ||
+    lowerTask.includes('migration')
+  ) {
     actions.push({
       type: 'command',
       target: 'database',
       description: 'Operacje bazodanowe',
-      impact: 'high'
+      impact: 'high',
     });
     warnings.push('Operacje bazodanowe moga byc nieodwracalne');
   }
@@ -143,9 +174,7 @@ export async function generateDryRunPreview(
   const avgScore = actions.length > 0 ? totalScore / actions.length : 0;
 
   const totalImpact: TotalImpactLevel =
-    avgScore >= 2.5 ? 'critical' :
-    avgScore >= 2 ? 'high' :
-    avgScore >= 1.5 ? 'medium' : 'low';
+    avgScore >= 2.5 ? 'critical' : avgScore >= 2 ? 'high' : avgScore >= 1.5 ? 'medium' : 'low';
 
   console.log(chalk.cyan(`[DryRun] Preview: ${actions.length} actions, impact: ${totalImpact}`));
 
@@ -154,7 +183,7 @@ export async function generateDryRunPreview(
     actions,
     totalImpact,
     warnings,
-    estimatedChanges: actions.length
+    estimatedChanges: actions.length,
   };
 }
 
@@ -177,8 +206,8 @@ export function formatDryRunPreview(preview: DryRunPreview): string {
   if (preview.actions.length > 0) {
     lines.push('Planned Actions:');
     for (const action of preview.actions) {
-      const impactIcon = action.impact === 'high' ? '[!]' :
-                         action.impact === 'medium' ? '[~]' : '[ ]';
+      const impactIcon =
+        action.impact === 'high' ? '[!]' : action.impact === 'medium' ? '[~]' : '[ ]';
       lines.push(`  ${impactIcon} ${action.type}: ${action.description}`);
       lines.push(`      Target: ${action.target}`);
       if (action.preview) {
@@ -214,7 +243,7 @@ export function createAction(
   target: string,
   description: string,
   impact: ImpactLevel = 'medium',
-  preview?: string
+  preview?: string,
 ): DryRunAction {
   return { type, target, description, impact, preview };
 }
@@ -239,7 +268,7 @@ export function calculateImpact(score: number): TotalImpactLevel {
 export function isDestructive(taskDescription: string): boolean {
   const destructiveKeywords = ['delete', 'remove', 'usun', 'drop', 'reset', 'clear', 'wipe'];
   const lowerTask = taskDescription.toLowerCase();
-  return destructiveKeywords.some(kw => lowerTask.includes(kw));
+  return destructiveKeywords.some((kw) => lowerTask.includes(kw));
 }
 
 // ============================================================
@@ -251,5 +280,5 @@ export default {
   formatDryRunPreview,
   createAction,
   calculateImpact,
-  isDestructive
+  isDestructive,
 };

@@ -10,11 +10,11 @@
  * - Multiple output modes: content, files_with_matches, count
  */
 
-import fs from 'fs/promises';
-import path from 'path';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import chalk from 'chalk';
-import { NativeGlob, createGlob } from './NativeGlob.js';
 import { escapeRegex } from '../utils/regex.js';
+import { createGlob, type NativeGlob } from './NativeGlob.js';
 
 // ============================================================
 // Types
@@ -157,7 +157,7 @@ const FILE_TYPE_EXTENSIONS: Record<string, string[]> = {
   nim: ['.nim'],
   pascal: ['.pas', '.pp'],
   fortran: ['.f', '.f90', '.f95', '.f03', '.f08'],
-  groovy: ['.groovy', '.gvy', '.gy', '.gsh']
+  groovy: ['.groovy', '.gvy', '.gy', '.gsh'],
 };
 
 // ============================================================
@@ -174,7 +174,7 @@ export class NativeGrep {
     this.rootDir = path.resolve(config.rootDir);
     this.maxFileSize = config.maxFileSize || 10 * 1024 * 1024; // 10MB
     this.nativeGlob = createGlob(this.rootDir, {
-      defaultIgnore: config.defaultIgnore
+      defaultIgnore: config.defaultIgnore,
     });
   }
 
@@ -204,7 +204,7 @@ export class NativeGrep {
       offset = 0,
       outputMode = 'content',
       showLineNumbers = true,
-      showFileNames = true
+      showFileNames = true,
     } = options;
 
     // Build regex
@@ -236,10 +236,15 @@ export class NativeGrep {
       case 'count':
         result = await this.searchCount(files, regex, invertMatch);
         break;
-      case 'content':
       default:
         result = await this.searchContent(
-          files, regex, invertMatch, ctxBefore, ctxAfter, maxResults, offset
+          files,
+          regex,
+          invertMatch,
+          ctxBefore,
+          ctxAfter,
+          maxResults,
+          offset,
         );
         break;
     }
@@ -250,7 +255,7 @@ export class NativeGrep {
       filesSearched: files.length,
       filesMatched: this.getFilesMatched(result),
       totalMatches: this.getTotalMatches(result),
-      elapsedMs
+      elapsedMs,
     };
 
     return result;
@@ -267,7 +272,7 @@ export class NativeGrep {
     ctxBefore: number,
     ctxAfter: number,
     maxResults?: number,
-    offset: number = 0
+    offset: number = 0,
   ): Promise<GrepMatch[]> {
     const matches: GrepMatch[] = [];
     let skipped = 0;
@@ -295,7 +300,7 @@ export class NativeGrep {
   private async searchFilesWithMatches(
     files: string[],
     regex: RegExp,
-    invertMatch: boolean
+    invertMatch: boolean,
   ): Promise<GrepFilesResult> {
     const matchingFiles: string[] = [];
     let totalMatches = 0;
@@ -326,7 +331,7 @@ export class NativeGrep {
   private async searchCount(
     files: string[],
     regex: RegExp,
-    invertMatch: boolean
+    invertMatch: boolean,
   ): Promise<GrepCountResult> {
     const counts = new Map<string, number>();
     let totalMatches = 0;
@@ -378,7 +383,7 @@ export class NativeGrep {
     regex: RegExp,
     invertMatch: boolean,
     ctxBefore: number,
-    ctxAfter: number
+    ctxAfter: number,
   ): Promise<GrepMatch[]> {
     const matches: GrepMatch[] = [];
 
@@ -406,7 +411,7 @@ export class NativeGrep {
               column: 1,
               content: line,
               matchedText: '',
-              context: this.getContext(lines, i, ctxBefore, ctxAfter)
+              context: this.getContext(lines, i, ctxBefore, ctxAfter),
             });
           }
           regex.lastIndex = 0;
@@ -421,9 +426,10 @@ export class NativeGrep {
             column: match.index + 1,
             content: line,
             matchedText: match[0],
-            context: ctxBefore > 0 || ctxAfter > 0
-              ? this.getContext(lines, i, ctxBefore, ctxAfter)
-              : undefined
+            context:
+              ctxBefore > 0 || ctxAfter > 0
+                ? this.getContext(lines, i, ctxBefore, ctxAfter)
+                : undefined,
           });
 
           // Prevent infinite loop for zero-length matches
@@ -457,7 +463,7 @@ export class NativeGrep {
       pattern,
       glob: glob || '**/*',
       outputMode: 'content',
-      maxResults: 100
+      maxResults: 100,
     }) as Promise<GrepMatch[]>;
   }
 
@@ -465,11 +471,11 @@ export class NativeGrep {
    * Get files with matches
    */
   async filesWithMatches(pattern: string, glob?: string): Promise<string[]> {
-    const result = await this.grep({
+    const result = (await this.grep({
       pattern,
       glob: glob || '**/*',
-      outputMode: 'files_with_matches'
-    }) as GrepFilesResult;
+      outputMode: 'files_with_matches',
+    })) as GrepFilesResult;
     return result.files;
   }
 
@@ -477,11 +483,11 @@ export class NativeGrep {
    * Count matches
    */
   async count(pattern: string, glob?: string): Promise<Map<string, number>> {
-    const result = await this.grep({
+    const result = (await this.grep({
       pattern,
       glob: glob || '**/*',
-      outputMode: 'count'
-    }) as GrepCountResult;
+      outputMode: 'count',
+    })) as GrepCountResult;
     return result.counts;
   }
 
@@ -494,7 +500,7 @@ export class NativeGrep {
       glob: glob || '**/*',
       multiline: true,
       outputMode: 'content',
-      maxResults: 100
+      maxResults: 100,
     }) as Promise<GrepMatch[]>;
   }
 
@@ -507,20 +513,24 @@ export class NativeGrep {
       glob: glob || '**/*',
       ignoreCase: true,
       outputMode: 'content',
-      maxResults: 100
+      maxResults: 100,
     }) as Promise<GrepMatch[]>;
   }
 
   /**
    * Search with context
    */
-  async searchWithContext(pattern: string, context: number = 2, glob?: string): Promise<GrepMatch[]> {
+  async searchWithContext(
+    pattern: string,
+    context: number = 2,
+    glob?: string,
+  ): Promise<GrepMatch[]> {
     return this.grep({
       pattern,
       glob: glob || '**/*',
       context,
       outputMode: 'content',
-      maxResults: 50
+      maxResults: 50,
     }) as Promise<GrepMatch[]>;
   }
 
@@ -531,7 +541,7 @@ export class NativeGrep {
   private async getFilesToSearch(
     basePath: string,
     fileGlob?: string,
-    type?: string
+    type?: string,
   ): Promise<string[]> {
     let pattern: string;
 
@@ -540,7 +550,7 @@ export class NativeGrep {
       if (extensions.length === 1) {
         pattern = `**/*${extensions[0]}`;
       } else {
-        pattern = `**/*.{${extensions.map(e => e.replace(/^\./, '')).join(',')}}`;
+        pattern = `**/*.{${extensions.map((e) => e.replace(/^\./, '')).join(',')}}`;
       }
     } else if (fileGlob) {
       pattern = fileGlob;
@@ -549,25 +559,23 @@ export class NativeGrep {
       pattern = '**/*';
     }
 
-    const searchPath = path.isAbsolute(basePath)
-      ? path.relative(this.rootDir, basePath)
-      : basePath;
+    const searchPath = path.isAbsolute(basePath) ? path.relative(this.rootDir, basePath) : basePath;
 
     const results = await this.nativeGlob.glob({
       pattern,
       path: searchPath,
       onlyFiles: true,
-      sortByMtime: false
+      sortByMtime: false,
     });
 
-    return results.map(r => r.relativePath);
+    return results.map((r) => r.relativePath);
   }
 
   private getContext(
     lines: string[],
     lineIndex: number,
     ctxBefore: number,
-    ctxAfter: number
+    ctxAfter: number,
   ): { before: string[]; after: string[] } | undefined {
     if (ctxBefore === 0 && ctxAfter === 0) {
       return undefined;
@@ -578,13 +586,13 @@ export class NativeGrep {
 
     return {
       before: lines.slice(beforeStart, lineIndex),
-      after: lines.slice(lineIndex + 1, afterEnd + 1)
+      after: lines.slice(lineIndex + 1, afterEnd + 1),
     };
   }
 
   private getFilesMatched(result: GrepResult): number {
     if (Array.isArray(result)) {
-      const files = new Set(result.map(m => m.file));
+      const files = new Set(result.map((m) => m.file));
       return files.size;
     } else if ('files' in result) {
       return result.files.length;

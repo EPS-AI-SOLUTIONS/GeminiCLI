@@ -103,7 +103,7 @@ export interface BatchProcessResult<T, R> {
 export async function processBatch<T, R>(
   items: T[],
   processor: (item: T, index: number) => Promise<R>,
-  options: BatchProcessorOptions<T, R> = {}
+  options: BatchProcessorOptions<T, R> = {},
 ): Promise<BatchProcessResult<T, R>> {
   const { maxConcurrency = 5, onProgress, onChunkStart, onChunkComplete } = options;
 
@@ -114,7 +114,7 @@ export async function processBatch<T, R>(
       failed: 0,
       totalDurationMs: 0,
       avgDurationMs: 0,
-      results: []
+      results: [],
     };
   }
 
@@ -126,7 +126,7 @@ export async function processBatch<T, R>(
   for (let i = 0; i < items.length; i += maxConcurrency) {
     chunks.push({
       items: items.slice(i, i + maxConcurrency),
-      startIndex: i
+      startIndex: i,
     });
   }
 
@@ -150,7 +150,7 @@ export async function processBatch<T, R>(
             index: globalIndex,
             success: true,
             result,
-            durationMs: Date.now() - itemStartTime
+            durationMs: Date.now() - itemStartTime,
           };
 
           completedCount++;
@@ -163,7 +163,7 @@ export async function processBatch<T, R>(
             index: globalIndex,
             success: false,
             error: error instanceof Error ? error.message : String(error),
-            durationMs: Date.now() - itemStartTime
+            durationMs: Date.now() - itemStartTime,
           };
 
           completedCount++;
@@ -171,7 +171,7 @@ export async function processBatch<T, R>(
 
           return itemResult;
         }
-      })
+      }),
     );
 
     results.push(...chunkResults);
@@ -179,7 +179,7 @@ export async function processBatch<T, R>(
   }
 
   const totalDurationMs = Date.now() - startTime;
-  const successful = results.filter(r => r.success).length;
+  const successful = results.filter((r) => r.success).length;
 
   return {
     total: items.length,
@@ -187,7 +187,7 @@ export async function processBatch<T, R>(
     failed: items.length - successful,
     totalDurationMs,
     avgDurationMs: Math.round(totalDurationMs / items.length),
-    results
+    results,
   };
 }
 
@@ -203,14 +203,14 @@ export async function processBatch<T, R>(
 export async function processBatchSimple<T, R>(
   items: T[],
   processor: (item: T, index: number) => Promise<R>,
-  maxConcurrency: number = 5
+  maxConcurrency: number = 5,
 ): Promise<Array<{ success: true; value: R } | { success: false; error: string }>> {
   const result = await processBatch(items, processor, { maxConcurrency });
 
-  return result.results.map(r =>
+  return result.results.map((r) =>
     r.success
       ? { success: true as const, value: r.result as R }
-      : { success: false as const, error: r.error || 'Unknown error' }
+      : { success: false as const, error: r.error || 'Unknown error' },
   );
 }
 
@@ -228,11 +228,11 @@ export async function processBatchSimple<T, R>(
  * ```
  */
 export function createBatchProcessor<T, R>(
-  defaultOptions: BatchProcessorOptions<T, R>
+  defaultOptions: BatchProcessorOptions<T, R>,
 ): (
   items: T[],
   processor: (item: T, index: number) => Promise<R>,
-  options?: Partial<BatchProcessorOptions<T, R>>
+  options?: Partial<BatchProcessorOptions<T, R>>,
 ) => Promise<BatchProcessResult<T, R>> {
   return (items, processor, options = {}) =>
     processBatch(items, processor, { ...defaultOptions, ...options });

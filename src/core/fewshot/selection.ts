@@ -4,9 +4,9 @@
  * @module fewshot/selection
  */
 
-import type { ExampleUsageStats } from './types.js';
-import { EXTENDED_FEW_SHOT_EXAMPLES } from './extended-examples.js';
 import { AGENT_SPECIFIC_EXAMPLES } from './agent-examples.js';
+import { EXTENDED_FEW_SHOT_EXAMPLES } from './extended-examples.js';
+import type { ExampleUsageStats } from './types.js';
 
 // ============================================================================
 // KEYWORD WEIGHTS
@@ -14,21 +14,21 @@ import { AGENT_SPECIFIC_EXAMPLES } from './agent-examples.js';
 
 const KEYWORD_WEIGHTS: Record<string, number> = {
   // High-priority keywords (exact match critical)
-  'security': 2.0,
-  'bezpieczeństwo': 2.0,
-  'test': 1.8,
-  'debug': 1.8,
-  'błąd': 1.8,
-  'error': 1.8,
-  'api': 1.5,
-  'performance': 1.5,
-  'wydajność': 1.5,
+  security: 2.0,
+  bezpieczeństwo: 2.0,
+  test: 1.8,
+  debug: 1.8,
+  błąd: 1.8,
+  error: 1.8,
+  api: 1.5,
+  performance: 1.5,
+  wydajność: 1.5,
 
   // Standard keywords
-  'refactor': 1.2,
-  'dokumentacja': 1.2,
-  'architektura': 1.2,
-  'plan': 1.2
+  refactor: 1.2,
+  dokumentacja: 1.2,
+  architektura: 1.2,
+  plan: 1.2,
 };
 
 // ============================================================================
@@ -54,10 +54,11 @@ function calculateSemanticSimilarity(task: string, keywords: string[]): number {
       score += weight;
     }
     // Partial match (keyword word in task words)
-    else if ([...taskWords].some(word =>
-      word.includes(keyword.toLowerCase()) ||
-      keyword.toLowerCase().includes(word)
-    )) {
+    else if (
+      [...taskWords].some(
+        (word) => word.includes(keyword.toLowerCase()) || keyword.toLowerCase().includes(word),
+      )
+    ) {
       score += weight * 0.5;
     }
   }
@@ -76,7 +77,7 @@ function calculateSemanticSimilarity(task: string, keywords: string[]): number {
 export function selectBestExamples(
   task: string,
   category: string,
-  count: number = 2
+  count: number = 2,
 ): Array<{ input: string; output: string }> {
   const examples = EXTENDED_FEW_SHOT_EXAMPLES[category];
 
@@ -84,19 +85,17 @@ export function selectBestExamples(
     return [];
   }
 
-  const scoredExamples = examples.map(example => ({
+  const scoredExamples = examples.map((example) => ({
     example,
-    score: calculateSemanticSimilarity(task, example.keywords) * example.effectiveness
+    score: calculateSemanticSimilarity(task, example.keywords) * example.effectiveness,
   }));
 
   scoredExamples.sort((a, b) => b.score - a.score);
 
-  return scoredExamples
-    .slice(0, count)
-    .map(({ example }) => ({
-      input: example.input,
-      output: example.output
-    }));
+  return scoredExamples.slice(0, count).map(({ example }) => ({
+    input: example.input,
+    output: example.output,
+  }));
 }
 
 /**
@@ -104,7 +103,7 @@ export function selectBestExamples(
  */
 export function getAgentSpecificExamples(
   agentName: string,
-  task?: string
+  task?: string,
 ): Array<{ input: string; output: string }> {
   const agentExamples = AGENT_SPECIFIC_EXAMPLES[agentName];
 
@@ -113,16 +112,16 @@ export function getAgentSpecificExamples(
   }
 
   if (task) {
-    const scoredExamples = agentExamples.map(example => ({
+    const scoredExamples = agentExamples.map((example) => ({
       example,
-      score: calculateSemanticSimilarity(task, example.keywords)
+      score: calculateSemanticSimilarity(task, example.keywords),
     }));
 
     scoredExamples.sort((a, b) => b.score - a.score);
 
     return scoredExamples.map(({ example }) => ({
       input: example.input,
-      output: example.output
+      output: example.output,
     }));
   }
 
@@ -141,7 +140,7 @@ const exampleUsageStats: Map<string, ExampleUsageStats> = new Map();
 export function recordExampleUsage(
   category: string,
   exampleIndex: number,
-  wasSuccessful: boolean
+  wasSuccessful: boolean,
 ): void {
   const key = `${category}:${exampleIndex}`;
   const existing = exampleUsageStats.get(key);
@@ -156,7 +155,7 @@ export function recordExampleUsage(
       exampleIndex,
       usageCount: 1,
       successCount: wasSuccessful ? 1 : 0,
-      lastUsed: new Date()
+      lastUsed: new Date(),
     });
   }
 }
@@ -164,10 +163,7 @@ export function recordExampleUsage(
 /**
  * Calculate effectiveness score for an example
  */
-export function scoreExampleEffectiveness(
-  category: string,
-  exampleIndex: number
-): number {
+export function scoreExampleEffectiveness(category: string, exampleIndex: number): number {
   const examples = EXTENDED_FEW_SHOT_EXAMPLES[category];
   if (!examples || !examples[exampleIndex]) {
     return 0;
@@ -184,7 +180,7 @@ export function scoreExampleEffectiveness(
   const actualSuccessRate = stats.successCount / stats.usageCount;
   const usageWeight = Math.min(stats.usageCount / 10, 0.8);
 
-  return (baseEffectiveness * (1 - usageWeight)) + (actualSuccessRate * usageWeight);
+  return baseEffectiveness * (1 - usageWeight) + actualSuccessRate * usageWeight;
 }
 
 /**
@@ -192,7 +188,7 @@ export function scoreExampleEffectiveness(
  */
 export function getTopEffectiveExamples(
   category: string,
-  count: number = 3
+  count: number = 3,
 ): Array<{ input: string; output: string; score: number }> {
   const examples = EXTENDED_FEW_SHOT_EXAMPLES[category];
   if (!examples) return [];
@@ -200,7 +196,7 @@ export function getTopEffectiveExamples(
   const scoredExamples = examples.map((example, index) => ({
     input: example.input,
     output: example.output,
-    score: scoreExampleEffectiveness(category, index)
+    score: scoreExampleEffectiveness(category, index),
   }));
 
   scoredExamples.sort((a, b) => b.score - a.score);
@@ -220,33 +216,48 @@ export function detectExampleCategory(task: string): string | null {
 
   const categoryPatterns: Record<string, RegExp[]> = {
     debugging: [
-      /debug/i, /błąd/i, /error/i, /exception/i, /crash/i,
-      /nie działa/i, /problem/i, /undefined/i, /null/i
+      /debug/i,
+      /błąd/i,
+      /error/i,
+      /exception/i,
+      /crash/i,
+      /nie działa/i,
+      /problem/i,
+      /undefined/i,
+      /null/i,
     ],
     testing: [
-      /test/i, /testy/i, /jednostkow/i, /integracyjn/i,
-      /jest/i, /mocha/i, /assert/i, /expect/i
+      /test/i,
+      /testy/i,
+      /jednostkow/i,
+      /integracyjn/i,
+      /jest/i,
+      /mocha/i,
+      /assert/i,
+      /expect/i,
     ],
     refactoring: [
-      /refaktor/i, /refactor/i, /przepisz/i, /ulepsz/i,
-      /clean/i, /popraw/i, /duplikac/i, /dry/i
+      /refaktor/i,
+      /refactor/i,
+      /przepisz/i,
+      /ulepsz/i,
+      /clean/i,
+      /popraw/i,
+      /duplikac/i,
+      /dry/i,
     ],
-    api_design: [
-      /api/i, /endpoint/i, /rest/i, /graphql/i,
-      /zaprojektuj.*api/i, /design.*api/i
-    ],
+    api_design: [/api/i, /endpoint/i, /rest/i, /graphql/i, /zaprojektuj.*api/i, /design.*api/i],
     security: [
-      /security/i, /bezpiecze/i, /xss/i, /sql injection/i,
-      /podatn/i, /vulnerab/i, /auth/i
+      /security/i,
+      /bezpiecze/i,
+      /xss/i,
+      /sql injection/i,
+      /podatn/i,
+      /vulnerab/i,
+      /auth/i,
     ],
-    performance: [
-      /wydajn/i, /performance/i, /optymali/i, /wolne/i,
-      /slow/i, /szybk/i, /cache/i
-    ],
-    documentation: [
-      /dokumentac/i, /doc/i, /jsdoc/i, /readme/i,
-      /opisz/i, /wyjaśnij/i, /explain/i
-    ]
+    performance: [/wydajn/i, /performance/i, /optymali/i, /wolne/i, /slow/i, /szybk/i, /cache/i],
+    documentation: [/dokumentac/i, /doc/i, /jsdoc/i, /readme/i, /opisz/i, /wyjaśnij/i, /explain/i],
   };
 
   const scores: Record<string, number> = {};
@@ -276,7 +287,7 @@ export function detectExampleCategory(task: string): string | null {
 export function getBestFewShotExamples(
   task: string,
   agentName?: string,
-  maxExamples: number = 2
+  maxExamples: number = 2,
 ): string {
   const examples: Array<{ input: string; output: string }> = [];
 
@@ -299,7 +310,7 @@ export function getBestFewShotExamples(
   if (examples.length < maxExamples && category) {
     const effectiveExamples = getTopEffectiveExamples(category, maxExamples - examples.length);
     for (const ex of effectiveExamples) {
-      if (!examples.some(e => e.input === ex.input)) {
+      if (!examples.some((e) => e.input === ex.input)) {
         examples.push({ input: ex.input, output: ex.output });
       }
     }
@@ -309,14 +320,17 @@ export function getBestFewShotExamples(
     return '';
   }
 
-  const formatted = examples.map((ex, idx) =>
-    `--- PRZYKŁAD ${idx + 1} ---
+  const formatted = examples
+    .map(
+      (ex, idx) =>
+        `--- PRZYKŁAD ${idx + 1} ---
 ZADANIE: ${ex.input}
 
 OCZEKIWANA ODPOWIEDŹ:
 ${ex.output}
---- KONIEC PRZYKŁADU ${idx + 1} ---`
-  ).join('\n\n');
+--- KONIEC PRZYKŁADU ${idx + 1} ---`,
+    )
+    .join('\n\n');
 
   return `\nPRZYKŁADY POPRAWNYCH ODPOWIEDZI (ucz się z nich!):\n${formatted}\n`;
 }

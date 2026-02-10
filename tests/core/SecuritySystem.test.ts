@@ -3,17 +3,16 @@
  * Testy systemu bezpieczenstwa: InputSanitizer, maskSensitive, RateLimiter, SecureConfig
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  InputSanitizer,
-  maskSensitive,
-  generateSecureToken,
-  hashSensitive,
-  RateLimiter,
-  SecureConfig,
   containsDangerousPatterns,
   DEFAULT_BLOCKED_PATTERNS,
-  type SanitizationResult,
+  generateSecureToken,
+  hashSensitive,
+  InputSanitizer,
+  maskSensitive,
+  RateLimiter,
+  SecureConfig,
 } from '../../src/core/SecuritySystem.js';
 
 // Mock moduly zewnetrzne
@@ -242,7 +241,9 @@ describe('InputSanitizer', () => {
     });
 
     it('powinien sanityzowac parametry sciezkowe', () => {
-      const result = sanitizer.sanitizeMCPToolCall('read_file', { filePath: '/home/user\x00/test' });
+      const result = sanitizer.sanitizeMCPToolCall('read_file', {
+        filePath: '/home/user\x00/test',
+      });
       expect(result.blocked).toBe(false);
       if (result.params) {
         expect(result.params.filePath).not.toContain('\x00');
@@ -529,17 +530,17 @@ describe('DEFAULT_BLOCKED_PATTERNS', () => {
   });
 
   it('powinien zawierac wzorce shell injection', () => {
-    const hasShell = DEFAULT_BLOCKED_PATTERNS.some(p => p.source.includes('rm'));
+    const hasShell = DEFAULT_BLOCKED_PATTERNS.some((p) => p.source.includes('rm'));
     expect(hasShell).toBe(true);
   });
 
   it('powinien zawierac wzorce SQL injection', () => {
-    const hasSql = DEFAULT_BLOCKED_PATTERNS.some(p => p.source.includes('DROP'));
+    const hasSql = DEFAULT_BLOCKED_PATTERNS.some((p) => p.source.includes('DROP'));
     expect(hasSql).toBe(true);
   });
 
   it('powinien zawierac wzorce XSS', () => {
-    const hasXss = DEFAULT_BLOCKED_PATTERNS.some(p => p.source.includes('script'));
+    const hasXss = DEFAULT_BLOCKED_PATTERNS.some((p) => p.source.includes('script'));
     expect(hasXss).toBe(true);
   });
 });

@@ -18,8 +18,8 @@ import {
 } from '../../src/config/agents.config.js';
 
 describe('AGENT_ROLES', () => {
-  it('should define all 12 agents', () => {
-    expect(Object.keys(AGENT_ROLES)).toHaveLength(12);
+  it('should define all 13 agents', () => {
+    expect(Object.keys(AGENT_ROLES)).toHaveLength(13);
   });
 
   it('should have correct role values', () => {
@@ -109,8 +109,8 @@ describe('getAgentForTask', () => {
 });
 
 describe('getAllAgentRoles', () => {
-  it('should return all 12 roles', () => {
-    expect(getAllAgentRoles()).toHaveLength(12);
+  it('should return all 13 roles', () => {
+    expect(getAllAgentRoles()).toHaveLength(13);
   });
 });
 
@@ -147,6 +147,7 @@ describe('resolveAgentRole', () => {
       'eskel',
       'lambert',
       'zoltan',
+      'serena',
     ];
 
     for (const agent of agents) {

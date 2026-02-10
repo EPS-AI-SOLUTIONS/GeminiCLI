@@ -47,8 +47,8 @@ export function detectParallelGroups(subTasks: SubTask[]): SubTask[][] {
 
   while (remaining.length > 0) {
     // Find tasks whose dependencies are all completed
-    const executable = remaining.filter(task =>
-      task.dependencies.every(dep => completed.has(dep))
+    const executable = remaining.filter((task) =>
+      task.dependencies.every((dep) => completed.has(dep)),
     );
 
     if (executable.length === 0 && remaining.length > 0) {
@@ -64,7 +64,7 @@ export function detectParallelGroups(subTasks: SubTask[]): SubTask[][] {
     // Mark as completed and remove from remaining
     for (const task of executable) {
       completed.add(task.id);
-      const idx = remaining.findIndex(t => t.id === task.id);
+      const idx = remaining.findIndex((t) => t.id === task.id);
       if (idx >= 0) remaining.splice(idx, 1);
     }
   }
@@ -87,7 +87,7 @@ export async function executeParallelGroups(
   options: {
     maxConcurrency?: number;
     onProgress?: (completed: number, total: number) => void;
-  } = {}
+  } = {},
 ): Promise<Map<string, ParallelExecutionResult>> {
   const results = new Map<string, ParallelExecutionResult>();
   const totalTasks = groups.reduce((sum, g) => sum + g.length, 0);
@@ -95,7 +95,9 @@ export async function executeParallelGroups(
 
   const concurrency = options.maxConcurrency || 6;
 
-  console.log(chalk.cyan(`[Parallel] Executing ${totalTasks} sub-tasks in ${groups.length} groups`));
+  console.log(
+    chalk.cyan(`[Parallel] Executing ${totalTasks} sub-tasks in ${groups.length} groups`),
+  );
 
   // Create p-limit instance for concurrency control (replaces busy-wait)
   const limit = pLimit(concurrency);
@@ -105,7 +107,7 @@ export async function executeParallelGroups(
     console.log(chalk.gray(`[Parallel] Group ${i + 1}/${groups.length}: ${group.length} tasks`));
 
     // Execute group in parallel using p-limit for proper concurrency control
-    const groupPromises = group.map(task =>
+    const groupPromises = group.map((task) =>
       limit(async () => {
         const startTime = Date.now();
         try {
@@ -114,14 +116,14 @@ export async function executeParallelGroups(
             subTaskId: task.id,
             success: true,
             output,
-            duration: Date.now() - startTime
+            duration: Date.now() - startTime,
           });
         } catch (error: any) {
           results.set(task.id, {
             subTaskId: task.id,
             success: false,
             output: error.message,
-            duration: Date.now() - startTime
+            duration: Date.now() - startTime,
           });
         } finally {
           completedCount++;
@@ -129,7 +131,7 @@ export async function executeParallelGroups(
             options.onProgress(completedCount, totalTasks);
           }
         }
-      })
+      }),
     );
 
     // Wait for group to complete
@@ -152,9 +154,7 @@ export function estimateParallelDuration(groups: SubTask[][]): number {
 
   for (const group of groups) {
     // Group duration is the max of all task durations in the group
-    const maxDuration = Math.max(
-      ...group.map(t => t.estimatedDuration || 1000)
-    );
+    const maxDuration = Math.max(...group.map((t) => t.estimatedDuration || 1000));
     totalDuration += maxDuration;
   }
 
@@ -166,10 +166,7 @@ export function estimateParallelDuration(groups: SubTask[][]): number {
  * Returns a ratio of parallel vs sequential execution time
  */
 export function getParallelizationEfficiency(groups: SubTask[][]): number {
-  const sequentialTime = groups.flat().reduce(
-    (sum, t) => sum + (t.estimatedDuration || 1000),
-    0
-  );
+  const sequentialTime = groups.flat().reduce((sum, t) => sum + (t.estimatedDuration || 1000), 0);
   const parallelTime = estimateParallelDuration(groups);
 
   return sequentialTime / parallelTime;
@@ -183,5 +180,5 @@ export default {
   detectParallelGroups,
   executeParallelGroups,
   estimateParallelDuration,
-  getParallelizationEfficiency
+  getParallelizationEfficiency,
 };

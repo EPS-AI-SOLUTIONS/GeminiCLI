@@ -3,7 +3,7 @@
  * Centralized enum values and numeric ranges for validation
  */
 
-import type { Theme, Language, ExecutionMode } from '../types/index.js';
+import type { ExecutionMode, Language, Theme } from '../types/index.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Enum Values
@@ -11,7 +11,11 @@ import type { Theme, Language, ExecutionMode } from '../types/index.js';
 
 export const VALID_THEMES: readonly Theme[] = ['dark', 'light', 'system'] as const;
 export const VALID_LANGUAGES: readonly Language[] = ['pl', 'en'] as const;
-export const VALID_EXECUTION_MODES: readonly ExecutionMode[] = ['basic', 'enhanced', 'swarm'] as const;
+export const VALID_EXECUTION_MODES: readonly ExecutionMode[] = [
+  'basic',
+  'enhanced',
+  'swarm',
+] as const;
 
 export const VALID_MESSAGE_ROLES = ['user', 'assistant', 'system'] as const;
 export type ValidMessageRole = (typeof VALID_MESSAGE_ROLES)[number];

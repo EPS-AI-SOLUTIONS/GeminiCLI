@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref } from 'vue';
 
 /**
  * Props interface for CalculatorButton.
  * Demonstrates: defineProps with TypeScript interface
  */
 interface Props {
-  label: string | number
-  variant?: 'digit' | 'operation' | 'equals' | 'clear'
-  disabled?: boolean
-  active?: boolean
-  size?: 'small' | 'medium' | 'large'
+  label: string | number;
+  variant?: 'digit' | 'operation' | 'equals' | 'clear';
+  disabled?: boolean;
+  active?: boolean;
+  size?: 'small' | 'medium' | 'large';
 }
 
 /**
@@ -18,10 +18,10 @@ interface Props {
  * Demonstrates: defineEmits with TypeScript
  */
 interface Emits {
-  click: [value: string | number]
-  hover: [isHovering: boolean]
-  focus: []
-  blur: []
+  click: [value: string | number];
+  hover: [isHovering: boolean];
+  focus: [];
+  blur: [];
 }
 
 // Define props with defaults
@@ -29,68 +29,68 @@ const props = withDefaults(defineProps<Props>(), {
   variant: 'digit',
   disabled: false,
   active: false,
-  size: 'medium'
-})
+  size: 'medium',
+});
 
 // Define emits
-const emit = defineEmits<Emits>()
+const emit = defineEmits<Emits>();
 
 // Local state
-const isHovered = ref(false)
-const isFocused = ref(false)
-const pressCount = ref(0)
+const isHovered = ref(false);
+const isFocused = ref(false);
+const pressCount = ref(0);
 
 // Computed classes based on props and state
-const buttonClass = computed(() => {
-  const classes = ['calc-button', `calc-button--${props.variant}`, `calc-button--${props.size}`]
+const _buttonClass = computed(() => {
+  const classes = ['calc-button', `calc-button--${props.variant}`, `calc-button--${props.size}`];
 
-  if (props.active) classes.push('calc-button--active')
-  if (props.disabled) classes.push('calc-button--disabled')
-  if (isHovered.value) classes.push('calc-button--hovered')
-  if (isFocused.value) classes.push('calc-button--focused')
+  if (props.active) classes.push('calc-button--active');
+  if (props.disabled) classes.push('calc-button--disabled');
+  if (isHovered.value) classes.push('calc-button--hovered');
+  if (isFocused.value) classes.push('calc-button--focused');
 
-  return classes.join(' ')
-})
+  return classes.join(' ');
+});
 
 // Computed aria label for accessibility
-const ariaLabel = computed(() => {
+const _ariaLabel = computed(() => {
   const variantText = {
     digit: 'Number',
     operation: 'Operation',
     equals: 'Equals',
-    clear: 'Clear'
-  }[props.variant]
+    clear: 'Clear',
+  }[props.variant];
 
-  return `${variantText}: ${props.label}`
-})
+  return `${variantText}: ${props.label}`;
+});
 
 // Event handlers that emit events
 const handleClick = () => {
   if (!props.disabled) {
-    pressCount.value++
-    emit('click', props.label)
+    pressCount.value++;
+    emit('click', props.label);
   }
-}
+};
 
-const handleMouseEnter = () => {
-  isHovered.value = true
-  emit('hover', true)
-}
+const _handleMouseEnter = () => {
+  isHovered.value = true;
+  emit('hover', true);
+};
 
-const handleMouseLeave = () => {
-  isHovered.value = false
-  emit('hover', false)
-}
+const _handleMouseLeave = () => {
+  isHovered.value = false;
+  emit('hover', false);
+};
 
-const handleFocus = () => {
-  isFocused.value = true
-  emit('focus')
-}
+const _handleFocus = () => {
+  isFocused.value = true;
+  emit('focus');
+};
 
-const handleBlur = () => {
-  isFocused.value = false
-  emit('blur')
-}
+const _handleBlur = () => {
+  isFocused.value = false;
+  emit('blur');
+};
 
 // Expose internal state for parent access via template refs
 // Demonstrates: defineExpose
@@ -98,8 +98,8 @@ defineExpose({
   pressCount,
   isHovered,
   isFocused,
-  simulateClick: handleClick
-})
+  simulateClick: handleClick,
+});
 </script>
 
 <template>

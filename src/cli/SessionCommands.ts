@@ -5,26 +5,24 @@
  */
 
 import chalk from 'chalk';
-import { sessionMemory } from '../memory/SessionMemory.js';
 import { codebaseMemory } from '../memory/CodebaseMemory.js';
+import { sessionMemory } from '../memory/SessionMemory.js';
 import {
-  commandRegistry,
-  Command,
-  CommandContext,
-  CommandResult,
-  success,
-  error
-} from './CommandRegistry.js';
-import {
-  parseArgs,
-  getStringFlag,
   formatDuration,
   formatNumber,
   formatRelativeTime,
-  horizontalLine,
+  getStringFlag,
+  parseArgs,
   truncate,
-  formatSimpleTable
 } from './CommandHelpers.js';
+import {
+  type Command,
+  type CommandContext,
+  type CommandResult,
+  commandRegistry,
+  error,
+  success,
+} from './CommandRegistry.js';
 
 // ============================================================
 // Command Handlers
@@ -86,9 +84,10 @@ async function historyHandler(ctx: CommandContext): Promise<CommandResult> {
 
   switch (subcommand) {
     case 'show':
-    case 'view':
-      const count = parseInt(ctx.args[1]) || 20;
+    case 'view': {
+      const count = parseInt(ctx.args[1], 10) || 20;
       return showHistory(count);
+    }
 
     case 'search':
       return searchHistory(ctx.args.slice(1).join(' '));
@@ -161,7 +160,11 @@ async function listSessions(): Promise<CommandResult> {
 
     lines.push(`${marker} ${name}`);
     lines.push(chalk.gray(`    ID: ${session.id}`));
-    lines.push(chalk.gray(`    Messages: ${session.messageCount} | Updated: ${formatRelativeTime(session.updated)}`));
+    lines.push(
+      chalk.gray(
+        `    Messages: ${session.messageCount} | Updated: ${formatRelativeTime(session.updated)}`,
+      ),
+    );
     lines.push('');
   }
 
@@ -178,7 +181,7 @@ async function createSession(name?: string): Promise<CommandResult> {
 
   return success(
     { id, name: session?.name },
-    chalk.green(`\n New session created: ${chalk.bold(session?.name || id)}\n  ID: ${id}`)
+    chalk.green(`\n New session created: ${chalk.bold(session?.name || id)}\n  ID: ${id}`),
   );
 }
 
@@ -191,7 +194,9 @@ async function switchSession(sessionId: string): Promise<CommandResult> {
   if (session) {
     return success(
       { id: session.id, name: session.name, messageCount: session.messages.length },
-      chalk.green(`\n Switched to session: ${chalk.bold(session.name)}\n  Messages: ${session.messages.length}`)
+      chalk.green(
+        `\n Switched to session: ${chalk.bold(session.name)}\n  Messages: ${session.messages.length}`,
+      ),
     );
   }
 
@@ -239,7 +244,7 @@ function renameSession(newName: string): CommandResult {
 
   return success(
     { oldName, newName },
-    chalk.green(`\n Session renamed: ${oldName} -> ${chalk.bold(newName)}`)
+    chalk.green(`\n Session renamed: ${oldName} -> ${chalk.bold(newName)}`),
   );
 }
 
@@ -265,7 +270,9 @@ async function branchSession(branchName: string): Promise<CommandResult> {
   const newId = await sessionMemory.branchSession(branchName);
   return success(
     { newId, branchName, parentId: session.id },
-    chalk.cyan(`\n Session branched: ${chalk.bold(branchName)}\n  New ID: ${newId}\n  Branched from: ${session.id}`)
+    chalk.cyan(
+      `\n Session branched: ${chalk.bold(branchName)}\n  New ID: ${newId}\n  Branched from: ${session.id}`,
+    ),
   );
 }
 
@@ -280,10 +287,7 @@ async function exportSession(filename: string, format: string): Promise<CommandR
 
   if (filename) {
     await sessionMemory.exportToFile(filename, fmt);
-    return success(
-      { filename, format: fmt },
-      chalk.green(`\n Session exported to: ${filename}`)
-    );
+    return success({ filename, format: fmt }, chalk.green(`\n Session exported to: ${filename}`));
   }
 
   return success({ content, format: fmt }, content);
@@ -349,8 +353,8 @@ async function searchHistory(query: string): Promise<CommandResult> {
 
   // Also search current session
   const currentMessages = sessionMemory.getRecentMessages(100);
-  const currentMatches = currentMessages.filter(m =>
-    m.content.toLowerCase().includes(query.toLowerCase())
+  const currentMatches = currentMessages.filter((m) =>
+    m.content.toLowerCase().includes(query.toLowerCase()),
   );
 
   const lines: string[] = [];
@@ -396,8 +400,8 @@ function historyStats(): CommandResult {
     return error('No active session.');
   }
 
-  const userMessages = session.messages.filter(m => m.role === 'user').length;
-  const assistantMessages = session.messages.filter(m => m.role === 'assistant').length;
+  const userMessages = session.messages.filter((m) => m.role === 'user').length;
+  const assistantMessages = session.messages.filter((m) => m.role === 'assistant').length;
   const totalChars = session.messages.reduce((sum, m) => sum + m.content.length, 0);
 
   const stats = {
@@ -406,7 +410,7 @@ function historyStats(): CommandResult {
     assistantMessages,
     totalChars,
     estimatedTokens: Math.ceil(totalChars / 4),
-    duration: 0
+    duration: 0,
   };
 
   const lines: string[] = [];
@@ -476,16 +480,97 @@ export function registerSessionCommands(): void {
     handler: sessionsHandler,
     category: 'session',
     subcommands: new Map([
-      ['list', { name: 'list', aliases: ['ls'], description: 'List all sessions', handler: sessionsHandler, category: 'session' }],
-      ['new', { name: 'new', aliases: ['create'], description: 'Create new session', handler: sessionsHandler, category: 'session' }],
-      ['switch', { name: 'switch', aliases: ['load'], description: 'Switch to session', handler: sessionsHandler, category: 'session' }],
-      ['current', { name: 'current', aliases: [], description: 'Show current session', handler: sessionsHandler, category: 'session' }],
-      ['rename', { name: 'rename', aliases: [], description: 'Rename session', handler: sessionsHandler, category: 'session' }],
-      ['delete', { name: 'delete', aliases: ['rm'], description: 'Delete session', handler: sessionsHandler, category: 'session' }],
-      ['branch', { name: 'branch', aliases: ['fork'], description: 'Fork session', handler: sessionsHandler, category: 'session' }],
-      ['export', { name: 'export', aliases: [], description: 'Export session', handler: sessionsHandler, category: 'session' }],
-      ['search', { name: 'search', aliases: [], description: 'Search sessions', handler: sessionsHandler, category: 'session' }]
-    ])
+      [
+        'list',
+        {
+          name: 'list',
+          aliases: ['ls'],
+          description: 'List all sessions',
+          handler: sessionsHandler,
+          category: 'session',
+        },
+      ],
+      [
+        'new',
+        {
+          name: 'new',
+          aliases: ['create'],
+          description: 'Create new session',
+          handler: sessionsHandler,
+          category: 'session',
+        },
+      ],
+      [
+        'switch',
+        {
+          name: 'switch',
+          aliases: ['load'],
+          description: 'Switch to session',
+          handler: sessionsHandler,
+          category: 'session',
+        },
+      ],
+      [
+        'current',
+        {
+          name: 'current',
+          aliases: [],
+          description: 'Show current session',
+          handler: sessionsHandler,
+          category: 'session',
+        },
+      ],
+      [
+        'rename',
+        {
+          name: 'rename',
+          aliases: [],
+          description: 'Rename session',
+          handler: sessionsHandler,
+          category: 'session',
+        },
+      ],
+      [
+        'delete',
+        {
+          name: 'delete',
+          aliases: ['rm'],
+          description: 'Delete session',
+          handler: sessionsHandler,
+          category: 'session',
+        },
+      ],
+      [
+        'branch',
+        {
+          name: 'branch',
+          aliases: ['fork'],
+          description: 'Fork session',
+          handler: sessionsHandler,
+          category: 'session',
+        },
+      ],
+      [
+        'export',
+        {
+          name: 'export',
+          aliases: [],
+          description: 'Export session',
+          handler: sessionsHandler,
+          category: 'session',
+        },
+      ],
+      [
+        'search',
+        {
+          name: 'search',
+          aliases: [],
+          description: 'Search sessions',
+          handler: sessionsHandler,
+          category: 'session',
+        },
+      ],
+    ]),
   };
 
   const historyCommand: Command = {
@@ -496,11 +581,47 @@ export function registerSessionCommands(): void {
     handler: historyHandler,
     category: 'session',
     subcommands: new Map([
-      ['show', { name: 'show', aliases: ['view'], description: 'Show recent messages', handler: historyHandler, category: 'session' }],
-      ['search', { name: 'search', aliases: [], description: 'Search history', handler: historyHandler, category: 'session' }],
-      ['stats', { name: 'stats', aliases: [], description: 'Show statistics', handler: historyHandler, category: 'session' }],
-      ['clear', { name: 'clear', aliases: [], description: 'Clear history', handler: historyHandler, category: 'session' }]
-    ])
+      [
+        'show',
+        {
+          name: 'show',
+          aliases: ['view'],
+          description: 'Show recent messages',
+          handler: historyHandler,
+          category: 'session',
+        },
+      ],
+      [
+        'search',
+        {
+          name: 'search',
+          aliases: [],
+          description: 'Search history',
+          handler: historyHandler,
+          category: 'session',
+        },
+      ],
+      [
+        'stats',
+        {
+          name: 'stats',
+          aliases: [],
+          description: 'Show statistics',
+          handler: historyHandler,
+          category: 'session',
+        },
+      ],
+      [
+        'clear',
+        {
+          name: 'clear',
+          aliases: [],
+          description: 'Clear history',
+          handler: historyHandler,
+          category: 'session',
+        },
+      ],
+    ]),
   };
 
   const resumeCommand: Command = {
@@ -508,11 +629,9 @@ export function registerSessionCommands(): void {
     aliases: ['r'],
     description: 'Resume last or specific session',
     usage: '[session-id]',
-    args: [
-      { name: 'session-id', description: 'Optional session ID to resume' }
-    ],
+    args: [{ name: 'session-id', description: 'Optional session ID to resume' }],
     handler: resumeHandler,
-    category: 'session'
+    category: 'session',
   };
 
   commandRegistry.register(sessionsCommand);
@@ -541,7 +660,7 @@ export async function sessionsCommand(ctx: LegacyCommandContext): Promise<string
     cwd: ctx.cwd,
     args: positional,
     flags,
-    rawArgs: ctx.args.join(' ')
+    rawArgs: ctx.args.join(' '),
   });
   return result.message || result.error || '';
 }
@@ -555,7 +674,7 @@ export async function historyCommand(ctx: LegacyCommandContext): Promise<string>
     cwd: ctx.cwd,
     args: positional,
     flags,
-    rawArgs: ctx.args.join(' ')
+    rawArgs: ctx.args.join(' '),
   });
   return result.message || result.error || '';
 }
@@ -569,7 +688,7 @@ export async function resumeCommand(ctx: LegacyCommandContext): Promise<string> 
     cwd: ctx.cwd,
     args: positional,
     flags,
-    rawArgs: ctx.args.join(' ')
+    rawArgs: ctx.args.join(' '),
   });
   return result.message || result.error || '';
 }
@@ -581,10 +700,9 @@ export async function resumeCommand(ctx: LegacyCommandContext): Promise<string> 
 /**
  * Initialize session system and optionally resume last session
  */
-export async function initSessionSystem(options: {
-  autoResume?: boolean;
-  projectPath?: string;
-} = {}): Promise<void> {
+export async function initSessionSystem(
+  options: { autoResume?: boolean; projectPath?: string } = {},
+): Promise<void> {
   const { autoResume = true, projectPath } = options;
 
   await sessionMemory.init();
@@ -612,7 +730,7 @@ export async function initSessionSystem(options: {
 export async function recordMessage(
   role: 'user' | 'assistant',
   content: string,
-  agent?: string
+  agent?: string,
 ): Promise<void> {
   await sessionMemory.addMessage(role, content, agent);
 }
@@ -627,9 +745,9 @@ export async function getPromptContext(maxMessages: number = 6): Promise<{
   await sessionMemory.init();
 
   const recentMessages = sessionMemory.getRecentMessages(maxMessages);
-  const messages = recentMessages.map(m => ({
+  const messages = recentMessages.map((m) => ({
     role: m.role,
-    content: m.content
+    content: m.content,
   }));
 
   // Add project context if available
@@ -674,7 +792,7 @@ export async function buildFullContext(userPrompt: string): Promise<{
 
   return {
     systemContext: systemParts.join('\n'),
-    conversationHistory: messages
+    conversationHistory: messages,
   };
 }
 
@@ -697,7 +815,7 @@ export const sessionCommands = {
   getPromptContext,
   buildFullContext,
   saveAndClose,
-  registerSessionCommands
+  registerSessionCommands,
 };
 
 export default sessionCommands;

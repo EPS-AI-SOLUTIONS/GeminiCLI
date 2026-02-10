@@ -4,9 +4,9 @@
  * Handles session management interactions.
  */
 
-import { Page, Locator, expect } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
+import { SELECTORS } from '../fixtures/test-data';
 import { BasePage } from './BasePage';
-import { SELECTORS, TIMEOUTS } from '../fixtures/test-data';
 
 export class SessionSidebar extends BasePage {
   // Locators

@@ -15,24 +15,22 @@
  * @module cli/nativecommands/index
  */
 
-// Command groups
-export { nativeCommands } from './nativeCommands.js';
 export { fsCommands } from './fsCommands.js';
-export { shellCommands } from './shellCommands.js';
-export { searchCommands } from './searchCommands.js';
-export { memoryCommands } from './memoryCommands.js';
-
-// Registration
-export { registerNativeCommands } from './registration.js';
-
 // Helpers (re-export for advanced usage)
 export {
+  detectFileEncoding,
+  dynamicAllowedPaths,
+  dynamicBlockedPaths,
+  getFileAttributes,
+  getShellDiagnostics,
   getTools,
   parseFlags,
-  getShellDiagnostics,
-  detectFileEncoding,
-  getFileAttributes,
   setFileAttributes,
-  dynamicAllowedPaths,
-  dynamicBlockedPaths
 } from './helpers.js';
+export { memoryCommands } from './memoryCommands.js';
+// Command groups
+export { nativeCommands } from './nativeCommands.js';
+// Registration
+export { registerNativeCommands } from './registration.js';
+export { searchCommands } from './searchCommands.js';
+export { shellCommands } from './shellCommands.js';

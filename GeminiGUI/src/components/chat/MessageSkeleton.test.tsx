@@ -46,23 +46,17 @@ describe('MessageSkeleton Components', () => {
     });
 
     it('should apply shimmer animation when specified', () => {
-      const { container } = render(
-        <MessageSkeleton variant="shimmer" count={1} />
-      );
+      const { container } = render(<MessageSkeleton variant="shimmer" count={1} />);
       const skeleton = container.querySelector('.skeleton-shimmer');
       expect(skeleton).toBeInTheDocument();
     });
 
     it('should have varied widths for natural appearance', () => {
-      const { container } = render(
-        <MessageSkeleton isUser={false} count={3} />
-      );
+      const { container } = render(<MessageSkeleton isUser={false} count={3} />);
       const skeletons = container.querySelectorAll('[class*="skeleton"]');
 
       // Widths should be different (randomly generated)
-      const widths = Array.from(skeletons).map(
-        (el) => (el as HTMLElement).style.width
-      );
+      const widths = Array.from(skeletons).map((el) => (el as HTMLElement).style.width);
 
       // At least some variation in widths
       expect(new Set(widths).size).toBeGreaterThan(1);
@@ -92,13 +86,11 @@ describe('MessageSkeleton Components', () => {
 
     it('should alternate between user and assistant messages', () => {
       const { container } = render(<MessageStreamSkeleton />);
-      const alignments = Array.from(container.querySelectorAll('.flex')).map(
-        (el) => {
-          if (el.className.includes('justify-end')) return 'user';
-          if (el.className.includes('justify-start')) return 'assistant';
-          return 'unknown';
-        }
-      );
+      const alignments = Array.from(container.querySelectorAll('.flex')).map((el) => {
+        if (el.className.includes('justify-end')) return 'user';
+        if (el.className.includes('justify-start')) return 'assistant';
+        return 'unknown';
+      });
 
       // First message should be user
       expect(alignments[0]).toBe('user');
@@ -109,7 +101,7 @@ describe('MessageSkeleton Components', () => {
           i > 0 &&
           alignments[i] !== 'unknown' &&
           alignments[i - 1] !== 'unknown' &&
-          alignments[i] !== alignments[i - 1]
+          alignments[i] !== alignments[i - 1],
       );
       expect(hasAlternation).toBe(true);
     });
@@ -140,12 +132,10 @@ describe('MessageSkeleton Components', () => {
 
     it('should have consistent structure with MessageSkeleton', () => {
       const { container: container1 } = render(<MessageStreamSkeleton />);
-      const { container: container2 } = render(
-        <MessageSkeleton isUser={false} count={1} />
-      );
+      const { container: container2 } = render(<MessageSkeleton isUser={false} count={1} />);
 
       const stream = container1.querySelector('.flex');
-      
+
       expect(stream?.className).toContain('justify-end');
     });
   });
@@ -182,11 +172,8 @@ describe('MessageSkeleton Components', () => {
 
   describe('Animation Consistency', () => {
     it('should apply same animation to all messages in stream', () => {
-      const { container } = render(
-        <MessageStreamSkeleton variant="shimmer" />
-      );
-      const shimmerCount = container.querySelectorAll('.skeleton-shimmer')
-        .length;
+      const { container } = render(<MessageStreamSkeleton variant="shimmer" />);
+      const shimmerCount = container.querySelectorAll('.skeleton-shimmer').length;
       const pulseCount = container.querySelectorAll('.skeleton-pulse').length;
 
       // All should use shimmer, not pulse
@@ -195,12 +182,8 @@ describe('MessageSkeleton Components', () => {
     });
 
     it('should maintain animation consistency across multiple renders', () => {
-      const { container: container1 } = render(
-        <MessageSkeleton variant="pulse" count={2} />
-      );
-      const { container: container2 } = render(
-        <MessageSkeleton variant="pulse" count={2} />
-      );
+      const { container: container1 } = render(<MessageSkeleton variant="pulse" count={2} />);
+      const { container: container2 } = render(<MessageSkeleton variant="pulse" count={2} />);
 
       const pulseCount1 = container1.querySelectorAll('.skeleton-pulse').length;
       const pulseCount2 = container2.querySelectorAll('.skeleton-pulse').length;
@@ -215,25 +198,19 @@ describe('MessageSkeleton Components', () => {
 
   describe('Alignment', () => {
     it('should correctly align user messages to the right', () => {
-      const { container } = render(
-        <MessageSkeleton isUser={true} count={1} />
-      );
+      const { container } = render(<MessageSkeleton isUser={true} count={1} />);
       const wrapper = container.querySelector('.justify-end');
       expect(wrapper).toBeInTheDocument();
     });
 
     it('should correctly align assistant messages to the left', () => {
-      const { container } = render(
-        <MessageSkeleton isUser={false} count={1} />
-      );
+      const { container } = render(<MessageSkeleton isUser={false} count={1} />);
       const wrapper = container.querySelector('.justify-start');
       expect(wrapper).toBeInTheDocument();
     });
 
     it('should respect alignment for multiple messages', () => {
-      const { container } = render(
-        <MessageSkeleton isUser={true} count={3} />
-      );
+      const { container } = render(<MessageSkeleton isUser={true} count={3} />);
       const wrappers = container.querySelectorAll('.justify-end');
       expect(wrappers.length).toBe(3);
     });
@@ -245,9 +222,7 @@ describe('MessageSkeleton Components', () => {
 
   describe('Padding', () => {
     it('should have correct padding for all messages', () => {
-      const { container } = render(
-        <MessageSkeleton isUser={false} count={1} />
-      );
+      const { container } = render(<MessageSkeleton isUser={false} count={1} />);
       const wrapper = container.querySelector('.flex');
       expect(wrapper).toHaveClass('py-2');
       expect(wrapper).toHaveClass('px-4');

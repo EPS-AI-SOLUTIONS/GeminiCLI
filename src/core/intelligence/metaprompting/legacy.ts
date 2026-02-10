@@ -11,10 +11,10 @@
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { geminiSemaphore } from '../../TrafficControl.js';
 import { GEMINI_MODELS } from '../../../config/models.config.js';
-import type { MetaPromptResult, TaskType } from './types.js';
+import { geminiSemaphore } from '../../TrafficControl.js';
 import { MetaPrompter } from './MetaPrompter.js';
+import type { MetaPromptResult, TaskType } from './types.js';
 
 // Initialize Gemini client for legacy API
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
@@ -23,7 +23,7 @@ const INTELLIGENCE_MODEL = GEMINI_MODELS.FLASH;
 // Legacy metaPrompter instance used by generateMetaPrompt
 const legacyMetaPrompter = new MetaPrompter({
   language: 'pl',
-  temperature: 0.4
+  temperature: 0.4,
 });
 
 /**
@@ -39,7 +39,7 @@ const TASK_PATTERNS: Record<TaskType, RegExp[]> = {
   explanation: [/wyjasn/i, /opowiedz/i, /jak dziala/i, /co to/i, /dlaczego/i],
   transformation: [/przeksztalc/i, /konwertuj/i, /zmien/i, /przetlumacz/i, /formatuj/i],
   evaluation: [/ocen/i, /zrecenzuj/i, /sprawdz jakosc/i, /czy dobrze/i],
-  unknown: []
+  unknown: [],
 };
 
 /**
@@ -55,7 +55,7 @@ const TECHNIQUE_MAP: Record<TaskType, string[]> = {
   explanation: ['Analogies', 'Progressive Complexity', 'Visual Representation'],
   transformation: ['Template-Based', 'Rule Application', 'Validation'],
   evaluation: ['Criteria-Based', 'Comparative Analysis', 'Scoring Rubric'],
-  unknown: ['Chain-of-Thought', 'Self-Reflection']
+  unknown: ['Chain-of-Thought', 'Self-Reflection'],
 };
 
 /**
@@ -81,7 +81,7 @@ export function classifyTaskType(task: string): TaskType {
  */
 export async function generateMetaPrompt(
   task: string,
-  context: string = ''
+  context: string = '',
 ): Promise<MetaPromptResult> {
   const taskType = classifyTaskType(task);
   const techniques = TECHNIQUE_MAP[taskType];
@@ -95,17 +95,16 @@ export async function generateMetaPrompt(
       optimizedPrompt: result.optimizedPrompt,
       suggestedTechniques: techniques,
       expectedOutputFormat: 'text',
-      confidence: Math.round(result.expectedGain * 100)
+      confidence: Math.round(result.expectedGain * 100),
     };
-
-  } catch (error: any) {
+  } catch (_error: any) {
     return {
       originalTask: task,
       taskType,
       optimizedPrompt: enhancePromptManually(task, taskType),
       suggestedTechniques: techniques,
       expectedOutputFormat: 'text',
-      confidence: 50
+      confidence: 50,
     };
   }
 }
@@ -115,16 +114,19 @@ export async function generateMetaPrompt(
  */
 function enhancePromptManually(task: string, taskType: TaskType): string {
   const prefixes: Record<TaskType, string> = {
-    analysis: 'Przeprowadz szczegolowa analize nastepujacego problemu. Przedstaw wnioski w formie punktowej:\n\n',
-    creative: 'Wykorzystaj swoja kreatywnosc do wykonania nastepujacego zadania. Badz oryginalny i innowacyjny:\n\n',
-    coding: 'Napisz czysty, dobrze udokumentowany kod dla nastepujacego zadania. Uwzglednij obsluge bledow:\n\n',
+    analysis:
+      'Przeprowadz szczegolowa analize nastepujacego problemu. Przedstaw wnioski w formie punktowej:\n\n',
+    creative:
+      'Wykorzystaj swoja kreatywnosc do wykonania nastepujacego zadania. Badz oryginalny i innowacyjny:\n\n',
+    coding:
+      'Napisz czysty, dobrze udokumentowany kod dla nastepujacego zadania. Uwzglednij obsluge bledow:\n\n',
     research: 'Zbierz i zsyntetyzuj informacje na temat:\n\n',
     planning: 'Stworz szczegolowy plan wykonania. Uwzglednij zaleznosci i ryzyka:\n\n',
     debugging: 'Zidentyfikuj przyczyne problemu i zaproponuj rozwiazanie:\n\n',
     explanation: 'Wyjasni w prosty i zrozumialy sposob:\n\n',
     transformation: 'Przeksztalc nastepujaca tresc zgodnie z wymaganiami:\n\n',
     evaluation: 'Ocen ponizsze wedlug jasnych kryteriow:\n\n',
-    unknown: 'Wykonaj nastepujace zadanie najlepiej jak potrafisz:\n\n'
+    unknown: 'Wykonaj nastepujace zadanie najlepiej jak potrafisz:\n\n',
   };
 
   const suffixes: Record<TaskType, string> = {
@@ -137,7 +139,7 @@ function enhancePromptManually(task: string, taskType: TaskType): string {
     explanation: '\n\nFormat: wyjasnienie od prostego do zlozonego',
     transformation: '\n\nFormat: przetworzona tresc',
     evaluation: '\n\nFormat: ocena z punktacja i uzasadnieniem',
-    unknown: ''
+    unknown: '',
   };
 
   return prefixes[taskType] + task + suffixes[taskType];
@@ -148,7 +150,7 @@ function enhancePromptManually(task: string, taskType: TaskType): string {
  */
 export async function executeWithMetaPrompt(
   task: string,
-  context: string = ''
+  context: string = '',
 ): Promise<{ result: string; metaInfo: MetaPromptResult }> {
   const metaInfo = await generateMetaPrompt(task, context);
 
@@ -156,7 +158,7 @@ export async function executeWithMetaPrompt(
     const response = await geminiSemaphore.withPermit(async () => {
       const model = genAI.getGenerativeModel({
         model: INTELLIGENCE_MODEL,
-        generationConfig: { temperature: 0.4, maxOutputTokens: 4096 }
+        generationConfig: { temperature: 0.4, maxOutputTokens: 4096 },
       });
       const result = await model.generateContent(metaInfo.optimizedPrompt);
       return result.response.text();
@@ -164,13 +166,12 @@ export async function executeWithMetaPrompt(
 
     return {
       result: response.trim(),
-      metaInfo
+      metaInfo,
     };
-
   } catch (error: any) {
     return {
       result: `Blad wykonania: ${error.message}`,
-      metaInfo
+      metaInfo,
     };
   }
 }
@@ -257,7 +258,7 @@ Skala: 1-10
 Format: ocena z uzasadnieniem`,
 
     unknown: `Wykonaj zadanie: {TEMAT}
-Opisz swoje podejscie i przedstaw wynik.`
+Opisz swoje podejscie i przedstaw wynik.`,
   };
 
   return templates[taskType];

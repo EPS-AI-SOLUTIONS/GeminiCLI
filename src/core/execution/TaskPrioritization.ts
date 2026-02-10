@@ -4,7 +4,7 @@
  * Handles task priority detection, scoring, and sorting.
  */
 
-import { SwarmTask } from '../../types/index.js';
+import type { SwarmTask } from '../../types/index.js';
 import type { TaskPriority } from '../../types/task.js';
 
 export type { TaskPriority };
@@ -25,18 +25,27 @@ export const PRIORITY_WEIGHTS: Record<TaskPriority, number> = {
   high: 75,
   medium: 50,
   low: 25,
-  background: 10
+  background: 10,
 };
 
 /**
  * Keywords for priority detection
  */
 export const PRIORITY_KEYWORDS: Record<TaskPriority, string[]> = {
-  critical: ['urgent', 'critical', 'emergency', 'pilne', 'krytyczne', 'natychmiast', 'asap', 'blocker'],
+  critical: [
+    'urgent',
+    'critical',
+    'emergency',
+    'pilne',
+    'krytyczne',
+    'natychmiast',
+    'asap',
+    'blocker',
+  ],
   high: ['important', 'high', 'soon', 'ważne', 'priorytet', 'szybko', 'priority'],
   medium: ['normal', 'standard', 'regular', 'normalne', 'standardowe', 'medium'],
   low: ['low', 'minor', 'later', 'niskie', 'później', 'when possible'],
-  background: ['background', 'whenever', 'optional', 'w tle', 'opcjonalne', 'nice to have']
+  background: ['background', 'whenever', 'optional', 'w tle', 'opcjonalne', 'nice to have'],
 };
 
 // =============================================================================
@@ -50,7 +59,7 @@ export function detectTaskPriority(taskDescription: string): TaskPriority {
   const lower = taskDescription.toLowerCase();
 
   for (const [priority, keywords] of Object.entries(PRIORITY_KEYWORDS)) {
-    if (keywords.some(k => lower.includes(k))) {
+    if (keywords.some((k) => lower.includes(k))) {
       return priority as TaskPriority;
     }
   }
@@ -111,7 +120,7 @@ export function createPrioritizedTask(
     priority?: TaskPriority;
     deadline?: Date;
     estimatedDuration?: number;
-  } = {}
+  } = {},
 ): PrioritizedTask {
   const priority = options.priority ?? detectTaskPriority(task.task);
 
@@ -120,7 +129,7 @@ export function createPrioritizedTask(
     priority,
     priorityScore: PRIORITY_WEIGHTS[priority],
     deadline: options.deadline,
-    estimatedDuration: options.estimatedDuration
+    estimatedDuration: options.estimatedDuration,
   };
 
   prioritizedTask.priorityScore = calculatePriorityScore(prioritizedTask);
@@ -137,7 +146,7 @@ export function getPriorityLabel(priority: TaskPriority): { label: string; color
     high: { label: 'HIGH', color: 'yellow' },
     medium: { label: 'MEDIUM', color: 'blue' },
     low: { label: 'LOW', color: 'gray' },
-    background: { label: 'BACKGROUND', color: 'dim' }
+    background: { label: 'BACKGROUND', color: 'dim' },
   };
 
   return labels[priority];

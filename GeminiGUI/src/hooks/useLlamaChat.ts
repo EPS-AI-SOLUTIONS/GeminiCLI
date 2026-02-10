@@ -3,10 +3,10 @@
  * @module hooks/useLlamaChat
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react';
 import { listen } from '@tauri-apps/api/event';
-import { LlamaService, type ChatMessage } from '../services/tauri.service';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { TAURI_EVENTS } from '../constants';
+import { type ChatMessage, LlamaService } from '../services/tauri.service';
 
 interface StreamPayload {
   chunk: string;
@@ -91,7 +91,7 @@ export const useLlamaChat = (): UseLlamaChatReturn => {
         throw e;
       }
     },
-    []
+    [],
   );
 
   // Send chat message with streaming
@@ -113,7 +113,7 @@ export const useLlamaChat = (): UseLlamaChatReturn => {
         throw e;
       }
     },
-    []
+    [],
   );
 
   // Generate from prompt (non-streaming)
@@ -133,7 +133,7 @@ export const useLlamaChat = (): UseLlamaChatReturn => {
         throw e;
       }
     },
-    []
+    [],
   );
 
   // Generate from prompt with streaming
@@ -156,7 +156,7 @@ export const useLlamaChat = (): UseLlamaChatReturn => {
         throw e;
       }
     },
-    []
+    [],
   );
 
   // Cancel ongoing stream

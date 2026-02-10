@@ -4,22 +4,35 @@
  */
 
 import chalk from 'chalk';
-import ora, { Ora } from 'ora';
+import ora, { type Ora } from 'ora';
 
 // ============================================================================
 // Configuration
 // ============================================================================
 
 export interface LoggerConfig {
-  verbose: boolean;           // Show detailed logs
-  showTokens: boolean;        // Show token counts
-  showTiming: boolean;        // Show timing info
-  showMemory: boolean;        // Show memory usage
-  showProgress: boolean;      // Show progress bars
+  verbose: boolean; // Show detailed logs
+  showTokens: boolean; // Show token counts
+  showTiming: boolean; // Show timing info
+  showMemory: boolean; // Show memory usage
+  showProgress: boolean; // Show progress bars
   showStreamContent: boolean; // Show actual streamed content
-  maxStreamPreview: number;   // Max chars to show in stream preview
-  colorize: boolean;          // Use colors
-  quietStartup: boolean;      // Hide INFO logs during startup (show only errors)
+  maxStreamPreview: number; // Max chars to show in stream preview
+  colorize: boolean; // Use colors
+  quietStartup: boolean; // Hide INFO logs during startup (show only errors)
+  /** #41: Enable structured JSON output mode alongside console output */
+  jsonOutput: boolean;
+  /** #41: JSON log buffer — flushed on summary() or manual flush */
+  jsonLogFile?: string;
+}
+
+/** #41: Structured log entry for JSON output mode */
+export interface StructuredLogEntry {
+  timestamp: string;
+  level: 'info' | 'warn' | 'error' | 'debug';
+  category: 'phase' | 'agent' | 'token' | 'stream' | 'api' | 'system';
+  message: string;
+  data?: Record<string, unknown>;
 }
 
 // Check for VERBOSE_STARTUP environment variable (quiet by default)
@@ -34,7 +47,8 @@ const DEFAULT_CONFIG: LoggerConfig = {
   showStreamContent: true,
   maxStreamPreview: 150,
   colorize: true,
-  quietStartup: isQuietStartup  // Default: TRUE (quiet startup, only errors shown)
+  quietStartup: isQuietStartup, // Default: TRUE (quiet startup, only errors shown)
+  jsonOutput: false,
 };
 
 // ============================================================================
@@ -49,10 +63,62 @@ export class LiveLogger {
   private spinners: Map<string, Ora> = new Map();
   private tokenCounts: Map<string, { input: number; output: number }> = new Map();
   private streamBuffers: Map<string, string> = new Map();
+  /** #41: Structured JSON log buffer */
+  private jsonLogBuffer: StructuredLogEntry[] = [];
 
   constructor(config: Partial<LoggerConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.startTime = Date.now();
+  }
+
+  // ============================================================================
+  // #41: Structured JSON Logging
+  // ============================================================================
+
+  /**
+   * Record a structured log entry (always stored; emitted to console if jsonOutput enabled)
+   */
+  structuredLog(
+    level: StructuredLogEntry['level'],
+    category: StructuredLogEntry['category'],
+    message: string,
+    data?: Record<string, unknown>,
+  ): void {
+    const entry: StructuredLogEntry = {
+      timestamp: new Date().toISOString(),
+      level,
+      category,
+      message,
+      ...(data ? { data } : {}),
+    };
+    this.jsonLogBuffer.push(entry);
+
+    // Trim buffer to prevent memory leaks (keep last 500 entries)
+    if (this.jsonLogBuffer.length > 500) {
+      this.jsonLogBuffer.splice(0, this.jsonLogBuffer.length - 500);
+    }
+
+    // If JSON output mode is on, also print to stdout
+    if (this.config.jsonOutput) {
+      process.stdout.write(`${JSON.stringify(entry)}\n`);
+    }
+  }
+
+  /** Get all buffered JSON log entries */
+  getJsonLogs(): StructuredLogEntry[] {
+    return [...this.jsonLogBuffer];
+  }
+
+  /** Clear the JSON log buffer */
+  flushJsonLogs(): StructuredLogEntry[] {
+    const logs = [...this.jsonLogBuffer];
+    this.jsonLogBuffer = [];
+    return logs;
+  }
+
+  /** Enable/disable JSON output mode at runtime */
+  setJsonOutput(enabled: boolean): void {
+    this.config.jsonOutput = enabled;
   }
 
   // ============================================================================
@@ -94,6 +160,10 @@ export class LiveLogger {
 
   phaseStart(phase: string, description: string): void {
     this.phaseTimers.set(phase, Date.now());
+    this.structuredLog('info', 'phase', `Phase ${phase} started: ${description}`, {
+      phase,
+      description,
+    });
 
     const line = '═'.repeat(60);
     console.log('');
@@ -111,12 +181,27 @@ export class LiveLogger {
     const elapsed = Date.now() - (this.phaseTimers.get(phase) || Date.now());
     this.phaseTimers.delete(phase);
 
+    this.structuredLog(
+      result?.success === false ? 'error' : 'info',
+      'phase',
+      `Phase ${phase} ${result?.success === false ? 'FAILED' : 'completed'}`,
+      {
+        phase,
+        elapsedMs: elapsed,
+        tasks: result?.tasks,
+        success: result?.success !== false,
+        error: result?.error,
+      },
+    );
+
     console.log('');
     if (result?.success === false) {
       console.log(chalk.red(`  ✗ Phase ${phase} FAILED: ${result.error || 'Unknown error'}`));
     } else {
       const taskInfo = result?.tasks ? ` | ${result.tasks} tasks` : '';
-      console.log(chalk.green(`  ✓ Phase ${phase} complete in ${this.formatElapsed(elapsed)}${taskInfo}`));
+      console.log(
+        chalk.green(`  ✓ Phase ${phase} complete in ${this.formatElapsed(elapsed)}${taskInfo}`),
+      );
     }
     console.log('');
   }
@@ -129,12 +214,16 @@ export class LiveLogger {
     const key = `${agent}:${Date.now()}`;
     this.taskTimers.set(key, Date.now());
 
-    const modelInfo = model ? chalk.gray(` [${model}]`) : '';
-    const truncatedTask = task.length > 80 ? task.substring(0, 77) + '...' : task;
+    this.structuredLog('info', 'agent', `Agent ${agent} started`, {
+      agent,
+      model,
+      task: task.substring(0, 200),
+    });
 
-    console.log(
-      chalk.yellow(`  ▶ [${agent}]${modelInfo} Starting: ${truncatedTask}`)
-    );
+    const modelInfo = model ? chalk.gray(` [${model}]`) : '';
+    const truncatedTask = task.length > 80 ? `${task.substring(0, 77)}...` : task;
+
+    console.log(chalk.yellow(`  ▶ [${agent}]${modelInfo} Starting: ${truncatedTask}`));
 
     return;
   }
@@ -151,9 +240,7 @@ export class LiveLogger {
     const bar = '█'.repeat(Math.floor(pct / 5)) + '░'.repeat(20 - Math.floor(pct / 5));
     const detailStr = detail ? ` - ${detail}` : '';
 
-    process.stdout.write(
-      chalk.gray(`\r    [${agent}] [${bar}] ${pct}%${detailStr}`.padEnd(80))
-    );
+    process.stdout.write(chalk.gray(`\r    [${agent}] [${bar}] ${pct}%${detailStr}`.padEnd(80)));
   }
 
   agentStream(agent: string, chunk: string, tokenCount: number): void {
@@ -175,14 +262,14 @@ export class LiveLogger {
         : '';
 
       process.stdout.write(
-        chalk.gray(`\r    [${agent}] 🔄 ${tokenCount} tokens (${elapsed})${preview}`.padEnd(100))
+        chalk.gray(`\r    [${agent}] 🔄 ${tokenCount} tokens (${elapsed})${preview}`.padEnd(100)),
       );
     }
   }
 
   agentStreamEnd(agent: string): void {
     this.streamBuffers.delete(agent);
-    process.stdout.write('\r' + ' '.repeat(100) + '\r');
+    process.stdout.write(`\r${' '.repeat(100)}\r`);
   }
 
   agentSuccess(agent: string, result: { chars?: number; tokens?: number; time?: number }): void {
@@ -190,9 +277,7 @@ export class LiveLogger {
     const charsStr = result.chars ? ` | ${result.chars} chars` : '';
     const tokensStr = result.tokens ? ` | ${this.formatTokens(result.tokens)} tokens` : '';
 
-    console.log(
-      chalk.green(`  ✓ [${agent}] Done${timeStr}${charsStr}${tokensStr}`)
-    );
+    console.log(chalk.green(`  ✓ [${agent}] Done${timeStr}${charsStr}${tokensStr}`));
   }
 
   agentError(agent: string, error: string, willRetry: boolean = false): void {
@@ -201,15 +286,11 @@ export class LiveLogger {
   }
 
   agentRetry(agent: string, attempt: number, maxAttempts: number, reason: string): void {
-    console.log(
-      chalk.yellow(`  ↻ [${agent}] Retry ${attempt}/${maxAttempts}: ${reason}`)
-    );
+    console.log(chalk.yellow(`  ↻ [${agent}] Retry ${attempt}/${maxAttempts}: ${reason}`));
   }
 
   agentFallback(agent: string, from: string, to: string): void {
-    console.log(
-      chalk.cyan(`  ⤵ [${agent}] Fallback: ${from} → ${to}`)
-    );
+    console.log(chalk.cyan(`  ⤵ [${agent}] Fallback: ${from} → ${to}`));
   }
 
   // ============================================================================
@@ -218,19 +299,18 @@ export class LiveLogger {
 
   taskQueue(tasks: Array<{ id: number | string; agent: string; description: string }>): void {
     console.log(chalk.cyan(`\n  📋 Task Queue (${tasks.length} tasks):`));
-    console.log(chalk.gray('  ' + '─'.repeat(56)));
+    console.log(chalk.gray(`  ${'─'.repeat(56)}`));
 
     for (const task of tasks.slice(0, 10)) {
-      const desc = task.description.length > 45
-        ? task.description.substring(0, 42) + '...'
-        : task.description;
+      const desc =
+        task.description.length > 45 ? `${task.description.substring(0, 42)}...` : task.description;
       console.log(chalk.gray(`  │ #${task.id} [${task.agent}] ${desc}`));
     }
 
     if (tasks.length > 10) {
       console.log(chalk.gray(`  │ ... and ${tasks.length - 10} more`));
     }
-    console.log(chalk.gray('  ' + '─'.repeat(56)));
+    console.log(chalk.gray(`  ${'─'.repeat(56)}`));
     console.log('');
   }
 
@@ -238,11 +318,15 @@ export class LiveLogger {
     const key = `task:${taskId}`;
     this.taskTimers.set(key, Date.now());
 
-    const desc = description.length > 60 ? description.substring(0, 57) + '...' : description;
+    const desc = description.length > 60 ? `${description.substring(0, 57)}...` : description;
     console.log(chalk.yellow(`  ▷ Task #${taskId} [${agent}]: ${desc}`));
   }
 
-  taskComplete(taskId: number | string, result: 'success' | 'error' | 'skipped', detail?: string): void {
+  taskComplete(
+    taskId: number | string,
+    result: 'success' | 'error' | 'skipped',
+    detail?: string,
+  ): void {
     const key = `task:${taskId}`;
     const elapsed = Date.now() - (this.taskTimers.get(key) || Date.now());
     this.taskTimers.delete(key);
@@ -263,7 +347,12 @@ export class LiveLogger {
   // Model/API Logging
   // ============================================================================
 
-  apiCall(provider: 'ollama' | 'gemini', model: string, action: 'start' | 'end' | 'error', detail?: string): void {
+  apiCall(
+    provider: 'ollama' | 'gemini',
+    model: string,
+    action: 'start' | 'end' | 'error',
+    detail?: string,
+  ): void {
     const icon = provider === 'ollama' ? '🦙' : '✨';
     const providerName = provider === 'ollama' ? 'Ollama' : 'Gemini';
 
@@ -281,7 +370,9 @@ export class LiveLogger {
 
     const cachedStr = cached ? ` | Cached: ${this.formatTokens(cached)}` : '';
     console.log(
-      chalk.gray(`    📊 [${agent}] Tokens: In ${this.formatTokens(input)} | Out ${this.formatTokens(output)}${cachedStr}`)
+      chalk.gray(
+        `    📊 [${agent}] Tokens: In ${this.formatTokens(input)} | Out ${this.formatTokens(output)}${cachedStr}`,
+      ),
     );
   }
 
@@ -289,7 +380,12 @@ export class LiveLogger {
   // MCP Logging
   // ============================================================================
 
-  mcpCall(tool: string, action: 'start' | 'end' | 'error', params?: Record<string, unknown>, result?: unknown): void {
+  mcpCall(
+    tool: string,
+    action: 'start' | 'end' | 'error',
+    params?: Record<string, unknown>,
+    result?: unknown,
+  ): void {
     if (action === 'start') {
       const paramsStr = params ? ` ${JSON.stringify(params).substring(0, 50)}...` : '';
       console.log(chalk.magenta(`    🔧 MCP [${tool}]: Calling${paramsStr}`));
@@ -351,10 +447,18 @@ export class LiveLogger {
 
     console.log(chalk.white(`  ⏱  Total Time:    ${this.formatElapsed(stats.totalTime)}`));
     console.log(chalk.white(`  📍 Phases:        ${stats.phases}`));
-    console.log(chalk.white(`  📋 Tasks:         ${stats.tasks.total} (✓${stats.tasks.success} ✗${stats.tasks.failed})`));
+    console.log(
+      chalk.white(
+        `  📋 Tasks:         ${stats.tasks.total} (✓${stats.tasks.success} ✗${stats.tasks.failed})`,
+      ),
+    );
 
     if (this.config.showTokens) {
-      console.log(chalk.white(`  📊 Tokens:        In ${this.formatTokens(stats.tokens.input)} | Out ${this.formatTokens(stats.tokens.output)}`));
+      console.log(
+        chalk.white(
+          `  📊 Tokens:        In ${this.formatTokens(stats.tokens.input)} | Out ${this.formatTokens(stats.tokens.output)}`,
+        ),
+      );
     }
 
     if (stats.cost !== undefined) {
@@ -472,7 +576,10 @@ export function isQuietStartupEnabled(): boolean {
  * Startup log - only shown if VERBOSE_STARTUP=true
  * Use this for initialization messages that should be hidden by default
  */
-export function startupLog(message: string, type: 'info' | 'success' | 'warn' | 'error' = 'info'): void {
+export function startupLog(
+  message: string,
+  type: 'info' | 'success' | 'warn' | 'error' = 'info',
+): void {
   // Always show errors
   if (type === 'error') {
     console.log(chalk.red(`[Startup] ✗ ${message}`));
@@ -491,7 +598,6 @@ export function startupLog(message: string, type: 'info' | 'success' | 'warn' | 
     case 'warn':
       console.log(chalk.yellow(`[Startup] ⚠ ${message}`));
       break;
-    case 'info':
     default:
       console.log(chalk.gray(`[Startup] ${message}`));
       break;

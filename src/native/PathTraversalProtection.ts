@@ -9,7 +9,7 @@
  * - Configurable blocking/logging behavior
  */
 
-import path from 'path';
+import path from 'node:path';
 import chalk from 'chalk';
 
 // ============================================================
@@ -62,15 +62,40 @@ export interface PathTraversalDetectionResult {
 const PATH_TRAVERSAL_PATTERNS: TraversalPattern[] = [
   // ===== BASIC TRAVERSAL SEQUENCES =====
   { pattern: /\.\.\//g, name: 'Unix parent directory (../)', severity: 'HIGH', category: 'basic' },
-  { pattern: /\.\.\\/g, name: 'Windows parent directory (..\\)', severity: 'HIGH', category: 'basic' },
-  { pattern: /\.\.[\/\\]/g, name: 'Generic parent directory', severity: 'HIGH', category: 'basic' },
+  {
+    pattern: /\.\.\\/g,
+    name: 'Windows parent directory (..\\)',
+    severity: 'HIGH',
+    category: 'basic',
+  },
+  { pattern: /\.\.[/\\]/g, name: 'Generic parent directory', severity: 'HIGH', category: 'basic' },
 
   // ===== URL ENCODED VARIANTS =====
   // Single URL encoding
-  { pattern: /%2e%2e%2f/gi, name: 'URL encoded ../ (%2e%2e%2f)', severity: 'CRITICAL', category: 'encoded' },
-  { pattern: /%2e%2e%5c/gi, name: 'URL encoded ..\\ (%2e%2e%5c)', severity: 'CRITICAL', category: 'encoded' },
-  { pattern: /%2e%2e\//gi, name: 'Partial URL encoded %2e%2e/', severity: 'CRITICAL', category: 'encoded' },
-  { pattern: /%2e%2e\\/gi, name: 'Partial URL encoded %2e%2e\\', severity: 'CRITICAL', category: 'encoded' },
+  {
+    pattern: /%2e%2e%2f/gi,
+    name: 'URL encoded ../ (%2e%2e%2f)',
+    severity: 'CRITICAL',
+    category: 'encoded',
+  },
+  {
+    pattern: /%2e%2e%5c/gi,
+    name: 'URL encoded ..\\ (%2e%2e%5c)',
+    severity: 'CRITICAL',
+    category: 'encoded',
+  },
+  {
+    pattern: /%2e%2e\//gi,
+    name: 'Partial URL encoded %2e%2e/',
+    severity: 'CRITICAL',
+    category: 'encoded',
+  },
+  {
+    pattern: /%2e%2e\\/gi,
+    name: 'Partial URL encoded %2e%2e\\',
+    severity: 'CRITICAL',
+    category: 'encoded',
+  },
   { pattern: /\.%2e\//gi, name: 'Mixed encoded .%2e/', severity: 'CRITICAL', category: 'encoded' },
   { pattern: /%2e\.\//gi, name: 'Mixed encoded %2e./', severity: 'CRITICAL', category: 'encoded' },
   { pattern: /\.%2e\\/gi, name: 'Mixed encoded .%2e\\', severity: 'CRITICAL', category: 'encoded' },
@@ -78,42 +103,142 @@ const PATH_TRAVERSAL_PATTERNS: TraversalPattern[] = [
   { pattern: /%2e%2e/gi, name: 'URL encoded dots (%2e%2e)', severity: 'HIGH', category: 'encoded' },
 
   // Double URL encoding (for WAF bypass)
-  { pattern: /%252e%252e%252f/gi, name: 'Double URL encoded ../', severity: 'CRITICAL', category: 'encoded' },
-  { pattern: /%252e%252e%255c/gi, name: 'Double URL encoded ..\\', severity: 'CRITICAL', category: 'encoded' },
-  { pattern: /%252e%252e/gi, name: 'Double URL encoded dots', severity: 'CRITICAL', category: 'encoded' },
+  {
+    pattern: /%252e%252e%252f/gi,
+    name: 'Double URL encoded ../',
+    severity: 'CRITICAL',
+    category: 'encoded',
+  },
+  {
+    pattern: /%252e%252e%255c/gi,
+    name: 'Double URL encoded ..\\',
+    severity: 'CRITICAL',
+    category: 'encoded',
+  },
+  {
+    pattern: /%252e%252e/gi,
+    name: 'Double URL encoded dots',
+    severity: 'CRITICAL',
+    category: 'encoded',
+  },
 
   // Triple URL encoding
-  { pattern: /%25252e%25252e/gi, name: 'Triple URL encoded dots', severity: 'CRITICAL', category: 'encoded' },
+  {
+    pattern: /%25252e%25252e/gi,
+    name: 'Triple URL encoded dots',
+    severity: 'CRITICAL',
+    category: 'encoded',
+  },
 
   // ===== UNICODE / UTF-8 ENCODED =====
-  { pattern: /%c0%ae%c0%ae%c0%af/gi, name: 'UTF-8 overlong ../', severity: 'CRITICAL', category: 'unicode' },
-  { pattern: /%c0%ae%c0%ae/gi, name: 'UTF-8 overlong dots', severity: 'CRITICAL', category: 'unicode' },
-  { pattern: /%c1%9c/gi, name: 'UTF-8 encoded backslash', severity: 'CRITICAL', category: 'unicode' },
+  {
+    pattern: /%c0%ae%c0%ae%c0%af/gi,
+    name: 'UTF-8 overlong ../',
+    severity: 'CRITICAL',
+    category: 'unicode',
+  },
+  {
+    pattern: /%c0%ae%c0%ae/gi,
+    name: 'UTF-8 overlong dots',
+    severity: 'CRITICAL',
+    category: 'unicode',
+  },
+  {
+    pattern: /%c1%9c/gi,
+    name: 'UTF-8 encoded backslash',
+    severity: 'CRITICAL',
+    category: 'unicode',
+  },
   { pattern: /%c0%af/gi, name: 'UTF-8 encoded slash', severity: 'CRITICAL', category: 'unicode' },
-  { pattern: /\.\.%c0%af/gi, name: 'UTF-8 slash traversal', severity: 'CRITICAL', category: 'unicode' },
-  { pattern: /\.\.%c1%9c/gi, name: 'UTF-8 backslash traversal', severity: 'CRITICAL', category: 'unicode' },
-  { pattern: /%e0%80%ae/gi, name: 'UTF-8 3-byte encoded dot', severity: 'CRITICAL', category: 'unicode' },
-  { pattern: /\u002e\u002e[\u002f\u005c]/g, name: 'Unicode escape sequence', severity: 'HIGH', category: 'unicode' },
-  { pattern: /\uff0e\uff0e[\uff0f\uff3c]/g, name: 'Fullwidth Unicode traversal', severity: 'CRITICAL', category: 'unicode' },
+  {
+    pattern: /\.\.%c0%af/gi,
+    name: 'UTF-8 slash traversal',
+    severity: 'CRITICAL',
+    category: 'unicode',
+  },
+  {
+    pattern: /\.\.%c1%9c/gi,
+    name: 'UTF-8 backslash traversal',
+    severity: 'CRITICAL',
+    category: 'unicode',
+  },
+  {
+    pattern: /%e0%80%ae/gi,
+    name: 'UTF-8 3-byte encoded dot',
+    severity: 'CRITICAL',
+    category: 'unicode',
+  },
+  {
+    pattern: /\u002e\u002e[\u002f\u005c]/g,
+    name: 'Unicode escape sequence',
+    severity: 'HIGH',
+    category: 'unicode',
+  },
+  {
+    pattern: /\uff0e\uff0e[\uff0f\uff3c]/g,
+    name: 'Fullwidth Unicode traversal',
+    severity: 'CRITICAL',
+    category: 'unicode',
+  },
 
   // ===== NULL BYTE INJECTION =====
-  { pattern: /%00/g, name: 'URL encoded null byte (%00)', severity: 'CRITICAL', category: 'null_byte' },
-  { pattern: /\x00/g, name: 'Null byte character (\\x00)', severity: 'CRITICAL', category: 'null_byte' },
+  {
+    pattern: /%00/g,
+    name: 'URL encoded null byte (%00)',
+    severity: 'CRITICAL',
+    category: 'null_byte',
+  },
+  {
+    pattern: /\x00/g,
+    name: 'Null byte character (\\x00)',
+    severity: 'CRITICAL',
+    category: 'null_byte',
+  },
   { pattern: /\0/g, name: 'Null byte literal (\\0)', severity: 'CRITICAL', category: 'null_byte' },
-  { pattern: /%u0000/gi, name: 'Unicode null byte (%u0000)', severity: 'CRITICAL', category: 'null_byte' },
+  {
+    pattern: /%u0000/gi,
+    name: 'Unicode null byte (%u0000)',
+    severity: 'CRITICAL',
+    category: 'null_byte',
+  },
 
   // ===== BYPASS ATTEMPTS =====
-  { pattern: /\.\.\.\.\/\//g, name: 'Double traversal bypass (....//)', severity: 'CRITICAL', category: 'bypass' },
-  { pattern: /\.\.\.\.\\\\/g, name: 'Double traversal bypass (....\\\\)', severity: 'CRITICAL', category: 'bypass' },
-  { pattern: /\.\.\.+[\/\\]/g, name: 'Multi-dot traversal (.../ or ...\\)', severity: 'HIGH', category: 'bypass' },
-  { pattern: /\.+\/+\.\./g, name: 'Nested traversal pattern', severity: 'CRITICAL', category: 'bypass' },
-  { pattern: /[\/\\]\.\.$/g, name: 'Trailing traversal', severity: 'HIGH', category: 'bypass' },
+  {
+    pattern: /\.\.\.\.\/\//g,
+    name: 'Double traversal bypass (....//)',
+    severity: 'CRITICAL',
+    category: 'bypass',
+  },
+  {
+    pattern: /\.\.\.\.\\\\/g,
+    name: 'Double traversal bypass (....\\\\)',
+    severity: 'CRITICAL',
+    category: 'bypass',
+  },
+  {
+    pattern: /\.\.\.+[/\\]/g,
+    name: 'Multi-dot traversal (.../ or ...\\)',
+    severity: 'HIGH',
+    category: 'bypass',
+  },
+  {
+    pattern: /\.+\/+\.\./g,
+    name: 'Nested traversal pattern',
+    severity: 'CRITICAL',
+    category: 'bypass',
+  },
+  { pattern: /[/\\]\.\.$/g, name: 'Trailing traversal', severity: 'HIGH', category: 'bypass' },
   { pattern: /\.\.;/g, name: 'Semicolon bypass (..;)', severity: 'CRITICAL', category: 'bypass' },
   { pattern: /\.\.\?/g, name: 'Query string bypass (..?)', severity: 'HIGH', category: 'bypass' },
   { pattern: /\.\.#/g, name: 'Hash bypass (..#)', severity: 'HIGH', category: 'bypass' },
 
   // ===== WINDOWS SPECIFIC =====
-  { pattern: /\.\.[\/\\]\.\.+/g, name: 'Multiple level traversal', severity: 'CRITICAL', category: 'bypass' },
+  {
+    pattern: /\.\.[/\\]\.\.+/g,
+    name: 'Multiple level traversal',
+    severity: 'CRITICAL',
+    category: 'bypass',
+  },
   // NOTE: Windows absolute paths (C:\...) are NOT blocked - they are validated separately
   // against rootDir in validateSecurePath(). Only block UNC paths (network shares).
   // { pattern: /^[a-zA-Z]:[\\/]/g, name: 'Windows absolute path', severity: 'HIGH', category: 'bypass' },
@@ -171,10 +296,10 @@ class SecurityAuditLogger {
 
   private printEntry(entry: SecurityAuditEntry): void {
     const severityColors: Record<string, (text: string) => string> = {
-      'LOW': chalk.gray,
-      'MEDIUM': chalk.yellow,
-      'HIGH': chalk.red,
-      'CRITICAL': chalk.red.bold.bgBlack
+      LOW: chalk.gray,
+      MEDIUM: chalk.yellow,
+      HIGH: chalk.red,
+      CRITICAL: chalk.red.bold.bgBlack,
     };
 
     const colorFn = severityColors[entry.severity] || chalk.white;
@@ -190,7 +315,7 @@ class SecurityAuditLogger {
 
     if (entry.detectedPatterns.length > 0) {
       console.error(chalk.red(`  Detected Patterns:`));
-      entry.detectedPatterns.forEach(p => {
+      entry.detectedPatterns.forEach((p) => {
         console.error(chalk.red(`    - ${p}`));
       });
     }
@@ -199,7 +324,9 @@ class SecurityAuditLogger {
       console.error(chalk.yellow(`  Sanitized Path:    "${entry.sanitizedPath}"`));
     }
 
-    console.error(colorFn(`  Action:            ${entry.blocked ? 'BLOCKED' : 'ALLOWED (after sanitization)'}`));
+    console.error(
+      colorFn(`  Action:            ${entry.blocked ? 'BLOCKED' : 'ALLOWED (after sanitization)'}`),
+    );
 
     if (entry.additionalInfo) {
       console.error(chalk.gray(`  Additional Info:   ${JSON.stringify(entry.additionalInfo)}`));
@@ -208,7 +335,7 @@ class SecurityAuditLogger {
     if (entry.stackTrace && entry.severity === 'CRITICAL') {
       console.error(chalk.gray(`  Stack Trace:`));
       const stackLines = entry.stackTrace.split('\n').slice(2, 6);
-      stackLines.forEach(line => console.error(chalk.gray(`    ${line.trim()}`)));
+      stackLines.forEach((line) => console.error(chalk.gray(`    ${line.trim()}`)));
     }
 
     console.error(colorFn(separator));
@@ -220,11 +347,11 @@ class SecurityAuditLogger {
   }
 
   getEntriesBySeverity(severity: SecurityAuditEntry['severity']): SecurityAuditEntry[] {
-    return this.auditLog.filter(e => e.severity === severity);
+    return this.auditLog.filter((e) => e.severity === severity);
   }
 
   getEntriesByType(type: SecurityAuditEntry['type']): SecurityAuditEntry[] {
-    return this.auditLog.filter(e => e.type === type);
+    return this.auditLog.filter((e) => e.type === type);
   }
 
   getStatistics(): {
@@ -250,7 +377,7 @@ class SecurityAuditLogger {
       total: this.auditLog.length,
       bySeverity,
       byType,
-      last24Hours
+      last24Hours,
     };
   }
 
@@ -263,16 +390,26 @@ class SecurityAuditLogger {
   }
 
   exportLogAsCSV(): string {
-    const headers = ['timestamp', 'type', 'severity', 'originalPath', 'detectedPatterns', 'sanitizedPath', 'blocked'];
-    const rows = this.auditLog.map(e => [
-      e.timestamp.toISOString(),
-      e.type,
-      e.severity,
-      `"${e.originalPath.replace(/"/g, '""')}"`,
-      `"${e.detectedPatterns.join('; ')}"`,
-      e.sanitizedPath ? `"${e.sanitizedPath.replace(/"/g, '""')}"` : '',
-      e.blocked.toString()
-    ].join(','));
+    const headers = [
+      'timestamp',
+      'type',
+      'severity',
+      'originalPath',
+      'detectedPatterns',
+      'sanitizedPath',
+      'blocked',
+    ];
+    const rows = this.auditLog.map((e) =>
+      [
+        e.timestamp.toISOString(),
+        e.type,
+        e.severity,
+        `"${e.originalPath.replace(/"/g, '""')}"`,
+        `"${e.detectedPatterns.join('; ')}"`,
+        e.sanitizedPath ? `"${e.sanitizedPath.replace(/"/g, '""')}"` : '',
+        e.blocked.toString(),
+      ].join(','),
+    );
     return [headers.join(','), ...rows].join('\n');
   }
 }
@@ -293,8 +430,13 @@ export class PathTraversalError extends Error {
   public readonly detectedPatterns: string[];
   public readonly severity: 'HIGH' | 'CRITICAL';
 
-  constructor(originalPath: string, detectedPatterns: string[], severity: 'HIGH' | 'CRITICAL' = 'HIGH') {
-    const message = `[SECURITY] Path traversal attack detected and blocked. ` +
+  constructor(
+    originalPath: string,
+    detectedPatterns: string[],
+    severity: 'HIGH' | 'CRITICAL' = 'HIGH',
+  ) {
+    const message =
+      `[SECURITY] Path traversal attack detected and blocked. ` +
       `Detected patterns: ${detectedPatterns.join(', ')}. ` +
       `Original path: "${originalPath}"`;
     super(message);
@@ -359,7 +501,7 @@ export function detectPathTraversal(inputPath: string): PathTraversalDetectionRe
     detected: detectedPatterns.length > 0,
     patterns: detectedPatterns,
     severity: maxSeverity,
-    categories: Array.from(categories)
+    categories: Array.from(categories),
   };
 }
 
@@ -407,12 +549,12 @@ export function sanitizePath(inputPath: string): string {
 
   // Step 3: Remove traversal sequences (order matters - remove longer patterns first)
   const traversalSequences = [
-    /\.\.\.\.\/\//g,   // ....//
-    /\.\.\.\.\\\\/g,   // ....\\
-    /\.\.\.+[\/\\]/g,  // .../ or ...\
-    /\.\.\//g,         // ../
-    /\.\.\\/g,         // ..\
-    /\.\.[\/\\]/g,     // Generic
+    /\.\.\.\.\/\//g, // ....//
+    /\.\.\.\.\\\\/g, // ....\\
+    /\.\.\.+[/\\]/g, // .../ or ...\
+    /\.\.\//g, // ../
+    /\.\.\\/g, // ..\
+    /\.\.[/\\]/g, // Generic
   ];
 
   for (const seq of traversalSequences) {
@@ -421,8 +563,8 @@ export function sanitizePath(inputPath: string): string {
 
   // Step 4: Remove standalone double dots at path boundaries
   sanitized = sanitized.replace(/^\.\.$/g, '');
-  sanitized = sanitized.replace(/[\/\\]\.\.$/g, '');
-  sanitized = sanitized.replace(/^\.\.([\/\\])/g, '$1');
+  sanitized = sanitized.replace(/[/\\]\.\.$/g, '');
+  sanitized = sanitized.replace(/^\.\.([/\\])/g, '$1');
 
   // Step 4b: Remove trailing parenthetical descriptions (AI hallucinations)
   // Examples: "path/file.ts)" or "path/file.ts (new file)"
@@ -473,13 +615,9 @@ export interface ValidateSecurePathOptions {
 export function validateSecurePath(
   inputPath: string,
   rootDir: string,
-  options: ValidateSecurePathOptions = {}
+  options: ValidateSecurePathOptions = {},
 ): string {
-  const {
-    logAttempts = true,
-    throwOnDetection = true,
-    allowSanitization = false
-  } = options;
+  const { logAttempts = true, throwOnDetection = true, allowSanitization = false } = options;
 
   // Detect traversal attempts
   const detection = detectPathTraversal(inputPath);
@@ -499,8 +637,8 @@ export function validateSecurePath(
         blocked: throwOnDetection,
         additionalInfo: {
           categories: detection.categories,
-          rootDir: rootDir
-        }
+          rootDir: rootDir,
+        },
       });
     }
 
@@ -531,11 +669,13 @@ export function validateSecurePath(
         blocked: true,
         additionalInfo: {
           resolvedPath: resolved,
-          rootDir: normalizedRoot
-        }
+          rootDir: normalizedRoot,
+        },
       });
     }
-    throw new Error(`[SECURITY] Access denied: Path "${inputPath}" resolves outside root directory`);
+    throw new Error(
+      `[SECURITY] Access denied: Path "${inputPath}" resolves outside root directory`,
+    );
   }
 
   return resolved;
@@ -567,7 +707,7 @@ export function isPathSafe(inputPath: string, rootDir: string): boolean {
   try {
     validateSecurePath(inputPath, rootDir, {
       logAttempts: false,
-      throwOnDetection: true
+      throwOnDetection: true,
     });
     return true;
   } catch {
@@ -588,10 +728,10 @@ export function getPathTraversalPatterns(): ReadonlyArray<{
   severity: 'HIGH' | 'CRITICAL';
   category: string;
 }> {
-  return PATH_TRAVERSAL_PATTERNS.map(p => ({
+  return PATH_TRAVERSAL_PATTERNS.map((p) => ({
     pattern: new RegExp(p.pattern.source, p.pattern.flags),
     name: p.name,
     severity: p.severity,
-    category: p.category
+    category: p.category,
   }));
 }

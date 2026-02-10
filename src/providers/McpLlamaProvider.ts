@@ -14,12 +14,11 @@
  */
 
 import type {
-  LLMProvider,
-  ExtendedLLMProvider,
+  ChatCompletionChunk,
   ChatCompletionRequest,
   ChatCompletionResponse,
-  ChatCompletionChunk,
   ChatMessage,
+  ExtendedLLMProvider,
   McpLlamaConfig,
   McpModelId,
 } from '../types/index.js';
@@ -78,11 +77,7 @@ export interface McpToolCaller {
     top_p?: number;
   }): Promise<McpGenerateResult>;
 
-  llama_json<T>(params: {
-    prompt: string;
-    schema: object;
-    max_tokens?: number;
-  }): Promise<T>;
+  llama_json<T>(params: { prompt: string; schema: object; max_tokens?: number }): Promise<T>;
 
   llama_analyze(params: {
     text: string;
@@ -104,10 +99,7 @@ export interface McpToolCaller {
     max_tokens?: number;
   }): Promise<{ description: string }>;
 
-  llama_embed(params: {
-    text?: string;
-    texts?: string[];
-  }): Promise<{ embeddings: number[][] }>;
+  llama_embed(params: { text?: string; texts?: string[] }): Promise<{ embeddings: number[][] }>;
 }
 
 /**
@@ -178,7 +170,7 @@ export class McpLlamaProvider implements ExtendedLLMProvider {
     const mcp = getMcpToolCaller();
 
     const result = await mcp.llama_chat({
-      messages: request.messages.map(m => ({
+      messages: request.messages.map((m) => ({
         role: m.role,
         content: m.content,
       })),
@@ -194,7 +186,7 @@ export class McpLlamaProvider implements ExtendedLLMProvider {
    * Note: MCP tools don't support true streaming, so we simulate it
    */
   async *createChatCompletionStream(
-    request: ChatCompletionRequest
+    request: ChatCompletionRequest,
   ): AsyncIterable<ChatCompletionChunk> {
     const mcp = getMcpToolCaller();
     const prompt = this.messagesToPrompt(request.messages);
@@ -240,7 +232,7 @@ export class McpLlamaProvider implements ExtendedLLMProvider {
   async analyzeText(
     text: string,
     task: 'sentiment' | 'summary' | 'keywords' | 'classification' | 'translation' | 'entities',
-    options?: { categories?: string[]; targetLanguage?: string }
+    options?: { categories?: string[]; targetLanguage?: string },
   ): Promise<McpAnalyzeResult> {
     const mcp = getMcpToolCaller();
     return await mcp.llama_analyze({
@@ -257,7 +249,7 @@ export class McpLlamaProvider implements ExtendedLLMProvider {
   async analyzeCode(
     task: 'generate' | 'explain' | 'refactor' | 'document' | 'review' | 'fix',
     codeOrDescription: string,
-    language?: string
+    language?: string,
   ): Promise<string> {
     const mcp = getMcpToolCaller();
     const result = await mcp.llama_code({
@@ -324,8 +316,8 @@ export class McpLlamaProvider implements ExtendedLLMProvider {
   // ============================================
 
   private messagesToPrompt(messages: ChatMessage[]): string {
-    return messages
-      .map(m => {
+    return `${messages
+      .map((m) => {
         switch (m.role) {
           case 'system':
             return `System: ${m.content}`;
@@ -337,7 +329,7 @@ export class McpLlamaProvider implements ExtendedLLMProvider {
             return m.content;
         }
       })
-      .join('\n\n') + '\n\nAssistant:';
+      .join('\n\n')}\n\nAssistant:`;
   }
 
   private formatChatResponse(content: string, model?: string): ChatCompletionResponse {

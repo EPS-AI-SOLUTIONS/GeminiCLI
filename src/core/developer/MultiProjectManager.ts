@@ -10,10 +10,10 @@
  * - Workspace persistence
  */
 
+import crypto from 'node:crypto';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import chalk from 'chalk';
-import crypto from 'crypto';
-import fs from 'fs/promises';
-import path from 'path';
 
 // ============================================================
 // Types
@@ -35,7 +35,7 @@ export interface ProjectInfo {
 export interface ProjectWorkspace {
   activeProject: string | null;
   projects: Map<string, ProjectInfo>;
-  recentProjects: string[];  // IDs
+  recentProjects: string[]; // IDs
 }
 
 export interface ProjectFilter {
@@ -52,7 +52,7 @@ export class MultiProjectManager {
   private workspace: ProjectWorkspace = {
     activeProject: null,
     projects: new Map(),
-    recentProjects: []
+    recentProjects: [],
   };
   private persistPath: string;
   private maxRecent: number = 10;
@@ -88,7 +88,7 @@ export class MultiProjectManager {
   async addProject(
     projectPath: string,
     name?: string,
-    options: { tags?: string[]; description?: string; config?: Record<string, any> } = {}
+    options: { tags?: string[]; description?: string; config?: Record<string, any> } = {},
   ): Promise<ProjectInfo> {
     const resolvedPath = path.resolve(projectPath);
 
@@ -109,7 +109,7 @@ export class MultiProjectManager {
       lastAccessed: Date.now(),
       tags: options.tags,
       description: options.description,
-      config: options.config
+      config: options.config,
     };
 
     this.workspace.projects.set(project.id, project);
@@ -138,7 +138,7 @@ export class MultiProjectManager {
       { file: 'build.gradle', type: 'java' },
       { file: 'build.gradle.kts', type: 'java' },
       { file: '*.csproj', type: 'dotnet' },
-      { file: '*.sln', type: 'dotnet' }
+      { file: '*.sln', type: 'dotnet' },
     ];
 
     for (const check of checks) {
@@ -147,7 +147,7 @@ export class MultiProjectManager {
           // Glob pattern - check if any matching file exists
           const files = await fs.readdir(projectPath);
           const pattern = check.file.replace('*', '');
-          if (files.some(f => f.endsWith(pattern))) {
+          if (files.some((f) => f.endsWith(pattern))) {
             return check.type;
           }
         } else {
@@ -230,7 +230,7 @@ export class MultiProjectManager {
    * @param projectId - Project ID to add to recent
    */
   private addToRecent(projectId: string): void {
-    this.workspace.recentProjects = this.workspace.recentProjects.filter(id => id !== projectId);
+    this.workspace.recentProjects = this.workspace.recentProjects.filter((id) => id !== projectId);
     this.workspace.recentProjects.unshift(projectId);
     if (this.workspace.recentProjects.length > this.maxRecent) {
       this.workspace.recentProjects.pop();
@@ -265,18 +265,17 @@ export class MultiProjectManager {
 
     if (filter) {
       if (filter.type) {
-        projects = projects.filter(p => p.type === filter.type);
+        projects = projects.filter((p) => p.type === filter.type);
       }
       if (filter.tags && filter.tags.length > 0) {
-        projects = projects.filter(p =>
-          p.tags && filter.tags!.some(t => p.tags!.includes(t))
-        );
+        projects = projects.filter((p) => p.tags && filter.tags?.some((t) => p.tags?.includes(t)));
       }
       if (filter.namePattern) {
-        const regex = typeof filter.namePattern === 'string'
-          ? new RegExp(filter.namePattern, 'i')
-          : filter.namePattern;
-        projects = projects.filter(p => regex.test(p.name));
+        const regex =
+          typeof filter.namePattern === 'string'
+            ? new RegExp(filter.namePattern, 'i')
+            : filter.namePattern;
+        projects = projects.filter((p) => regex.test(p.name));
       }
     }
 
@@ -293,9 +292,7 @@ export class MultiProjectManager {
       ? this.workspace.recentProjects.slice(0, limit)
       : this.workspace.recentProjects;
 
-    return recentIds
-      .map(id => this.workspace.projects.get(id))
-      .filter(Boolean) as ProjectInfo[];
+    return recentIds.map((id) => this.workspace.projects.get(id)).filter(Boolean) as ProjectInfo[];
   }
 
   /**
@@ -304,7 +301,10 @@ export class MultiProjectManager {
    * @param updates - Partial project info to update
    * @returns Updated project or null if not found
    */
-  updateProject(projectId: string, updates: Partial<Omit<ProjectInfo, 'id' | 'path'>>): ProjectInfo | null {
+  updateProject(
+    projectId: string,
+    updates: Partial<Omit<ProjectInfo, 'id' | 'path'>>,
+  ): ProjectInfo | null {
     const project = this.workspace.projects.get(projectId);
     if (!project) {
       console.log(chalk.red(`[ProjectManager] Project not found: ${projectId}`));
@@ -314,8 +314,8 @@ export class MultiProjectManager {
     const updated: ProjectInfo = {
       ...project,
       ...updates,
-      id: project.id,  // Preserve ID
-      path: project.path  // Preserve path
+      id: project.id, // Preserve ID
+      path: project.path, // Preserve path
     };
 
     this.workspace.projects.set(projectId, updated);
@@ -345,8 +345,10 @@ export class MultiProjectManager {
     const project = this.workspace.projects.get(projectId);
     if (!project || !project.tags) return;
 
-    project.tags = project.tags.filter(t => !tags.includes(t));
-    console.log(chalk.gray(`[ProjectManager] Removed tags from ${project.name}: ${tags.join(', ')}`));
+    project.tags = project.tags.filter((t) => !tags.includes(t));
+    console.log(
+      chalk.gray(`[ProjectManager] Removed tags from ${project.name}: ${tags.join(', ')}`),
+    );
   }
 
   /**
@@ -359,7 +361,7 @@ export class MultiProjectManager {
 
     const project = this.workspace.projects.get(projectId)!;
     this.workspace.projects.delete(projectId);
-    this.workspace.recentProjects = this.workspace.recentProjects.filter(id => id !== projectId);
+    this.workspace.recentProjects = this.workspace.recentProjects.filter((id) => id !== projectId);
 
     if (this.workspace.activeProject === projectId) {
       this.workspace.activeProject = this.workspace.recentProjects[0] || null;
@@ -377,7 +379,7 @@ export class MultiProjectManager {
     const tags = new Set<string>();
     for (const project of this.workspace.projects.values()) {
       if (project.tags) {
-        project.tags.forEach(t => tags.add(t));
+        project.tags.forEach((t) => tags.add(t));
       }
     }
     return Array.from(tags).sort();
@@ -399,7 +401,7 @@ export class MultiProjectManager {
       go: 0,
       java: 0,
       dotnet: 0,
-      unknown: 0
+      unknown: 0,
     };
 
     for (const project of this.workspace.projects.values()) {
@@ -409,7 +411,7 @@ export class MultiProjectManager {
     return {
       totalProjects: this.workspace.projects.size,
       byType,
-      recentCount: this.workspace.recentProjects.length
+      recentCount: this.workspace.recentProjects.length,
     };
   }
 
@@ -425,7 +427,7 @@ export class MultiProjectManager {
         projects: Object.fromEntries(this.workspace.projects),
         activeProject: this.workspace.activeProject,
         recentProjects: this.workspace.recentProjects,
-        lastSaved: Date.now()
+        lastSaved: Date.now(),
       };
       await fs.writeFile(this.persistPath, JSON.stringify(data, null, 2));
       console.log(chalk.gray('[ProjectManager] Workspace saved'));
@@ -460,7 +462,7 @@ export function formatProjectList(manager: MultiProjectManager): string {
     go: chalk.cyan,
     java: chalk.magenta,
     dotnet: chalk.blue,
-    unknown: chalk.gray
+    unknown: chalk.gray,
   };
 
   const typeSummary = Object.entries(stats.byType)
@@ -544,5 +546,5 @@ export default {
   MultiProjectManager,
   projectManager,
   formatProjectList,
-  formatRecentProjects
+  formatRecentProjects,
 };

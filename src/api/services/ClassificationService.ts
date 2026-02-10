@@ -3,12 +3,8 @@
  * Handles prompt classification and agent selection
  */
 
-import {
-  getAgentSummaries,
-  classifyPrompt,
-  analyzeComplexity,
-} from '../../index.js';
-import type { ExecutePlan, AgentSummary, ComplexityInfo } from '../types/index.js';
+import { analyzeComplexity, classifyPrompt, getAgentSummaries } from '../../index.js';
+import type { AgentSummary, ComplexityInfo, ExecutePlan } from '../types/index.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Types

@@ -109,7 +109,7 @@
       "temperatureProfile": {
         "base": 0.95,
         "creativityBias": -0.05,
-        "precisionBias": 0.10
+        "precisionBias": 0.1
       }
     },
     "geralt": {
@@ -117,7 +117,7 @@
       "model": "gemini-3-pro-preview",
       "temperatureProfile": {
         "base": 0.85,
-        "creativityBias": -0.10,
+        "creativityBias": -0.1,
         "precisionBias": 0.15
       }
     },
@@ -125,7 +125,7 @@
       "role": "Design patterns",
       "model": "gemini-3-pro-preview",
       "temperatureProfile": {
-        "base": 0.90,
+        "base": 0.9,
         "creativityBias": 0.05,
         "precisionBias": 0.05
       }
@@ -136,7 +136,7 @@
       "temperatureProfile": {
         "base": 1.0,
         "creativityBias": 0.0,
-        "precisionBias": 0.10
+        "precisionBias": 0.1
       }
     },
     "ciri": {
@@ -144,7 +144,7 @@
       "model": "gemini-3-pro-preview",
       "temperatureProfile": {
         "base": 1.15,
-        "creativityBias": 0.10,
+        "creativityBias": 0.1,
         "precisionBias": 0.0
       }
     },
@@ -172,7 +172,7 @@
       "temperatureProfile": {
         "base": 0.95,
         "creativityBias": -0.05,
-        "precisionBias": 0.10
+        "precisionBias": 0.1
       }
     },
     "lambert": {
@@ -180,7 +180,7 @@
       "model": "gemini-3-pro-preview",
       "temperatureProfile": {
         "base": 0.88,
-        "creativityBias": -0.10,
+        "creativityBias": -0.1,
         "precisionBias": 0.15
       }
     },
@@ -206,9 +206,9 @@
       "role": "API specialist",
       "model": "gemini-3-pro-preview",
       "temperatureProfile": {
-        "base": 0.90,
+        "base": 0.9,
         "creativityBias": -0.05,
-        "precisionBias": 0.10
+        "precisionBias": 0.1
       }
     }
   },

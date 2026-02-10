@@ -14,7 +14,7 @@
  */
 
 import { generate, selectModel } from '../../GeminiCLI.js';
-import type { PromptOptimization, MetaPromptingConfig } from './types.js';
+import type { MetaPromptingConfig, PromptOptimization } from './types.js';
 import { DEFAULT_CONFIG } from './types.js';
 
 /**
@@ -96,7 +96,7 @@ Return ONLY JSON, no additional comments.`;
       const response = await generate(metaPrompt, {
         model,
         temperature: this.config.temperature,
-        maxTokens: this.config.maxTokens
+        maxTokens: this.config.maxTokens,
       });
 
       // Parse JSON response
@@ -111,7 +111,7 @@ Return ONLY JSON, no additional comments.`;
         originalPrompt: prompt,
         optimizedPrompt: parsed.optimizedPrompt || prompt,
         improvements: parsed.improvements || [],
-        expectedGain: Math.max(0, Math.min(1, parsed.expectedGain || 0.5))
+        expectedGain: Math.max(0, Math.min(1, parsed.expectedGain || 0.5)),
       };
     } catch (error) {
       console.error('[MetaPrompter] Optimization failed:', error);
@@ -119,7 +119,7 @@ Return ONLY JSON, no additional comments.`;
         originalPrompt: prompt,
         optimizedPrompt: prompt,
         improvements: [],
-        expectedGain: 0
+        expectedGain: 0,
       };
     }
   }
@@ -179,7 +179,7 @@ RETURN ONLY THE GENERATED PROMPT (no additional comments):`;
       const response = await generate(metaPrompt, {
         model,
         temperature: this.config.temperature,
-        maxTokens: this.config.maxTokens
+        maxTokens: this.config.maxTokens,
       });
 
       return response.trim();
@@ -254,7 +254,7 @@ Return ONLY JSON, no additional comments.`;
       const response = await generate(metaPrompt, {
         model,
         temperature: this.config.temperature,
-        maxTokens: this.config.maxTokens
+        maxTokens: this.config.maxTokens,
       });
 
       const jsonMatch = response.match(/\{[\s\S]*\}/);
@@ -337,7 +337,7 @@ RETURN ONLY THE COMBINED PROMPT (no additional comments):`;
       const response = await generate(metaPrompt, {
         model,
         temperature: this.config.temperature,
-        maxTokens: this.config.maxTokens
+        maxTokens: this.config.maxTokens,
       });
 
       return response.trim();

@@ -66,13 +66,14 @@ FORMAT ODPOWIEDZI:
             vars: {
               language: 'TypeScript',
               functionName: 'calculateDiscount',
-              requirements: '- Przyjmuje cene i procent rabatu\n- Zwraca cene po rabacie\n- Waliduje zakres rabatu (0-100%)'
+              requirements:
+                '- Przyjmuje cene i procent rabatu\n- Zwraca cene po rabacie\n- Waliduje zakres rabatu (0-100%)',
             },
-            result: '// Generated function with full implementation...'
-          }
+            result: '// Generated function with full implementation...',
+          },
         ],
         rating: 0.92,
-        usageCount: 0
+        usageCount: 0,
       },
       {
         id: 'code-gen-class',
@@ -102,7 +103,7 @@ STRUKTURA ODPOWIEDZI:
         tags: ['code', 'class', 'oop', 'solid'],
         examples: [],
         rating: 0.89,
-        usageCount: 0
+        usageCount: 0,
       },
 
       // Code Review Templates
@@ -149,7 +150,7 @@ FORMAT ODPOWIEDZI:
         tags: ['security', 'review', 'owasp', 'audit'],
         examples: [],
         rating: 0.95,
-        usageCount: 0
+        usageCount: 0,
       },
       {
         id: 'code-review-performance',
@@ -204,7 +205,7 @@ ODPOWIEDZ W FORMACIE:
         tags: ['performance', 'optimization', 'review'],
         examples: [],
         rating: 0.91,
-        usageCount: 0
+        usageCount: 0,
       },
 
       // Debugging Templates
@@ -256,7 +257,7 @@ PRZEPROWADZ SLEDZTWO:
         tags: ['debug', 'error', 'troubleshooting'],
         examples: [],
         rating: 0.93,
-        usageCount: 0
+        usageCount: 0,
       },
 
       // Architecture Templates
@@ -314,12 +315,12 @@ ZAPROJEKTUJ ARCHITEKTURE:
         optionalVars: {
           budget: 'Nieograniczony',
           teamSize: '5',
-          deadline: '6 miesiecy'
+          deadline: '6 miesiecy',
         },
         tags: ['architecture', 'system-design', 'planning'],
         examples: [],
         rating: 0.94,
-        usageCount: 0
+        usageCount: 0,
       },
 
       // Testing Templates
@@ -365,8 +366,8 @@ FORMAT ODPOWIEDZI:
         optionalVars: {},
         tags: ['testing', 'unit-tests', 'quality'],
         examples: [],
-        rating: 0.90,
-        usageCount: 0
+        rating: 0.9,
+        usageCount: 0,
       },
 
       // Refactoring Templates
@@ -416,7 +417,7 @@ PRZEPROWADZ REFAKTORYZACJE:
         tags: ['refactoring', 'legacy', 'clean-code'],
         examples: [],
         rating: 0.88,
-        usageCount: 0
+        usageCount: 0,
       },
 
       // Documentation Templates
@@ -463,7 +464,7 @@ WYGENERUJ DOKUMENTACJE W FORMACIE {{format}}:
         tags: ['documentation', 'api', 'swagger'],
         examples: [],
         rating: 0.87,
-        usageCount: 0
+        usageCount: 0,
       },
 
       // Data Processing Templates
@@ -520,12 +521,12 @@ ZAPROJEKTUJ PIPELINE:
         optionalVars: {
           volume: 'Sredni (GB/dzien)',
           frequency: 'Dzienny',
-          sla: '99.9%'
+          sla: '99.9%',
         },
         tags: ['data', 'etl', 'pipeline', 'engineering'],
         examples: [],
         rating: 0.86,
-        usageCount: 0
+        usageCount: 0,
       },
 
       // Planning Templates
@@ -577,13 +578,13 @@ PRZEPROWADZ PLANOWANIE:
         requiredVars: ['sprintGoal', 'backlogItems'],
         optionalVars: {
           team: '5 developerow',
-          duration: '2 tygodnie'
+          duration: '2 tygodnie',
         },
         tags: ['planning', 'sprint', 'agile', 'scrum'],
         examples: [],
         rating: 0.85,
-        usageCount: 0
-      }
+        usageCount: 0,
+      },
     ];
 
     // Register all built-in templates
@@ -625,12 +626,12 @@ PRZEPROWADZ PLANOWANIE:
    */
   searchByTags(tags: string[]): PromptTemplate[] {
     const results: PromptTemplate[] = [];
-    const tagSet = new Set(tags.map(t => t.toLowerCase()));
+    const tagSet = new Set(tags.map((t) => t.toLowerCase()));
 
     const allTemplates = [...this.templates.values(), ...this.customTemplates.values()];
 
     for (const template of allTemplates) {
-      const matchCount = template.tags.filter(t => tagSet.has(t.toLowerCase())).length;
+      const matchCount = template.tags.filter((t) => tagSet.has(t.toLowerCase())).length;
       if (matchCount > 0) {
         results.push({ ...template, rating: template.rating * (matchCount / tags.length) });
       }
@@ -663,7 +664,7 @@ PRZEPROWADZ PLANOWANIE:
 
     // Handle conditional blocks {{#if var}}...{{/if}}
     result = result.replace(/\{\{#if (\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g, (_, varName, content) => {
-      return allVars[varName] && allVars[varName].trim() ? content : '';
+      return allVars[varName]?.trim() ? content : '';
     });
 
     // Replace variables
@@ -683,7 +684,7 @@ PRZEPROWADZ PLANOWANIE:
   addCustomTemplate(template: Omit<PromptTemplate, 'usageCount'>): void {
     const fullTemplate: PromptTemplate = {
       ...template,
-      usageCount: 0
+      usageCount: 0,
     };
     this.customTemplates.set(template.id, fullTemplate);
   }
@@ -693,11 +694,11 @@ PRZEPROWADZ PLANOWANIE:
    */
   listTemplates(): Array<{ id: string; name: string; category: TemplateCategory; rating: number }> {
     const allTemplates = [...this.templates.values(), ...this.customTemplates.values()];
-    return allTemplates.map(t => ({
+    return allTemplates.map((t) => ({
       id: t.id,
       name: t.name,
       category: t.category,
-      rating: t.rating
+      rating: t.rating,
     }));
   }
 
@@ -715,12 +716,12 @@ PRZEPROWADZ PLANOWANIE:
     const mostUsed = [...allTemplates]
       .sort((a, b) => b.usageCount - a.usageCount)
       .slice(0, 5)
-      .map(t => t.id);
+      .map((t) => t.id);
 
     return {
       totalTemplates: allTemplates.length,
       byCategory,
-      mostUsed
+      mostUsed,
     };
   }
 }

@@ -3,10 +3,10 @@
  * Feature #6: Plugin System
  */
 
+import { EventEmitter } from 'node:events';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import chalk from 'chalk';
-import fs from 'fs/promises';
-import path from 'path';
-import { EventEmitter } from 'events';
 
 import { GEMINIHYDRA_DIR } from '../config/paths.config.js';
 
@@ -44,7 +44,7 @@ export interface PluginContext {
   mcpParams?: any;
 }
 
-export type PluginHandler = (context: PluginContext) => Promise<PluginContext | void>;
+export type PluginHandler = (context: PluginContext) => Promise<PluginContext | undefined>;
 
 export interface PluginManifest {
   name: string;
@@ -54,12 +54,15 @@ export interface PluginManifest {
   homepage?: string;
   hooks: PluginHook[];
   dependencies?: string[];
-  config?: Record<string, {
-    type: 'string' | 'number' | 'boolean' | 'array';
-    description: string;
-    default?: any;
-    required?: boolean;
-  }>;
+  config?: Record<
+    string,
+    {
+      type: 'string' | 'number' | 'boolean' | 'array';
+      description: string;
+      default?: any;
+      required?: boolean;
+    }
+  >;
 }
 
 export interface Plugin {
@@ -85,12 +88,9 @@ export interface PluginRegistryEntry {
 export class PluginManager extends EventEmitter {
   private plugins: Map<string, Plugin> = new Map();
   private registry: Map<string, PluginRegistryEntry> = new Map();
-  private hookHandlers: Map<PluginHook, Array<{ plugin: string; handler: PluginHandler }>> = new Map();
+  private hookHandlers: Map<PluginHook, Array<{ plugin: string; handler: PluginHandler }>> =
+    new Map();
   private initialized = false;
-
-  constructor() {
-    super();
-  }
 
   /**
    * Initialize plugin system
@@ -162,9 +162,7 @@ export class PluginManager extends EventEmitter {
           await fs.access(path.join(absolutePath, candidate));
           entryPoint = path.join(absolutePath, candidate);
           break;
-        } catch {
-          continue;
-        }
+        } catch {}
       }
     }
 
@@ -195,7 +193,7 @@ export class PluginManager extends EventEmitter {
         enabled: true,
         config: {},
         installedAt: new Date().toISOString(),
-        path: absolutePath
+        path: absolutePath,
       };
 
       // Set default config values
@@ -223,9 +221,9 @@ export class PluginManager extends EventEmitter {
         if (!this.hookHandlers.has(hook)) {
           this.hookHandlers.set(hook, []);
         }
-        this.hookHandlers.get(hook)!.push({
+        this.hookHandlers.get(hook)?.push({
           plugin: plugin.manifest.name,
-          handler
+          handler,
         });
       }
     }
@@ -250,7 +248,7 @@ export class PluginManager extends EventEmitter {
     for (const hook of plugin.manifest.hooks) {
       const handlers = this.hookHandlers.get(hook);
       if (handlers) {
-        const filtered = handlers.filter(h => h.plugin !== name);
+        const filtered = handlers.filter((h) => h.plugin !== name);
         this.hookHandlers.set(hook, filtered);
       }
     }
@@ -399,7 +397,9 @@ export class PluginManager extends EventEmitter {
           currentContext = result;
         }
       } catch (error: any) {
-        console.error(chalk.red(`[PluginManager] Hook error in ${plugin}.${hook}: ${error.message}`));
+        console.error(
+          chalk.red(`[PluginManager] Hook error in ${plugin}.${hook}: ${error.message}`),
+        );
         this.emit('hookError', { plugin, hook, error });
       }
     }
@@ -411,10 +411,10 @@ export class PluginManager extends EventEmitter {
    * Get loaded plugins
    */
   getLoadedPlugins(): Array<{ name: string; version: string; hooks: PluginHook[] }> {
-    return Array.from(this.plugins.values()).map(p => ({
+    return Array.from(this.plugins.values()).map((p) => ({
       name: p.manifest.name,
       version: p.manifest.version,
-      hooks: p.manifest.hooks
+      hooks: p.manifest.hooks,
     }));
   }
 
@@ -436,7 +436,7 @@ export class PluginManager extends EventEmitter {
 
     return {
       manifest: plugin?.manifest || { name, version: entry.version, description: '', hooks: [] },
-      entry
+      entry,
     };
   }
 
@@ -495,13 +495,13 @@ export function createPlugin(
   options?: {
     init?: (config: Record<string, any>) => Promise<void>;
     destroy?: () => Promise<void>;
-  }
+  },
 ): Plugin {
   return {
     manifest,
     handlers,
     init: options?.init,
-    destroy: options?.destroy
+    destroy: options?.destroy,
   };
 }
 
@@ -513,7 +513,7 @@ export const LoggingPlugin = createPlugin(
     name: 'logging',
     version: '1.0.0',
     description: 'Logs all hook events',
-    hooks: ['beforeTask', 'afterTask', 'onError']
+    hooks: ['beforeTask', 'afterTask', 'onError'],
   },
   {
     beforeTask: async (ctx) => {
@@ -527,8 +527,8 @@ export const LoggingPlugin = createPlugin(
     onError: async (ctx) => {
       console.log(chalk.red(`[LoggingPlugin] Error: ${ctx.error?.message}`));
       return ctx;
-    }
-  }
+    },
+  },
 );
 
 /**
@@ -544,9 +544,9 @@ export const MetricsPlugin = createPlugin(
       enabled: {
         type: 'boolean',
         description: 'Enable metrics collection',
-        default: true
-      }
-    }
+        default: true,
+      },
+    },
   },
   {
     beforeTask: async (ctx) => {
@@ -560,8 +560,8 @@ export const MetricsPlugin = createPlugin(
         console.log(chalk.gray(`[MetricsPlugin] Task ${ctx.task?.id} took ${duration}ms`));
       }
       return ctx;
-    }
-  }
+    },
+  },
 );
 
 // ============================================================
@@ -575,5 +575,5 @@ export default {
   pluginManager,
   createPlugin,
   LoggingPlugin,
-  MetricsPlugin
+  MetricsPlugin,
 };

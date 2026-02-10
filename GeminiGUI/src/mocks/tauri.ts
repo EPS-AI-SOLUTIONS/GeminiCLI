@@ -56,9 +56,11 @@ function getOrCreateMockState(): MockState {
   }
   if (r.get_bridge_state === undefined) r.get_bridge_state = { auto_approve: true, requests: [] };
   if (r.get_env_vars === undefined) r.get_env_vars = { GEMINI_API_KEY: 'test-key-123' };
-  if (r.get_ollama_models === undefined) r.get_ollama_models = ['llama3-wolf-edition', 'qwen-yennefer-tuned'];
+  if (r.get_ollama_models === undefined)
+    r.get_ollama_models = ['llama3-wolf-edition', 'qwen-yennefer-tuned'];
   if (r.get_gemini_models === undefined) r.get_gemini_models = ['gemini-pro-kaer-morhen'];
-  if (r.get_gemini_models_sorted === undefined) r.get_gemini_models_sorted = ['gemini-3-flash-preview', 'gemini-3-pro-preview'];
+  if (r.get_gemini_models_sorted === undefined)
+    r.get_gemini_models_sorted = ['gemini-3-flash-preview', 'gemini-3-pro-preview'];
   if (r.get_agent_memories === undefined) r.get_agent_memories = [];
   if (r.get_knowledge_graph === undefined) r.get_knowledge_graph = { nodes: [], edges: [] };
   if (r.save_file_content === undefined) r.save_file_content = true;
@@ -103,7 +105,7 @@ export const listen = async (event: string, callback: Function) => {
   if (!mock.eventListeners.has(event)) {
     mock.eventListeners.set(event, new Set());
   }
-  mock.eventListeners.get(event)!.add(callback);
+  mock.eventListeners.get(event)?.add(callback);
   return () => {
     mock.eventListeners.get(event)?.delete(callback);
   };
@@ -126,7 +128,10 @@ export const invoke = async (cmd: string, args: any = {}) => {
 
   // Special: Swarm simulation with sequential agent events
   if (cmd === 'spawn_swarm_agent' || cmd === 'spawn_swarm_agent_v2') {
-    setTimeout(() => emit('swarm-data', { chunk: `[SYSTEM] Cel: ${args.objective}\n\n`, done: false }), 100);
+    setTimeout(
+      () => emit('swarm-data', { chunk: `[SYSTEM] Cel: ${args.objective}\n\n`, done: false }),
+      100,
+    );
     let delay = 200;
     AGENTS.forEach((agent) => {
       setTimeout(() => {
@@ -134,7 +139,10 @@ export const invoke = async (cmd: string, args: any = {}) => {
       }, delay);
       delay += 150;
     });
-    setTimeout(() => emit('swarm-data', { chunk: `\n[SWARM COMPLETED]\n`, done: true }), delay + 200);
+    setTimeout(
+      () => emit('swarm-data', { chunk: `\n[SWARM COMPLETED]\n`, done: true }),
+      delay + 200,
+    );
     return;
   }
 
@@ -187,7 +195,9 @@ if (typeof globalThis !== 'undefined') {
     w.__getInvokeHistory = () => w.__TAURI_MOCK__.invokeHistory;
   }
   if (!w.__clearInvokeHistory) {
-    w.__clearInvokeHistory = () => { w.__TAURI_MOCK__.invokeHistory = []; };
+    w.__clearInvokeHistory = () => {
+      w.__TAURI_MOCK__.invokeHistory = [];
+    };
   }
 
   console.log('[TAURI MOCK] Initialized with window bridge');

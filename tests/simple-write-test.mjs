@@ -22,7 +22,8 @@ Gotowe.
 `;
 
 // Pattern z GraphProcessor
-const savePattern = /===ZAPIS===\s*\n\s*PLIK:\s*(.+?)\s*\n\s*KOD:\s*\n```[\w]*\n([\s\S]*?)\n```\s*\n===KONIEC_ZAPISU===/gi;
+const savePattern =
+  /===ZAPIS===\s*\n\s*PLIK:\s*(.+?)\s*\n\s*KOD:\s*\n```[\w]*\n([\s\S]*?)\n```\s*\n===KONIEC_ZAPISU===/gi;
 
 console.log('=== TEST WZORCA ZAPIS ===\n');
 
@@ -48,7 +49,7 @@ for (const match of matches) {
 }
 
 // Zapisz plik używając fs
-import fs from 'fs';
+import fs from 'node:fs';
 
 for (const match of matches) {
   const filePath = match[1].trim();

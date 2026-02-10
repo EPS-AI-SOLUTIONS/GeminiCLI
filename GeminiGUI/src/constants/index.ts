@@ -6,7 +6,7 @@
  * Change values here to update across entire app.
  */
 
-import type { Settings, GeminiModelInfo } from '../types';
+import type { GeminiModelInfo, Settings } from '../types';
 
 // ============================================================================
 // APP LIMITS
@@ -15,8 +15,8 @@ import type { Settings, GeminiModelInfo } from '../types';
 export const LIMITS = {
   MAX_SESSIONS: 100,
   MAX_MESSAGES_PER_SESSION: 1000,
-  MAX_CONTENT_LENGTH: 50000,        // 50KB
-  MAX_SYSTEM_PROMPT_LENGTH: 10000,  // 10KB
+  MAX_CONTENT_LENGTH: 50000, // 50KB
+  MAX_SYSTEM_PROMPT_LENGTH: 10000, // 10KB
   MAX_TITLE_LENGTH: 100,
   MAX_AGENT_MEMORIES: 1000,
 } as const;
@@ -114,7 +114,8 @@ export const DEFAULT_GEMINI_MODEL = GEMINI_MODELS[0].id; // gemini-3-pro-preview
 // ============================================================================
 
 // Synced with src/core/PromptSystem.ts getIdentityContext()
-export const DEFAULT_SYSTEM_PROMPT = `Jestes GeminiHydra - lokalnym asystentem AI opartym na Gemini 3 Pro (gemini-3-pro-preview) na Windows (PowerShell). Odpowiadasz krotko, konkretnie, bez ozdobnikow. NIE mow ze uzywasz "Gemini 1.5" - uzywasz Gemini 3 Pro Preview.
+export const DEFAULT_SYSTEM_PROMPT =
+  `Jestes GeminiHydra - lokalnym asystentem AI opartym na Gemini 3 Pro (gemini-3-pro-preview) na Windows (PowerShell). Odpowiadasz krotko, konkretnie, bez ozdobnikow. NIE mow ze uzywasz "Gemini 1.5" - uzywasz Gemini 3 Pro Preview.
 
 ZASADY:
 1. KROTKIE ODPOWIEDZI - max 2-3 zdania chyba ze temat wymaga wiecej.

@@ -2,7 +2,7 @@
  * JSON validation and auto-correction
  */
 
-import type { FormatSpec, FormatError, JsonSchema } from './types.js';
+import type { FormatError, FormatSpec, JsonSchema } from './types.js';
 
 /**
  * Extract JSON content from text (handles markdown code blocks)
@@ -33,7 +33,7 @@ export function validateJson(
   output: string,
   spec: FormatSpec,
   errors: FormatError[],
-  suggestions: string[]
+  suggestions: string[],
 ): void {
   const jsonContent = extractJson(output);
 
@@ -42,7 +42,7 @@ export function validateJson(
       type: 'parse',
       message: 'No valid JSON found in output',
       expected: 'Valid JSON object or array',
-      actual: output.substring(0, 100) + (output.length > 100 ? '...' : '')
+      actual: output.substring(0, 100) + (output.length > 100 ? '...' : ''),
     });
     suggestions.push('Ensure output is valid JSON format');
     suggestions.push('Remove any text before or after the JSON');
@@ -62,7 +62,7 @@ export function validateJson(
       line: position.line,
       column: position.column,
       expected: 'Valid JSON syntax',
-      actual: getContextAround(jsonContent, position.offset)
+      actual: getContextAround(jsonContent, position.offset),
     });
     suggestions.push('Check for missing quotes, commas, or brackets');
     suggestions.push('Ensure all strings are properly escaped');
@@ -82,7 +82,7 @@ export function validateJsonSchema(
   schema: JsonSchema,
   path: string,
   errors: FormatError[],
-  suggestions: string[]
+  suggestions: string[],
 ): void {
   if (schema.type) {
     const actualType = getJsonType(value);
@@ -92,7 +92,7 @@ export function validateJsonSchema(
         message: `Type mismatch at ${path || 'root'}`,
         path,
         expected: schema.type,
-        actual: actualType
+        actual: actualType,
       });
       return;
     }
@@ -104,11 +104,16 @@ export function validateJsonSchema(
       message: `Value not in enum at ${path || 'root'}`,
       path,
       expected: schema.enum.join(' | '),
-      actual: String(value)
+      actual: String(value),
     });
   }
 
-  if (schema.type === 'object' && typeof value === 'object' && value !== null && !Array.isArray(value)) {
+  if (
+    schema.type === 'object' &&
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value)
+  ) {
     if (schema.required) {
       for (const req of schema.required) {
         if (!(req in value)) {
@@ -117,7 +122,7 @@ export function validateJsonSchema(
             message: `Missing required property: ${req}`,
             path: path ? `${path}.${req}` : req,
             expected: `Property "${req}"`,
-            actual: 'undefined'
+            actual: 'undefined',
           });
           suggestions.push(`Add required property "${req}" to the JSON object`);
         }
@@ -127,7 +132,13 @@ export function validateJsonSchema(
     if (schema.properties) {
       for (const [key, propSchema] of Object.entries(schema.properties)) {
         if (key in value) {
-          validateJsonSchema(value[key], propSchema, path ? `${path}.${key}` : key, errors, suggestions);
+          validateJsonSchema(
+            value[key],
+            propSchema,
+            path ? `${path}.${key}` : key,
+            errors,
+            suggestions,
+          );
         }
       }
     }
@@ -141,7 +152,7 @@ export function validateJsonSchema(
             message: `Unexpected property: ${key}`,
             path: path ? `${path}.${key}` : key,
             expected: 'No additional properties',
-            actual: key
+            actual: key,
           });
         }
       }
@@ -155,7 +166,7 @@ export function validateJsonSchema(
         message: `Array too short at ${path || 'root'}`,
         path,
         expected: `>= ${schema.minItems} items`,
-        actual: `${value.length} items`
+        actual: `${value.length} items`,
       });
     }
     if (schema.maxItems !== undefined && value.length > schema.maxItems) {
@@ -164,7 +175,7 @@ export function validateJsonSchema(
         message: `Array too long at ${path || 'root'}`,
         path,
         expected: `<= ${schema.maxItems} items`,
-        actual: `${value.length} items`
+        actual: `${value.length} items`,
       });
     }
     if (schema.items) {
@@ -181,7 +192,7 @@ export function validateJsonSchema(
         message: `String too short at ${path || 'root'}`,
         path,
         expected: `>= ${schema.minLength} characters`,
-        actual: `${value.length} characters`
+        actual: `${value.length} characters`,
       });
     }
     if (schema.maxLength !== undefined && value.length > schema.maxLength) {
@@ -190,7 +201,7 @@ export function validateJsonSchema(
         message: `String too long at ${path || 'root'}`,
         path,
         expected: `<= ${schema.maxLength} characters`,
-        actual: `${value.length} characters`
+        actual: `${value.length} characters`,
       });
     }
     if (schema.pattern && !new RegExp(schema.pattern).test(value)) {
@@ -199,7 +210,7 @@ export function validateJsonSchema(
         message: `String doesn't match pattern at ${path || 'root'}`,
         path,
         expected: schema.pattern,
-        actual: value
+        actual: value,
       });
     }
   }
@@ -211,7 +222,7 @@ export function validateJsonSchema(
         message: `Number too small at ${path || 'root'}`,
         path,
         expected: `>= ${schema.minimum}`,
-        actual: String(value)
+        actual: String(value),
       });
     }
     if (schema.maximum !== undefined && value > schema.maximum) {
@@ -220,7 +231,7 @@ export function validateJsonSchema(
         message: `Number too large at ${path || 'root'}`,
         path,
         expected: `<= ${schema.maximum}`,
-        actual: String(value)
+        actual: String(value),
       });
     }
   }
@@ -229,7 +240,7 @@ export function validateJsonSchema(
 /**
  * Auto-correct JSON output
  */
-export function autoCorrectJson(output: string, spec: FormatSpec): string {
+export function autoCorrectJson(output: string, _spec: FormatSpec): string {
   let json = extractJson(output);
 
   if (!json) {
@@ -259,7 +270,10 @@ function getJsonType(value: any): string {
   return typeof value;
 }
 
-function findJsonErrorPosition(json: string, errorMessage: string): { offset: number; line: number; column: number } {
+function findJsonErrorPosition(
+  json: string,
+  errorMessage: string,
+): { offset: number; line: number; column: number } {
   const posMatch = errorMessage.match(/position\s+(\d+)/i);
   if (posMatch) {
     const offset = parseInt(posMatch[1], 10);
@@ -277,7 +291,10 @@ function findJsonErrorPosition(json: string, errorMessage: string): { offset: nu
   return { offset: 0, line: 1, column: 1 };
 }
 
-function offsetToLineColumn(text: string, offset: number): { offset: number; line: number; column: number } {
+function offsetToLineColumn(
+  text: string,
+  offset: number,
+): { offset: number; line: number; column: number } {
   let line = 1;
   let column = 1;
   for (let i = 0; i < offset && i < text.length; i++) {
@@ -310,7 +327,7 @@ function getContextAround(text: string, position: number, radius: number = 20): 
   const start = Math.max(0, position - radius);
   const end = Math.min(text.length, position + radius);
   let context = text.substring(start, end);
-  if (start > 0) context = '...' + context;
-  if (end < text.length) context = context + '...';
+  if (start > 0) context = `...${context}`;
+  if (end < text.length) context = `${context}...`;
   return context;
 }

@@ -13,7 +13,7 @@
  * @module ResultHashVerifier
  */
 
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 import chalk from 'chalk';
 
 // =============================================================================
@@ -154,10 +154,7 @@ export class ResultHashVerifier {
     const input = `${taskId}:${this.salt}:${content}`;
 
     // Generate SHA-256 hash
-    const hash = crypto
-      .createHash(this.algorithm)
-      .update(input, 'utf8')
-      .digest('hex');
+    const hash = crypto.createHash(this.algorithm).update(input, 'utf8').digest('hex');
 
     if (this.verbose) {
       console.log(chalk.gray(`[Hash] Task #${taskId}: ${hash.substring(0, 16)}...`));
@@ -174,10 +171,7 @@ export class ResultHashVerifier {
    */
   computeHash(content: string): string {
     const input = `${this.salt}:${content}`;
-    return crypto
-      .createHash(this.algorithm)
-      .update(input, 'utf8')
-      .digest('hex');
+    return crypto.createHash(this.algorithm).update(input, 'utf8').digest('hex');
   }
 
   /**
@@ -191,14 +185,14 @@ export class ResultHashVerifier {
       if (!this.hashStore.has(taskId)) {
         this.hashStore.set(taskId, []);
       }
-      this.hashStore.get(taskId)!.push({
+      this.hashStore.get(taskId)?.push({
         hash: entry.hash,
         metadata: {
           timestamp: Date.now(),
           phase: 'registered',
-          agentId: 'swarm'
+          agentId: 'swarm',
         },
-        chainIndex: this.hashStore.get(taskId)!.length
+        chainIndex: this.hashStore.get(taskId)?.length,
       });
       this.globalChain.push(entry.hash);
     }
@@ -214,25 +208,18 @@ export class ResultHashVerifier {
    * @param metadata - Additional metadata to include in hash
    * @returns The hexadecimal hash string
    */
-  hashResultWithContext(
-    taskId: number,
-    content: string,
-    metadata: Partial<HashMetadata>
-  ): string {
+  hashResultWithContext(taskId: number, content: string, metadata: Partial<HashMetadata>): string {
     // Include metadata in hash for stronger verification
     const contextString = JSON.stringify({
       taskId,
       agentId: metadata.agentId || 'unknown',
       phase: metadata.phase || 'unknown',
-      timestamp: metadata.timestamp || Date.now()
+      timestamp: metadata.timestamp || Date.now(),
     });
 
     const input = `${contextString}:${this.salt}:${content}`;
 
-    return crypto
-      .createHash(this.algorithm)
-      .update(input, 'utf8')
-      .digest('hex');
+    return crypto.createHash(this.algorithm).update(input, 'utf8').digest('hex');
   }
 
   // ===========================================================================
@@ -253,20 +240,21 @@ export class ResultHashVerifier {
     const chainIndex = entries.length;
 
     // Get parent hash if this is a chain continuation
-    const parentHash = chainIndex > 0
-      ? entries[chainIndex - 1].hash
-      : this.globalChain.length > 0
-        ? this.globalChain[this.globalChain.length - 1]
-        : undefined;
+    const parentHash =
+      chainIndex > 0
+        ? entries[chainIndex - 1].hash
+        : this.globalChain.length > 0
+          ? this.globalChain[this.globalChain.length - 1]
+          : undefined;
 
     // Create entry with parent hash for chain tracking
     const entry: HashEntry = {
       hash,
       metadata: {
         ...metadata,
-        parentHash
+        parentHash,
       },
-      chainIndex
+      chainIndex,
     };
 
     // Store entry
@@ -277,10 +265,12 @@ export class ResultHashVerifier {
     this.globalChain.push(hash);
 
     if (this.verbose) {
-      console.log(chalk.cyan(
-        `[Hash Store] Task #${taskId} Phase ${metadata.phase}: ` +
-        `${hash.substring(0, 16)}... (chain index: ${chainIndex})`
-      ));
+      console.log(
+        chalk.cyan(
+          `[Hash Store] Task #${taskId} Phase ${metadata.phase}: ` +
+            `${hash.substring(0, 16)}... (chain index: ${chainIndex})`,
+        ),
+      );
     }
   }
 
@@ -298,7 +288,7 @@ export class ResultHashVerifier {
     const enrichedMetadata: HashMetadata = {
       ...metadata,
       contentLength: content.length,
-      contentPreview: content.substring(0, 100).replace(/\n/g, ' ')
+      contentPreview: content.substring(0, 100).replace(/\n/g, ' '),
     };
 
     this.storeHash(taskId, hash, enrichedMetadata);
@@ -316,11 +306,7 @@ export class ResultHashVerifier {
    * @param phase - Optional phase to verify against (defaults to latest)
    * @returns Integrity verification result
    */
-  verifyIntegrity(
-    taskId: number,
-    content: string,
-    phase?: string
-  ): IntegrityResult {
+  verifyIntegrity(taskId: number, content: string, phase?: string): IntegrityResult {
     const entries = this.hashStore.get(taskId);
 
     if (!entries || entries.length === 0) {
@@ -329,20 +315,20 @@ export class ResultHashVerifier {
         expectedHash: '',
         actualHash: this.hashResult(taskId, content),
         message: `No hash stored for task #${taskId}`,
-        chainValid: false
+        chainValid: false,
       };
     }
 
     // Find the entry to verify against
     let entry: HashEntry;
     if (phase) {
-      const phaseEntry = entries.find(e => e.metadata.phase === phase);
+      const phaseEntry = entries.find((e) => e.metadata.phase === phase);
       if (!phaseEntry) {
         return {
           valid: false,
           expectedHash: '',
           actualHash: this.hashResult(taskId, content),
-          message: `No hash found for task #${taskId} phase ${phase}`
+          message: `No hash found for task #${taskId} phase ${phase}`,
         };
       }
       entry = phaseEntry;
@@ -360,11 +346,13 @@ export class ResultHashVerifier {
       if (valid) {
         console.log(chalk.green(`[Verify] Task #${taskId}: Integrity OK`));
       } else {
-        console.log(chalk.red(
-          `[Verify] Task #${taskId}: TAMPERED! ` +
-          `Expected: ${entry.hash.substring(0, 16)}... ` +
-          `Got: ${actualHash.substring(0, 16)}...`
-        ));
+        console.log(
+          chalk.red(
+            `[Verify] Task #${taskId}: TAMPERED! ` +
+              `Expected: ${entry.hash.substring(0, 16)}... ` +
+              `Got: ${actualHash.substring(0, 16)}...`,
+          ),
+        );
       }
     }
 
@@ -376,7 +364,7 @@ export class ResultHashVerifier {
         ? `Task #${taskId} integrity verified`
         : `Task #${taskId} content has been modified since phase ${entry.metadata.phase}`,
       metadata: entry.metadata,
-      chainValid: this.verifyChainLink(entry)
+      chainValid: this.verifyChainLink(entry),
     };
   }
 
@@ -411,7 +399,7 @@ export class ResultHashVerifier {
       return {
         valid: false,
         chainLength: 0,
-        links: []
+        links: [],
       };
     }
 
@@ -439,7 +427,7 @@ export class ResultHashVerifier {
         phase: entry.metadata.phase,
         hash: entry.hash,
         valid: linkValid,
-        timestamp: entry.metadata.timestamp
+        timestamp: entry.metadata.timestamp,
       });
     }
 
@@ -447,7 +435,7 @@ export class ResultHashVerifier {
       valid,
       chainLength: entries.length,
       brokenAt,
-      links
+      links,
     };
   }
 
@@ -480,7 +468,7 @@ export class ResultHashVerifier {
       valid,
       invalid,
       missing,
-      details
+      details,
     };
   }
 
@@ -542,14 +530,14 @@ export class ResultHashVerifier {
     for (const [taskId, entries] of this.hashStore) {
       hashesPerTask.set(taskId, entries.length);
       totalHashes += entries.length;
-      entries.forEach(e => phases.add(e.metadata.phase));
+      entries.forEach((e) => phases.add(e.metadata.phase));
     }
 
     return {
       totalTasks: this.hashStore.size,
       totalHashes,
       hashesPerTask,
-      phases
+      phases,
     };
   }
 
@@ -589,7 +577,7 @@ export class ResultHashVerifier {
     return {
       hashes: Array.from(this.hashStore.entries()),
       globalChain: this.globalChain,
-      exportedAt: Date.now()
+      exportedAt: Date.now(),
     };
   }
 
@@ -606,11 +594,13 @@ export class ResultHashVerifier {
     this.globalChain = data.globalChain;
 
     if (this.verbose) {
-      console.log(chalk.cyan(
-        `[Hash] Imported ${this.hashStore.size} tasks, ` +
-        `${this.globalChain.length} chain entries ` +
-        `(exported at ${new Date(data.exportedAt).toISOString()})`
-      ));
+      console.log(
+        chalk.cyan(
+          `[Hash] Imported ${this.hashStore.size} tasks, ` +
+            `${this.globalChain.length} chain entries ` +
+            `(exported at ${new Date(data.exportedAt).toISOString()})`,
+        ),
+      );
     }
   }
 
@@ -632,7 +622,7 @@ export class ResultHashVerifier {
       '',
       '-'.repeat(60),
       'PER-TASK BREAKDOWN:',
-      '-'.repeat(60)
+      '-'.repeat(60),
     ];
 
     for (const [taskId, entries] of this.hashStore) {
@@ -646,7 +636,7 @@ export class ResultHashVerifier {
       for (const entry of entries) {
         lines.push(
           `    Phase ${entry.metadata.phase}: ${entry.hash.substring(0, 16)}... ` +
-          `(${entry.metadata.agentId}, ${new Date(entry.metadata.timestamp).toISOString()})`
+            `(${entry.metadata.agentId}, ${new Date(entry.metadata.timestamp).toISOString()})`,
         );
       }
     }
@@ -693,12 +683,12 @@ export function storeTaskHash(
   taskId: number,
   content: string,
   agentId: string,
-  phase: string
+  phase: string,
 ): string {
   return resultHashVerifier.storeResultHash(taskId, content, {
     timestamp: Date.now(),
     agentId,
-    phase
+    phase,
   });
 }
 
@@ -708,10 +698,7 @@ export function storeTaskHash(
  * @param content - Content to verify
  * @returns Integrity verification result
  */
-export function verifyTaskIntegrity(
-  taskId: number,
-  content: string
-): IntegrityResult {
+export function verifyTaskIntegrity(taskId: number, content: string): IntegrityResult {
   return resultHashVerifier.verifyIntegrity(taskId, content);
 }
 
@@ -727,11 +714,13 @@ export function logVerificationResult(result: IntegrityResult): void {
     console.log(chalk.red(`  Expected: ${result.expectedHash.substring(0, 32)}...`));
     console.log(chalk.red(`  Actual:   ${result.actualHash.substring(0, 32)}...`));
     if (result.metadata) {
-      console.log(chalk.yellow(
-        `  Original: Phase ${result.metadata.phase}, ` +
-        `Agent ${result.metadata.agentId}, ` +
-        `${new Date(result.metadata.timestamp).toISOString()}`
-      ));
+      console.log(
+        chalk.yellow(
+          `  Original: Phase ${result.metadata.phase}, ` +
+            `Agent ${result.metadata.agentId}, ` +
+            `${new Date(result.metadata.timestamp).toISOString()}`,
+        ),
+      );
     }
   }
 }
@@ -746,5 +735,5 @@ export default {
   hashTaskResult,
   storeTaskHash,
   verifyTaskIntegrity,
-  logVerificationResult
+  logVerificationResult,
 };

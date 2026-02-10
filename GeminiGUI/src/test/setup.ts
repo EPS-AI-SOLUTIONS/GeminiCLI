@@ -9,8 +9,8 @@
  * - Configure custom matchers
  */
 
-import { expect, afterEach, vi, beforeAll } from 'vitest';
 import { cleanup } from '@testing-library/react';
+import { afterEach, beforeAll, expect, vi } from 'vitest';
 import '@testing-library/jest-dom';
 
 // ============================================================================
@@ -33,8 +33,6 @@ afterEach(() => {
  * Required for Virtuoso (virtual scrolling library)
  */
 global.IntersectionObserver = class IntersectionObserver {
-  constructor() {}
-
   disconnect() {}
 
   observe() {}
@@ -59,8 +57,6 @@ if (typeof window !== 'undefined') {
  * May be used by components for responsive behavior
  */
 global.ResizeObserver = class ResizeObserver {
-  constructor() {}
-
   disconnect() {}
 
   observe() {}
@@ -166,8 +162,7 @@ expect.extend({
 
     if (passed) {
       return {
-        message: () =>
-          `expected element not to have classes ${classes.join(', ')}`,
+        message: () => `expected element not to have classes ${classes.join(', ')}`,
         pass: true,
       };
     } else {
@@ -199,10 +194,7 @@ beforeAll(() => {
     const message = args[0]?.toString?.() || '';
 
     // Only suppress React warnings we expect
-    if (
-      message.includes('componentWillReceiveProps') ||
-      message.includes('findDOMNode')
-    ) {
+    if (message.includes('componentWillReceiveProps') || message.includes('findDOMNode')) {
       return;
     }
 
@@ -214,9 +206,7 @@ beforeAll(() => {
     const message = args[0]?.toString?.() || '';
 
     // Only suppress specific expected errors
-    if (
-      message.includes('Not implemented: HTMLFormElement.prototype.submit')
-    ) {
+    if (message.includes('Not implemented: HTMLFormElement.prototype.submit')) {
       return;
     }
 

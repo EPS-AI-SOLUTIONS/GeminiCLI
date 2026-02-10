@@ -7,9 +7,9 @@
  * Part of ConversationLayer module extraction.
  */
 
+import crypto from 'node:crypto';
+import fs from 'node:fs/promises';
 import chalk from 'chalk';
-import crypto from 'crypto';
-import fs from 'fs/promises';
 
 // ============================================================
 // Types & Interfaces
@@ -55,7 +55,7 @@ export class RollbackManager {
       timestamp: Date.now(),
       description,
       files: [],
-      commands: []
+      commands: [],
     };
 
     // Snapshot files
@@ -75,7 +75,9 @@ export class RollbackManager {
       this.points.shift();
     }
 
-    console.log(chalk.cyan(`[Rollback] Created point: ${description} (${point.files.length} files)`));
+    console.log(
+      chalk.cyan(`[Rollback] Created point: ${description} (${point.files.length} files)`),
+    );
     return point;
   }
 
@@ -100,7 +102,7 @@ export class RollbackManager {
     const latest = this.getLatestPoint();
     if (latest) {
       // Check if file already in snapshot
-      const existing = latest.files.find(f => f.path === filePath);
+      const existing = latest.files.find((f) => f.path === filePath);
       if (!existing) {
         latest.files.push({ path: filePath, content, exists });
       }
@@ -113,7 +115,7 @@ export class RollbackManager {
    * @returns RollbackResult with success status and details
    */
   async rollback(pointId: string): Promise<RollbackResult> {
-    const point = this.points.find(p => p.id === pointId);
+    const point = this.points.find((p) => p.id === pointId);
     if (!point) {
       return { success: false, restoredFiles: [], errors: ['Rollback point not found'] };
     }
@@ -177,7 +179,7 @@ export class RollbackManager {
    * @returns RollbackPoint or undefined
    */
   getPoint(pointId: string): RollbackPoint | undefined {
-    return this.points.find(p => p.id === pointId);
+    return this.points.find((p) => p.id === pointId);
   }
 
   /**
@@ -186,7 +188,7 @@ export class RollbackManager {
    * @returns true if removed, false if not found
    */
   removePoint(pointId: string): boolean {
-    const index = this.points.findIndex(p => p.id === pointId);
+    const index = this.points.findIndex((p) => p.id === pointId);
     if (index !== -1) {
       this.points.splice(index, 1);
       return true;
@@ -219,11 +221,11 @@ export class RollbackManager {
    * @returns Array of point summaries
    */
   getSummary(): { id: string; description: string; timestamp: number; fileCount: number }[] {
-    return this.points.map(p => ({
+    return this.points.map((p) => ({
       id: p.id,
       description: p.description,
       timestamp: p.timestamp,
-      fileCount: p.files.length
+      fileCount: p.files.length,
     }));
   }
 
@@ -239,7 +241,9 @@ export class RollbackManager {
     const lines: string[] = ['Rollback Points:'];
     for (const point of this.points) {
       const date = new Date(point.timestamp).toLocaleString();
-      lines.push(`  [${point.id.slice(0, 8)}] ${point.description} (${date}, ${point.files.length} files)`);
+      lines.push(
+        `  [${point.id.slice(0, 8)}] ${point.description} (${date}, ${point.files.length} files)`,
+      );
     }
     return lines.join('\n');
   }
@@ -257,5 +261,5 @@ export const rollbackManager = new RollbackManager();
 
 export default {
   RollbackManager,
-  rollbackManager
+  rollbackManager,
 };

@@ -2,11 +2,11 @@
  * Input Component Tests
  */
 
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { createRef } from 'react';
-import { Input } from '../../../src/components/ui/Input';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { Search, X } from 'lucide-react';
+import { createRef } from 'react';
+import { describe, expect, it, vi } from 'vitest';
+import { Input } from '../../../src/components/ui/Input';
 
 describe('Input', () => {
   describe('rendering', () => {

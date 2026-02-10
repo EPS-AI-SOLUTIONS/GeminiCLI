@@ -14,9 +14,9 @@
  * @module AgentReputationTracker
  */
 
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import chalk from 'chalk';
-import fs from 'fs/promises';
-import path from 'path';
 
 // AgentRole type is available for reference but we use string IDs for flexibility
 // import { AgentRole } from '../types/index.js';
@@ -125,35 +125,35 @@ const DEFAULT_CONFIG: Required<ReputationTrackerConfig> = {
   decayHalfLifeMs: 7 * 24 * 60 * 60 * 1000, // 7 days
   minTasksForReliability: 5,
   recentWindowSize: 10,
-  autoSaveIntervalMs: 60000 // 1 minute
+  autoSaveIntervalMs: 60000, // 1 minute
 };
 
 /**
  * Tier thresholds based on composite score (0-100)
  */
 const TIER_THRESHOLDS = {
-  trusted: 80,      // Score >= 80
-  neutral: 50,      // Score 50-79
-  suspect: 25,      // Score 25-49
-  unreliable: 0     // Score < 25
+  trusted: 80, // Score >= 80
+  neutral: 50, // Score 50-79
+  suspect: 25, // Score 25-49
+  unreliable: 0, // Score < 25
 };
 
 /**
  * Consensus weight multipliers by tier
  */
 const TIER_WEIGHTS: Record<ReliabilityTier, number> = {
-  trusted: 1.5,     // Trusted agents get 50% more weight
-  neutral: 1.0,     // Neutral agents get standard weight
-  suspect: 0.5,     // Suspect agents get 50% less weight
-  unreliable: 0.2   // Unreliable agents barely count
+  trusted: 1.5, // Trusted agents get 50% more weight
+  neutral: 1.0, // Neutral agents get standard weight
+  suspect: 0.5, // Suspect agents get 50% less weight
+  unreliable: 0.2, // Unreliable agents barely count
 };
 
 /**
  * Trend detection thresholds (difference between recent and overall)
  */
 const TREND_THRESHOLDS = {
-  improving: 10,    // Recent > Overall by 10+ points
-  declining: -10    // Recent < Overall by 10+ points
+  improving: 10, // Recent > Overall by 10+ points
+  declining: -10, // Recent < Overall by 10+ points
 };
 
 // =============================================================================
@@ -175,10 +175,7 @@ export class AgentReputationTracker {
 
     // Start auto-save if configured
     if (this.config.autoSaveIntervalMs > 0) {
-      this.autoSaveTimer = setInterval(
-        () => this.saveIfDirty(),
-        this.config.autoSaveIntervalMs
-      );
+      this.autoSaveTimer = setInterval(() => this.saveIfDirty(), this.config.autoSaveIntervalMs);
     }
   }
 
@@ -205,10 +202,10 @@ export class AgentReputationTracker {
       taskId,
       timestamp: Date.now(),
       metrics,
-      weight: 1.0  // Fresh record, full weight
+      weight: 1.0, // Fresh record, full weight
     };
 
-    this.records.get(normalizedId)!.push(record);
+    this.records.get(normalizedId)?.push(record);
 
     // Invalidate cache for this agent
     this.reputationCache.delete(normalizedId);
@@ -216,10 +213,12 @@ export class AgentReputationTracker {
 
     // Log recording
     const emoji = metrics.success ? '✅' : '❌';
-    console.log(chalk.gray(
-      `[ReputationTracker] ${emoji} Recorded: ${normalizedId} task #${taskId} ` +
-      `(hall: ${metrics.hallucinationScore}, acc: ${metrics.accuracyScore})`
-    ));
+    console.log(
+      chalk.gray(
+        `[ReputationTracker] ${emoji} Recorded: ${normalizedId} task #${taskId} ` +
+          `(hall: ${metrics.hallucinationScore}, acc: ${metrics.accuracyScore})`,
+      ),
+    );
   }
 
   /**
@@ -263,7 +262,7 @@ export class AgentReputationTracker {
    */
   getRankedAgents(): AgentReputation[] {
     const allAgents = Array.from(this.records.keys());
-    const reputations = allAgents.map(id => this.getReputation(id));
+    const reputations = allAgents.map((id) => this.getReputation(id));
 
     // Sort by composite score (derived from tier and success rate)
     return reputations.sort((a, b) => {
@@ -280,8 +279,9 @@ export class AgentReputationTracker {
    * @returns Array of agent IDs in that tier
    */
   getAgentsByTier(tier: ReliabilityTier): string[] {
-    return Array.from(this.records.keys())
-      .filter(id => this.getReputation(id).reliabilityTier === tier);
+    return Array.from(this.records.keys()).filter(
+      (id) => this.getReputation(id).reliabilityTier === tier,
+    );
   }
 
   /**
@@ -295,7 +295,7 @@ export class AgentReputationTracker {
     if (candidates.length === 0) return null;
     if (candidates.length === 1) return candidates[0];
 
-    const scored = candidates.map(id => {
+    const scored = candidates.map((id) => {
       const rep = this.getReputation(id);
       let score = this.computeCompositeScore(rep);
 
@@ -333,7 +333,7 @@ export class AgentReputationTracker {
       for (const record of records) {
         const age = now - record.timestamp;
         // Exponential decay: weight = 0.5^(age/halfLife)
-        const newWeight = Math.pow(0.5, age / halfLife);
+        const newWeight = 0.5 ** (age / halfLife);
 
         if (Math.abs(record.weight - newWeight) > 0.01) {
           record.weight = newWeight;
@@ -347,9 +347,7 @@ export class AgentReputationTracker {
 
     if (decayedCount > 0) {
       this.dirty = true;
-      console.log(chalk.gray(
-        `[ReputationTracker] Applied decay to ${decayedCount} records`
-      ));
+      console.log(chalk.gray(`[ReputationTracker] Applied decay to ${decayedCount} records`));
     }
   }
 
@@ -363,7 +361,7 @@ export class AgentReputationTracker {
 
     for (const [agentId, records] of this.records) {
       const before = records.length;
-      const filtered = records.filter(r => r.weight >= 0.01);
+      const filtered = records.filter((r) => r.weight >= 0.01);
 
       if (filtered.length < before) {
         this.records.set(agentId, filtered);
@@ -374,9 +372,7 @@ export class AgentReputationTracker {
 
     if (prunedCount > 0) {
       this.dirty = true;
-      console.log(chalk.yellow(
-        `[ReputationTracker] Pruned ${prunedCount} old records`
-      ));
+      console.log(chalk.yellow(`[ReputationTracker] Pruned ${prunedCount} old records`));
     }
 
     return prunedCount;
@@ -396,22 +392,16 @@ export class AgentReputationTracker {
 
       // Reconstruct Map from serialized data
       this.records = new Map(
-        Object.entries(parsed.records || {}).map(
-          ([k, v]) => [k, v as PerformanceRecord[]]
-        )
+        Object.entries(parsed.records || {}).map(([k, v]) => [k, v as PerformanceRecord[]]),
       );
 
       // Apply decay to loaded data
       this.applyDecay();
 
-      console.log(chalk.green(
-        `[ReputationTracker] Loaded ${this.records.size} agent profiles`
-      ));
+      console.log(chalk.green(`[ReputationTracker] Loaded ${this.records.size} agent profiles`));
     } catch (error: any) {
       if (error.code !== 'ENOENT') {
-        console.log(chalk.yellow(
-          `[ReputationTracker] Load warning: ${error.message}`
-        ));
+        console.log(chalk.yellow(`[ReputationTracker] Load warning: ${error.message}`));
       }
       // Start fresh if file doesn't exist
     }
@@ -430,23 +420,15 @@ export class AgentReputationTracker {
       const serialized = {
         version: 1,
         savedAt: Date.now(),
-        records: Object.fromEntries(this.records)
+        records: Object.fromEntries(this.records),
       };
 
-      await fs.writeFile(
-        this.config.persistPath,
-        JSON.stringify(serialized, null, 2),
-        'utf-8'
-      );
+      await fs.writeFile(this.config.persistPath, JSON.stringify(serialized, null, 2), 'utf-8');
 
       this.dirty = false;
-      console.log(chalk.gray(
-        `[ReputationTracker] Saved ${this.records.size} agent profiles`
-      ));
+      console.log(chalk.gray(`[ReputationTracker] Saved ${this.records.size} agent profiles`));
     } catch (error: any) {
-      console.log(chalk.red(
-        `[ReputationTracker] Save error: ${error.message}`
-      ));
+      console.log(chalk.red(`[ReputationTracker] Save error: ${error.message}`));
     }
   }
 
@@ -495,11 +477,7 @@ export class AgentReputationTracker {
     const trend = this.determineTrend(weightedMetrics, recentMetrics);
 
     // Calculate consensus weight
-    const consensusWeight = this.calculateConsensusWeight(
-      reliabilityTier,
-      records.length,
-      trend
-    );
+    const consensusWeight = this.calculateConsensusWeight(reliabilityTier, records.length, trend);
 
     return {
       agentId,
@@ -512,12 +490,12 @@ export class AgentReputationTracker {
       reliabilityTier,
       trend,
       consensusWeight,
-      lastUpdated: Math.max(...records.map(r => r.timestamp)),
+      lastUpdated: Math.max(...records.map((r) => r.timestamp)),
       recentPerformance: {
         successRate: recentMetrics.successRate,
         avgHallucinationScore: recentMetrics.avgHallucinationScore,
-        windowSize: Math.min(records.length, this.config.recentWindowSize)
-      }
+        windowSize: Math.min(records.length, this.config.recentWindowSize),
+      },
     };
   }
 
@@ -555,7 +533,7 @@ export class AgentReputationTracker {
         avgHallucinationScore: 50,
         avgAccuracyScore: 50,
         avgResponseTime: 1000,
-        validationPassRate: 0.5
+        validationPassRate: 0.5,
       };
     }
 
@@ -564,7 +542,7 @@ export class AgentReputationTracker {
       avgHallucinationScore: weightedHallucination / totalWeight,
       avgAccuracyScore: weightedAccuracy / totalWeight,
       avgResponseTime: weightedResponseTime / totalWeight,
-      validationPassRate: weightedValidation / totalWeight
+      validationPassRate: weightedValidation / totalWeight,
     };
   }
 
@@ -577,21 +555,20 @@ export class AgentReputationTracker {
   } {
     const windowSize = this.config.recentWindowSize;
     const recent = records
-      .slice(-windowSize)  // Get last N records
-      .filter(r => r.weight > 0.1);  // Only reasonably fresh ones
+      .slice(-windowSize) // Get last N records
+      .filter((r) => r.weight > 0.1); // Only reasonably fresh ones
 
     if (recent.length === 0) {
       return { successRate: 0.5, avgHallucinationScore: 50 };
     }
 
-    const successCount = recent.filter(r => r.metrics.success).length;
-    const avgHallucination = recent.reduce(
-      (sum, r) => sum + r.metrics.hallucinationScore, 0
-    ) / recent.length;
+    const successCount = recent.filter((r) => r.metrics.success).length;
+    const avgHallucination =
+      recent.reduce((sum, r) => sum + r.metrics.hallucinationScore, 0) / recent.length;
 
     return {
       successRate: successCount / recent.length,
-      avgHallucinationScore: avgHallucination
+      avgHallucinationScore: avgHallucination,
     };
   }
 
@@ -606,10 +583,10 @@ export class AgentReputationTracker {
   }): number {
     // Weights for different factors
     const weights = {
-      success: 0.30,
-      hallucination: 0.30,
+      success: 0.3,
+      hallucination: 0.3,
       accuracy: 0.25,
-      validation: 0.15
+      validation: 0.15,
     };
 
     // Convert hallucination score (lower is better) to positive metric
@@ -632,7 +609,7 @@ export class AgentReputationTracker {
       successRate: rep.successRate,
       avgHallucinationScore: rep.avgHallucinationScore,
       avgAccuracyScore: rep.avgAccuracyScore,
-      validationPassRate: rep.validationPassRate
+      validationPassRate: rep.validationPassRate,
     });
   }
 
@@ -651,7 +628,7 @@ export class AgentReputationTracker {
    */
   private determineTrend(
     overall: { successRate: number; avgHallucinationScore: number },
-    recent: { successRate: number; avgHallucinationScore: number }
+    recent: { successRate: number; avgHallucinationScore: number },
   ): PerformanceTrend {
     // Compare recent vs overall (higher success rate, lower hallucination is better)
     const overallScore = overall.successRate * 100 - overall.avgHallucinationScore;
@@ -669,7 +646,7 @@ export class AgentReputationTracker {
   private calculateConsensusWeight(
     tier: ReliabilityTier,
     taskCount: number,
-    trend: PerformanceTrend
+    trend: PerformanceTrend,
   ): number {
     let weight = TIER_WEIGHTS[tier];
 
@@ -678,14 +655,14 @@ export class AgentReputationTracker {
       // New agents get neutral weight until proven
       weight = Math.min(weight, 1.0);
       // Apply uncertainty penalty
-      weight *= 0.5 + (0.5 * taskCount / this.config.minTasksForReliability);
+      weight *= 0.5 + (0.5 * taskCount) / this.config.minTasksForReliability;
     }
 
     // Trend adjustment
     if (trend === 'improving') {
-      weight *= 1.1;  // 10% bonus for improving
+      weight *= 1.1; // 10% bonus for improving
     } else if (trend === 'declining') {
-      weight *= 0.9;  // 10% penalty for declining
+      weight *= 0.9; // 10% penalty for declining
     }
 
     // Clamp to valid range
@@ -699,20 +676,20 @@ export class AgentReputationTracker {
     return {
       agentId,
       totalTasks: 0,
-      successRate: 0.5,  // Neutral assumption
+      successRate: 0.5, // Neutral assumption
       avgHallucinationScore: 50,
       avgAccuracyScore: 50,
       avgResponseTime: 1000,
       validationPassRate: 0.5,
       reliabilityTier: 'neutral',
       trend: 'stable',
-      consensusWeight: 0.75,  // Slightly below neutral for unknown
+      consensusWeight: 0.75, // Slightly below neutral for unknown
       lastUpdated: Date.now(),
       recentPerformance: {
         successRate: 0.5,
         avgHallucinationScore: 50,
-        windowSize: 0
-      }
+        windowSize: 0,
+      },
     };
   }
 
@@ -731,13 +708,13 @@ export class AgentReputationTracker {
     avgHallucinationScore: number;
   } {
     const agents = Array.from(this.records.keys());
-    const reputations = agents.map(id => this.getReputation(id));
+    const reputations = agents.map((id) => this.getReputation(id));
 
     const tierDistribution: Record<ReliabilityTier, number> = {
       trusted: 0,
       neutral: 0,
       suspect: 0,
-      unreliable: 0
+      unreliable: 0,
     };
 
     let totalSuccess = 0;
@@ -749,15 +726,17 @@ export class AgentReputationTracker {
       totalHallucination += rep.avgHallucinationScore;
     }
 
-    const totalRecords = Array.from(this.records.values())
-      .reduce((sum, arr) => sum + arr.length, 0);
+    const totalRecords = Array.from(this.records.values()).reduce(
+      (sum, arr) => sum + arr.length,
+      0,
+    );
 
     return {
       totalAgents: agents.length,
       totalRecords,
       tierDistribution,
       avgSuccessRate: agents.length > 0 ? totalSuccess / agents.length : 0,
-      avgHallucinationScore: agents.length > 0 ? totalHallucination / agents.length : 50
+      avgHallucinationScore: agents.length > 0 ? totalHallucination / agents.length : 50,
     };
   }
 
@@ -794,13 +773,13 @@ export class AgentReputationTracker {
         trusted: '🟢',
         neutral: '🟡',
         suspect: '🟠',
-        unreliable: '🔴'
+        unreliable: '🔴',
       }[rep.reliabilityTier];
 
       const trendEmoji = {
         improving: '📈',
         stable: '➡️',
-        declining: '📉'
+        declining: '📉',
       }[rep.trend];
 
       report += `   ${i + 1}. ${tierEmoji} ${rep.agentId.padEnd(12)} | `;
@@ -840,7 +819,7 @@ let instance: AgentReputationTracker | null = null;
  * Get or create the global AgentReputationTracker instance
  */
 export function getAgentReputationTracker(
-  config?: ReputationTrackerConfig
+  config?: ReputationTrackerConfig,
 ): AgentReputationTracker {
   if (!instance) {
     instance = new AgentReputationTracker(config);
@@ -852,7 +831,7 @@ export function getAgentReputationTracker(
  * Initialize the global tracker (call once at startup)
  */
 export async function initializeReputationTracker(
-  config?: ReputationTrackerConfig
+  config?: ReputationTrackerConfig,
 ): Promise<AgentReputationTracker> {
   const tracker = getAgentReputationTracker(config);
   await tracker.load();
@@ -879,7 +858,7 @@ export function reputationTracker(): AgentReputationTracker {
 export function recordAgentPerformance(
   agentId: string,
   taskId: number,
-  metrics: PerformanceMetrics
+  metrics: PerformanceMetrics,
 ): void {
   reputationTracker().recordPerformance(agentId, taskId, metrics);
 }
@@ -903,7 +882,7 @@ export function getAgentConsensusWeight(agentId: string): number {
  */
 export function selectBestAgentByReputation(
   candidates: string[],
-  preferFresh?: boolean
+  preferFresh?: boolean,
 ): string | null {
   return reputationTracker().selectBestAgent(candidates, preferFresh);
 }
@@ -926,9 +905,4 @@ export function shouldAvoidAgent(agentId: string): boolean {
 // EXPORTS
 // =============================================================================
 
-export {
-  AgentReputationTracker as default,
-  TIER_THRESHOLDS,
-  TIER_WEIGHTS,
-  TREND_THRESHOLDS
-};
+export { AgentReputationTracker as default, TIER_THRESHOLDS, TIER_WEIGHTS, TREND_THRESHOLDS };

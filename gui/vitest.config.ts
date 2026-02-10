@@ -2,10 +2,10 @@
  * GeminiHydra GUI - Vitest Configuration
  */
 
-import { defineConfig } from 'vitest/config';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
-import { resolve, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { defineConfig } from 'vitest/config';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -22,13 +22,7 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
       include: ['src/**/*.{ts,tsx}'],
-      exclude: [
-        'src/main.tsx',
-        'src/vite-env.d.ts',
-        'src/types/**',
-        '**/index.ts',
-        '**/*.d.ts',
-      ],
+      exclude: ['src/main.tsx', 'src/vite-env.d.ts', 'src/types/**', '**/index.ts', '**/*.d.ts'],
       thresholds: {
         lines: 80,
         functions: 70,

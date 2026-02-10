@@ -2,10 +2,10 @@
  * Badge Component Tests
  */
 
-import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { Badge } from '../../../src/components/ui/Badge';
 import { Check } from 'lucide-react';
+import { describe, expect, it } from 'vitest';
+import { Badge } from '../../../src/components/ui/Badge';
 
 describe('Badge', () => {
   describe('rendering', () => {
@@ -22,27 +22,47 @@ describe('Badge', () => {
 
   describe('variants', () => {
     it('renders default variant', () => {
-      render(<Badge variant="default" data-testid="badge">Default</Badge>);
+      render(
+        <Badge variant="default" data-testid="badge">
+          Default
+        </Badge>,
+      );
       expect(screen.getByTestId('badge')).toHaveClass('badge-default');
     });
 
     it('renders accent variant', () => {
-      render(<Badge variant="accent" data-testid="badge">Accent</Badge>);
+      render(
+        <Badge variant="accent" data-testid="badge">
+          Accent
+        </Badge>,
+      );
       expect(screen.getByTestId('badge')).toHaveClass('badge-accent');
     });
 
     it('renders success variant', () => {
-      render(<Badge variant="success" data-testid="badge">Success</Badge>);
+      render(
+        <Badge variant="success" data-testid="badge">
+          Success
+        </Badge>,
+      );
       expect(screen.getByTestId('badge')).toHaveClass('badge-success');
     });
 
     it('renders warning variant', () => {
-      render(<Badge variant="warning" data-testid="badge">Warning</Badge>);
+      render(
+        <Badge variant="warning" data-testid="badge">
+          Warning
+        </Badge>,
+      );
       expect(screen.getByTestId('badge')).toHaveClass('badge-warning');
     });
 
     it('renders error variant', () => {
-      render(<Badge variant="error" data-testid="badge">Error</Badge>);
+      render(
+        <Badge variant="error" data-testid="badge">
+          Error
+        </Badge>,
+      );
       expect(screen.getByTestId('badge')).toHaveClass('badge-error');
     });
   });
@@ -57,7 +77,7 @@ describe('Badge', () => {
       render(
         <Badge icon={<Check data-testid="icon" />} data-testid="badge">
           Text
-        </Badge>
+        </Badge>,
       );
       const badge = screen.getByTestId('badge');
       const icon = screen.getByTestId('icon');
@@ -67,12 +87,20 @@ describe('Badge', () => {
 
   describe('props', () => {
     it('applies custom className', () => {
-      render(<Badge className="custom-class" data-testid="badge">Custom</Badge>);
+      render(
+        <Badge className="custom-class" data-testid="badge">
+          Custom
+        </Badge>,
+      );
       expect(screen.getByTestId('badge')).toHaveClass('custom-class');
     });
 
     it('passes through HTML attributes', () => {
-      render(<Badge id="my-badge" data-testid="badge">Badge</Badge>);
+      render(
+        <Badge id="my-badge" data-testid="badge">
+          Badge
+        </Badge>,
+      );
       expect(screen.getByTestId('badge')).toHaveAttribute('id', 'my-badge');
     });
 

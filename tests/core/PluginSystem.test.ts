@@ -3,15 +3,15 @@
  * Testy systemu pluginow: rejestracja, hooki, konfiguracja, createPlugin
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  PluginManager,
   createPlugin,
   type Plugin,
-  type PluginManifest,
-  type PluginHook,
   type PluginContext,
   type PluginHandler,
+  type PluginHook,
+  PluginManager,
+  type PluginManifest,
 } from '../../src/core/PluginSystem.js';
 
 // Mock moduly zewnetrzne
@@ -47,10 +47,10 @@ vi.mock('../../src/config/paths.config.js', () => ({
 // Helper: tworzenie testowych pluginow
 // ============================================================
 
-function createTestPlugin(
+function _createTestPlugin(
   name: string,
   hooks: PluginHook[] = ['beforeTask', 'afterTask'],
-  handlers?: Partial<Record<PluginHook, PluginHandler>>
+  handlers?: Partial<Record<PluginHook, PluginHandler>>,
 ): Plugin {
   return createPlugin(
     {
@@ -62,7 +62,7 @@ function createTestPlugin(
     handlers || {
       beforeTask: async (ctx) => ({ ...ctx, agent: `${name}-modified` }),
       afterTask: async (ctx) => ctx,
-    }
+    },
   );
 }
 
@@ -81,7 +81,7 @@ describe('createPlugin', () => {
       },
       {
         beforeTask: async (ctx) => ctx,
-      }
+      },
     );
 
     expect(plugin.manifest.name).toBe('test');
@@ -102,7 +102,7 @@ describe('createPlugin', () => {
         hooks: ['onError'],
       },
       { onError: async (ctx) => ctx },
-      { init: initFn, destroy: destroyFn }
+      { init: initFn, destroy: destroyFn },
     );
 
     expect(plugin.init).toBe(initFn);
@@ -117,7 +117,7 @@ describe('createPlugin', () => {
         description: 'Simple plugin',
         hooks: [],
       },
-      {}
+      {},
     );
 
     expect(plugin.init).toBeUndefined();
@@ -132,7 +132,7 @@ describe('createPlugin', () => {
         description: 'No hooks',
         hooks: [],
       },
-      {}
+      {},
     );
 
     expect(plugin.manifest.hooks).toHaveLength(0);
@@ -152,7 +152,7 @@ describe('createPlugin', () => {
         onError: async (ctx) => ctx,
         onInput: async (ctx) => ctx,
         onOutput: async (ctx) => ctx,
-      }
+      },
     );
 
     expect(plugin.manifest.hooks).toHaveLength(5);
@@ -265,25 +265,25 @@ describe('PluginManager', () => {
 
   describe('setEnabled - wlaczanie/wylaczanie', () => {
     it('powinien rzucic blad dla niezarejestrowanego plugina', async () => {
-      await expect(
-        manager.setEnabled('nonexistent', true)
-      ).rejects.toThrow('Plugin not found: nonexistent');
+      await expect(manager.setEnabled('nonexistent', true)).rejects.toThrow(
+        'Plugin not found: nonexistent',
+      );
     });
   });
 
   describe('setConfig - konfiguracja plugina', () => {
     it('powinien rzucic blad dla niezarejestrowanego plugina', async () => {
-      await expect(
-        manager.setConfig('nonexistent', { key: 'value' })
-      ).rejects.toThrow('Plugin not found: nonexistent');
+      await expect(manager.setConfig('nonexistent', { key: 'value' })).rejects.toThrow(
+        'Plugin not found: nonexistent',
+      );
     });
   });
 
   describe('installPlugin - instalacja', () => {
     it('powinien rzucic blad dla instalacji z URL (nieimplementowane)', async () => {
-      await expect(
-        manager.installPlugin('https://example.com/plugin.js')
-      ).rejects.toThrow('URL installation not yet implemented');
+      await expect(manager.installPlugin('https://example.com/plugin.js')).rejects.toThrow(
+        'URL installation not yet implemented',
+      );
     });
   });
 });
@@ -406,7 +406,7 @@ describe('PluginHook - typy hookow', () => {
     for (const hook of allHooks) {
       const plugin = createPlugin(
         { name: `test-${hook}`, version: '1.0.0', description: '', hooks: [hook] },
-        { [hook]: async (ctx: PluginContext) => ctx }
+        { [hook]: async (ctx: PluginContext) => ctx },
       );
       expect(plugin.manifest.hooks).toContain(hook);
       expect(plugin.handlers[hook]).toBeDefined();

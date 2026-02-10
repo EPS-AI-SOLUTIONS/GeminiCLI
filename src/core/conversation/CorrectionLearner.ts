@@ -7,10 +7,10 @@
  * Part of ConversationLayer refactoring - extracted from lines 541-700
  */
 
+import crypto from 'node:crypto';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import chalk from 'chalk';
-import crypto from 'crypto';
-import fs from 'fs/promises';
-import path from 'path';
 
 // ============================================================
 // Types & Interfaces
@@ -69,7 +69,7 @@ export class CorrectionLearner {
     original: string,
     corrected: string,
     context: string,
-    category: string = 'general'
+    category: string = 'general',
   ): Correction {
     const correction: Correction = {
       id: crypto.randomUUID(),
@@ -78,7 +78,7 @@ export class CorrectionLearner {
       correctedResponse: corrected,
       context,
       category,
-      learned: false
+      learned: false,
     };
 
     this.corrections.push(correction);
@@ -109,7 +109,7 @@ export class CorrectionLearner {
         pattern: original.slice(0, 100),
         correction: corrected.slice(0, 200),
         frequency: 1,
-        lastUsed: Date.now()
+        lastUsed: Date.now(),
       });
     }
 
@@ -123,7 +123,7 @@ export class CorrectionLearner {
   }
 
   applyLearnings(response: string, category: string = 'general'): string {
-    let modified = response;
+    const modified = response;
     let appliedCount = 0;
 
     // Check against learned patterns
@@ -132,7 +132,9 @@ export class CorrectionLearner {
         // High-frequency corrections are more reliable
         if (modified.toLowerCase().includes(pattern.pattern)) {
           // Log but don't auto-replace (too risky)
-          console.log(chalk.yellow(`[CorrectionLearner] Found similar pattern to previous correction`));
+          console.log(
+            chalk.yellow(`[CorrectionLearner] Found similar pattern to previous correction`),
+          );
           appliedCount++;
         }
       }
@@ -151,9 +153,9 @@ export class CorrectionLearner {
       await fs.mkdir(dir, { recursive: true });
 
       const data = {
-        corrections: this.corrections.slice(-100),  // Keep last 100
+        corrections: this.corrections.slice(-100), // Keep last 100
         patterns: Object.fromEntries(this.patterns),
-        lastSaved: Date.now()
+        lastSaved: Date.now(),
       };
       await fs.writeFile(this.persistPath, JSON.stringify(data, null, 2));
     } catch (error: any) {
@@ -163,7 +165,7 @@ export class CorrectionLearner {
 
   getStats(): CorrectionStats {
     const categories = new Map<string, number>();
-    this.corrections.forEach(c => {
+    this.corrections.forEach((c) => {
       categories.set(c.category, (categories.get(c.category) || 0) + 1);
     });
 
@@ -175,7 +177,7 @@ export class CorrectionLearner {
     return {
       corrections: this.corrections.length,
       patterns: this.patterns.size,
-      topCategories
+      topCategories,
     };
   }
 
@@ -183,7 +185,7 @@ export class CorrectionLearner {
    * Get all corrections for a specific category
    */
   getCorrectionsByCategory(category: string): Correction[] {
-    return this.corrections.filter(c => c.category === category);
+    return this.corrections.filter((c) => c.category === category);
   }
 
   /**
@@ -207,9 +209,7 @@ export class CorrectionLearner {
    * Get most frequent patterns
    */
   getFrequentPatterns(limit: number = 10): LearnedPattern[] {
-    return [...this.patterns.values()]
-      .sort((a, b) => b.frequency - a.frequency)
-      .slice(0, limit);
+    return [...this.patterns.values()].sort((a, b) => b.frequency - a.frequency).slice(0, limit);
   }
 }
 

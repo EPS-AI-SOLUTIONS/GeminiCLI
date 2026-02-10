@@ -92,8 +92,18 @@ export default UserList;
 - Uzywaj Optional Chaining: \`users?.map()\`
 - Inicjalizuj state jako pusta tablica: \`useState<User[]>([])\`
 - Dodaj TypeScript strict mode`,
-      keywords: ['debug', 'undefined', 'map', 'error', 'blad', 'cannot read', 'property', 'crash', 'exception'],
-      effectiveness: 0.92
+      keywords: [
+        'debug',
+        'undefined',
+        'map',
+        'error',
+        'blad',
+        'cannot read',
+        'property',
+        'crash',
+        'exception',
+      ],
+      effectiveness: 0.92,
     },
     {
       input: `Znajdz przyczyne memory leak w aplikacji React - rosnie zuzycie pamieci`,
@@ -180,9 +190,19 @@ useEffect(() => {
 - [ ] Timery/intervaly sa czyszczone
 - [ ] Subskrypcje sa anulowane
 - [ ] Async operations sprawdzaja mounted state`,
-      keywords: ['memory', 'leak', 'pamiec', 'useEffect', 'cleanup', 'listener', 'timer', 'interval', 'subscription'],
-      effectiveness: 0.89
-    }
+      keywords: [
+        'memory',
+        'leak',
+        'pamiec',
+        'useEffect',
+        'cleanup',
+        'listener',
+        'timer',
+        'interval',
+        'subscription',
+      ],
+      effectiveness: 0.89,
+    },
   ],
 
   // -------------------------------------------------------------------------
@@ -321,8 +341,19 @@ export function calculateDiscount(price: number, discountPercent: number): numbe
 - Walidacja: 5 testow
 - Typy: 2 testy
 - **Razem: 15 testow, ~95% coverage**`,
-      keywords: ['test', 'testy', 'jednostkowe', 'unit', 'jest', 'mocha', 'assert', 'expect', 'describe', 'it'],
-      effectiveness: 0.94
+      keywords: [
+        'test',
+        'testy',
+        'jednostkowe',
+        'unit',
+        'jest',
+        'mocha',
+        'assert',
+        'expect',
+        'describe',
+        'it',
+      ],
+      effectiveness: 0.94,
     },
     {
       input: `Napisz testy integracyjne dla REST API endpointu POST /users`,
@@ -507,9 +538,19 @@ module.exports = {
 - 9 testow integracyjnych
 - Pokrycie: tworzenie, walidacja, bezpieczenstwo
 - Izolacja: czyszczenie bazy przed kazdym testem`,
-      keywords: ['integracyjne', 'integration', 'api', 'endpoint', 'rest', 'supertest', 'request', 'response', 'http'],
-      effectiveness: 0.91
-    }
+      keywords: [
+        'integracyjne',
+        'integration',
+        'api',
+        'endpoint',
+        'rest',
+        'supertest',
+        'request',
+        'response',
+        'http',
+      ],
+      effectiveness: 0.91,
+    },
   ],
 
   // -------------------------------------------------------------------------
@@ -680,8 +721,18 @@ export class PricingService {
 - **Dependency Injection**: Latwe testowanie i podmiana implementacji
 - **Facade**: OrderProcessor ukrywa zlozonosc
 - **Strategy**: Rozne serwisy mozna podmieniac`,
-      keywords: ['refaktoryzacja', 'refactor', 'refactoring', 'clean', 'solid', 'srp', 'dlugi', 'long', 'function'],
-      effectiveness: 0.93
+      keywords: [
+        'refaktoryzacja',
+        'refactor',
+        'refactoring',
+        'clean',
+        'solid',
+        'srp',
+        'dlugi',
+        'long',
+        'function',
+      ],
+      effectiveness: 0.93,
     },
     {
       input: `Usun duplikacje kodu w tych dwoch funkcjach ktore robia podobne rzeczy`,
@@ -883,9 +934,18 @@ export const fetchOrders = (filters?: OrderFilters) =>
 - **DRY**: Wspolna logika wydzielona
 - **Type safety**: TypeScript generics
 - **Single Source of Truth**: Zmiana w jednym miejscu`,
-      keywords: ['duplikacja', 'duplicate', 'dry', 'powtorzenie', 'copy', 'paste', 'similar', 'identyczny'],
-      effectiveness: 0.90
-    }
+      keywords: [
+        'duplikacja',
+        'duplicate',
+        'dry',
+        'powtorzenie',
+        'copy',
+        'paste',
+        'similar',
+        'identyczny',
+      ],
+      effectiveness: 0.9,
+    },
   ],
 
   // -------------------------------------------------------------------------
@@ -1064,8 +1124,17 @@ Role:
 ### 6. Wersjonowanie
 - URL path: \`/api/v1/\`, \`/api/v2/\`
 - Header: \`Accept: application/vnd.hotel.v1+json\``,
-      keywords: ['api', 'rest', 'design', 'endpoint', 'zaprojektuj', 'projektowanie', 'http', 'resource'],
-      effectiveness: 0.95
+      keywords: [
+        'api',
+        'rest',
+        'design',
+        'endpoint',
+        'zaprojektuj',
+        'projektowanie',
+        'http',
+        'resource',
+      ],
+      effectiveness: 0.95,
     },
     {
       input: `Zaprojektuj GraphQL schema dla aplikacji e-commerce`,
@@ -1465,9 +1534,18 @@ mutation AddToCart {
   }
 }
 \`\`\``,
-      keywords: ['graphql', 'schema', 'query', 'mutation', 'type', 'ecommerce', 'sklep', 'commerce'],
-      effectiveness: 0.92
-    }
+      keywords: [
+        'graphql',
+        'schema',
+        'query',
+        'mutation',
+        'type',
+        'ecommerce',
+        'sklep',
+        'commerce',
+      ],
+      effectiveness: 0.92,
+    },
   ],
 
   // -------------------------------------------------------------------------
@@ -1702,8 +1780,17 @@ function generateAccessToken(user: User): string {
 - [x] Audit logging
 - [x] Secure cookies
 - [x] HTTPS headers (Helmet)`,
-      keywords: ['security', 'bezpieczenstwo', 'sql injection', 'xss', 'csrf', 'auth', 'login', 'authentication'],
-      effectiveness: 0.96
+      keywords: [
+        'security',
+        'bezpieczenstwo',
+        'sql injection',
+        'xss',
+        'csrf',
+        'auth',
+        'login',
+        'authentication',
+      ],
+      effectiveness: 0.96,
     },
     {
       input: `Sprawdz kod pod katem podatnosci XSS`,
@@ -1894,9 +1981,18 @@ function safeJsonEmbed(data: unknown): string {
 - [ ] Sanityzacja HTML gdzie konieczna (DOMPurify)
 - [ ] HttpOnly cookies dla tokenow
 - [ ] X-XSS-Protection header`,
-      keywords: ['xss', 'cross-site', 'scripting', 'injection', 'sanitize', 'escape', 'innerHTML', 'security'],
-      effectiveness: 0.93
-    }
+      keywords: [
+        'xss',
+        'cross-site',
+        'scripting',
+        'injection',
+        'sanitize',
+        'escape',
+        'innerHTML',
+        'security',
+      ],
+      effectiveness: 0.93,
+    },
   ],
 
   // -------------------------------------------------------------------------
@@ -2073,8 +2169,18 @@ ANALYZE order_items;
 | Rows scanned | 2.5M | 50K |
 | Memory usage | 512MB | 32MB |
 | Index usage | 0% | 100% |`,
-      keywords: ['sql', 'query', 'optymalizacja', 'performance', 'slow', 'wolne', 'index', 'explain', 'database'],
-      effectiveness: 0.94
+      keywords: [
+        'sql',
+        'query',
+        'optymalizacja',
+        'performance',
+        'slow',
+        'wolne',
+        'index',
+        'explain',
+        'database',
+      ],
+      effectiveness: 0.94,
     },
     {
       input: `Zoptymalizuj renderowanie listy 10000 elementow w React`,
@@ -2316,9 +2422,19 @@ export function DeferredList({ items, filter }: { items: Item[]; filter: string 
 3. **Unikaj inline functions** w props
 4. **Virtualizuj** listy > 100 elementow
 5. **Profiluj** z React DevTools`,
-      keywords: ['react', 'performance', 'lista', 'list', 'render', 'virtual', 'optimization', 'slow', 'freeze'],
-      effectiveness: 0.92
-    }
+      keywords: [
+        'react',
+        'performance',
+        'lista',
+        'list',
+        'render',
+        'virtual',
+        'optimization',
+        'slow',
+        'freeze',
+      ],
+      effectiveness: 0.92,
+    },
   ],
 
   // -------------------------------------------------------------------------
@@ -2477,8 +2593,17 @@ curl -X POST https://api.example.com/api/v1/users \\
 - [GET /api/v1/users/:id](/docs/get-user) - Get user details
 - [POST /api/v1/users/:id/verify](/docs/verify-email) - Verify email
 - [POST /api/v1/auth/login](/docs/login) - User login`,
-      keywords: ['dokumentacja', 'documentation', 'api', 'endpoint', 'doc', 'readme', 'opisz', 'describe'],
-      effectiveness: 0.91
+      keywords: [
+        'dokumentacja',
+        'documentation',
+        'api',
+        'endpoint',
+        'doc',
+        'readme',
+        'opisz',
+        'describe',
+      ],
+      effectiveness: 0.91,
     },
     {
       input: `Napisz JSDoc komentarze dla funkcji pomocniczych`,
@@ -2726,9 +2851,16 @@ function onDataLoad(callback: OnDataLoadCallback): () => void {
 3. **Dokumentuj wyjatki** - @throws z warunkami
 4. **Opisuj typy generyczne** - @template z wyjasnieniem
 5. **Linkuj powiazane** - @see dla kontekstu`,
-      keywords: ['jsdoc', 'komentarz', 'comment', 'dokumentacja', 'typescript', 'annotation', 'doc'],
-      effectiveness: 0.88
-    }
-  ]
+      keywords: [
+        'jsdoc',
+        'komentarz',
+        'comment',
+        'dokumentacja',
+        'typescript',
+        'annotation',
+        'doc',
+      ],
+      effectiveness: 0.88,
+    },
+  ],
 };
-

@@ -6,10 +6,10 @@
  * Testing variants, sizes, states, icons, and interactions
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { Button } from './Button';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { AlertCircle, Check } from 'lucide-react';
+import { describe, expect, it, vi } from 'vitest';
+import { Button } from './Button';
 
 // ============================================================================
 // TEST SETUP
@@ -63,9 +63,7 @@ describe('Button Component', () => {
     });
 
     it('should render secondary variant', () => {
-      const { container } = render(
-        <Button variant="secondary">Secondary</Button>
-      );
+      const { container } = render(<Button variant="secondary">Secondary</Button>);
       const button = container.querySelector('button');
 
       expect(button?.className).toContain('bg-black/30');
@@ -91,7 +89,7 @@ describe('Button Component', () => {
       const { container } = render(
         <Button variant="icon">
           <AlertCircle size={20} />
-        </Button>
+        </Button>,
       );
       const button = container.querySelector('button');
 
@@ -136,7 +134,7 @@ describe('Button Component', () => {
       const { container } = render(
         <Button size="icon">
           <AlertCircle size={20} />
-        </Button>
+        </Button>,
       );
       const button = container.querySelector('button');
 
@@ -147,7 +145,7 @@ describe('Button Component', () => {
       const { container } = render(
         <Button variant="danger" size="lg">
           Delete All
-        </Button>
+        </Button>,
       );
       const button = container.querySelector('button');
 
@@ -164,9 +162,7 @@ describe('Button Component', () => {
   describe('Loading State', () => {
     it('should show loading spinner when isLoading is true', () => {
       const { container } = render(<Button isLoading>Loading</Button>);
-      const spinner = container.querySelector(
-        '.animate-spin[class*="w-4"][class*="h-4"]'
-      );
+      const spinner = container.querySelector('.animate-spin[class*="w-4"][class*="h-4"]');
 
       expect(spinner).toBeInTheDocument();
     });
@@ -175,7 +171,7 @@ describe('Button Component', () => {
       const { container, queryByTestId } = render(
         <Button isLoading leftIcon={<AlertCircle data-testid="left-icon" />}>
           Loading
-        </Button>
+        </Button>,
       );
 
       const spinner = container.querySelector('.animate-spin');
@@ -187,12 +183,9 @@ describe('Button Component', () => {
 
     it('should still render right icon during loading', () => {
       render(
-        <Button
-          isLoading
-          rightIcon={<Check data-testid="right-icon" />}
-        >
+        <Button isLoading rightIcon={<Check data-testid="right-icon" />}>
           Loading
-        </Button>
+        </Button>,
       );
 
       const rightIcon = screen.getByTestId('right-icon');
@@ -245,7 +238,7 @@ describe('Button Component', () => {
       const { container } = render(
         <Button disabled onClick={onClick}>
           Disabled
-        </Button>
+        </Button>,
       );
       const button = container.querySelector('button') as HTMLButtonElement;
 
@@ -260,7 +253,7 @@ describe('Button Component', () => {
       const { container } = render(
         <Button isLoading onClick={onClick}>
           Loading
-        </Button>
+        </Button>,
       );
       const button = container.querySelector('button') as HTMLButtonElement;
 
@@ -274,22 +267,14 @@ describe('Button Component', () => {
 
   describe('Icons', () => {
     it('should render left icon', () => {
-      render(
-        <Button leftIcon={<AlertCircle data-testid="left-icon" />}>
-          With Icon
-        </Button>
-      );
+      render(<Button leftIcon={<AlertCircle data-testid="left-icon" />}>With Icon</Button>);
 
       const leftIcon = screen.getByTestId('left-icon');
       expect(leftIcon).toBeInTheDocument();
     });
 
     it('should render right icon', () => {
-      render(
-        <Button rightIcon={<Check data-testid="right-icon" />}>
-          With Icon
-        </Button>
-      );
+      render(<Button rightIcon={<Check data-testid="right-icon" />}>With Icon</Button>);
 
       const rightIcon = screen.getByTestId('right-icon');
       expect(rightIcon).toBeInTheDocument();
@@ -302,7 +287,7 @@ describe('Button Component', () => {
           rightIcon={<Check data-testid="right-icon" />}
         >
           Both Icons
-        </Button>
+        </Button>,
       );
 
       const leftIcon = screen.getByTestId('left-icon');
@@ -319,7 +304,7 @@ describe('Button Component', () => {
           rightIcon={<Check data-testid="right-icon" />}
         >
           Both Icons
-        </Button>
+        </Button>,
       );
       const button = container.querySelector('button');
 
@@ -330,7 +315,7 @@ describe('Button Component', () => {
       const { queryByTestId } = render(
         <Button isLoading leftIcon={<AlertCircle data-testid="left-icon" />}>
           Loading
-        </Button>
+        </Button>,
       );
 
       const leftIcon = queryByTestId('left-icon');
@@ -341,7 +326,7 @@ describe('Button Component', () => {
       render(
         <Button variant="icon" size="icon">
           <AlertCircle data-testid="icon-only" size={20} />
-        </Button>
+        </Button>,
       );
 
       const icon = screen.getByTestId('icon-only');
@@ -392,7 +377,7 @@ describe('Button Component', () => {
       const { container } = render(
         <Button disabled onClick={onClick}>
           Click
-        </Button>
+        </Button>,
       );
       const button = container.querySelector('button') as HTMLButtonElement;
 
@@ -408,7 +393,7 @@ describe('Button Component', () => {
       const { container } = render(
         <Button isLoading onClick={onClick}>
           Click
-        </Button>
+        </Button>,
       );
       const button = container.querySelector('button') as HTMLButtonElement;
 
@@ -451,7 +436,7 @@ describe('Button Component', () => {
       const { container } = render(
         <Button fullWidth variant="danger" size="lg">
           Full Width Danger
-        </Button>
+        </Button>,
       );
       const button = container.querySelector('button');
 
@@ -474,18 +459,14 @@ describe('Button Component', () => {
     });
 
     it('should forward aria attributes', () => {
-      const { container } = render(
-        <Button aria-label="Delete item">Delete</Button>
-      );
+      const { container } = render(<Button aria-label="Delete item">Delete</Button>);
       const button = container.querySelector('button');
 
       expect(button?.getAttribute('aria-label')).toBe('Delete item');
     });
 
     it('should forward data attributes', () => {
-      const { container } = render(
-        <Button data-testid="custom-button">Button</Button>
-      );
+      const { container } = render(<Button data-testid="custom-button">Button</Button>);
       const button = container.querySelector('button');
 
       expect(button?.getAttribute('data-testid')).toBe('custom-button');
@@ -499,9 +480,7 @@ describe('Button Component', () => {
     });
 
     it('should support custom className merging', () => {
-      const { container } = render(
-        <Button className="custom-class">Custom</Button>
-      );
+      const { container } = render(<Button className="custom-class">Custom</Button>);
       const button = container.querySelector('button');
 
       expect(button?.className).toContain('custom-class');
@@ -517,9 +496,7 @@ describe('Button Component', () => {
     it('should forward ref to button element', () => {
       const ref = { current: null };
 
-      const { container } = render(
-        <Button ref={ref}>Ref Test</Button>
-      );
+      const { container } = render(<Button ref={ref}>Ref Test</Button>);
 
       expect(ref.current).toBeInstanceOf(HTMLButtonElement);
       expect(ref.current?.textContent).toBe('Ref Test');
@@ -528,9 +505,7 @@ describe('Button Component', () => {
     it('should allow imperative actions on forwarded ref', () => {
       const ref = { current: null };
 
-      const { container } = render(
-        <Button ref={ref}>Focus Me</Button>
-      );
+      const { container } = render(<Button ref={ref}>Focus Me</Button>);
 
       ref.current?.focus();
       expect(ref.current).toBe(document.activeElement);
@@ -542,7 +517,7 @@ describe('Button Component', () => {
       const { container } = render(
         <Button ref={ref} disabled>
           Disabled
-        </Button>
+        </Button>,
       );
 
       expect(ref.current?.disabled).toBe(true);
@@ -590,7 +565,7 @@ describe('Button Component', () => {
           onClick={onClick}
         >
           Delete All
-        </Button>
+        </Button>,
       );
 
       const button = container.querySelector('button') as HTMLButtonElement;

@@ -2,7 +2,7 @@
  * Fastify Type Extensions
  */
 
-import type { FastifyRequest, FastifyReply, RouteGenericInterface } from 'fastify';
+import type { FastifyReply, FastifyRequest, RouteGenericInterface } from 'fastify';
 import type { ExecuteRequest, Settings } from './index.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -35,10 +35,10 @@ export interface ClassifyRequest {
 
 export type RouteHandler<T = unknown> = (
   request: FastifyRequest,
-  reply: FastifyReply
+  reply: FastifyReply,
 ) => Promise<T>;
 
 export type TypedRouteHandler<ReqType extends RouteGenericInterface, ResType> = (
   request: FastifyRequest<ReqType>,
-  reply: FastifyReply
+  reply: FastifyReply,
 ) => Promise<ResType>;

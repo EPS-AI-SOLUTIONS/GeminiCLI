@@ -4,8 +4,8 @@
  * Tests for session creation, selection, deletion, and filtering.
  */
 
-import { test, expect } from '../fixtures/test-setup';
 import { TEST_SESSION_TITLES, TIMEOUTS } from '../fixtures/test-data';
+import { expect, test } from '../fixtures/test-setup';
 
 test.describe('Session Management', () => {
   test('should create new session', async ({ sidebar }) => {
@@ -61,9 +61,10 @@ test.describe('Session Management', () => {
 
     // Check session sidebar for truncated message title
     const titles = await sidebar.getAllSessionTitles();
-    const hasMatchingTitle = titles.some(title =>
-      uniqueMessage.toLowerCase().includes(title.toLowerCase().replace('...', '')) ||
-      title.toLowerCase().includes(uniqueMessage.substring(0, 15).toLowerCase())
+    const _hasMatchingTitle = titles.some(
+      (title) =>
+        uniqueMessage.toLowerCase().includes(title.toLowerCase().replace('...', '')) ||
+        title.toLowerCase().includes(uniqueMessage.substring(0, 15).toLowerCase()),
     );
 
     // Session should have a title derived from the message
@@ -77,7 +78,7 @@ test.describe('Session Management', () => {
 
     // Get current title
     const titlesBeforeRename = await sidebar.getAllSessionTitles();
-    const originalTitle = titlesBeforeRename[0];
+    const _originalTitle = titlesBeforeRename[0];
 
     // Try to rename (double-click to edit)
     // Note: This test may need adjustment based on actual rename UI

@@ -9,12 +9,12 @@
 
 export interface MCPServerConfig {
   name: string;
-  command?: string;           // For stdio transport
+  command?: string; // For stdio transport
   args?: string[];
-  url?: string;               // For SSE/HTTP transport
+  url?: string; // For SSE/HTTP transport
   env?: Record<string, string>;
   timeout?: number;
-  trust?: boolean;            // Auto-approve tool calls
+  trust?: boolean; // Auto-approve tool calls
   enabled?: boolean;
 }
 
@@ -25,12 +25,15 @@ export interface MCPServerConfig {
 /** JSON Schema for tool input parameters */
 export interface MCPToolInputSchema {
   type: 'object';
-  properties?: Record<string, {
-    type: string;
-    description?: string;
-    enum?: string[];
-    default?: unknown;
-  }>;
+  properties?: Record<
+    string,
+    {
+      type: string;
+      description?: string;
+      enum?: string[];
+      default?: unknown;
+    }
+  >;
   required?: string[];
   additionalProperties?: boolean;
 }
@@ -127,12 +130,32 @@ export interface MCPToolDiscoveryOptions {
 export interface MCPClient {
   connect(transport: MCPTransport, options?: unknown): Promise<void>;
   close(): Promise<void>;
-  listTools(): Promise<{ tools: Array<{ name: string; description?: string; inputSchema?: MCPToolInputSchema }> }>;
-  listPrompts(): Promise<{ prompts: Array<{ name: string; description?: string; arguments?: Array<{ name: string; description?: string; required?: boolean }> }> }>;
-  listResources(): Promise<{ resources: Array<{ uri: string; name: string; description?: string; mimeType?: string }> }>;
-  callTool(params: { name: string; arguments?: Record<string, unknown> }): Promise<{ content: unknown; isError?: boolean }>;
-  getPrompt(params: { name: string; arguments?: Record<string, string> }): Promise<{ messages: Array<{ role: string; content: { type: string; text: string } }> }>;
-  readResource(params: { uri: string }): Promise<{ contents: Array<{ uri: string; mimeType?: string; text?: string; blob?: string }> }>;
+  listTools(): Promise<{
+    tools: Array<{ name: string; description?: string; inputSchema?: MCPToolInputSchema }>;
+  }>;
+  listPrompts(): Promise<{
+    prompts: Array<{
+      name: string;
+      description?: string;
+      arguments?: Array<{ name: string; description?: string; required?: boolean }>;
+    }>;
+  }>;
+  listResources(): Promise<{
+    resources: Array<{ uri: string; name: string; description?: string; mimeType?: string }>;
+  }>;
+  callTool(params: {
+    name: string;
+    arguments?: Record<string, unknown>;
+  }): Promise<{ content: unknown; isError?: boolean }>;
+  getPrompt(params: {
+    name: string;
+    arguments?: Record<string, string>;
+  }): Promise<{ messages: Array<{ role: string; content: { type: string; text: string } }> }>;
+  readResource(params: {
+    uri: string;
+  }): Promise<{
+    contents: Array<{ uri: string; mimeType?: string; text?: string; blob?: string }>;
+  }>;
 }
 
 /** MCP Transport interface */
@@ -144,8 +167,8 @@ export interface MCPTransport {
 export interface ConnectedServer {
   name: string;
   config: MCPServerConfig;
-  client: MCPClient | null;  // null during connection setup
-  transport: MCPTransport | null;  // null during connection setup
+  client: MCPClient | null; // null during connection setup
+  transport: MCPTransport | null; // null during connection setup
   status: MCPServerStatus;
   tools: MCPTool[];
   prompts: MCPPrompt[];

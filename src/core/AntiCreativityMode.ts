@@ -19,7 +19,7 @@ export interface AntiCreativityPattern {
   name: string;
   pattern: RegExp;
   category: 'file_operation' | 'code_analysis' | 'status_report' | 'directory_listing' | 'search';
-  weight: number;  // How strongly this indicates need for anti-creativity (0-1)
+  weight: number; // How strongly this indicates need for anti-creativity (0-1)
   description: string;
 }
 
@@ -28,7 +28,7 @@ export interface AntiCreativityPattern {
  */
 export interface AntiCreativityAnalysis {
   shouldEnable: boolean;
-  confidence: number;           // 0-100
+  confidence: number; // 0-100
   matchedPatterns: string[];
   category: string | null;
   recommendation: string;
@@ -39,7 +39,7 @@ export interface AntiCreativityAnalysis {
  */
 export interface FactualValidationResult {
   isFactual: boolean;
-  creativityScore: number;      // 0-100, higher = more creative (bad in this context)
+  creativityScore: number; // 0-100, higher = more creative (bad in this context)
   violations: FactualViolation[];
   summary: string;
 }
@@ -67,84 +67,92 @@ export const ANTI_CREATIVITY_TRIGGERS: AntiCreativityPattern[] = [
   // === FILE OPERATIONS ===
   {
     name: 'read_file',
-    pattern: /\b(?:read|view|show|display|open|cat|get content of|zawarto[sś][cć]|odczytaj|poka[zż])\s+(?:the\s+)?(?:file|plik)/gi,
+    pattern:
+      /\b(?:read|view|show|display|open|cat|get content of|zawarto[sś][cć]|odczytaj|poka[zż])\s+(?:the\s+)?(?:file|plik)/gi,
     category: 'file_operation',
     weight: 1.0,
-    description: 'Reading file content'
+    description: 'Reading file content',
   },
   {
     name: 'file_exists',
     pattern: /\b(?:check if|does|czy)\s+(?:the\s+)?(?:file|plik)\s+(?:exists?|istnieje)/gi,
     category: 'file_operation',
     weight: 1.0,
-    description: 'Checking file existence'
+    description: 'Checking file existence',
   },
   {
     name: 'file_content',
     pattern: /\b(?:what(?:'s| is) in|co jest w|what does .+ contain|zawiera)/gi,
     category: 'file_operation',
     weight: 0.9,
-    description: 'Querying file contents'
+    description: 'Querying file contents',
   },
 
   // === DIRECTORY OPERATIONS ===
   {
     name: 'list_directory',
-    pattern: /\b(?:list|show|display|ls|dir|wy[sś]wietl|poka[zż])\s+(?:the\s+)?(?:directory|folder|dir|katalog|files in)/gi,
+    pattern:
+      /\b(?:list|show|display|ls|dir|wy[sś]wietl|poka[zż])\s+(?:the\s+)?(?:directory|folder|dir|katalog|files in)/gi,
     category: 'directory_listing',
     weight: 1.0,
-    description: 'Listing directory contents'
+    description: 'Listing directory contents',
   },
   {
     name: 'directory_structure',
-    pattern: /\b(?:structure|tree|hierarchy|struktura|drzewo)\s+(?:of\s+)?(?:the\s+)?(?:directory|folder|project|katalog)/gi,
+    pattern:
+      /\b(?:structure|tree|hierarchy|struktura|drzewo)\s+(?:of\s+)?(?:the\s+)?(?:directory|folder|project|katalog)/gi,
     category: 'directory_listing',
     weight: 0.95,
-    description: 'Showing directory structure'
+    description: 'Showing directory structure',
   },
   {
     name: 'find_files',
-    pattern: /\b(?:find|locate|search for|look for|znajd[zź]|szukaj)\s+(?:all\s+)?(?:files|pliki)/gi,
+    pattern:
+      /\b(?:find|locate|search for|look for|znajd[zź]|szukaj)\s+(?:all\s+)?(?:files|pliki)/gi,
     category: 'directory_listing',
     weight: 0.9,
-    description: 'Finding files'
+    description: 'Finding files',
   },
 
   // === CODE ANALYSIS ===
   {
     name: 'analyze_code',
-    pattern: /\b(?:analyze|analyse|review|examine|inspect|analizuj|przejrzyj|zbadaj)\s+(?:the\s+)?(?:code|function|class|method|kod|funkcj)/gi,
+    pattern:
+      /\b(?:analyze|analyse|review|examine|inspect|analizuj|przejrzyj|zbadaj)\s+(?:the\s+)?(?:code|function|class|method|kod|funkcj)/gi,
     category: 'code_analysis',
     weight: 0.95,
-    description: 'Analyzing code'
+    description: 'Analyzing code',
   },
   {
     name: 'what_does_code_do',
-    pattern: /\b(?:what does|co robi|explain|wyja[sś]nij)\s+(?:this|the|ta|ten)\s+(?:code|function|method|class)/gi,
+    pattern:
+      /\b(?:what does|co robi|explain|wyja[sś]nij)\s+(?:this|the|ta|ten)\s+(?:code|function|method|class)/gi,
     category: 'code_analysis',
     weight: 0.9,
-    description: 'Explaining existing code'
+    description: 'Explaining existing code',
   },
   {
     name: 'find_symbol',
-    pattern: /\b(?:find|locate|where is|gdzie jest|znajd[zź])\s+(?:the\s+)?(?:function|class|method|variable|symbol|funkcj|klas|metod|zmienn)/gi,
+    pattern:
+      /\b(?:find|locate|where is|gdzie jest|znajd[zź])\s+(?:the\s+)?(?:function|class|method|variable|symbol|funkcj|klas|metod|zmienn)/gi,
     category: 'code_analysis',
     weight: 0.95,
-    description: 'Finding code symbols'
+    description: 'Finding code symbols',
   },
   {
     name: 'list_functions',
-    pattern: /\b(?:list|show|get|wy[sś]wietl)\s+(?:all\s+)?(?:functions|methods|classes|exports|funkcje|metody|klasy)/gi,
+    pattern:
+      /\b(?:list|show|get|wy[sś]wietl)\s+(?:all\s+)?(?:functions|methods|classes|exports|funkcje|metody|klasy)/gi,
     category: 'code_analysis',
     weight: 0.95,
-    description: 'Listing code elements'
+    description: 'Listing code elements',
   },
   {
     name: 'find_references',
     pattern: /\b(?:find|show|where is .+ used|references to|u[zż]ycia|referencje)/gi,
     category: 'code_analysis',
     weight: 0.9,
-    description: 'Finding code references'
+    description: 'Finding code references',
   },
 
   // === STATUS REPORTS ===
@@ -153,38 +161,39 @@ export const ANTI_CREATIVITY_TRIGGERS: AntiCreativityPattern[] = [
     pattern: /\b(?:git\s+)?(?:status|diff|log|changes|zmiany)/gi,
     category: 'status_report',
     weight: 0.95,
-    description: 'Git status operations'
+    description: 'Git status operations',
   },
   {
     name: 'project_status',
     pattern: /\b(?:current|present|existing)\s+(?:state|status|condition)\s+(?:of|projektu)/gi,
     category: 'status_report',
     weight: 0.9,
-    description: 'Project status query'
+    description: 'Project status query',
   },
   {
     name: 'report_findings',
     pattern: /\b(?:report|summarize|list)\s+(?:what|findings|results|wyniki)/gi,
     category: 'status_report',
     weight: 0.85,
-    description: 'Reporting findings'
+    description: 'Reporting findings',
   },
 
   // === SEARCH OPERATIONS ===
   {
     name: 'grep_search',
-    pattern: /\b(?:grep|search|find|look for|szukaj)\s+(?:for\s+)?(?:text|string|pattern|tekst|wz[oó]r)/gi,
+    pattern:
+      /\b(?:grep|search|find|look for|szukaj)\s+(?:for\s+)?(?:text|string|pattern|tekst|wz[oó]r)/gi,
     category: 'search',
     weight: 0.95,
-    description: 'Text search operations'
+    description: 'Text search operations',
   },
   {
     name: 'count_occurrences',
     pattern: /\b(?:count|how many|ile|policz)\s+(?:occurrences|times|instances|wyst[aą]pie[nń])/gi,
     category: 'search',
     weight: 0.9,
-    description: 'Counting occurrences'
-  }
+    description: 'Counting occurrences',
+  },
 ];
 
 /**
@@ -200,87 +209,95 @@ export const CREATIVITY_VIOLATION_PATTERNS: Array<{
   // === INVENTION INDICATORS ===
   {
     type: 'future_tense',
-    pattern: /\b(?:I will|I would|I'll|I can|Let me|I'm going to|Mog[eę]|B[eę]d[eę]|Zamierzam)\s+(?:create|make|add|implement|write|build|stworz|napisa[cć]|zaimplementowa[cć])/gi,
+    pattern:
+      /\b(?:I will|I would|I'll|I can|Let me|I'm going to|Mog[eę]|B[eę]d[eę]|Zamierzam)\s+(?:create|make|add|implement|write|build|stworz|napisa[cć]|zaimplementowa[cć])/gi,
     severity: 'critical',
     weight: 25,
-    message: 'Proposing future action instead of reporting facts'
+    message: 'Proposing future action instead of reporting facts',
   },
   {
     type: 'suggestion',
-    pattern: /\b(?:you could|you should|consider|I suggest|I recommend|mo[zż]esz|powinie[nń]|rozwa[zż]|proponuj[eę]|zalecam)/gi,
+    pattern:
+      /\b(?:you could|you should|consider|I suggest|I recommend|mo[zż]esz|powinie[nń]|rozwa[zż]|proponuj[eę]|zalecam)/gi,
     severity: 'high',
     weight: 20,
-    message: 'Making suggestions instead of reporting'
+    message: 'Making suggestions instead of reporting',
   },
   {
     type: 'hypothetical',
-    pattern: /\b(?:if you want|if needed|optionally|alternatively|je[sś]li chcesz|opcjonalnie|alternatywnie)/gi,
+    pattern:
+      /\b(?:if you want|if needed|optionally|alternatively|je[sś]li chcesz|opcjonalnie|alternatywnie)/gi,
     severity: 'medium',
     weight: 10,
-    message: 'Using hypothetical language'
+    message: 'Using hypothetical language',
   },
 
   // === NON-EXISTENT CONTENT ===
   {
     type: 'fake_path',
-    pattern: /(?:\/path\/to\/|C:\\path\\to\\|\/your\/|\/home\/user\/|<path>|<file>|\[path\]|\[file\])/gi,
+    pattern:
+      /(?:\/path\/to\/|C:\\path\\to\\|\/your\/|\/home\/user\/|<path>|<file>|\[path\]|\[file\])/gi,
     severity: 'critical',
     weight: 30,
-    message: 'Using placeholder/fake paths'
+    message: 'Using placeholder/fake paths',
   },
   {
     type: 'example_code',
-    pattern: /\b(?:for example|here's an example|such as|like this|na przyk[lł]ad|przyk[lł]adowo|oto przyk[lł]ad)/gi,
+    pattern:
+      /\b(?:for example|here's an example|such as|like this|na przyk[lł]ad|przyk[lł]adowo|oto przyk[lł]ad)/gi,
     severity: 'high',
     weight: 15,
-    message: 'Providing example instead of actual content'
+    message: 'Providing example instead of actual content',
   },
   {
     type: 'generic_names',
     pattern: /\b(?:MyClass|MyFunction|YourFile|SomeMethod|ExampleService|TestHelper)\d*\b/g,
     severity: 'high',
     weight: 20,
-    message: 'Using generic placeholder names'
+    message: 'Using generic placeholder names',
   },
 
   // === UNCERTAINTY MARKERS ===
   {
     type: 'uncertainty',
-    pattern: /\b(?:probably|maybe|perhaps|might|could be|I think|I believe|prawdopodobnie|mo[zż]e|chyba|my[sś]l[eę])/gi,
+    pattern:
+      /\b(?:probably|maybe|perhaps|might|could be|I think|I believe|prawdopodobnie|mo[zż]e|chyba|my[sś]l[eę])/gi,
     severity: 'medium',
     weight: 10,
-    message: 'Expressing uncertainty about factual content'
+    message: 'Expressing uncertainty about factual content',
   },
   {
     type: 'assumption',
     pattern: /\b(?:I assume|assuming|presumably|zak[lł]adam|zak[lł]adaj[aą]c)/gi,
     severity: 'high',
     weight: 15,
-    message: 'Making assumptions instead of verifying'
+    message: 'Making assumptions instead of verifying',
   },
 
   // === FABRICATION INDICATORS ===
   {
     type: 'typically_generally',
-    pattern: /\b(?:typically|generally|usually|normally|often|zwykle|zazwyczaj|cz[eę]sto|normalnie)/gi,
+    pattern:
+      /\b(?:typically|generally|usually|normally|often|zwykle|zazwyczaj|cz[eę]sto|normalnie)/gi,
     severity: 'medium',
     weight: 8,
-    message: 'Using generalizations instead of specific facts'
+    message: 'Using generalizations instead of specific facts',
   },
   {
     type: 'should_have',
-    pattern: /\b(?:should have|should contain|should include|powinien mie[cć]|powinien zawiera[cć])/gi,
+    pattern:
+      /\b(?:should have|should contain|should include|powinien mie[cć]|powinien zawiera[cć])/gi,
     severity: 'high',
     weight: 18,
-    message: 'Describing what should be vs what is'
+    message: 'Describing what should be vs what is',
   },
   {
     type: 'would_look_like',
     pattern: /\b(?:would look like|might look like|could look like|wygl[aą]da[lł]oby)/gi,
     severity: 'critical',
     weight: 25,
-    message: 'Describing hypothetical appearance'
-  }
+    message: 'Describing hypothetical appearance',
+  },
 ];
 
 // =============================================================================
@@ -328,7 +345,7 @@ Remember: Report ONLY what EXISTS. If uncertain, state uncertainty explicitly.
  */
 export class AntiCreativityMode {
   private enabled: boolean = false;
-  private strictnessLevel: number = 1.0;  // 0.5 = lenient, 1.0 = normal, 1.5 = strict
+  private strictnessLevel: number = 1.0; // 0.5 = lenient, 1.0 = normal, 1.5 = strict
   private logViolations: boolean = true;
 
   constructor(options?: {
@@ -406,7 +423,7 @@ export class AntiCreativityMode {
       confidence,
       matchedPatterns,
       category: dominantCategory,
-      recommendation
+      recommendation,
     };
   }
 
@@ -468,7 +485,7 @@ ${ANTI_CREATIVITY_SUFFIX}`;
           severity: check.severity,
           pattern: check.pattern.source,
           matches: matches.slice(0, 5),
-          message: check.message
+          message: check.message,
         });
       }
 
@@ -496,7 +513,7 @@ ${ANTI_CREATIVITY_SUFFIX}`;
       isFactual,
       creativityScore,
       violations,
-      summary
+      summary,
     };
   }
 
@@ -515,18 +532,28 @@ ${ANTI_CREATIVITY_SUFFIX}`;
       return;
     }
 
-    const color = result.creativityScore >= 70 ? chalk.red :
-                  result.creativityScore >= 50 ? chalk.yellow :
-                  result.creativityScore >= 30 ? chalk.cyan :
-                  chalk.gray;
+    const color =
+      result.creativityScore >= 70
+        ? chalk.red
+        : result.creativityScore >= 50
+          ? chalk.yellow
+          : result.creativityScore >= 30
+            ? chalk.cyan
+            : chalk.gray;
 
-    console.log(color(`${prefix} Creativity Score: ${result.creativityScore}/100 - ${result.summary}`));
+    console.log(
+      color(`${prefix} Creativity Score: ${result.creativityScore}/100 - ${result.summary}`),
+    );
 
     for (const violation of result.violations) {
-      const severityColor = violation.severity === 'critical' ? chalk.red :
-                            violation.severity === 'high' ? chalk.yellow :
-                            violation.severity === 'medium' ? chalk.cyan :
-                            chalk.gray;
+      const severityColor =
+        violation.severity === 'critical'
+          ? chalk.red
+          : violation.severity === 'high'
+            ? chalk.yellow
+            : violation.severity === 'medium'
+              ? chalk.cyan
+              : chalk.gray;
 
       console.log(severityColor(`  [${violation.severity.toUpperCase()}] ${violation.message}`));
       if (violation.matches.length > 0) {
@@ -657,5 +684,5 @@ export default {
   analyzeTaskForAntiCreativity,
   conditionalAntiCreativityWrap,
   ANTI_CREATIVITY_TRIGGERS,
-  CREATIVITY_VIOLATION_PATTERNS
+  CREATIVITY_VIOLATION_PATTERNS,
 };

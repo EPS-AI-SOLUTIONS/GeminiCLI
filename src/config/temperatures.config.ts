@@ -118,7 +118,7 @@ export const TEMPERATURE_RANGES = {
   research: { min: 1.0, max: 1.4 },
 } as const;
 
-export type TemperatureRange = typeof TEMPERATURE_RANGES[keyof typeof TEMPERATURE_RANGES];
+export type TemperatureRange = (typeof TEMPERATURE_RANGES)[keyof typeof TEMPERATURE_RANGES];
 
 // =============================================================================
 // MODEL TEMPERATURE DEFAULTS
@@ -132,11 +132,11 @@ export type TemperatureRange = typeof TEMPERATURE_RANGES[keyof typeof TEMPERATUR
  * different characteristics than Gemini 3.
  */
 export const MODEL_TEMPERATURES = {
-  flagship: 1.0,       // Gemini 3 recommended default
-  first_officer: 1.0,  // Same as flagship for consistency
-  fast_scout: 1.1,     // Slightly higher for faster exploration
-  last_resort: 1.2,    // Higher for fallback diversity
-  local: 0.7,          // Local models (Ollama) - lower is OK
+  flagship: 1.0, // Gemini 3 recommended default
+  first_officer: 1.0, // Same as flagship for consistency
+  fast_scout: 1.1, // Slightly higher for faster exploration
+  last_resort: 1.2, // Higher for fallback diversity
+  local: 0.7, // Local models (Ollama) - lower is OK
 } as const;
 
 // =============================================================================
@@ -225,9 +225,9 @@ export function clampTemperature(temp: number): number {
 export function calculatePassTemperature(
   baseTemp: number,
   passIndex: number,
-  maxTemp: number = TEMPERATURE_ADJUSTMENTS.max_adjusted_temp
+  maxTemp: number = TEMPERATURE_ADJUSTMENTS.max_adjusted_temp,
 ): number {
-  const adjusted = baseTemp + (passIndex * TEMPERATURE_ADJUSTMENTS.pass_increment);
+  const adjusted = baseTemp + passIndex * TEMPERATURE_ADJUSTMENTS.pass_increment;
   return Math.min(maxTemp, adjusted);
 }
 
@@ -240,8 +240,10 @@ export function calculatePassTemperature(
  * @returns Blended temperature value
  */
 export function blendTemperature(currentTemp: number, optimalTemp: number): number {
-  return (currentTemp * TEMPERATURE_ADJUSTMENTS.optimal_blend_current) +
-         (optimalTemp * TEMPERATURE_ADJUSTMENTS.optimal_blend_target);
+  return (
+    currentTemp * TEMPERATURE_ADJUSTMENTS.optimal_blend_current +
+    optimalTemp * TEMPERATURE_ADJUSTMENTS.optimal_blend_target
+  );
 }
 
 // =============================================================================

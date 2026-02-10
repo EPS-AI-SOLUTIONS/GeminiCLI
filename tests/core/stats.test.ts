@@ -2,16 +2,16 @@
  * Tests for Statistics & Metrics
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  RollingStats,
-  TimeSeriesMetrics,
   Counter,
   Gauge,
-  Histogram,
-  StatsCollector,
   getStatsCollector,
+  Histogram,
+  RollingStats,
   resetStatsCollector,
+  StatsCollector,
+  TimeSeriesMetrics,
 } from '../../src/core/stats.js';
 
 describe('RollingStats', () => {
@@ -110,7 +110,7 @@ describe('RollingStats', () => {
       stats.add(4);
       stats.add(6);
       // Mean = 4, variance = 2, stdDev ≈ 1.414
-      expect(stats.stdDev()).toBeCloseTo(1.414, 2);
+      expect(stats.stdDev()).toBeCloseTo(Math.SQRT2, 2);
     });
   });
 
@@ -345,8 +345,8 @@ describe('Counter', () => {
 
       const all = counter.getAll();
       expect(all.length).toBe(2);
-      expect(all.some(v => v.labels.provider === 'a' && v.value === 1)).toBe(true);
-      expect(all.some(v => v.labels.provider === 'b' && v.value === 2)).toBe(true);
+      expect(all.some((v) => v.labels.provider === 'a' && v.value === 1)).toBe(true);
+      expect(all.some((v) => v.labels.provider === 'b' && v.value === 2)).toBe(true);
     });
   });
 
@@ -466,9 +466,9 @@ describe('Histogram', () => {
 
   describe('observe', () => {
     it('should count observations in correct buckets', () => {
-      histogram.observe(5);   // <= 10
-      histogram.observe(30);  // <= 50
-      histogram.observe(75);  // <= 100
+      histogram.observe(5); // <= 10
+      histogram.observe(30); // <= 50
+      histogram.observe(75); // <= 100
       histogram.observe(200); // <= 500
       histogram.observe(1000); // > 500 (+Inf)
 
@@ -496,11 +496,11 @@ describe('Histogram', () => {
       const data = histogram.getData();
 
       // Find bucket <= 10
-      const bucket10 = data.buckets.find(b => b.le === 10);
+      const bucket10 = data.buckets.find((b) => b.le === 10);
       expect(bucket10?.count).toBe(2);
 
       // Find bucket <= 50 (cumulative, includes bucket 10)
-      const bucket50 = data.buckets.find(b => b.le === 50);
+      const bucket50 = data.buckets.find((b) => b.le === 50);
       expect(bucket50?.count).toBe(3);
     });
 
@@ -508,7 +508,7 @@ describe('Histogram', () => {
       histogram.observe(1000);
 
       const data = histogram.getData();
-      const infBucket = data.buckets.find(b => b.le === '+Inf');
+      const infBucket = data.buckets.find((b) => b.le === '+Inf');
 
       expect(infBucket).toBeDefined();
       expect(infBucket?.count).toBe(1);

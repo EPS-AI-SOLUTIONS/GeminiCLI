@@ -3,28 +3,25 @@
  * Message history endpoints
  */
 
-import { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync } from 'fastify';
 import { historyService } from '../services/index.js';
-import { validateHistoryLimit, validateSearchQuery } from '../validators/index.js';
-import type { HistoryResponse, ClearHistoryResponse, Message } from '../types/index.js';
 import type { HistoryQueryRequest } from '../types/fastify.js';
+import type { ClearHistoryResponse, HistoryResponse, Message } from '../types/index.js';
+import { validateHistoryLimit, validateSearchQuery } from '../validators/index.js';
 
 export const historyRoutes: FastifyPluginAsync = async (fastify) => {
   /**
    * GET /api/history
    * Get message history
    */
-  fastify.get<HistoryQueryRequest & { Reply: HistoryResponse }>(
-    '/history',
-    async (request) => {
-      const limit = validateHistoryLimit(request.query.limit);
+  fastify.get<HistoryQueryRequest & { Reply: HistoryResponse }>('/history', async (request) => {
+    const limit = validateHistoryLimit(request.query.limit);
 
-      return {
-        messages: historyService.getMessages(limit),
-        total: historyService.getCount(),
-      };
-    }
-  );
+    return {
+      messages: historyService.getMessages(limit),
+      total: historyService.getCount(),
+    };
+  });
 
   /**
    * DELETE /api/history

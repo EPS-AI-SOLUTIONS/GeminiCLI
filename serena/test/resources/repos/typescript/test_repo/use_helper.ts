@@ -1,8 +1,7 @@
-import {helperFunction} from "./index";
-
+import { helperFunction } from './index';
 
 export function useHelper() {
-    helperFunction();
+  helperFunction();
 }
 
 useHelper();

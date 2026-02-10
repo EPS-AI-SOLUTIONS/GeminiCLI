@@ -8,9 +8,9 @@
  * Part of DeveloperTools module refactoring.
  */
 
+import path from 'node:path';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import chalk from 'chalk';
-import path from 'path';
 import 'dotenv/config';
 import { GEMINI_MODELS } from '../../config/models.config.js';
 
@@ -38,7 +38,7 @@ export interface CodeReviewIssue {
 export interface CodeReviewResult {
   file: string;
   language: string;
-  score: number;  // 0-100
+  score: number; // 0-100
   issues: CodeReviewIssue[];
   summary: string;
   positives: string[];
@@ -108,7 +108,7 @@ export function detectLanguage(filename: string): string {
     '.kt': 'kotlin',
     '.sql': 'sql',
     '.sh': 'bash',
-    '.ps1': 'powershell'
+    '.ps1': 'powershell',
   };
   return langMap[ext] || 'unknown';
 }
@@ -127,21 +127,20 @@ export function detectLanguage(filename: string): string {
 export async function reviewCode(
   code: string,
   filename: string,
-  language?: string
+  language?: string,
 ): Promise<CodeReviewResult> {
   const detectedLanguage = language || detectLanguage(filename);
 
   console.log(chalk.cyan(`[CodeReview] Reviewing ${filename} (${detectedLanguage})...`));
 
-  const prompt = CODE_REVIEW_PROMPT
-    .replace('{filename}', filename)
+  const prompt = CODE_REVIEW_PROMPT.replace('{filename}', filename)
     .replace(/{language}/g, detectedLanguage)
     .replace('{code}', code);
 
   try {
     const model = genAI.getGenerativeModel({
       model: QUALITY_MODEL,
-      generationConfig: { temperature: 0.2, maxOutputTokens: 4096 }
+      generationConfig: { temperature: 0.2, maxOutputTokens: 4096 },
     });
 
     const result = await model.generateContent(prompt);
@@ -155,7 +154,9 @@ export async function reviewCode(
 
     const parsed = JSON.parse(jsonStr);
 
-    console.log(chalk.gray(`[CodeReview] Score: ${parsed.score}/100, Issues: ${parsed.issues?.length || 0}`));
+    console.log(
+      chalk.gray(`[CodeReview] Score: ${parsed.score}/100, Issues: ${parsed.issues?.length || 0}`),
+    );
 
     return {
       file: filename,
@@ -164,7 +165,7 @@ export async function reviewCode(
       issues: parsed.issues || [],
       summary: parsed.summary || 'Review completed',
       positives: parsed.positives || [],
-      recommendations: parsed.recommendations || []
+      recommendations: parsed.recommendations || [],
     };
   } catch (error: any) {
     console.log(chalk.yellow(`[CodeReview] Failed: ${error.message}`));
@@ -175,7 +176,7 @@ export async function reviewCode(
       issues: [],
       summary: `Review failed: ${error.message}`,
       positives: [],
-      recommendations: []
+      recommendations: [],
     };
   }
 }
@@ -189,8 +190,8 @@ export function formatCodeReview(review: CodeReviewResult): string {
   const lines: string[] = [];
 
   // Header
-  const scoreColor = review.score >= 80 ? chalk.green :
-                     review.score >= 60 ? chalk.yellow : chalk.red;
+  const scoreColor =
+    review.score >= 80 ? chalk.green : review.score >= 60 ? chalk.yellow : chalk.red;
   lines.push(chalk.cyan(`\n[CODE REVIEW] ${review.file}`));
   lines.push(scoreColor(`   Score: ${review.score}/100`));
   lines.push('');
@@ -200,13 +201,13 @@ export function formatCodeReview(review: CodeReviewResult): string {
   lines.push('');
 
   // Issues by severity
-  const criticalIssues = review.issues.filter(i => i.severity === 'critical');
-  const majorIssues = review.issues.filter(i => i.severity === 'major');
-  const minorIssues = review.issues.filter(i => i.severity === 'minor');
+  const criticalIssues = review.issues.filter((i) => i.severity === 'critical');
+  const majorIssues = review.issues.filter((i) => i.severity === 'major');
+  const minorIssues = review.issues.filter((i) => i.severity === 'minor');
 
   if (criticalIssues.length > 0) {
     lines.push(chalk.red('[!] CRITICAL ISSUES:'));
-    criticalIssues.forEach(i => {
+    criticalIssues.forEach((i) => {
       lines.push(`   Line ${i.line || '?'}: ${i.message}`);
       if (i.suggestion) lines.push(chalk.gray(`   -> ${i.suggestion}`));
     });
@@ -215,7 +216,7 @@ export function formatCodeReview(review: CodeReviewResult): string {
 
   if (majorIssues.length > 0) {
     lines.push(chalk.yellow('[*] MAJOR ISSUES:'));
-    majorIssues.forEach(i => {
+    majorIssues.forEach((i) => {
       lines.push(`   Line ${i.line || '?'}: ${i.message}`);
       if (i.suggestion) lines.push(chalk.gray(`   -> ${i.suggestion}`));
     });
@@ -224,7 +225,7 @@ export function formatCodeReview(review: CodeReviewResult): string {
 
   if (minorIssues.length > 0) {
     lines.push(chalk.blue('[i] MINOR ISSUES:'));
-    minorIssues.forEach(i => {
+    minorIssues.forEach((i) => {
       lines.push(`   Line ${i.line || '?'}: ${i.message}`);
     });
     lines.push('');
@@ -233,14 +234,14 @@ export function formatCodeReview(review: CodeReviewResult): string {
   // Positives
   if (review.positives.length > 0) {
     lines.push(chalk.green('[+] POSITIVES:'));
-    review.positives.forEach(p => lines.push(`   - ${p}`));
+    review.positives.forEach((p) => lines.push(`   - ${p}`));
     lines.push('');
   }
 
   // Recommendations
   if (review.recommendations.length > 0) {
     lines.push(chalk.cyan('[>] RECOMMENDATIONS:'));
-    review.recommendations.forEach(r => lines.push(`   - ${r}`));
+    review.recommendations.forEach((r) => lines.push(`   - ${r}`));
   }
 
   return lines.join('\n');
@@ -253,5 +254,5 @@ export function formatCodeReview(review: CodeReviewResult): string {
 export default {
   reviewCode,
   formatCodeReview,
-  detectLanguage
+  detectLanguage,
 };

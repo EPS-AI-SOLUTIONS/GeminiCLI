@@ -3,7 +3,7 @@
  * Standardized retry mechanism with exponential backoff
  */
 
-import type { RetryConfig, CircuitBreakerConfig } from '../types/provider.js';
+import type { CircuitBreakerConfig, RetryConfig } from '../types/provider.js';
 import { CircuitOpenError, TimeoutError } from './errors.js';
 
 /**
@@ -15,7 +15,7 @@ export const DEFAULT_RETRY_CONFIG: Required<RetryConfig> = {
   maxDelay: 30000,
   backoffMultiplier: 2,
   jitter: true,
-  retryableErrors: []
+  retryableErrors: [],
 };
 
 /**
@@ -25,7 +25,7 @@ export const DEFAULT_CIRCUIT_BREAKER_CONFIG: Required<CircuitBreakerConfig> = {
   failureThreshold: 5,
   successThreshold: 2,
   timeout: 30000,
-  halfOpenMaxCalls: 3
+  halfOpenMaxCalls: 3,
 };
 
 /**
@@ -40,7 +40,7 @@ export const RETRYABLE_ERROR_CODES = [
   'ENETUNREACH',
   'EAI_AGAIN',
   'AbortError',
-  'TimeoutError'
+  'TimeoutError',
 ];
 
 /**
@@ -97,7 +97,7 @@ export function isRetryableError(error: unknown, options: Partial<RetryOptions> 
   }
 
   // Check for timeout
-  if (error.message && error.message.toLowerCase().includes('timeout')) {
+  if (error.message?.toLowerCase().includes('timeout')) {
     return true;
   }
 
@@ -107,12 +107,14 @@ export function isRetryableError(error: unknown, options: Partial<RetryOptions> 
     return true;
   }
 
-  // Check for rate limiting
-  if (error.message && (
-    error.message.includes('rate limit') ||
-    error.message.includes('too many requests') ||
-    error.message.includes('429')
-  )) {
+  // Check for rate limiting (#24: added RESOURCE_EXHAUSTED for Gemini gRPC errors)
+  if (
+    error.message &&
+    (error.message.includes('rate limit') ||
+      error.message.includes('too many requests') ||
+      error.message.includes('429') ||
+      error.message.includes('RESOURCE_EXHAUSTED'))
+  ) {
     return true;
   }
 
@@ -127,7 +129,7 @@ export function calculateDelay(attempt: number, options: Partial<RetryConfig> = 
   const { baseDelay, maxDelay, backoffMultiplier, jitter } = config;
 
   // Calculate exponential delay
-  let delay = baseDelay * Math.pow(backoffMultiplier, attempt);
+  let delay = baseDelay * backoffMultiplier ** attempt;
 
   // Apply jitter (random factor between 0.5 and 1.5)
   if (jitter) {
@@ -143,7 +145,7 @@ export function calculateDelay(attempt: number, options: Partial<RetryConfig> = 
  * Sleep for specified duration
  */
 export function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -151,7 +153,7 @@ export function sleep(ms: number): Promise<void> {
  */
 export async function withRetry<T>(
   fn: () => Promise<T>,
-  options: Partial<RetryOptions> = {}
+  options: Partial<RetryOptions> = {},
 ): Promise<T> {
   const config = { ...DEFAULT_RETRY_CONFIG, ...options };
   const { maxRetries, onRetry } = config;
@@ -179,7 +181,7 @@ export async function withRetry<T>(
           maxRetries,
           error: lastError,
           delay,
-          willRetry: true
+          willRetry: true,
         });
       }
 
@@ -196,7 +198,7 @@ export async function withRetry<T>(
  */
 export function createRetryable<T>(
   fn: () => Promise<T>,
-  options: Partial<RetryOptions> = {}
+  options: Partial<RetryOptions> = {},
 ): (overrides?: Partial<RetryOptions>) => Promise<T> {
   return (overrides = {}) => withRetry(fn, { ...options, ...overrides });
 }
@@ -207,7 +209,7 @@ export function createRetryable<T>(
 export async function withTimeout<T>(
   fn: () => Promise<T>,
   timeoutMs: number,
-  message = 'Operation timed out'
+  message = 'Operation timed out',
 ): Promise<T> {
   let timer: ReturnType<typeof setTimeout>;
   try {
@@ -215,7 +217,7 @@ export async function withTimeout<T>(
       fn(),
       new Promise<never>((_, reject) => {
         timer = setTimeout(() => reject(new TimeoutError(message, timeoutMs)), timeoutMs);
-      })
+      }),
     ]);
   } finally {
     clearTimeout(timer!);
@@ -228,12 +230,9 @@ export async function withTimeout<T>(
 export async function withRetryAndTimeout<T>(
   fn: () => Promise<T>,
   timeoutMs: number,
-  retryOptions: Partial<RetryOptions> = {}
+  retryOptions: Partial<RetryOptions> = {},
 ): Promise<T> {
-  return withRetry(
-    () => withTimeout(fn, timeoutMs),
-    retryOptions
-  );
+  return withRetry(() => withTimeout(fn, timeoutMs), retryOptions);
 }
 
 // ============================================================================
@@ -281,10 +280,7 @@ export class CircuitBreaker {
     // Check if circuit is open
     if (this.state === 'open') {
       if (this.nextAttemptAt && Date.now() < this.nextAttemptAt.getTime()) {
-        throw new CircuitOpenError(
-          `Circuit breaker is OPEN`,
-          this.nextAttemptAt
-        );
+        throw new CircuitOpenError(`Circuit breaker is OPEN`, this.nextAttemptAt);
       }
       // Move to half-open state
       this.state = 'half-open';
@@ -297,7 +293,7 @@ export class CircuitBreaker {
       if (this.halfOpenCalls >= this.config.halfOpenMaxCalls) {
         throw new CircuitOpenError(
           'Circuit breaker half-open call limit reached',
-          this.nextAttemptAt ?? undefined
+          this.nextAttemptAt ?? undefined,
         );
       }
       this.halfOpenCalls++;
@@ -396,7 +392,7 @@ export class CircuitBreaker {
       successCount: this.successCount,
       lastFailureTime: this.lastFailureTime,
       nextAttemptAt: this.nextAttemptAt,
-      halfOpenCalls: this.halfOpenCalls
+      halfOpenCalls: this.halfOpenCalls,
     };
   }
 }

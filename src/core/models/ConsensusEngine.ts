@@ -5,7 +5,7 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import 'dotenv/config';
-import { scoreResponseQuality, ExpectedResponseType } from './QualityScoring.js';
+import { type ExpectedResponseType, scoreResponseQuality } from './QualityScoring.js';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -18,12 +18,12 @@ export interface ConsensusResult {
 export async function getConsensus(
   prompt: string,
   models: string[] = ['gemini-3-pro-preview'],
-  expectedType: ExpectedResponseType = 'text'
+  expectedType: ExpectedResponseType = 'text',
 ): Promise<ConsensusResult> {
   const responses: Array<{ model: string; response: string; score: number }> = [];
 
   // Query all models in parallel
-  const promises = models.map(async modelName => {
+  const promises = models.map(async (modelName) => {
     try {
       const model = genAI.getGenerativeModel({ model: modelName });
       const result = await model.generateContent(prompt);
@@ -31,13 +31,13 @@ export async function getConsensus(
       const quality = scoreResponseQuality(response, expectedType);
 
       return { model: modelName, response, score: quality.overall };
-    } catch (error) {
+    } catch (_error) {
       return { model: modelName, response: '', score: 0 };
     }
   });
 
   const results = await Promise.all(promises);
-  responses.push(...results.filter(r => r.response.length > 0));
+  responses.push(...results.filter((r) => r.response.length > 0));
 
   // Select best response
   responses.sort((a, b) => b.score - a.score);
@@ -50,6 +50,6 @@ export async function getConsensus(
   return {
     selectedResponse: best.response,
     responses,
-    confidence
+    confidence,
   };
 }

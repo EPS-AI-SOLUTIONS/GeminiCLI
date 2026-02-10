@@ -2,10 +2,10 @@
  * Header Component Tests
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Header } from '../../../src/components/layout/Header';
-import { QueryWrapper, mockUseHealthCheck } from '../../mocks/query';
+import { mockUseHealthCheck, QueryWrapper } from '../../mocks/query';
 
 // Mock the useApi hook
 vi.mock('../../../src/hooks/useApi', () => ({
@@ -18,13 +18,15 @@ const renderHeader = (props = {}) => {
   return render(
     <QueryWrapper>
       <Header title="Test Title" {...props} />
-    </QueryWrapper>
+    </QueryWrapper>,
   );
 };
 
 describe('Header', () => {
   beforeEach(() => {
-    vi.mocked(useHealthCheck).mockReturnValue(mockUseHealthCheck() as ReturnType<typeof useHealthCheck>);
+    vi.mocked(useHealthCheck).mockReturnValue(
+      mockUseHealthCheck() as ReturnType<typeof useHealthCheck>,
+    );
   });
 
   describe('rendering', () => {
@@ -46,11 +48,13 @@ describe('Header', () => {
 
   describe('health status - connected', () => {
     beforeEach(() => {
-      vi.mocked(useHealthCheck).mockReturnValue(mockUseHealthCheck({
-        data: { status: 'ok', version: '16.0.0' },
-        isError: false,
-        isFetching: false,
-      }) as ReturnType<typeof useHealthCheck>);
+      vi.mocked(useHealthCheck).mockReturnValue(
+        mockUseHealthCheck({
+          data: { status: 'ok', version: '16.0.0' },
+          isError: false,
+          isFetching: false,
+        }) as ReturnType<typeof useHealthCheck>,
+      );
     });
 
     it('shows connected status', () => {
@@ -66,11 +70,13 @@ describe('Header', () => {
 
   describe('health status - disconnected', () => {
     beforeEach(() => {
-      vi.mocked(useHealthCheck).mockReturnValue(mockUseHealthCheck({
-        data: undefined,
-        isError: true,
-        isFetching: false,
-      }) as ReturnType<typeof useHealthCheck>);
+      vi.mocked(useHealthCheck).mockReturnValue(
+        mockUseHealthCheck({
+          data: undefined,
+          isError: true,
+          isFetching: false,
+        }) as ReturnType<typeof useHealthCheck>,
+      );
     });
 
     it('shows disconnected status', () => {
@@ -86,11 +92,13 @@ describe('Header', () => {
 
   describe('health status - fetching', () => {
     beforeEach(() => {
-      vi.mocked(useHealthCheck).mockReturnValue(mockUseHealthCheck({
-        data: undefined,
-        isError: false,
-        isFetching: true,
-      }) as ReturnType<typeof useHealthCheck>);
+      vi.mocked(useHealthCheck).mockReturnValue(
+        mockUseHealthCheck({
+          data: undefined,
+          isError: false,
+          isFetching: true,
+        }) as ReturnType<typeof useHealthCheck>,
+      );
     });
 
     it('shows loading status', () => {

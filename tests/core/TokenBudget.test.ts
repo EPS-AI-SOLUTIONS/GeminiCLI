@@ -3,12 +3,8 @@
  * Testy zarządzania budżetem tokenów: tracking, limity, ostrzeżenia
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import {
-  TokenBudgetManager,
-  type BudgetConfig,
-  type TokenUsage,
-} from '../../src/core/TokenBudget.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { TokenBudgetManager } from '../../src/core/TokenBudget.js';
 
 // Mock moduly zewnetrzne
 vi.mock('chalk', () => ({
@@ -101,7 +97,7 @@ describe('TokenBudgetManager', () => {
       // Task limit = 2000, warning at 80% = 1600
       manager.track('task-1', { input: 900, output: 800, total: 1700 });
 
-      const taskWarnings = warningCalls.filter(c => c.type === 'task');
+      const taskWarnings = warningCalls.filter((c) => c.type === 'task');
       expect(taskWarnings.length).toBeGreaterThan(0);
     });
 
@@ -109,7 +105,7 @@ describe('TokenBudgetManager', () => {
       // Task limit = 2000
       manager.track('task-1', { input: 1500, output: 600, total: 2100 });
 
-      const taskLimits = limitReachedCalls.filter(c => c.type === 'task');
+      const taskLimits = limitReachedCalls.filter((c) => c.type === 'task');
       expect(taskLimits.length).toBeGreaterThan(0);
     });
 
@@ -117,7 +113,7 @@ describe('TokenBudgetManager', () => {
       // Session limit = 5000
       manager.track('task-1', { input: 3000, output: 2500, total: 5500 });
 
-      const sessionLimits = limitReachedCalls.filter(c => c.type === 'session');
+      const sessionLimits = limitReachedCalls.filter((c) => c.type === 'session');
       expect(sessionLimits.length).toBeGreaterThan(0);
     });
 
@@ -125,7 +121,7 @@ describe('TokenBudgetManager', () => {
       // Daily limit = 10000
       manager.track('task-1', { input: 6000, output: 5000, total: 11000 });
 
-      const dailyLimits = limitReachedCalls.filter(c => c.type === 'daily');
+      const dailyLimits = limitReachedCalls.filter((c) => c.type === 'daily');
       expect(dailyLimits.length).toBeGreaterThan(0);
     });
   });
@@ -256,7 +252,7 @@ describe('TokenBudgetManager', () => {
       manager.track('task-big', { input: 3000, output: 1500, total: 4500 });
 
       // Nie powinno byc limit reached dla taska (4500 < 5000)
-      const taskLimits = limitReachedCalls.filter(c => c.type === 'task');
+      const taskLimits = limitReachedCalls.filter((c) => c.type === 'task');
       expect(taskLimits.length).toBe(0);
     });
   });

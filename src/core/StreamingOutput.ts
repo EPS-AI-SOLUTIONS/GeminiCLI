@@ -23,7 +23,7 @@ export interface StreamingOptions {
  */
 export async function streamGeminiResponse(
   prompt: string,
-  options: StreamingOptions = {}
+  options: StreamingOptions = {},
 ): Promise<string> {
   const {
     model = 'gemini-3-pro-preview',
@@ -31,7 +31,7 @@ export async function streamGeminiResponse(
     maxTokens = 4096,
     onToken = (t) => process.stdout.write(t),
     onComplete = () => {},
-    onError = (e) => console.error(chalk.red(e.message))
+    onError = (e) => console.error(chalk.red(e.message)),
   } = options;
 
   try {
@@ -39,8 +39,8 @@ export async function streamGeminiResponse(
       model,
       generationConfig: {
         temperature,
-        maxOutputTokens: maxTokens
-      }
+        maxOutputTokens: maxTokens,
+      },
     });
 
     const result = await geminiModel.generateContentStream(prompt);
@@ -55,7 +55,6 @@ export async function streamGeminiResponse(
 
     onComplete(fullText);
     return fullText;
-
   } catch (error: any) {
     onError(error);
     throw error;
@@ -67,7 +66,7 @@ export async function streamGeminiResponse(
  */
 export async function streamWithFallback(
   prompt: string,
-  options: StreamingOptions = {}
+  options: StreamingOptions = {},
 ): Promise<string> {
   // Check if stdout is TTY (interactive terminal)
   if (process.stdout.isTTY) {
@@ -75,7 +74,7 @@ export async function streamWithFallback(
   } else {
     // Non-TTY: collect and return at once
     const geminiModel = genAI.getGenerativeModel({
-      model: options.model || 'gemini-3-pro-preview'
+      model: options.model || 'gemini-3-pro-preview',
     });
     const result = await geminiModel.generateContent(prompt);
     return result.response.text();
@@ -93,10 +92,7 @@ export class StreamingChat {
     this.model = genAI.getGenerativeModel({ model: modelName });
   }
 
-  async sendStreaming(
-    message: string,
-    onToken: (token: string) => void
-  ): Promise<string> {
+  async sendStreaming(message: string, onToken: (token: string) => void): Promise<string> {
     const chat = this.model.startChat({ history: this.history });
 
     const result = await chat.sendMessageStream(message);
@@ -123,5 +119,5 @@ export class StreamingChat {
 export default {
   streamGeminiResponse,
   streamWithFallback,
-  StreamingChat
+  StreamingChat,
 };

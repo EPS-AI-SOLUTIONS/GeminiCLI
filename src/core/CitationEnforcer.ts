@@ -32,7 +32,7 @@ export interface EnforcementResult {
   addedCitations: string[];
   warnings: string[];
   hallucinations: HallucinationDetail[];
-  citationCoverage: number;  // 0-100 percentage
+  citationCoverage: number; // 0-100 percentage
 }
 
 /**
@@ -60,20 +60,20 @@ interface ExtractedClaim {
  * Types of claims that require citations
  */
 type ClaimType =
-  | 'file_reference'      // References to specific files
-  | 'code_result'         // Results about code analysis
-  | 'modification'        // Claims about modifications made
-  | 'error_report'        // Error/issue reports
-  | 'command_execution'   // Shell command results
-  | 'analysis_result'     // Analysis findings
-  | 'general_claim';      // Other claims
+  | 'file_reference' // References to specific files
+  | 'code_result' // Results about code analysis
+  | 'modification' // Claims about modifications made
+  | 'error_report' // Error/issue reports
+  | 'command_execution' // Shell command results
+  | 'analysis_result' // Analysis findings
+  | 'general_claim'; // Other claims
 
 /**
  * Citation match result
  */
 interface CitationMatch {
   taskId: number;
-  confidence: number;  // 0-1
+  confidence: number; // 0-1
   matchedContent: string;
 }
 
@@ -85,11 +85,11 @@ interface CitationMatch {
  * Citation format patterns - supports both Polish and English
  */
 const CITATION_PATTERNS = [
-  /\[Zadanie\s*#?(\d+)\]/gi,    // [Zadanie #1] or [Zadanie 1]
-  /\[Task\s*#?(\d+)\]/gi,       // [Task #1] or [Task 1]
-  /\(Zadanie\s*#?(\d+)\)/gi,    // (Zadanie #1)
-  /\(Task\s*#?(\d+)\)/gi,       // (Task #1)
-  /\[#(\d+)\]/g,                 // [#1] short form
+  /\[Zadanie\s*#?(\d+)\]/gi, // [Zadanie #1] or [Zadanie 1]
+  /\[Task\s*#?(\d+)\]/gi, // [Task #1] or [Task 1]
+  /\(Zadanie\s*#?(\d+)\)/gi, // (Zadanie #1)
+  /\(Task\s*#?(\d+)\)/gi, // (Task #1)
+  /\[#(\d+)\]/g, // [#1] short form
 ];
 
 /**
@@ -98,88 +98,119 @@ const CITATION_PATTERNS = [
 const CLAIM_PATTERNS: { pattern: RegExp; type: ClaimType; requiresCitation: boolean }[] = [
   // File references
   {
-    pattern: /(?:plik|file|w pliku|in file)\s+["`']?[\w\/\.-]+\.\w+["`']?/gi,
+    pattern: /(?:plik|file|w pliku|in file)\s+["`']?[\w/.-]+\.\w+["`']?/gi,
     type: 'file_reference',
-    requiresCitation: true
+    requiresCitation: true,
   },
   {
-    pattern: /(?:src|lib|app|components|services|utils?)\/[\w\/-]+\.\w+/g,
+    pattern: /(?:src|lib|app|components|services|utils?)\/[\w/-]+\.\w+/g,
     type: 'file_reference',
-    requiresCitation: true
+    requiresCitation: true,
   },
 
   // Modifications
   {
-    pattern: /(?:zmodyfikowano|dodano|usuni(?:eto|to)|naprawiono|zmieniono|utworzono|zaktualizowano)/gi,
+    pattern:
+      /(?:zmodyfikowano|dodano|usuni(?:eto|to)|naprawiono|zmieniono|utworzono|zaktualizowano)/gi,
     type: 'modification',
-    requiresCitation: true
+    requiresCitation: true,
   },
   {
-    pattern: /(?:modified|added|removed|deleted|fixed|changed|created|updated)\s+(?:the\s+)?(?:file|function|class|component|module)/gi,
+    pattern:
+      /(?:modified|added|removed|deleted|fixed|changed|created|updated)\s+(?:the\s+)?(?:file|function|class|component|module)/gi,
     type: 'modification',
-    requiresCitation: true
+    requiresCitation: true,
   },
 
   // Code results
   {
-    pattern: /(?:funkcja|function|metoda|method|klasa|class|interfejs|interface|komponent|component)\s+["`']?\w+["`']?/gi,
+    pattern:
+      /(?:funkcja|function|metoda|method|klasa|class|interfejs|interface|komponent|component)\s+["`']?\w+["`']?/gi,
     type: 'code_result',
-    requiresCitation: true
+    requiresCitation: true,
   },
   {
     pattern: /(?:implementuje|implements|rozszerza|extends|eksportuje|exports)\s+\w+/gi,
     type: 'code_result',
-    requiresCitation: true
+    requiresCitation: true,
   },
 
   // Error reports
   {
     pattern: /(?:b(?:l|ł)(?:a|ą)d|error|warning|ostrze(?:z|ż)enie|problem|issue)\s*:?\s*.{10,80}/gi,
     type: 'error_report',
-    requiresCitation: true
+    requiresCitation: true,
   },
   {
     pattern: /(?:nie uda(?:lo|ło) si(?:e|ę)|failed to|couldn't|unable to|cannot)/gi,
     type: 'error_report',
-    requiresCitation: true
+    requiresCitation: true,
   },
 
   // Command execution
   {
     pattern: /(?:wykonano|executed|ran|uruchomiono)\s+(?:komend(?:e|ę)|command|polecenie)/gi,
     type: 'command_execution',
-    requiresCitation: true
+    requiresCitation: true,
   },
   {
     pattern: /\$\s*\w+|npm\s+\w+|git\s+\w+|pnpm\s+\w+|yarn\s+\w+/g,
     type: 'command_execution',
-    requiresCitation: true
+    requiresCitation: true,
   },
 
   // Analysis results
   {
     pattern: /(?:analiza|analysis|wynik|result|znaleziono|found)\s*:?\s*.{10,60}/gi,
     type: 'analysis_result',
-    requiresCitation: true
+    requiresCitation: true,
   },
   {
     pattern: /(?:zawiera|contains|sk(?:l|ł)ada si(?:e|ę) z|consists of|includes)\s+\d+\s+\w+/gi,
     type: 'analysis_result',
-    requiresCitation: true
-  }
+    requiresCitation: true,
+  },
 ];
 
 /**
  * Patterns that indicate hallucinated content
  */
 const HALLUCINATION_INDICATORS = [
-  { pattern: /(?:file|plik)\d+\.(ts|js|tsx|jsx)/gi, reason: 'Generic numbered filename', severity: 'high' as const },
-  { pattern: /(?:Class|Component|Service|Handler|Module)\d+/g, reason: 'Generic numbered class name', severity: 'high' as const },
-  { pattern: /\/path\/to\/|C:\\path\\to\\/gi, reason: 'Template file path', severity: 'critical' as const },
-  { pattern: /example\.(?:ts|js|tsx|jsx)/gi, reason: 'Example filename', severity: 'medium' as const },
-  { pattern: /foo|bar|baz|qux/gi, reason: 'Placeholder variable name', severity: 'medium' as const },
-  { pattern: /\[TODO\]|\[PLACEHOLDER\]|\[INSERT\]/gi, reason: 'Placeholder marker', severity: 'critical' as const },
-  { pattern: /(?:somewhere|gdzies|jakis plik|some file)/gi, reason: 'Vague location reference', severity: 'medium' as const }
+  {
+    pattern: /(?:file|plik)\d+\.(ts|js|tsx|jsx)/gi,
+    reason: 'Generic numbered filename',
+    severity: 'high' as const,
+  },
+  {
+    pattern: /(?:Class|Component|Service|Handler|Module)\d+/g,
+    reason: 'Generic numbered class name',
+    severity: 'high' as const,
+  },
+  {
+    pattern: /\/path\/to\/|C:\\path\\to\\/gi,
+    reason: 'Template file path',
+    severity: 'critical' as const,
+  },
+  {
+    pattern: /example\.(?:ts|js|tsx|jsx)/gi,
+    reason: 'Example filename',
+    severity: 'medium' as const,
+  },
+  {
+    pattern: /foo|bar|baz|qux/gi,
+    reason: 'Placeholder variable name',
+    severity: 'medium' as const,
+  },
+  {
+    pattern: /\[TODO\]|\[PLACEHOLDER\]|\[INSERT\]/gi,
+    reason: 'Placeholder marker',
+    severity: 'critical' as const,
+  },
+  {
+    pattern: /(?:somewhere|gdzies|jakis plik|some file)/gi,
+    reason: 'Vague location reference',
+    severity: 'medium' as const,
+  },
 ];
 
 // =============================================================================
@@ -212,8 +243,8 @@ export class CitationEnforcer {
     const claims = this.extractClaims(report);
 
     // Separate cited and uncited claims
-    const citedClaims = claims.filter(c => c.hasCitation);
-    const uncitedClaims = claims.filter(c => !c.hasCitation);
+    const citedClaims = claims.filter((c) => c.hasCitation);
+    const uncitedClaims = claims.filter((c) => !c.hasCitation);
 
     // Detect hallucinations
     const hallucinations = this.detectHallucinations(report, availableSources);
@@ -225,15 +256,16 @@ export class CitationEnforcer {
     const addedCitations: string[] = [];
 
     // Calculate coverage
-    const totalRequiringCitation = claims.filter(c =>
-      CLAIM_PATTERNS.find(p => p.type === c.type)?.requiresCitation
+    const totalRequiringCitation = claims.filter(
+      (c) => CLAIM_PATTERNS.find((p) => p.type === c.type)?.requiresCitation,
     ).length;
-    const citationCoverage = totalRequiringCitation > 0
-      ? Math.round((citedClaims.length / totalRequiringCitation) * 100)
-      : 100;
+    const citationCoverage =
+      totalRequiringCitation > 0
+        ? Math.round((citedClaims.length / totalRequiringCitation) * 100)
+        : 100;
 
     // Determine validity
-    const hasCriticalHallucinations = hallucinations.some(h => h.severity === 'critical');
+    const hasCriticalHallucinations = hallucinations.some((h) => h.severity === 'critical');
     const valid = !hasCriticalHallucinations && citationCoverage >= 50 && hallucinations.length < 5;
 
     const duration = Date.now() - startTime;
@@ -252,7 +284,7 @@ export class CitationEnforcer {
       addedCitations,
       warnings,
       hallucinations,
-      citationCoverage
+      citationCoverage,
     };
   }
 
@@ -264,7 +296,7 @@ export class CitationEnforcer {
       return report;
     }
 
-    let enhancedReport = report;
+    const _enhancedReport = report;
     const lines = report.split('\n');
     const modifications: { lineNumber: number; originalLine: string; newLine: string }[] = [];
 
@@ -294,7 +326,7 @@ export class CitationEnforcer {
             modifications.push({
               lineNumber: i,
               originalLine: line,
-              newLine
+              newLine,
             });
           }
         }
@@ -350,14 +382,16 @@ export class CitationEnforcer {
 
         // Check if there's a citation near this claim
         const hasCitation = this.checkCitationNearby(line, match.index);
-        const citationTaskId = hasCitation ? this.extractCitationTaskId(line, match.index) : undefined;
+        const citationTaskId = hasCitation
+          ? this.extractCitationTaskId(line, match.index)
+          : undefined;
 
         claims.push({
           text,
           lineNumber,
           type,
           hasCitation,
-          citationTaskId
+          citationTaskId,
         });
       }
     }
@@ -369,7 +403,7 @@ export class CitationEnforcer {
    * Check if a line has any citation
    */
   private lineHasCitation(line: string): boolean {
-    return CITATION_PATTERNS.some(pattern => {
+    return CITATION_PATTERNS.some((pattern) => {
       pattern.lastIndex = 0;
       return pattern.test(line);
     });
@@ -382,7 +416,7 @@ export class CitationEnforcer {
     // Look for citation within 100 chars after the position
     const searchArea = line.substring(position, position + 100);
 
-    return CITATION_PATTERNS.some(pattern => {
+    return CITATION_PATTERNS.some((pattern) => {
       pattern.lastIndex = 0;
       return pattern.test(searchArea);
     });
@@ -397,7 +431,7 @@ export class CitationEnforcer {
     for (const pattern of CITATION_PATTERNS) {
       pattern.lastIndex = 0;
       const match = pattern.exec(searchArea);
-      if (match && match[1]) {
+      if (match?.[1]) {
         return parseInt(match[1], 10);
       }
     }
@@ -413,9 +447,7 @@ export class CitationEnforcer {
     const lines = report.split('\n');
 
     // Create searchable source content
-    const sourceContent = sources
-      .map(s => s.content.toLowerCase())
-      .join('\n');
+    const sourceContent = sources.map((s) => s.content.toLowerCase()).join('\n');
 
     // Check for hallucination indicator patterns
     for (let i = 0; i < lines.length; i++) {
@@ -430,14 +462,14 @@ export class CitationEnforcer {
             claim: match[0],
             location: `Line ${i + 1}`,
             reason: indicator.reason,
-            severity: indicator.severity
+            severity: indicator.severity,
           });
         }
       }
     }
 
     // Check for file references that don't exist in sources
-    const filePattern = /(?:src|lib|app|components|services|utils?)\/[\w\/-]+\.\w+/g;
+    const filePattern = /(?:src|lib|app|components|services|utils?)\/[\w/-]+\.\w+/g;
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       filePattern.lastIndex = 0;
@@ -455,7 +487,7 @@ export class CitationEnforcer {
               claim: match[0],
               location: `Line ${i + 1}`,
               reason: 'File not found in agent results',
-              severity: 'high'
+              severity: 'high',
             });
           }
         }
@@ -512,8 +544,8 @@ export class CitationEnforcer {
         confidence = 1.0;
       } else {
         // Word-based matching
-        const claimWords = claimLower.split(/\s+/).filter(w => w.length > 3);
-        const matchedWords = claimWords.filter(word => sourceLower.includes(word));
+        const claimWords = claimLower.split(/\s+/).filter((w) => w.length > 3);
+        const matchedWords = claimWords.filter((word) => sourceLower.includes(word));
 
         if (claimWords.length > 0) {
           confidence = matchedWords.length / claimWords.length;
@@ -525,7 +557,7 @@ export class CitationEnforcer {
         bestMatch = {
           taskId: source.taskId,
           confidence,
-          matchedContent: claim
+          matchedContent: claim,
         };
       }
     }
@@ -544,7 +576,12 @@ export class CitationEnforcer {
 
     // Check if there's already a citation right after
     const afterClaim = line.substring(endIndex, endIndex + 20);
-    if (CITATION_PATTERNS.some(p => { p.lastIndex = 0; return p.test(afterClaim); })) {
+    if (
+      CITATION_PATTERNS.some((p) => {
+        p.lastIndex = 0;
+        return p.test(afterClaim);
+      })
+    ) {
       return line;
     }
 
@@ -557,49 +594,51 @@ export class CitationEnforcer {
   private generateWarnings(
     claims: ExtractedClaim[],
     hallucinations: HallucinationDetail[],
-    sources: Source[]
+    sources: Source[],
   ): string[] {
     const warnings: string[] = [];
 
     // Warning for low citation coverage
-    const citableClaiims = claims.filter(c =>
-      CLAIM_PATTERNS.find(p => p.type === c.type)?.requiresCitation
+    const citableClaiims = claims.filter(
+      (c) => CLAIM_PATTERNS.find((p) => p.type === c.type)?.requiresCitation,
     );
-    const citedCount = citableClaiims.filter(c => c.hasCitation).length;
-    const coverage = citableClaiims.length > 0
-      ? (citedCount / citableClaiims.length) * 100
-      : 100;
+    const citedCount = citableClaiims.filter((c) => c.hasCitation).length;
+    const coverage = citableClaiims.length > 0 ? (citedCount / citableClaiims.length) * 100 : 100;
 
     if (coverage < 30) {
-      warnings.push(`Niskie pokrycie cytatami: ${coverage.toFixed(0)}% twierdzeń ma cytaty [Zadanie #X]`);
+      warnings.push(
+        `Niskie pokrycie cytatami: ${coverage.toFixed(0)}% twierdzeń ma cytaty [Zadanie #X]`,
+      );
     } else if (coverage < 60) {
-      warnings.push(`Umiarkowane pokrycie cytatami: ${coverage.toFixed(0)}% - rozważ dodanie więcej cytatów`);
+      warnings.push(
+        `Umiarkowane pokrycie cytatami: ${coverage.toFixed(0)}% - rozważ dodanie więcej cytatów`,
+      );
     }
 
     // Warning for hallucinations
-    const criticalHallucinations = hallucinations.filter(h => h.severity === 'critical');
-    const highHallucinations = hallucinations.filter(h => h.severity === 'high');
+    const criticalHallucinations = hallucinations.filter((h) => h.severity === 'critical');
+    const highHallucinations = hallucinations.filter((h) => h.severity === 'high');
 
     if (criticalHallucinations.length > 0) {
-      warnings.push(`KRYTYCZNE: ${criticalHallucinations.length} potencjalnych halucynacji wymagających natychmiastowej korekty`);
+      warnings.push(
+        `KRYTYCZNE: ${criticalHallucinations.length} potencjalnych halucynacji wymagających natychmiastowej korekty`,
+      );
     }
 
     if (highHallucinations.length > 0) {
-      warnings.push(`WYSOKIE: ${highHallucinations.length} podejrzanych twierdzeń niepotwierdzonych w źródłach`);
+      warnings.push(
+        `WYSOKIE: ${highHallucinations.length} podejrzanych twierdzeń niepotwierdzonych w źródłach`,
+      );
     }
 
     // Warning for uncited file references
-    const uncitedFiles = claims.filter(c =>
-      c.type === 'file_reference' && !c.hasCitation
-    );
+    const uncitedFiles = claims.filter((c) => c.type === 'file_reference' && !c.hasCitation);
     if (uncitedFiles.length > 3) {
       warnings.push(`${uncitedFiles.length} odniesień do plików bez cytatu źródłowego`);
     }
 
     // Warning for uncited modifications
-    const uncitedMods = claims.filter(c =>
-      c.type === 'modification' && !c.hasCitation
-    );
+    const uncitedMods = claims.filter((c) => c.type === 'modification' && !c.hasCitation);
     if (uncitedMods.length > 0) {
       warnings.push(`${uncitedMods.length} twierdzeń o modyfikacjach bez cytatu źródłowego`);
     }
@@ -619,7 +658,7 @@ export class CitationEnforcer {
     const statusColor = result.valid ? chalk.green : chalk.red;
     const statusText = result.valid ? 'VALID' : 'NEEDS CORRECTION';
 
-    console.log(chalk.cyan('\n' + '='.repeat(60)));
+    console.log(chalk.cyan(`\n${'='.repeat(60)}`));
     console.log(chalk.cyan('  CITATION ENFORCEMENT RESULTS'));
     console.log(chalk.cyan('='.repeat(60)));
 
@@ -631,9 +670,9 @@ export class CitationEnforcer {
     if (result.hallucinations.length > 0) {
       console.log(chalk.yellow(`\nHallucinations Detected: ${result.hallucinations.length}`));
 
-      const critical = result.hallucinations.filter(h => h.severity === 'critical');
-      const high = result.hallucinations.filter(h => h.severity === 'high');
-      const medium = result.hallucinations.filter(h => h.severity === 'medium');
+      const critical = result.hallucinations.filter((h) => h.severity === 'critical');
+      const high = result.hallucinations.filter((h) => h.severity === 'high');
+      const medium = result.hallucinations.filter((h) => h.severity === 'medium');
 
       if (critical.length > 0) {
         console.log(chalk.red(`  CRITICAL (${critical.length}):`));
@@ -668,25 +707,28 @@ export class CitationEnforcer {
       console.log(chalk.green(`\nCitations Added: ${result.addedCitations.length}`));
     }
 
-    console.log(chalk.cyan('\n' + '='.repeat(60)));
+    console.log(chalk.cyan(`\n${'='.repeat(60)}`));
   }
 
   /**
    * Validate a single claim against sources
    */
-  validateClaim(claim: string, sources: Source[]): { valid: boolean; matchedSource?: Source; confidence: number } {
+  validateClaim(
+    claim: string,
+    sources: Source[],
+  ): { valid: boolean; matchedSource?: Source; confidence: number } {
     const match = this.findBestSourceMatch(claim, sources);
 
     if (!match) {
       return { valid: false, confidence: 0 };
     }
 
-    const matchedSource = sources.find(s => s.taskId === match.taskId);
+    const matchedSource = sources.find((s) => s.taskId === match.taskId);
 
     return {
       valid: match.confidence >= 0.5,
       matchedSource,
-      confidence: match.confidence
+      confidence: match.confidence,
     };
   }
 
@@ -698,7 +740,7 @@ export class CitationEnforcer {
       `Citation Coverage: ${result.citationCoverage}%`,
       `Claims: ${result.citedClaims} cited, ${result.uncitedClaims} uncited`,
       `Hallucinations: ${result.hallucinations.length} detected`,
-      `Status: ${result.valid ? 'VALID' : 'NEEDS CORRECTION'}`
+      `Status: ${result.valid ? 'VALID' : 'NEEDS CORRECTION'}`,
     ];
 
     return lines.join('\n');
@@ -747,12 +789,12 @@ export function logCitationResults(result: EnforcementResult): void {
  * Create sources from execution results
  */
 export function createSourcesFromResults(
-  results: Array<{ id: number; agentId?: string; content: string }>
+  results: Array<{ id: number; agentId?: string; content: string }>,
 ): Source[] {
-  return results.map(r => ({
+  return results.map((r) => ({
     taskId: r.id,
     agentId: r.agentId || 'unknown',
-    content: r.content
+    content: r.content,
   }));
 }
 
@@ -763,5 +805,5 @@ export default {
   addMissingCitations,
   hasProperCitations,
   logCitationResults,
-  createSourcesFromResults
+  createSourcesFromResults,
 };

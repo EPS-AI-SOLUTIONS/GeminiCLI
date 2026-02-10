@@ -6,10 +6,10 @@
  * Tests listener setup, cleanup, event handling, and error scenarios
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { useStreamListeners } from './useStreamListeners';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StreamPayload } from '../types';
+import { useStreamListeners } from './useStreamListeners';
 
 // Mock Tauri's event module
 vi.mock('@tauri-apps/api/event', () => {
@@ -40,7 +40,7 @@ vi.mock('@tauri-apps/api/event', () => {
   };
 });
 
-import { listen, __triggerEvent, __getListeners, __setUnlistener } from '@tauri-apps/api/event';
+import { __getListeners, __triggerEvent, listen } from '@tauri-apps/api/event';
 
 // Mock TAURI_EVENTS constant
 vi.mock('../constants', () => ({
@@ -86,14 +86,11 @@ describe('useStreamListeners', () => {
           onChunk,
           onComplete,
           onError,
-        })
+        }),
       );
 
       expect(listen).toHaveBeenCalledTimes(2);
-      expect(listen).toHaveBeenCalledWith(
-        'ollama-event',
-        expect.any(Function)
-      );
+      expect(listen).toHaveBeenCalledWith('ollama-event', expect.any(Function));
       expect(listen).toHaveBeenCalledWith('swarm-data', expect.any(Function));
     });
 
@@ -102,7 +99,7 @@ describe('useStreamListeners', () => {
         useStreamListeners({
           onChunk,
           onComplete,
-        })
+        }),
       );
 
       const listeners = __getListeners();
@@ -134,7 +131,7 @@ describe('useStreamListeners', () => {
           onChunk,
           onComplete,
           onError,
-        })
+        }),
       );
 
       // Unmount the hook
@@ -153,7 +150,7 @@ describe('useStreamListeners', () => {
           onChunk,
           onComplete,
           onError,
-        })
+        }),
       );
 
       let listeners = __getListeners();
@@ -176,7 +173,7 @@ describe('useStreamListeners', () => {
           onChunk,
           onComplete,
           onError,
-        })
+        }),
       );
 
       const payload: StreamPayload = {
@@ -196,7 +193,7 @@ describe('useStreamListeners', () => {
           onChunk,
           onComplete,
           onError,
-        })
+        }),
       );
 
       const payload: StreamPayload = {
@@ -215,7 +212,7 @@ describe('useStreamListeners', () => {
           onChunk,
           onComplete,
           onError,
-        })
+        }),
       );
 
       const chunks = ['Hello ', 'world ', 'from ', 'stream'];
@@ -236,7 +233,7 @@ describe('useStreamListeners', () => {
           onChunk,
           onComplete,
           onError,
-        })
+        }),
       );
 
       __triggerEvent('ollama-event', { chunk: '', done: false });
@@ -250,7 +247,7 @@ describe('useStreamListeners', () => {
           onChunk,
           onComplete,
           onError,
-        })
+        }),
       );
 
       __triggerEvent('ollama-event', { chunk: 'final', done: true });
@@ -267,7 +264,7 @@ describe('useStreamListeners', () => {
           onChunk,
           onComplete,
           onError,
-        })
+        }),
       );
 
       __triggerEvent('ollama-event', { chunk: '', done: true });
@@ -282,7 +279,7 @@ describe('useStreamListeners', () => {
           onChunk,
           onComplete,
           onError,
-        })
+        }),
       );
 
       __triggerEvent('swarm-data', { chunk: '', done: true });
@@ -296,7 +293,7 @@ describe('useStreamListeners', () => {
           onChunk,
           onComplete,
           onError,
-        })
+        }),
       );
 
       // Simulate multiple chunks followed by completion
@@ -321,7 +318,7 @@ describe('useStreamListeners', () => {
           onChunk: throwingOnChunk,
           onComplete,
           onError,
-        })
+        }),
       );
 
       __triggerEvent('ollama-event', { chunk: 'bad data', done: false });
@@ -331,7 +328,7 @@ describe('useStreamListeners', () => {
       expect(onError).toHaveBeenCalledWith(
         expect.objectContaining({
           message: 'Processing error',
-        })
+        }),
       );
     });
 
@@ -345,7 +342,7 @@ describe('useStreamListeners', () => {
           onChunk: throwingOnChunk,
           onComplete,
           onError,
-        })
+        }),
       );
 
       // First event throws
@@ -353,7 +350,7 @@ describe('useStreamListeners', () => {
       expect(onError).toHaveBeenCalledTimes(1);
 
       // Fix the mock to not throw
-      throwingOnChunk.mockImplementation((chunk) => {
+      throwingOnChunk.mockImplementation((_chunk) => {
         // normal operation
       });
 
@@ -372,7 +369,7 @@ describe('useStreamListeners', () => {
           onChunk: throwingOnChunk,
           onComplete,
           onError,
-        })
+        }),
       );
 
       __triggerEvent('ollama-event', { chunk: 'data', done: false });
@@ -391,7 +388,7 @@ describe('useStreamListeners', () => {
           onChunk,
           onComplete: throwingOnComplete,
           onError,
-        })
+        }),
       );
 
       __triggerEvent('ollama-event', { chunk: '', done: true });
@@ -412,7 +409,7 @@ describe('useStreamListeners', () => {
             onChunk: throwingOnChunk,
             onComplete,
             // onError is undefined
-          })
+          }),
         );
 
         __triggerEvent('ollama-event', { chunk: 'data', done: false });
@@ -437,7 +434,7 @@ describe('useStreamListeners', () => {
             onChunk,
             onComplete,
           },
-        }
+        },
       );
 
       // Trigger event with original callbacks
@@ -469,11 +466,11 @@ describe('useStreamListeners', () => {
           initialProps: {
             onError,
           },
-        }
+        },
       );
 
       // Create throwing callback
-      const throwingOnChunk = vi.fn(() => {
+      const _throwingOnChunk = vi.fn(() => {
         throw new Error('Test');
       });
 
@@ -482,7 +479,7 @@ describe('useStreamListeners', () => {
       });
 
       // Mock to use the throwing version
-      vi.mocked(listen).mockImplementation((eventName, callback) => {
+      vi.mocked(listen).mockImplementation((_eventName, _callback) => {
         // Override the callback to throw
         return Promise.resolve(() => {});
       });
@@ -499,7 +496,7 @@ describe('useStreamListeners', () => {
           onChunk,
           onComplete,
           onError,
-        })
+        }),
       );
 
       // Simulate a realistic stream: multiple chunks then completion
@@ -521,7 +518,7 @@ describe('useStreamListeners', () => {
           onChunk,
           onComplete,
           onError,
-        })
+        }),
       );
 
       // Mixed events from different sources
@@ -540,7 +537,7 @@ describe('useStreamListeners', () => {
           onChunk,
           onComplete,
           onError,
-        })
+        }),
       );
 
       // Immediate completion
@@ -556,7 +553,7 @@ describe('useStreamListeners', () => {
           onChunk,
           onComplete,
           onError,
-        })
+        }),
       );
 
       __triggerEvent('ollama-event', { chunk: '   ', done: false });

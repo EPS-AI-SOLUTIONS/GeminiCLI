@@ -9,13 +9,12 @@
  * 15. Tech Debt Tracker - Track technical debt
  */
 
-import fs from 'fs/promises';
-import path from 'path';
+import { exec } from 'node:child_process';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { promisify } from 'node:util';
 import chalk from 'chalk';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import { loadFromFile, saveToFile, fileExists } from '../native/persistence.js';
-import { GEMINIHYDRA_DIR } from '../config/paths.config.js';
+import { loadFromFile, saveToFile } from '../native/persistence.js';
 
 const execAsync = promisify(exec);
 
@@ -140,7 +139,7 @@ export class ProjectMemory {
         const content = await fs.readFile(file, 'utf-8');
         const relativePath = path.relative(this.root, file);
         const symbols = this.extractSymbols(content, relativePath);
-        this.store!.symbols.push(...symbols);
+        this.store?.symbols.push(...symbols);
       } catch {}
     }
   }
@@ -154,13 +153,19 @@ export class ProjectMemory {
 
     // Function patterns
     const patterns = [
-      { regex: /(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(([^)]*)\)/g, type: 'function' as SymbolType },
+      {
+        regex: /(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(([^)]*)\)/g,
+        type: 'function' as SymbolType,
+      },
       { regex: /(?:export\s+)?class\s+(\w+)/g, type: 'class' as SymbolType },
       { regex: /(?:export\s+)?interface\s+(\w+)/g, type: 'interface' as SymbolType },
       { regex: /(?:export\s+)?type\s+(\w+)/g, type: 'type' as SymbolType },
       { regex: /(?:export\s+)?enum\s+(\w+)/g, type: 'enum' as SymbolType },
       { regex: /(?:export\s+)?const\s+(\w+)\s*=/g, type: 'variable' as SymbolType },
-      { regex: /(?:async\s+)?(\w+)\s*\([^)]*\)\s*(?::\s*\w+)?\s*\{/g, type: 'method' as SymbolType },
+      {
+        regex: /(?:async\s+)?(\w+)\s*\([^)]*\)\s*(?::\s*\w+)?\s*\{/g,
+        type: 'method' as SymbolType,
+      },
     ];
 
     for (let i = 0; i < lines.length; i++) {
@@ -178,10 +183,13 @@ export class ProjectMemory {
             const docLines: string[] = [];
 
             for (const prevLine of prevLines) {
-              if (prevLine.trim().startsWith('*') || prevLine.trim().startsWith('//') || prevLine.trim().startsWith('/*')) {
+              if (
+                prevLine.trim().startsWith('*') ||
+                prevLine.trim().startsWith('//') ||
+                prevLine.trim().startsWith('/*')
+              ) {
                 docLines.unshift(prevLine.replace(/^\s*[/*]+\s*/, '').trim());
               } else if (prevLine.trim() === '') {
-                continue;
               } else {
                 break;
               }
@@ -224,11 +232,11 @@ export class ProjectMemory {
 
         // Resolve local imports to file paths
         const dependencies = imports
-          .filter(i => i.startsWith('.'))
-          .map(i => this.resolveImport(relativePath, i))
+          .filter((i) => i.startsWith('.'))
+          .map((i) => this.resolveImport(relativePath, i))
           .filter((d): d is string => d !== null);
 
-        this.store!.dependencies.push({
+        this.store?.dependencies.push({
           file: relativePath,
           imports,
           exports,
@@ -256,7 +264,8 @@ export class ProjectMemory {
 
   private extractExports(content: string): string[] {
     const exports: string[] = [];
-    const exportRegex = /export\s+(?:default\s+)?(?:class|function|const|let|var|interface|type|enum)\s+(\w+)/g;
+    const exportRegex =
+      /export\s+(?:default\s+)?(?:class|function|const|let|var|interface|type|enum)\s+(\w+)/g;
 
     let match;
     while ((match = exportRegex.exec(content)) !== null) {
@@ -274,7 +283,7 @@ export class ProjectMemory {
     const extensions = ['', '.ts', '.tsx', '.js', '.jsx'];
     for (const ext of extensions) {
       const fullPath = resolved + ext;
-      if (this.store!.dependencies.some(d => d.file === fullPath)) {
+      if (this.store?.dependencies.some((d) => d.file === fullPath)) {
         return fullPath;
       }
     }
@@ -287,10 +296,9 @@ export class ProjectMemory {
    */
   private async loadChangeHistory(): Promise<void> {
     try {
-      const { stdout } = await execAsync(
-        'git log --pretty=format:"%H|%ai|%s" --name-status -50',
-        { cwd: this.root }
-      );
+      const { stdout } = await execAsync('git log --pretty=format:"%H|%ai|%s" --name-status -50', {
+        cwd: this.root,
+      });
 
       const commits = stdout.split('\n\n');
 
@@ -298,7 +306,7 @@ export class ProjectMemory {
         const lines = commit.split('\n');
         if (lines.length < 2) continue;
 
-        const [hash, date, ...summaryParts] = lines[0].split('|');
+        const [_hash, date, ...summaryParts] = lines[0].split('|');
         const summary = summaryParts.join('|');
 
         for (let i = 1; i < lines.length; i++) {
@@ -309,7 +317,7 @@ export class ProjectMemory {
           const file = fileParts.join('\t');
 
           if (file) {
-            this.store!.changes.push({
+            this.store?.changes.push({
               file,
               timestamp: new Date(date),
               type: status === 'A' ? 'create' : status === 'D' ? 'delete' : 'modify',
@@ -327,44 +335,45 @@ export class ProjectMemory {
    */
   private async detectPatterns(): Promise<void> {
     // Singleton pattern
-    const singletons = this.store!.symbols.filter(s =>
-      s.type === 'class' && s.signature?.includes('getInstance')
+    const singletons = this.store?.symbols.filter(
+      (s) => s.type === 'class' && s.signature?.includes('getInstance'),
     );
     if (singletons.length > 0) {
-      this.store!.patterns.push({
+      this.store?.patterns.push({
         name: 'Singleton',
         description: 'Classes with getInstance method',
-        files: singletons.map(s => s.file),
+        files: singletons.map((s) => s.file),
         example: 'getInstance()',
         category: 'creational',
       });
     }
 
     // Factory pattern
-    const factories = this.store!.symbols.filter(s =>
-      s.name.toLowerCase().includes('factory') || s.name.toLowerCase().includes('create')
+    const factories = this.store?.symbols.filter(
+      (s) => s.name.toLowerCase().includes('factory') || s.name.toLowerCase().includes('create'),
     );
     if (factories.length > 0) {
-      this.store!.patterns.push({
+      this.store?.patterns.push({
         name: 'Factory',
         description: 'Factory functions/classes',
-        files: [...new Set(factories.map(s => s.file))],
+        files: [...new Set(factories.map((s) => s.file))],
         example: 'createXxx()',
         category: 'creational',
       });
     }
 
     // Observer/Event pattern
-    const observers = this.store!.symbols.filter(s =>
-      s.name.toLowerCase().includes('listener') ||
-      s.name.toLowerCase().includes('handler') ||
-      s.name.toLowerCase().includes('subscriber')
+    const observers = this.store?.symbols.filter(
+      (s) =>
+        s.name.toLowerCase().includes('listener') ||
+        s.name.toLowerCase().includes('handler') ||
+        s.name.toLowerCase().includes('subscriber'),
     );
     if (observers.length > 0) {
-      this.store!.patterns.push({
+      this.store?.patterns.push({
         name: 'Observer',
         description: 'Event listeners/handlers',
-        files: [...new Set(observers.map(s => s.file))],
+        files: [...new Set(observers.map((s) => s.file))],
         example: 'onXxx(), handleXxx()',
         category: 'behavioral',
       });
@@ -389,7 +398,7 @@ export class ProjectMemory {
           // TODO/FIXME/HACK comments
           const todoMatch = line.match(/\/\/\s*(TODO|FIXME|HACK|XXX)[\s:]+(.+)/i);
           if (todoMatch) {
-            this.store!.techDebt.push({
+            this.store?.techDebt.push({
               id: `${relativePath}:${i + 1}`,
               file: relativePath,
               line: i + 1,
@@ -402,7 +411,7 @@ export class ProjectMemory {
 
           // @deprecated
           if (line.includes('@deprecated')) {
-            this.store!.techDebt.push({
+            this.store?.techDebt.push({
               id: `${relativePath}:${i + 1}:deprecated`,
               file: relativePath,
               line: i + 1,
@@ -416,7 +425,7 @@ export class ProjectMemory {
 
         // Check for large files (complexity)
         if (lines.length > 500) {
-          this.store!.techDebt.push({
+          this.store?.techDebt.push({
             id: `${relativePath}:complexity`,
             file: relativePath,
             type: 'complexity',
@@ -490,9 +499,7 @@ export class ProjectMemory {
    */
   findSymbol(name: string): CodeSymbol[] {
     if (!this.store) return [];
-    return this.store.symbols.filter(s =>
-      s.name.toLowerCase().includes(name.toLowerCase())
-    );
+    return this.store.symbols.filter((s) => s.name.toLowerCase().includes(name.toLowerCase()));
   }
 
   /**
@@ -500,7 +507,7 @@ export class ProjectMemory {
    */
   getDependencies(file: string): string[] {
     if (!this.store) return [];
-    const dep = this.store.dependencies.find(d => d.file === file);
+    const dep = this.store.dependencies.find((d) => d.file === file);
     return dep?.dependencies || [];
   }
 
@@ -509,15 +516,17 @@ export class ProjectMemory {
    */
   getDependents(file: string): string[] {
     if (!this.store) return [];
-    return this.store.dependencies
-      .filter(d => d.dependencies.includes(file))
-      .map(d => d.file);
+    return this.store.dependencies.filter((d) => d.dependencies.includes(file)).map((d) => d.file);
   }
 
   /**
    * Get tech debt summary
    */
-  getTechDebtSummary(): { total: number; bySeverity: Record<string, number>; byType: Record<string, number> } {
+  getTechDebtSummary(): {
+    total: number;
+    bySeverity: Record<string, number>;
+    byType: Record<string, number>;
+  } {
     if (!this.store) return { total: 0, bySeverity: {}, byType: {} };
 
     const bySeverity: Record<string, number> = {};
@@ -546,7 +555,7 @@ export class ProjectMemory {
     // Find relevant symbols
     const keywords = task.toLowerCase().split(/\W+/);
     const relevantSymbols = this.store.symbols
-      .filter(s => keywords.some(k => s.name.toLowerCase().includes(k)))
+      .filter((s) => keywords.some((k) => s.name.toLowerCase().includes(k)))
       .slice(0, 5);
 
     if (relevantSymbols.length > 0) {
@@ -587,7 +596,8 @@ export class ProjectMemory {
       const debt = this.getTechDebtSummary();
       console.log(chalk.yellow('\nTech Debt by Severity:'));
       for (const [severity, count] of Object.entries(debt.bySeverity)) {
-        const color = severity === 'critical' ? chalk.red : severity === 'high' ? chalk.yellow : chalk.gray;
+        const color =
+          severity === 'critical' ? chalk.red : severity === 'high' ? chalk.yellow : chalk.gray;
         console.log(color(`  ${severity}: ${count}`));
       }
     }

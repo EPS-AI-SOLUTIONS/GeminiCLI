@@ -10,6 +10,14 @@
       },
       "style": {
         "noNonNullAssertion": "warn"
+      },
+      "a11y": {
+        "useButtonType": "warn",
+        "noLabelWithoutControl": "warn",
+        "noStaticElementInteractions": "warn"
+      },
+      "correctness": {
+        "noUnusedPrivateClassMembers": "warn"
       }
     }
   },

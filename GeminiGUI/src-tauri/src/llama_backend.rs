@@ -173,11 +173,15 @@ pub fn load_model(model_path: &str, config: Option<ModelConfig>) -> Result<(), L
     let model_params = LlamaModelParams::default().with_n_gpu_layers(config.gpu_layers as u32);
 
     // Load the model
-    let model = LlamaModel::load_from_file(&LLAMA_BACKEND_INSTANCE.read().as_ref().unwrap(), &path, &model_params)
-        .map_err(|e| {
-            error!("Failed to load model: {:?}", e);
-            LlamaError::ModelLoadError(format!("{:?}", e))
-        })?;
+    let model = {
+        let backend_guard = LLAMA_BACKEND_INSTANCE.read();
+        let backend = backend_guard.as_ref().ok_or(LlamaError::BackendNotInitialized)?;
+        LlamaModel::load_from_file(backend, &path, &model_params)
+            .map_err(|e| {
+                error!("Failed to load model: {:?}", e);
+                LlamaError::ModelLoadError(format!("{:?}", e))
+            })?
+    };
 
     // Store model state
     let mut state = MODEL_STATE.write();

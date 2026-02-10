@@ -54,7 +54,7 @@ const DEFAULT_CONFIG: DeduplicatorConfig = {
   minContentLength: 50,
   maxTrackedResponses: 100,
   normalizeWhitespace: true,
-  ignoreCase: true
+  ignoreCase: true,
 };
 
 /**
@@ -103,7 +103,7 @@ export class ResponseDeduplicator {
           isDuplicate: true,
           similarity: 1.0,
           matchedAgentId: existingEntry.agentId,
-          matchedHash: hash
+          matchedHash: hash,
         };
       }
     }
@@ -115,7 +115,7 @@ export class ResponseDeduplicator {
     let maxSimilarity = 0;
     let mostSimilarEntry: ResponseEntry | null = null;
 
-    for (const [id, entry] of this.responses) {
+    for (const [_id, entry] of this.responses) {
       // Skip same agent (agent can repeat itself within a task)
       if (entry.agentId === agentId) continue;
 
@@ -142,7 +142,7 @@ export class ResponseDeduplicator {
       content: normalizedContent.substring(0, 500), // Store truncated for memory efficiency
       hash,
       tokens,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
     this.responses.set(responseId, entry);
@@ -151,7 +151,7 @@ export class ResponseDeduplicator {
     if (!this.hashIndex.has(hash)) {
       this.hashIndex.set(hash, []);
     }
-    this.hashIndex.get(hash)!.push(responseId);
+    this.hashIndex.get(hash)?.push(responseId);
 
     // Evict old entries if over limit
     this.evictOldEntries();
@@ -160,7 +160,7 @@ export class ResponseDeduplicator {
       isDuplicate,
       similarity: maxSimilarity,
       matchedAgentId: mostSimilarEntry?.agentId,
-      matchedHash: isDuplicate ? mostSimilarEntry?.hash : undefined
+      matchedHash: isDuplicate ? mostSimilarEntry?.hash : undefined,
     };
   }
 
@@ -193,7 +193,7 @@ export class ResponseDeduplicator {
           isDuplicate: true,
           similarity: 1.0,
           matchedAgentId: existingEntry.agentId,
-          matchedHash: hash
+          matchedHash: hash,
         };
       }
     }
@@ -214,7 +214,7 @@ export class ResponseDeduplicator {
     return {
       isDuplicate: maxSimilarity >= this.config.similarityThreshold,
       similarity: maxSimilarity,
-      matchedAgentId: mostSimilarEntry?.agentId
+      matchedAgentId: mostSimilarEntry?.agentId,
     };
   }
 
@@ -237,7 +237,7 @@ export class ResponseDeduplicator {
       totalResponses: this.responses.size,
       uniqueHashes: this.hashIndex.size,
       duplicatesFound: this.duplicateWarnings.length,
-      agentCounts
+      agentCounts,
     };
   }
 
@@ -246,8 +246,17 @@ export class ResponseDeduplicator {
    * @param contents Array of content strings to check
    * @returns Object with hasDuplicates flag and duplicates array
    */
-  checkDuplicates(contents: string[]): { hasDuplicates: boolean; duplicates: Array<{ indices: number[]; similarity: number; hash1: string; hash2: string }>; totalChecked: number } {
-    const duplicates: Array<{ indices: number[]; similarity: number; hash1: string; hash2: string }> = [];
+  checkDuplicates(contents: string[]): {
+    hasDuplicates: boolean;
+    duplicates: Array<{ indices: number[]; similarity: number; hash1: string; hash2: string }>;
+    totalChecked: number;
+  } {
+    const duplicates: Array<{
+      indices: number[];
+      similarity: number;
+      hash1: string;
+      hash2: string;
+    }> = [];
     const seen = new Map<number, { hash: string; tokens: Set<string> }>();
     const tokenCache = new Map<number, Set<string>>(); // Cache tokens for efficiency
 
@@ -270,7 +279,7 @@ export class ResponseDeduplicator {
             indices: [j, i],
             similarity,
             hash1: prevData.hash,
-            hash2: hash
+            hash2: hash,
           });
         }
       }
@@ -281,7 +290,7 @@ export class ResponseDeduplicator {
     return {
       hasDuplicates: duplicates.length > 0,
       duplicates,
-      totalChecked: contents.length
+      totalChecked: contents.length,
     };
   }
 
@@ -346,7 +355,7 @@ export class ResponseDeduplicator {
     let hash = 5381;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
-      hash = ((hash << 5) + hash) + char; // hash * 33 + char
+      hash = (hash << 5) + hash + char; // hash * 33 + char
       hash = hash & hash; // Convert to 32-bit integer
     }
     return hash.toString(16);
@@ -360,8 +369,8 @@ export class ResponseDeduplicator {
     const tokens = new Set<string>();
 
     // Word tokens (filter out very short words)
-    const words = content.split(/\s+/).filter(w => w.length >= 3);
-    words.forEach(w => tokens.add(w));
+    const words = content.split(/\s+/).filter((w) => w.length >= 3);
+    words.forEach((w) => tokens.add(w));
 
     // Add bigrams for better similarity detection
     for (let i = 0; i < words.length - 1; i++) {
@@ -408,8 +417,9 @@ export class ResponseDeduplicator {
     }
 
     // Sort by timestamp and remove oldest
-    const entries = Array.from(this.responses.entries())
-      .sort((a, b) => a[1].timestamp - b[1].timestamp);
+    const entries = Array.from(this.responses.entries()).sort(
+      (a, b) => a[1].timestamp - b[1].timestamp,
+    );
 
     const toRemove = entries.slice(0, entries.length - this.config.maxTrackedResponses);
 
@@ -419,7 +429,7 @@ export class ResponseDeduplicator {
       // Clean up hash index
       const hashEntries = this.hashIndex.get(entry.hash);
       if (hashEntries) {
-        const filtered = hashEntries.filter(hid => hid !== id);
+        const filtered = hashEntries.filter((hid) => hid !== id);
         if (filtered.length === 0) {
           this.hashIndex.delete(entry.hash);
         } else {
@@ -445,20 +455,14 @@ export const responseDeduplicator = new ResponseDeduplicator();
  * Quick check if content is likely duplicate
  * Useful for fast filtering before detailed analysis
  */
-export function isLikelyDuplicate(
-  content: string,
-  threshold: number = 0.8
-): boolean {
+export function isLikelyDuplicate(content: string, threshold: number = 0.8): boolean {
   return responseDeduplicator.checkDuplicate(content).similarity >= threshold;
 }
 
 /**
  * Add response and get formatted warning if duplicate
  */
-export function addAndWarn(
-  agentId: string,
-  content: string
-): string | null {
+export function addAndWarn(agentId: string, content: string): string | null {
   const result = responseDeduplicator.addResponse(agentId, content);
 
   if (result.isDuplicate) {
@@ -486,7 +490,7 @@ Duplicates Found: ${stats.duplicatesFound}
 Unique Content Hashes: ${stats.uniqueHashes}
 
 Warnings:
-${warnings.map(w => `  - ${w}`).join('\n')}
+${warnings.map((w) => `  - ${w}`).join('\n')}
 ======================================
 `;
 }

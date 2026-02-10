@@ -8,8 +8,8 @@
  * Now uses the generic useModelFetcher internally.
  */
 
+import { FALLBACK_MODELS, QUERY_KEYS, TAURI_COMMANDS } from '../constants';
 import { useAppStore } from '../store/useAppStore';
-import { QUERY_KEYS, FALLBACK_MODELS, TAURI_COMMANDS } from '../constants';
 import { useModelFetcher } from './useModelFetcher';
 
 // ============================================================================

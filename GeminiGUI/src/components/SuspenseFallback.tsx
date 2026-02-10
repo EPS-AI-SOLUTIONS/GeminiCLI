@@ -6,8 +6,8 @@
  * Ported from ClaudeHydra.
  */
 
-import { memo } from 'react';
 import { Loader2 } from 'lucide-react';
+import { memo } from 'react';
 
 interface SuspenseFallbackProps {
   message?: string;
@@ -28,7 +28,7 @@ export const SuspenseFallback = memo<SuspenseFallbackProps>(
         <span className="text-sm font-mono">{message}</span>
       </div>
     );
-  }
+  },
 );
 
 SuspenseFallback.displayName = 'SuspenseFallback';

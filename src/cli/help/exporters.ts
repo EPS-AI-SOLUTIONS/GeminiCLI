@@ -5,8 +5,8 @@
  */
 
 import { commandRegistry } from '../CommandRegistry.js';
-import { helpMetaRegistry, categoryConfig } from './HelpMetaRegistry.js';
 import { formatSignature } from './formatting.js';
+import { categoryConfig, helpMetaRegistry } from './HelpMetaRegistry.js';
 
 /**
  * Export help to markdown format
@@ -22,8 +22,7 @@ export function exportToMarkdown(): string {
   // Table of contents
   lines.push('## Table of Contents\n');
 
-  const sortedCategories = Array.from(categoryConfig.values())
-    .sort((a, b) => a.order - b.order);
+  const sortedCategories = Array.from(categoryConfig.values()).sort((a, b) => a.order - b.order);
 
   for (const cat of sortedCategories) {
     const commands = commandRegistry.getByCategory(cat.name);
@@ -52,7 +51,9 @@ export function exportToMarkdown(): string {
       lines.push(`### \`/${cmd.name}\`\n`);
 
       if (meta?.deprecated) {
-        lines.push(`> \u26A0\uFE0F **DEPRECATED**: ${meta.deprecatedMessage || 'This command is deprecated'}\n`);
+        lines.push(
+          `> \u26A0\uFE0F **DEPRECATED**: ${meta.deprecatedMessage || 'This command is deprecated'}\n`,
+        );
       }
 
       lines.push(`${cmd.description}\n`);
@@ -71,13 +72,15 @@ export function exportToMarkdown(): string {
           const required = arg.required ? 'Yes' : 'No';
           const defaultVal = arg.default !== undefined ? `\`${arg.default}\`` : '-';
           const type = arg.type || 'string';
-          lines.push(`| \`${arg.name}\` | ${type} | ${required} | ${defaultVal} | ${arg.description} |`);
+          lines.push(
+            `| \`${arg.name}\` | ${type} | ${required} | ${defaultVal} | ${arg.description} |`,
+          );
         }
         lines.push('');
       }
 
       if (cmd.aliases && cmd.aliases.length > 0) {
-        lines.push(`**Aliases:** ${cmd.aliases.map(a => `\`/${a}\``).join(', ')}\n`);
+        lines.push(`**Aliases:** ${cmd.aliases.map((a) => `\`/${a}\``).join(', ')}\n`);
       }
 
       if (cmd.subcommands && cmd.subcommands.size > 0) {
@@ -113,7 +116,7 @@ export function exportToMarkdown(): string {
       }
 
       if (meta?.seeAlso && meta.seeAlso.length > 0) {
-        lines.push(`**See Also:** ${meta.seeAlso.map(s => `[\`/${s}\`](#${s})`).join(', ')}\n`);
+        lines.push(`**See Also:** ${meta.seeAlso.map((s) => `[\`/${s}\`](#${s})`).join(', ')}\n`);
       }
 
       lines.push('---\n');
@@ -133,7 +136,7 @@ export function exportToJSON(): string {
   const data: any = {
     generated: new Date().toISOString(),
     categories: {},
-    commands: {}
+    commands: {},
   };
 
   for (const cat of categoryConfig.values()) {
@@ -143,7 +146,7 @@ export function exportToJSON(): string {
         displayName: cat.displayName,
         description: cat.description,
         icon: cat.icon,
-        commandCount: commands.length
+        commandCount: commands.length,
       };
     }
   }
@@ -163,7 +166,7 @@ export function exportToJSON(): string {
       notes: meta?.notes,
       seeAlso: meta?.seeAlso,
       deprecated: meta?.deprecated,
-      deprecatedMessage: meta?.deprecatedMessage
+      deprecatedMessage: meta?.deprecatedMessage,
     };
   }
 

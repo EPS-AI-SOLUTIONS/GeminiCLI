@@ -4,16 +4,15 @@
  */
 
 import { createSwarm } from '../../index.js';
-import { classificationService } from './ClassificationService.js';
-import { historyService } from './HistoryService.js';
 import type {
-  ExecuteResponse,
-  ExecuteStatusResponse,
-  ExecutionMode,
   ExecuteOptions,
   ExecutePlan,
+  ExecuteStatusResponse,
+  ExecutionMode,
   SSEEventType,
 } from '../types/index.js';
+import { classificationService } from './ClassificationService.js';
+import { historyService } from './HistoryService.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Types
@@ -49,7 +48,9 @@ export class ExecutionService {
     }
 
     if (this.isProcessing) {
-      console.warn('[ExecutionService] Cleanup requested during active processing — deferring cleanup.');
+      console.warn(
+        '[ExecutionService] Cleanup requested during active processing — deferring cleanup.',
+      );
       // Defer cleanup until processing completes
       if (this.processingPromise) {
         this.processingPromise.then(() => {
@@ -70,7 +71,7 @@ export class ExecutionService {
   async execute(
     prompt: string,
     mode: ExecutionMode = 'basic',
-    options: ExecuteOptions = {}
+    _options: ExecuteOptions = {},
   ): Promise<ExecuteResult> {
     const startTime = Date.now();
     const plan = classificationService.createPlan(prompt);
@@ -101,7 +102,7 @@ export class ExecutionService {
 
       // Mark processing as done before cleanup
       this.isProcessing = false;
-      resolveProcessing!();
+      resolveProcessing?.();
       this.processingPromise = null;
 
       await this.safeCleanup(swarm);
@@ -109,7 +110,7 @@ export class ExecutionService {
       return { plan, result, duration, mode };
     } catch (error: unknown) {
       this.isProcessing = false;
-      resolveProcessing!();
+      resolveProcessing?.();
       this.processingPromise = null;
       const errorMessage = error instanceof Error ? error.message : String(error);
       historyService.addErrorMessage(errorMessage);
@@ -124,7 +125,7 @@ export class ExecutionService {
   async *executeStream(
     prompt: string,
     mode: ExecutionMode = 'basic',
-    options: ExecuteOptions = {}
+    _options: ExecuteOptions = {},
   ): AsyncGenerator<ExecuteStreamEvent> {
     const startTime = Date.now();
     const plan = classificationService.createPlan(prompt);
@@ -160,13 +161,13 @@ export class ExecutionService {
 
       // Mark processing as done before cleanup
       this.isProcessing = false;
-      resolveProcessing!();
+      resolveProcessing?.();
       this.processingPromise = null;
 
       await this.safeCleanup(swarm);
     } catch (error: unknown) {
       this.isProcessing = false;
-      resolveProcessing!();
+      resolveProcessing?.();
       this.processingPromise = null;
       const errorMessage = error instanceof Error ? error.message : String(error);
       yield { type: 'error', data: { error: errorMessage } };
@@ -185,7 +186,7 @@ export class ExecutionService {
       return {
         available: true,
         modes: ['basic', 'enhanced', 'swarm'],
-        streaming: false,  // Simplified - no streaming support in basic Swarm
+        streaming: false, // Simplified - no streaming support in basic Swarm
       };
     } catch {
       return {

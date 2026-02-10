@@ -11,11 +11,11 @@
 
 export interface PromptTransformation {
   timestamp: number;
-  source: string;           // e.g., "ToT", "Dijkstra"
-  reason: string;           // Why the change was made
-  before: string;           // Text before transformation
-  after: string;            // Text after transformation
-  driftScore: number;       // 0-100, how different from original
+  source: string; // e.g., "ToT", "Dijkstra"
+  reason: string; // Why the change was made
+  before: string; // Text before transformation
+  after: string; // Text after transformation
+  driftScore: number; // 0-100, how different from original
 }
 
 export class PromptAuditTrail {
@@ -38,11 +38,7 @@ export class PromptAuditTrail {
   /**
    * Record a transformation to the prompt
    */
-  recordTransformation(
-    source: string,
-    reason: string,
-    newPrompt: string
-  ): void {
+  recordTransformation(source: string, reason: string, newPrompt: string): void {
     const driftScore = this.calculateDrift(this.originalPrompt, newPrompt);
 
     this.transformations.push({
@@ -51,7 +47,7 @@ export class PromptAuditTrail {
       reason,
       before: this.currentPrompt,
       after: newPrompt,
-      driftScore
+      driftScore,
     });
 
     this.currentPrompt = newPrompt;
@@ -135,7 +131,9 @@ export class PromptAuditTrail {
   validateIntent(maxDrift: number = 70): boolean {
     const drift = this.getTotalDrift();
     if (drift > maxDrift) {
-      console.error(`[PromptAudit] INTENT VIOLATION: Drift ${drift}% exceeds threshold ${maxDrift}%`);
+      console.error(
+        `[PromptAudit] INTENT VIOLATION: Drift ${drift}% exceeds threshold ${maxDrift}%`,
+      );
       return false;
     }
     return true;

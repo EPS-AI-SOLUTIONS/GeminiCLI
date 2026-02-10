@@ -5,9 +5,9 @@
  */
 
 import type { StateCreator } from 'zustand';
+import { LIMITS } from '../../constants';
 import type { Message, Session } from '../../types';
 import { sanitizeContent, sanitizeTitle } from '../../utils/validators';
-import { LIMITS } from '../../constants';
 
 // =============================================================================
 // TYPES
@@ -42,12 +42,9 @@ type SessionState = {
   sessions: Session[];
 };
 
-export const createChatSlice: StateCreator<
-  ChatSlice & SessionState,
-  [],
-  [],
-  ChatSlice
-> = (set) => ({
+export const createChatSlice: StateCreator<ChatSlice & SessionState, [], [], ChatSlice> = (
+  set,
+) => ({
   ...initialChatState,
 
   addMessage: (msg) =>
@@ -73,10 +70,10 @@ export const createChatSlice: StateCreator<
       if (msg.role === 'user' && currentMessages.length === 0) {
         const title = sanitizeTitle(
           msg.content.substring(0, 30) + (msg.content.length > 30 ? '...' : ''),
-          LIMITS.MAX_TITLE_LENGTH
+          LIMITS.MAX_TITLE_LENGTH,
         );
         updatedSessions = state.sessions.map((s) =>
-          s.id === state.currentSessionId ? { ...s, title } : s
+          s.id === state.currentSessionId ? { ...s, title } : s,
         );
       }
 
@@ -99,10 +96,7 @@ export const createChatSlice: StateCreator<
       const lastMsg = newMessages[newMessages.length - 1];
 
       // Sanitize and limit content growth
-      const newContent = sanitizeContent(
-        lastMsg.content + content,
-        LIMITS.MAX_CONTENT_LENGTH
-      );
+      const newContent = sanitizeContent(lastMsg.content + content, LIMITS.MAX_CONTENT_LENGTH);
 
       newMessages[newMessages.length - 1] = {
         ...lastMsg,

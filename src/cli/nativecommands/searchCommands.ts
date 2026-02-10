@@ -8,13 +8,14 @@
  */
 
 import {
-  success, error,
   type CommandResult,
+  createFailedMessage,
+  error,
   getTools,
-  truncate,
   highlightMatch,
   Spinner,
-  createFailedMessage
+  success,
+  truncate,
 } from './helpers.js';
 
 // ============================================================
@@ -48,16 +49,19 @@ export const searchCommands = {
       const matches = await tools.search.grep(pattern, glob);
       spinner.stop();
 
-      const results = matches.slice(0, 30).map(m => ({
+      const results = matches.slice(0, 30).map((m) => ({
         file: m.file,
         line: m.line,
-        content: highlightMatch(truncate(m.content, 60), pattern)
+        content: highlightMatch(truncate(m.content, 60), pattern),
       }));
 
-      return success({
-        results,
-        showing: Math.min(30, matches.length)
-      }, `Found ${matches.length} matches`);
+      return success(
+        {
+          results,
+          showing: Math.min(30, matches.length),
+        },
+        `Found ${matches.length} matches`,
+      );
     } catch (err) {
       spinner.stop();
       return error(createFailedMessage('search', err));
@@ -81,16 +85,16 @@ export const searchCommands = {
       const symbols = await tools.search.searchSymbols({
         pattern,
         types: type ? [type as any] : undefined,
-        maxResults: 20
+        maxResults: 20,
       });
       spinner.stop();
 
-      const results = symbols.map(s => ({
+      const results = symbols.map((s) => ({
         name: s.name,
         type: s.type,
         file: s.file,
         line: s.line,
-        signature: truncate(s.signature || '', 50)
+        signature: truncate(s.signature || '', 50),
       }));
 
       return success({ results }, `Found ${symbols.length} symbols`);
@@ -114,9 +118,9 @@ export const searchCommands = {
       const tools = getTools();
       const matches = await tools.search.fuzzyFindFile(query, 15);
 
-      const results = matches.map(m => ({
+      const results = matches.map((m) => ({
         file: m.item,
-        score: m.score.toFixed(1)
+        score: m.score.toFixed(1),
       }));
 
       return success({ results }, `Files matching "${query}"`);
@@ -142,19 +146,22 @@ export const searchCommands = {
       const refs = await tools.search.findReferences(name, glob);
       spinner.stop();
 
-      const results = refs.slice(0, 30).map(r => ({
+      const results = refs.slice(0, 30).map((r) => ({
         file: r.file,
         line: r.line,
-        content: highlightMatch(truncate(r.content, 60), name)
+        content: highlightMatch(truncate(r.content, 60), name),
       }));
 
-      return success({
-        results,
-        showing: Math.min(30, refs.length)
-      }, `Found ${refs.length} references to "${name}"`);
+      return success(
+        {
+          results,
+          showing: Math.min(30, refs.length),
+        },
+        `Found ${refs.length} references to "${name}"`,
+      );
     } catch (err) {
       spinner.stop();
       return error(createFailedMessage('find references', err));
     }
-  }
+  },
 };

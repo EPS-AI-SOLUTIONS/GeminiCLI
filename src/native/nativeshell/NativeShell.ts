@@ -13,56 +13,51 @@
  * @module native/nativeshell/NativeShell
  */
 
-import { spawn, ChildProcess, SpawnOptions, execSync } from 'child_process';
-import { EventEmitter } from 'events';
+import { type ChildProcess, execSync, type SpawnOptions, spawn } from 'node:child_process';
+import { EventEmitter } from 'node:events';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import chalk from 'chalk';
-import os from 'os';
-import fs from 'fs';
-import path from 'path';
-
-import type {
-  ShellType,
-  ShellInfo,
-  CommandMapping,
-  ProcessInfo,
-  ZombieProcessInfo,
-  CleanupStats,
-  OutputChunk,
-  ProcessResult,
-  ExecOptions,
-  ProgressInfo,
-  StreamingExecOptions,
-  ProgressExecOptions,
-  StreamingExecResult,
-  PipeOptions,
-  ShellSession,
-  NativeShellConfig,
-  EnvironmentConfig,
-  EnvironmentProfile,
-  ShellTimeoutConfig,
-  TimeoutProfile,
-  CwdValidationError as CwdValidationErrorType
-} from './types.js';
-
-import { CwdValidationError } from './types.js';
-
 import {
-  SHELL_PATHS,
   COMMAND_TRANSLATIONS,
-  SHELL_FALLBACK_ORDER,
   DEFAULT_MAX_OUTPUT_SIZE,
   DEFAULT_PROGRESS_PATTERNS,
-  TIMEOUT_PROFILES,
+  ENVIRONMENT_PROFILES,
   SENSITIVE_ENV_PATTERNS,
-  ENVIRONMENT_PROFILES
+  SHELL_FALLBACK_ORDER,
+  SHELL_PATHS,
+  TIMEOUT_PROFILES,
 } from './constants.js';
-
 import {
   analyzeStderr,
-  createProcessResult,
+  createDefaultEnvironmentConfig,
   createDefaultTimeoutConfig,
-  createDefaultEnvironmentConfig
+  createProcessResult,
 } from './helpers.js';
+import type {
+  CleanupStats,
+  CommandMapping,
+  EnvironmentConfig,
+  EnvironmentProfile,
+  ExecOptions,
+  NativeShellConfig,
+  OutputChunk,
+  PipeOptions,
+  ProcessInfo,
+  ProcessResult,
+  ProgressExecOptions,
+  ProgressInfo,
+  ShellInfo,
+  ShellSession,
+  ShellTimeoutConfig,
+  ShellType,
+  StreamingExecOptions,
+  StreamingExecResult,
+  TimeoutProfile,
+  ZombieProcessInfo,
+} from './types.js';
+import { CwdValidationError } from './types.js';
 
 // ============================================================
 // NativeShell Class
@@ -71,7 +66,9 @@ import {
 export class NativeShell extends EventEmitter {
   private processes: Map<number, ProcessInfo> = new Map();
   private sessions: Map<string, ShellSession> = new Map();
-  private config: Required<Omit<NativeShellConfig, 'timeoutConfig' | 'inheritCwd' | 'environmentConfig' | 'preferredShell'>> & { environmentConfig: EnvironmentConfig; preferredShell?: ShellType };
+  private config: Required<
+    Omit<NativeShellConfig, 'timeoutConfig' | 'inheritCwd' | 'environmentConfig' | 'preferredShell'>
+  > & { environmentConfig: EnvironmentConfig; preferredShell?: ShellType };
   private timeoutConfig: ShellTimeoutConfig;
   private processCounter = 0;
   private activeTimeoutWarnings: Map<number, NodeJS.Timeout> = new Map();
@@ -108,7 +105,7 @@ export class NativeShell extends EventEmitter {
     const envConfig = config.environmentConfig || createDefaultEnvironmentConfig();
 
     // Initialize working directory management
-    this._inheritCwd = config.inheritCwd ?? (config.cwd === undefined);
+    this._inheritCwd = config.inheritCwd ?? config.cwd === undefined;
     const initialCwd = config.cwd || process.cwd();
     this._defaultCwd = initialCwd;
 
@@ -120,7 +117,7 @@ export class NativeShell extends EventEmitter {
       env: {},
       preferredShell: config.preferredShell,
       autoFallback: config.autoFallback ?? true,
-      environmentConfig: envConfig
+      environmentConfig: envConfig,
     };
 
     // Build initial environment
@@ -217,7 +214,7 @@ export class NativeShell extends EventEmitter {
       this.logCwdChange(
         oldValue ? process.cwd() : this._defaultCwd,
         effectiveCwd,
-        `inheritCwd ${inherit ? 'enabled' : 'disabled'}`
+        `inheritCwd ${inherit ? 'enabled' : 'disabled'}`,
       );
     }
   }
@@ -278,9 +275,11 @@ export class NativeShell extends EventEmitter {
     this.timeoutConfig.defaultTimeout = clampedTimeout;
     this.config.defaultTimeout = clampedTimeout;
     if (ms > this.timeoutConfig.maxTimeout) {
-      console.warn(chalk.yellow(
-        `[NativeShell] Timeout clamped to max: ${ms}ms -> ${this.timeoutConfig.maxTimeout}ms`
-      ));
+      console.warn(
+        chalk.yellow(
+          `[NativeShell] Timeout clamped to max: ${ms}ms -> ${this.timeoutConfig.maxTimeout}ms`,
+        ),
+      );
     }
   }
 
@@ -288,9 +287,11 @@ export class NativeShell extends EventEmitter {
     const clampedTimeout = Math.min(ms, this.timeoutConfig.maxTimeout);
     this.timeoutConfig.perCommandTimeouts.set(commandPattern, clampedTimeout);
     if (ms > this.timeoutConfig.maxTimeout) {
-      console.warn(chalk.yellow(
-        `[NativeShell] Timeout for "${commandPattern}" clamped to max: ${ms}ms -> ${this.timeoutConfig.maxTimeout}ms`
-      ));
+      console.warn(
+        chalk.yellow(
+          `[NativeShell] Timeout for "${commandPattern}" clamped to max: ${ms}ms -> ${this.timeoutConfig.maxTimeout}ms`,
+        ),
+      );
     }
   }
 
@@ -332,9 +333,7 @@ export class NativeShell extends EventEmitter {
 
   private matchCommandPattern(command: string, pattern: string): boolean {
     if (pattern === '*') return true;
-    const regexPattern = pattern
-      .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
-      .replace(/\*/g, '.*');
+    const regexPattern = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
     return new RegExp(`^${regexPattern}`, 'i').test(command);
   }
 
@@ -346,12 +345,18 @@ export class NativeShell extends EventEmitter {
       const info = this.processes.get(pid);
       if (info && info.status === 'running') {
         const remainingMs = timeout - warningTime;
-        console.warn(chalk.yellow(
-          `[NativeShell] WARNING: Process ${pid} (${command.substring(0, 50)}${command.length > 50 ? '...' : ''}) ` +
-          `approaching timeout - ${Math.round(remainingMs / 1000)}s remaining`
-        ));
+        console.warn(
+          chalk.yellow(
+            `[NativeShell] WARNING: Process ${pid} (${command.substring(0, 50)}${command.length > 50 ? '...' : ''}) ` +
+              `approaching timeout - ${Math.round(remainingMs / 1000)}s remaining`,
+          ),
+        );
         this.emit('timeout-warning', {
-          pid, command, elapsed: warningTime, remaining: remainingMs, timeout
+          pid,
+          command,
+          elapsed: warningTime,
+          remaining: remainingMs,
+          timeout,
         });
       }
       this.activeTimeoutWarnings.delete(pid);
@@ -387,7 +392,7 @@ export class NativeShell extends EventEmitter {
       }
 
       const env = { ...this.config.env, ...options?.env };
-      const separateStreams = options?.separateStreams ?? true;
+      const _separateStreams = options?.separateStreams ?? true;
       const stderrToStdout = options?.stderrToStdout ?? false;
       const colorizeStderr = options?.colorizeStderr ?? true;
 
@@ -396,7 +401,11 @@ export class NativeShell extends EventEmitter {
 
       if (isWindows) {
         if (shell.includes('powershell')) {
-          proc = spawn('powershell.exe', ['-NoProfile', '-Command', command], { cwd, env, shell: false });
+          proc = spawn('powershell.exe', ['-NoProfile', '-Command', command], {
+            cwd,
+            env,
+            shell: false,
+          });
         } else {
           proc = spawn('cmd.exe', ['/c', command], { cwd, env, shell: false });
         }
@@ -411,8 +420,16 @@ export class NativeShell extends EventEmitter {
       let processSignal: string | null = null;
 
       const info: ProcessInfo = {
-        pid, command, args: [], status: 'running', startTime: new Date(),
-        output: [], errors: [], childPids: [], processRef: proc, lastHealthCheck: new Date()
+        pid,
+        command,
+        args: [],
+        status: 'running',
+        startTime: new Date(),
+        output: [],
+        errors: [],
+        childPids: [],
+        processRef: proc,
+        lastHealthCheck: new Date(),
       };
       this.processes.set(pid, info);
 
@@ -479,14 +496,23 @@ export class NativeShell extends EventEmitter {
         const stderr = stderrChunks.join('');
         const combined = allChunks
           .sort((a, b) => a.timestamp - b.timestamp)
-          .map(chunk => chunk.data)
+          .map((chunk) => chunk.data)
           .join('');
         const stderrAnalysisResult = analyzeStderr(stderr);
 
-        resolve(createProcessResult(
-          pid, code || 0, processSignal, stdout, stderr, combined,
-          allChunks, Date.now() - startTime, stderrAnalysisResult
-        ));
+        resolve(
+          createProcessResult(
+            pid,
+            code || 0,
+            processSignal,
+            stdout,
+            stderr,
+            combined,
+            allChunks,
+            Date.now() - startTime,
+            stderrAnalysisResult,
+          ),
+        );
       });
     });
   }
@@ -495,7 +521,10 @@ export class NativeShell extends EventEmitter {
   // Streaming Execution
   // ============================================================
 
-  async *execStreaming(command: string, options?: StreamingExecOptions): AsyncIterable<OutputChunk> {
+  async *execStreaming(
+    command: string,
+    options?: StreamingExecOptions,
+  ): AsyncIterable<OutputChunk> {
     const timeout = options?.timeout || this.config.defaultTimeout;
     const shell = options?.shell || this.config.defaultShell;
     const cwd = options?.cwd || this.config.cwd;
@@ -505,53 +534,230 @@ export class NativeShell extends EventEmitter {
     const onOutput = options?.onOutput;
     const isWindows = os.platform() === 'win32';
     const proc: ChildProcess = isWindows
-      ? (shell.includes('powershell') ? spawn('powershell.exe', ['-NoProfile', '-Command', command], { cwd, env, shell: false }) : spawn('cmd.exe', ['/c', command], { cwd, env, shell: false }))
+      ? shell.includes('powershell')
+        ? spawn('powershell.exe', ['-NoProfile', '-Command', command], { cwd, env, shell: false })
+        : spawn('cmd.exe', ['/c', command], { cwd, env, shell: false })
       : spawn(shell, ['-c', command], { cwd, env, shell: false });
     const pid = proc.pid || ++this.processCounter;
     let totalSize = 0;
-    const info: ProcessInfo = { pid, command, args: [], status: 'running', startTime: new Date(), output: [], errors: [], childPids: [], processRef: proc, lastHealthCheck: new Date() };
+    const info: ProcessInfo = {
+      pid,
+      command,
+      args: [],
+      status: 'running',
+      startTime: new Date(),
+      output: [],
+      errors: [],
+      childPids: [],
+      processRef: proc,
+      lastHealthCheck: new Date(),
+    };
     this.processes.set(pid, info);
     const chunkQueue: OutputChunk[] = [];
     let resolveNext: ((value: IteratorResult<OutputChunk>) => void) | null = null;
-    let done = false, error: Error | null = null;
+    let done = false,
+      error: Error | null = null;
     const pushChunk = (chunk: OutputChunk) => {
-      if (bufferOutput && totalSize < maxOutputSize) { totalSize += chunk.data.length; if (totalSize > maxOutputSize) chunk.data = chunk.data.slice(0, maxOutputSize - (totalSize - chunk.data.length)); chunk.type === 'stdout' ? info.output.push(chunk.data) : info.errors.push(chunk.data); }
-      info.lastHealthCheck = new Date(); onOutput?.(chunk); this.emit(chunk.type, { pid, data: chunk.data });
-      resolveNext ? (resolveNext({ value: chunk, done: false }), resolveNext = null) : chunkQueue.push(chunk);
+      if (bufferOutput && totalSize < maxOutputSize) {
+        totalSize += chunk.data.length;
+        if (totalSize > maxOutputSize)
+          chunk.data = chunk.data.slice(0, maxOutputSize - (totalSize - chunk.data.length));
+        chunk.type === 'stdout' ? info.output.push(chunk.data) : info.errors.push(chunk.data);
+      }
+      info.lastHealthCheck = new Date();
+      onOutput?.(chunk);
+      this.emit(chunk.type, { pid, data: chunk.data });
+      resolveNext
+        ? (resolveNext({ value: chunk, done: false }), (resolveNext = null))
+        : chunkQueue.push(chunk);
     };
-    const timeoutId = setTimeout(async () => { error = new Error(`Process timeout after ${timeout}ms`); this.emit('timeout', { pid, command, timeout }); await this.killProcessTree(pid, 'SIGKILL'); info.status = 'killed'; info.killSignal = 'SIGKILL'; info.endTime = new Date(); done = true; resolveNext && resolveNext({ value: undefined as any, done: true }); }, timeout);
-    proc.stdout?.on('data', (data) => pushChunk({ type: 'stdout', data: data.toString(), timestamp: Date.now() }));
-    proc.stderr?.on('data', (data) => pushChunk({ type: 'stderr', data: data.toString(), timestamp: Date.now() }));
-    proc.on('error', (err) => { clearTimeout(timeoutId); error = err; info.status = 'error'; info.endTime = new Date(); done = true; resolveNext && resolveNext({ value: undefined as any, done: true }); });
-    proc.on('close', (code) => { clearTimeout(timeoutId); info.status = code === 0 ? 'completed' : 'error'; info.exitCode = code || 0; info.endTime = new Date(); done = true; resolveNext && resolveNext({ value: undefined as any, done: true }); });
-    while (!done || chunkQueue.length > 0) { if (chunkQueue.length > 0) yield chunkQueue.shift()!; else if (!done) { const result = await new Promise<IteratorResult<OutputChunk>>((r) => { resolveNext = r; }); if (!result.done) yield result.value; } }
+    const timeoutId = setTimeout(async () => {
+      error = new Error(`Process timeout after ${timeout}ms`);
+      this.emit('timeout', { pid, command, timeout });
+      await this.killProcessTree(pid, 'SIGKILL');
+      info.status = 'killed';
+      info.killSignal = 'SIGKILL';
+      info.endTime = new Date();
+      done = true;
+      resolveNext?.({ value: undefined as any, done: true });
+    }, timeout);
+    proc.stdout?.on('data', (data) =>
+      pushChunk({ type: 'stdout', data: data.toString(), timestamp: Date.now() }),
+    );
+    proc.stderr?.on('data', (data) =>
+      pushChunk({ type: 'stderr', data: data.toString(), timestamp: Date.now() }),
+    );
+    proc.on('error', (err) => {
+      clearTimeout(timeoutId);
+      error = err;
+      info.status = 'error';
+      info.endTime = new Date();
+      done = true;
+      resolveNext?.({ value: undefined as any, done: true });
+    });
+    proc.on('close', (code) => {
+      clearTimeout(timeoutId);
+      info.status = code === 0 ? 'completed' : 'error';
+      info.exitCode = code || 0;
+      info.endTime = new Date();
+      done = true;
+      resolveNext?.({ value: undefined as any, done: true });
+    });
+    while (!done || chunkQueue.length > 0) {
+      if (chunkQueue.length > 0) yield chunkQueue.shift()!;
+      else if (!done) {
+        const result = await new Promise<IteratorResult<OutputChunk>>((r) => {
+          resolveNext = r;
+        });
+        if (!result.done) yield result.value;
+      }
+    }
     if (error) throw error;
   }
 
-  async execWithProgress(command: string, onProgress: (progress: ProgressInfo) => void, options?: ProgressExecOptions): Promise<StreamingExecResult> {
+  async execWithProgress(
+    command: string,
+    onProgress: (progress: ProgressInfo) => void,
+    options?: ProgressExecOptions,
+  ): Promise<StreamingExecResult> {
     const patterns = options?.progressPatterns || DEFAULT_PROGRESS_PATTERNS;
-    const chunks: OutputChunk[] = []; const startTime = Date.now(); let truncated = false; const maxOutputSize = options?.maxOutputSize ?? DEFAULT_MAX_OUTPUT_SIZE; let totalSize = 0;
-    const detectProgress = (text: string): ProgressInfo | null => { for (const pattern of patterns) { if (pattern.test(text)) { const p: ProgressInfo = { raw: text }; const pct = text.match(/(\d+(?:\.\d+)?)\s*%/); if (pct) p.percent = parseFloat(pct[1]); const frac = text.match(/(\d+)\s*(?:\/|of)\s*(\d+)/i); if (frac) { p.current = parseInt(frac[1]); p.total = parseInt(frac[2]); if (!p.percent && p.total > 0) p.percent = (p.current / p.total) * 100; } const msg = text.match(/(?:downloading|installing|processing|building)\s+(.+)/i); if (msg) p.message = msg[1].trim(); return p; } } return null; };
-    const processChunk = (chunk: OutputChunk) => { if (totalSize < maxOutputSize) { totalSize += chunk.data.length; if (totalSize > maxOutputSize) { truncated = true; chunk.data = chunk.data.slice(0, maxOutputSize - (totalSize - chunk.data.length)); } chunks.push(chunk); } else truncated = true; for (const line of chunk.data.split(/\r?\n/)) { if (line.trim()) { const prog = detectProgress(line); if (prog) onProgress(prog); } } };
-    let exitCode = 0, pid = 0; const stdout: string[] = [], stderr: string[] = [];
-    try { for await (const chunk of this.execStreaming(command, { ...options, onOutput: processChunk, bufferOutput: false })) chunk.type === 'stdout' ? stdout.push(chunk.data) : stderr.push(chunk.data); } catch (err: any) { if (err.message?.includes('timeout')) exitCode = -1; else throw err; }
-    const last = Array.from(this.processes.values()).filter(p => p.command === command).pop(); if (last) { pid = last.pid; exitCode = last.exitCode ?? exitCode; }
-    return { pid, exitCode, stdout: stdout.join(''), stderr: stderr.join(''), duration: Date.now() - startTime, chunks, truncated };
+    const chunks: OutputChunk[] = [];
+    const startTime = Date.now();
+    let truncated = false;
+    const maxOutputSize = options?.maxOutputSize ?? DEFAULT_MAX_OUTPUT_SIZE;
+    let totalSize = 0;
+    const detectProgress = (text: string): ProgressInfo | null => {
+      for (const pattern of patterns) {
+        if (pattern.test(text)) {
+          const p: ProgressInfo = { raw: text };
+          const pct = text.match(/(\d+(?:\.\d+)?)\s*%/);
+          if (pct) p.percent = parseFloat(pct[1]);
+          const frac = text.match(/(\d+)\s*(?:\/|of)\s*(\d+)/i);
+          if (frac) {
+            p.current = parseInt(frac[1], 10);
+            p.total = parseInt(frac[2], 10);
+            if (!p.percent && p.total > 0) p.percent = (p.current / p.total) * 100;
+          }
+          const msg = text.match(/(?:downloading|installing|processing|building)\s+(.+)/i);
+          if (msg) p.message = msg[1].trim();
+          return p;
+        }
+      }
+      return null;
+    };
+    const processChunk = (chunk: OutputChunk) => {
+      if (totalSize < maxOutputSize) {
+        totalSize += chunk.data.length;
+        if (totalSize > maxOutputSize) {
+          truncated = true;
+          chunk.data = chunk.data.slice(0, maxOutputSize - (totalSize - chunk.data.length));
+        }
+        chunks.push(chunk);
+      } else truncated = true;
+      for (const line of chunk.data.split(/\r?\n/)) {
+        if (line.trim()) {
+          const prog = detectProgress(line);
+          if (prog) onProgress(prog);
+        }
+      }
+    };
+    let exitCode = 0,
+      pid = 0;
+    const stdout: string[] = [],
+      stderr: string[] = [];
+    try {
+      for await (const chunk of this.execStreaming(command, {
+        ...options,
+        onOutput: processChunk,
+        bufferOutput: false,
+      }))
+        chunk.type === 'stdout' ? stdout.push(chunk.data) : stderr.push(chunk.data);
+    } catch (err: any) {
+      if (err.message?.includes('timeout')) exitCode = -1;
+      else throw err;
+    }
+    const last = Array.from(this.processes.values())
+      .filter((p) => p.command === command)
+      .pop();
+    if (last) {
+      pid = last.pid;
+      exitCode = last.exitCode ?? exitCode;
+    }
+    return {
+      pid,
+      exitCode,
+      stdout: stdout.join(''),
+      stderr: stderr.join(''),
+      duration: Date.now() - startTime,
+      chunks,
+      truncated,
+    };
   }
 
   async pipe(commands: string[], options?: PipeOptions): Promise<StreamingExecResult> {
     if (commands.length === 0) throw new Error('At least one command is required');
-    const pipedCommand = commands.join(os.platform() === 'win32' ? ' | ' : ' | '); const chunks: OutputChunk[] = []; const startTime = Date.now(); let truncated = false; const maxOutputSize = options?.maxOutputSize ?? DEFAULT_MAX_OUTPUT_SIZE; let totalSize = 0;
-    const processChunk = (chunk: OutputChunk) => { if (totalSize < maxOutputSize) { totalSize += chunk.data.length; if (totalSize > maxOutputSize) { truncated = true; chunk.data = chunk.data.slice(0, maxOutputSize - (totalSize - chunk.data.length)); } chunks.push(chunk); } else truncated = true; options?.onIntermediateOutput?.(0, chunk); };
-    const stdout: string[] = [], stderr: string[] = []; let exitCode = 0, pid = 0;
-    try { for await (const chunk of this.execStreaming(pipedCommand, { cwd: options?.cwd, env: options?.env, timeout: options?.timeout, shell: options?.shell, onOutput: processChunk, bufferOutput: false })) chunk.type === 'stdout' ? stdout.push(chunk.data) : stderr.push(chunk.data); } catch (err: any) { if (err.message?.includes('timeout')) exitCode = -1; else throw err; }
-    const last = Array.from(this.processes.values()).filter(p => p.command === pipedCommand).pop(); if (last) { pid = last.pid; exitCode = last.exitCode ?? exitCode; }
-    return { pid, exitCode, stdout: stdout.join(''), stderr: stderr.join(''), duration: Date.now() - startTime, chunks, truncated };
+    const pipedCommand = commands.join(os.platform() === 'win32' ? ' | ' : ' | ');
+    const chunks: OutputChunk[] = [];
+    const startTime = Date.now();
+    let truncated = false;
+    const maxOutputSize = options?.maxOutputSize ?? DEFAULT_MAX_OUTPUT_SIZE;
+    let totalSize = 0;
+    const processChunk = (chunk: OutputChunk) => {
+      if (totalSize < maxOutputSize) {
+        totalSize += chunk.data.length;
+        if (totalSize > maxOutputSize) {
+          truncated = true;
+          chunk.data = chunk.data.slice(0, maxOutputSize - (totalSize - chunk.data.length));
+        }
+        chunks.push(chunk);
+      } else truncated = true;
+      options?.onIntermediateOutput?.(0, chunk);
+    };
+    const stdout: string[] = [],
+      stderr: string[] = [];
+    let exitCode = 0,
+      pid = 0;
+    try {
+      for await (const chunk of this.execStreaming(pipedCommand, {
+        cwd: options?.cwd,
+        env: options?.env,
+        timeout: options?.timeout,
+        shell: options?.shell,
+        onOutput: processChunk,
+        bufferOutput: false,
+      }))
+        chunk.type === 'stdout' ? stdout.push(chunk.data) : stderr.push(chunk.data);
+    } catch (err: any) {
+      if (err.message?.includes('timeout')) exitCode = -1;
+      else throw err;
+    }
+    const last = Array.from(this.processes.values())
+      .filter((p) => p.command === pipedCommand)
+      .pop();
+    if (last) {
+      pid = last.pid;
+      exitCode = last.exitCode ?? exitCode;
+    }
+    return {
+      pid,
+      exitCode,
+      stdout: stdout.join(''),
+      stderr: stderr.join(''),
+      duration: Date.now() - startTime,
+      chunks,
+      truncated,
+    };
   }
 
-  spawn(command: string, args: string[] = [], options?: {
-    cwd?: string; env?: Record<string, string>; shell?: boolean | string;
-  }): { pid: number; process: ChildProcess } {
+  spawn(
+    command: string,
+    args: string[] = [],
+    options?: {
+      cwd?: string;
+      env?: Record<string, string>;
+      shell?: boolean | string;
+    },
+  ): { pid: number; process: ChildProcess } {
     const cwd = this.resolveCwd(options?.cwd);
     const env = { ...this.config.env, ...options?.env };
     const spawnOptions: SpawnOptions = { cwd, env, shell: options?.shell ?? true };
@@ -559,35 +765,52 @@ export class NativeShell extends EventEmitter {
     const pid = proc.pid || ++this.processCounter;
 
     const info: ProcessInfo = {
-      pid, command, args, status: 'running', startTime: new Date(),
-      output: [], errors: [], childPids: [], processRef: proc, lastHealthCheck: new Date()
+      pid,
+      command,
+      args,
+      status: 'running',
+      startTime: new Date(),
+      output: [],
+      errors: [],
+      childPids: [],
+      processRef: proc,
+      lastHealthCheck: new Date(),
     };
     this.processes.set(pid, info);
 
     proc.stdout?.on('data', (data) => {
       const text = data.toString();
-      info.output.push(text); info.lastHealthCheck = new Date();
+      info.output.push(text);
+      info.lastHealthCheck = new Date();
       this.emit('stdout', { pid, data: text });
     });
     proc.stderr?.on('data', (data) => {
       const text = data.toString();
-      info.errors.push(text); info.lastHealthCheck = new Date();
+      info.errors.push(text);
+      info.lastHealthCheck = new Date();
       this.emit('stderr', { pid, data: text });
     });
     proc.on('close', (code) => {
       info.status = code === 0 ? 'completed' : 'error';
-      info.exitCode = code || 0; info.endTime = new Date(); info.processRef = undefined;
+      info.exitCode = code || 0;
+      info.endTime = new Date();
+      info.processRef = undefined;
       this.emit('close', { pid, code });
     });
     proc.on('error', (error) => {
-      info.status = 'error'; info.endTime = new Date(); info.processRef = undefined;
+      info.status = 'error';
+      info.endTime = new Date();
+      info.processRef = undefined;
       this.emit('error', { pid, error });
     });
 
     return { pid, process: proc };
   }
 
-  async background(command: string, options?: { cwd?: string; env?: Record<string, string> }): Promise<number> {
+  async background(
+    command: string,
+    options?: { cwd?: string; env?: Record<string, string> },
+  ): Promise<number> {
     const { pid } = this.spawn(command, [], { ...options, shell: true });
     return pid;
   }
@@ -601,26 +824,43 @@ export class NativeShell extends EventEmitter {
     if (!info) return false;
     try {
       process.kill(pid, signal);
-      info.status = 'killed'; info.endTime = new Date();
+      info.status = 'killed';
+      info.endTime = new Date();
       return true;
-    } catch { return false; }
+    } catch {
+      return false;
+    }
   }
 
-  getProcess(pid: number): ProcessInfo | undefined { return this.processes.get(pid); }
-  getOutput(pid: number): string { const info = this.processes.get(pid); return info ? info.output.join('') : ''; }
-  getErrors(pid: number): string { const info = this.processes.get(pid); return info ? info.errors.join('') : ''; }
+  getProcess(pid: number): ProcessInfo | undefined {
+    return this.processes.get(pid);
+  }
+  getOutput(pid: number): string {
+    const info = this.processes.get(pid);
+    return info ? info.output.join('') : '';
+  }
+  getErrors(pid: number): string {
+    const info = this.processes.get(pid);
+    return info ? info.errors.join('') : '';
+  }
 
   listProcesses(filter?: { status?: ProcessInfo['status'] }): ProcessInfo[] {
     let results = Array.from(this.processes.values());
-    if (filter?.status) { results = results.filter(p => p.status === filter.status); }
+    if (filter?.status) {
+      results = results.filter((p) => p.status === filter.status);
+    }
     return results;
   }
 
   cleanup(maxAge: number = 3600000): number {
-    const now = Date.now(); let cleaned = 0;
+    const now = Date.now();
+    let cleaned = 0;
     for (const [pid, info] of this.processes.entries()) {
       if (info.status !== 'running' && info.endTime) {
-        if (now - info.endTime.getTime() > maxAge) { this.processes.delete(pid); cleaned++; }
+        if (now - info.endTime.getTime() > maxAge) {
+          this.processes.delete(pid);
+          cleaned++;
+        }
       }
     }
     return cleaned;
@@ -631,7 +871,7 @@ export class NativeShell extends EventEmitter {
   // ============================================================
 
   getRunningProcesses(): ProcessInfo[] {
-    return Array.from(this.processes.values()).filter(p => p.status === 'running');
+    return Array.from(this.processes.values()).filter((p) => p.status === 'running');
   }
 
   isProcessRunning(pid: number): boolean {
@@ -647,12 +887,21 @@ export class NativeShell extends EventEmitter {
     const info = this.processes.get(pid);
     try {
       process.kill(pid, signal);
-      if (info) { info.status = 'killed'; info.killSignal = signal; info.endTime = new Date(); info.processRef = undefined; }
+      if (info) {
+        info.status = 'killed';
+        info.killSignal = signal;
+        info.endTime = new Date();
+        info.processRef = undefined;
+      }
       this.emit('processKilled', { pid, signal });
       return true;
     } catch (error: any) {
       if (error.code === 'ESRCH') {
-        if (info) { info.status = 'completed'; info.endTime = new Date(); info.processRef = undefined; }
+        if (info) {
+          info.status = 'completed';
+          info.endTime = new Date();
+          info.processRef = undefined;
+        }
         return true;
       }
       this.emit('killError', { pid, signal, error: error.message });
@@ -660,18 +909,26 @@ export class NativeShell extends EventEmitter {
     }
   }
 
-  async gracefulKill(pid: number, gracePeriod: number = this.GRACEFUL_SHUTDOWN_TIMEOUT): Promise<boolean> {
+  async gracefulKill(
+    pid: number,
+    gracePeriod: number = this.GRACEFUL_SHUTDOWN_TIMEOUT,
+  ): Promise<boolean> {
     const info = this.processes.get(pid);
     if (!this.isProcessRunning(pid)) {
-      if (info) { info.status = 'completed'; info.endTime = new Date(); }
+      if (info) {
+        info.status = 'completed';
+        info.endTime = new Date();
+      }
       return true;
     }
     this.emit('gracefulShutdown', { pid, phase: 'SIGTERM' });
     this.killProcess(pid, 'SIGTERM');
-    await new Promise(resolve => setTimeout(resolve, gracePeriod));
+    await new Promise((resolve) => setTimeout(resolve, gracePeriod));
     if (this.isProcessRunning(pid)) {
       this.emit('gracefulShutdown', { pid, phase: 'SIGKILL', reason: 'timeout' });
-      console.log(chalk.yellow(`[NativeShell] Process ${pid} did not respond to SIGTERM, forcing SIGKILL`));
+      console.log(
+        chalk.yellow(`[NativeShell] Process ${pid} did not respond to SIGTERM, forcing SIGKILL`),
+      );
       return this.killProcess(pid, 'SIGKILL');
     }
     return true;
@@ -682,19 +939,33 @@ export class NativeShell extends EventEmitter {
     const isWindows = os.platform() === 'win32';
     try {
       if (isWindows) {
-        const { exec } = await import('child_process');
+        const { exec } = await import('node:child_process');
         return new Promise((resolve) => {
           exec(`taskkill /PID ${pid} /T /F`, (error) => {
-            if (info) { info.status = 'killed'; info.killSignal = signal; info.endTime = new Date(); info.processRef = undefined; }
+            if (info) {
+              info.status = 'killed';
+              info.killSignal = signal;
+              info.endTime = new Date();
+              info.processRef = undefined;
+            }
             this.emit('processTreeKilled', { pid, signal });
             resolve(!error);
           });
         });
       } else {
-        try { process.kill(-pid, signal); } catch { process.kill(pid, signal); }
+        try {
+          process.kill(-pid, signal);
+        } catch {
+          process.kill(pid, signal);
+        }
         if (info) {
-          info.status = 'killed'; info.killSignal = signal; info.endTime = new Date(); info.processRef = undefined;
-          for (const childPid of info.childPids) { this.killProcess(childPid, signal); }
+          info.status = 'killed';
+          info.killSignal = signal;
+          info.endTime = new Date();
+          info.processRef = undefined;
+          for (const childPid of info.childPids) {
+            this.killProcess(childPid, signal);
+          }
         }
         this.emit('processTreeKilled', { pid, signal });
         return true;
@@ -706,14 +977,26 @@ export class NativeShell extends EventEmitter {
   }
 
   async killAllChildren(): Promise<CleanupStats> {
-    const stats: CleanupStats = { zombiesKilled: 0, orphansKilled: 0, processesTerminated: 0, errors: [] };
+    const stats: CleanupStats = {
+      zombiesKilled: 0,
+      orphansKilled: 0,
+      processesTerminated: 0,
+      errors: [],
+    };
     const runningProcesses = this.getRunningProcesses();
     this.emit('killAllChildren', { count: runningProcesses.length });
     for (const info of runningProcesses) {
       try {
         const success = await this.gracefulKill(info.pid);
-        if (success) { stats.processesTerminated++; if (info.isOrphaned) { stats.orphansKilled++; } }
-      } catch (error: any) { stats.errors.push(`Failed to kill PID ${info.pid}: ${error.message}`); }
+        if (success) {
+          stats.processesTerminated++;
+          if (info.isOrphaned) {
+            stats.orphansKilled++;
+          }
+        }
+      } catch (error: any) {
+        stats.errors.push(`Failed to kill PID ${info.pid}: ${error.message}`);
+      }
     }
     console.log(chalk.cyan(`[NativeShell] Killed ${stats.processesTerminated} child processes`));
     return stats;
@@ -744,17 +1027,29 @@ export class NativeShell extends EventEmitter {
   }
 
   private startZombieCleanup(): void {
-    if (this.zombieCleanupInterval) { clearInterval(this.zombieCleanupInterval); }
-    this.zombieCleanupInterval = setInterval(() => { this.performZombieCleanup(); }, this.ZOMBIE_CHECK_INTERVAL);
+    if (this.zombieCleanupInterval) {
+      clearInterval(this.zombieCleanupInterval);
+    }
+    this.zombieCleanupInterval = setInterval(() => {
+      this.performZombieCleanup();
+    }, this.ZOMBIE_CHECK_INTERVAL);
     this.zombieCleanupInterval.unref();
   }
 
   private stopZombieCleanup(): void {
-    if (this.zombieCleanupInterval) { clearInterval(this.zombieCleanupInterval); this.zombieCleanupInterval = null; }
+    if (this.zombieCleanupInterval) {
+      clearInterval(this.zombieCleanupInterval);
+      this.zombieCleanupInterval = null;
+    }
   }
 
   async performZombieCleanup(): Promise<CleanupStats> {
-    const stats: CleanupStats = { zombiesKilled: 0, orphansKilled: 0, processesTerminated: 0, errors: [] };
+    const stats: CleanupStats = {
+      zombiesKilled: 0,
+      orphansKilled: 0,
+      processesTerminated: 0,
+      errors: [],
+    };
     const zombies = this.detectZombieProcesses();
     if (zombies.length > 0) {
       console.log(chalk.yellow(`[NativeShell] Detected ${zombies.length} zombie processes`));
@@ -764,17 +1059,32 @@ export class NativeShell extends EventEmitter {
       this.zombieProcesses.set(zombie.pid, zombie);
       try {
         const killed = await this.gracefulKill(zombie.pid);
-        if (killed) { stats.zombiesKilled++; stats.processesTerminated++; this.zombieProcesses.delete(zombie.pid); console.log(chalk.green(`[NativeShell] Cleaned up zombie process ${zombie.pid}`)); }
-      } catch (error: any) { stats.errors.push(`Failed to kill zombie ${zombie.pid}: ${error.message}`); }
+        if (killed) {
+          stats.zombiesKilled++;
+          stats.processesTerminated++;
+          this.zombieProcesses.delete(zombie.pid);
+          console.log(chalk.green(`[NativeShell] Cleaned up zombie process ${zombie.pid}`));
+        }
+      } catch (error: any) {
+        stats.errors.push(`Failed to kill zombie ${zombie.pid}: ${error.message}`);
+      }
     }
     const orphaned = this.detectOrphanedProcesses();
     for (const info of orphaned) {
       try {
         const killed = await this.gracefulKill(info.pid);
-        if (killed) { stats.orphansKilled++; stats.processesTerminated++; console.log(chalk.green(`[NativeShell] Cleaned up orphaned process ${info.pid}`)); }
-      } catch (error: any) { stats.errors.push(`Failed to kill orphan ${info.pid}: ${error.message}`); }
+        if (killed) {
+          stats.orphansKilled++;
+          stats.processesTerminated++;
+          console.log(chalk.green(`[NativeShell] Cleaned up orphaned process ${info.pid}`));
+        }
+      } catch (error: any) {
+        stats.errors.push(`Failed to kill orphan ${info.pid}: ${error.message}`);
+      }
     }
-    if (stats.processesTerminated > 0) { this.emit('cleanupCompleted', stats); }
+    if (stats.processesTerminated > 0) {
+      this.emit('cleanupCompleted', stats);
+    }
     return stats;
   }
 
@@ -784,7 +1094,8 @@ export class NativeShell extends EventEmitter {
       if (info.status !== 'running') continue;
       if (!info.parentPid) continue;
       if (!this.isProcessRunning(info.parentPid)) {
-        info.isOrphaned = true; orphaned.push(info);
+        info.isOrphaned = true;
+        orphaned.push(info);
         this.logOrphanedProcess(info.pid, info, 'parent_died');
       }
     }
@@ -793,9 +1104,14 @@ export class NativeShell extends EventEmitter {
 
   private logOrphanedProcess(pid: number, info: ProcessInfo, reason: string): void {
     const logEntry = {
-      timestamp: new Date().toISOString(), pid, command: info.command, reason,
-      startTime: info.startTime.toISOString(), lastHealthCheck: info.lastHealthCheck?.toISOString(),
-      parentPid: info.parentPid, childPids: info.childPids
+      timestamp: new Date().toISOString(),
+      pid,
+      command: info.command,
+      reason,
+      startTime: info.startTime.toISOString(),
+      lastHealthCheck: info.lastHealthCheck?.toISOString(),
+      parentPid: info.parentPid,
+      childPids: info.childPids,
     };
     console.log(chalk.red(`[NativeShell] Orphaned process detected: ${JSON.stringify(logEntry)}`));
     this.emit('orphanedProcess', logEntry);
@@ -810,9 +1126,17 @@ export class NativeShell extends EventEmitter {
       try {
         this.stopZombieCleanup();
         const stats = await this.killAllChildren();
-        console.log(chalk.cyan(`[NativeShell] Shutdown complete: ${stats.processesTerminated} processes terminated`));
-        for (const sessionId of this.sessions.keys()) { this.closeSession(sessionId); }
-      } catch (error) { console.error(chalk.red(`[NativeShell] Error during shutdown: ${error}`)); }
+        console.log(
+          chalk.cyan(
+            `[NativeShell] Shutdown complete: ${stats.processesTerminated} processes terminated`,
+          ),
+        );
+        for (const sessionId of this.sessions.keys()) {
+          this.closeSession(sessionId);
+        }
+      } catch (error) {
+        console.error(chalk.red(`[NativeShell] Error during shutdown: ${error}`));
+      }
     };
     process.on('SIGTERM', () => shutdown('SIGTERM'));
     process.on('SIGINT', () => shutdown('SIGINT'));
@@ -821,34 +1145,57 @@ export class NativeShell extends EventEmitter {
       console.error(chalk.red(`[NativeShell] Uncaught exception: ${error}`));
       shutdown('uncaughtException');
     });
-    process.on('beforeExit', () => { if (!this.isShuttingDown) { shutdown('beforeExit'); } });
+    process.on('beforeExit', () => {
+      if (!this.isShuttingDown) {
+        shutdown('beforeExit');
+      }
+    });
   }
 
   getZombieStats(): { active: number; history: ZombieProcessInfo[] } {
-    return { active: this.zombieProcesses.size, history: Array.from(this.zombieProcesses.values()) };
+    return {
+      active: this.zombieProcesses.size,
+      history: Array.from(this.zombieProcesses.values()),
+    };
   }
 
-  async triggerZombieCleanup(): Promise<CleanupStats> { return this.performZombieCleanup(); }
+  async triggerZombieCleanup(): Promise<CleanupStats> {
+    return this.performZombieCleanup();
+  }
 
   setProcessParent(childPid: number, parentPid: number): void {
     const childInfo = this.processes.get(childPid);
     const parentInfo = this.processes.get(parentPid);
-    if (childInfo) { childInfo.parentPid = parentPid; }
-    if (parentInfo) { if (!parentInfo.childPids.includes(childPid)) { parentInfo.childPids.push(childPid); } }
+    if (childInfo) {
+      childInfo.parentPid = parentPid;
+    }
+    if (parentInfo) {
+      if (!parentInfo.childPids.includes(childPid)) {
+        parentInfo.childPids.push(childPid);
+      }
+    }
   }
 
   // ============================================================
   // Interactive Sessions
   // ============================================================
 
-  createSession(options?: { shell?: string; cwd?: string; env?: Record<string, string> }): ShellSession {
+  createSession(options?: {
+    shell?: string;
+    cwd?: string;
+    env?: Record<string, string>;
+  }): ShellSession {
     const id = `session_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const shell = options?.shell || this.config.defaultShell;
     const cwd = this.resolveCwd(options?.cwd);
     const env = { ...this.config.env, ...options?.env };
     const session: ShellSession = { id, shell, cwd, env, history: [], created: new Date() };
     const isWindows = os.platform() === 'win32';
-    const proc = spawn(shell, isWindows ? [] : ['-i'], { cwd, env, stdio: ['pipe', 'pipe', 'pipe'] });
+    const proc = spawn(shell, isWindows ? [] : ['-i'], {
+      cwd,
+      env,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
     session.process = proc;
     this.sessions.set(id, session);
     return session;
@@ -856,14 +1203,24 @@ export class NativeShell extends EventEmitter {
 
   async sendToSession(sessionId: string, input: string): Promise<string> {
     const session = this.sessions.get(sessionId);
-    if (!session || !session.process) { throw new Error(`Session not found: ${sessionId}`); }
+    if (!session || !session.process) {
+      throw new Error(`Session not found: ${sessionId}`);
+    }
     return new Promise((resolve, reject) => {
       const output: string[] = [];
-      const timeout = setTimeout(() => { resolve(output.join('')); }, 2000);
-      const onData = (data: Buffer) => { output.push(data.toString()); };
-      session.process!.stdout?.on('data', onData);
-      session.process!.stdin?.write(input + '\n', (err) => {
-        if (err) { clearTimeout(timeout); session.process!.stdout?.off('data', onData); reject(err); }
+      const timeout = setTimeout(() => {
+        resolve(output.join(''));
+      }, 2000);
+      const onData = (data: Buffer) => {
+        output.push(data.toString());
+      };
+      session.process?.stdout?.on('data', onData);
+      session.process?.stdin?.write(`${input}\n`, (err) => {
+        if (err) {
+          clearTimeout(timeout);
+          session.process?.stdout?.off('data', onData);
+          reject(err);
+        }
       });
       session.history.push(input);
     });
@@ -877,8 +1234,12 @@ export class NativeShell extends EventEmitter {
     return true;
   }
 
-  getSession(sessionId: string): ShellSession | undefined { return this.sessions.get(sessionId); }
-  listSessions(): ShellSession[] { return Array.from(this.sessions.values()); }
+  getSession(sessionId: string): ShellSession | undefined {
+    return this.sessions.get(sessionId);
+  }
+  listSessions(): ShellSession[] {
+    return Array.from(this.sessions.values());
+  }
 
   // ============================================================
   // Convenience Methods
@@ -886,7 +1247,9 @@ export class NativeShell extends EventEmitter {
 
   async run(command: string, cwd?: string): Promise<string> {
     const result = await this.exec(command, { cwd });
-    if (result.exitCode !== 0) { throw new Error(result.stderr || `Command failed with exit code ${result.exitCode}`); }
+    if (result.exitCode !== 0) {
+      throw new Error(result.stderr || `Command failed with exit code ${result.exitCode}`);
+    }
     return result.stdout;
   }
 
@@ -895,11 +1258,24 @@ export class NativeShell extends EventEmitter {
     const pythonExe = os.platform() === 'win32' ? 'python' : 'python3';
     const spawnArgs = ['-c', script, ...args];
     return new Promise((resolve, reject) => {
-      const proc = spawn(pythonExe, spawnArgs, { cwd: this.config.cwd, env: this.config.env, shell: false });
-      let stdout = '', stderr = '';
-      proc.stdout.on('data', (data: Buffer) => { stdout += data.toString(); });
-      proc.stderr.on('data', (data: Buffer) => { stderr += data.toString(); });
-      proc.on('close', (code: number | null) => { code === 0 ? resolve(stdout) : reject(new Error(stderr || `Python exited with code ${code}`)); });
+      const proc = spawn(pythonExe, spawnArgs, {
+        cwd: this.config.cwd,
+        env: this.config.env,
+        shell: false,
+      });
+      let stdout = '',
+        stderr = '';
+      proc.stdout.on('data', (data: Buffer) => {
+        stdout += data.toString();
+      });
+      proc.stderr.on('data', (data: Buffer) => {
+        stderr += data.toString();
+      });
+      proc.on('close', (code: number | null) => {
+        code === 0
+          ? resolve(stdout)
+          : reject(new Error(stderr || `Python exited with code ${code}`));
+      });
       proc.on('error', (err: Error) => reject(err));
     });
   }
@@ -908,11 +1284,22 @@ export class NativeShell extends EventEmitter {
   async node(script: string, args: string[] = []): Promise<string> {
     const spawnArgs = ['-e', script, ...args];
     return new Promise((resolve, reject) => {
-      const proc = spawn('node', spawnArgs, { cwd: this.config.cwd, env: this.config.env, shell: false });
-      let stdout = '', stderr = '';
-      proc.stdout.on('data', (data: Buffer) => { stdout += data.toString(); });
-      proc.stderr.on('data', (data: Buffer) => { stderr += data.toString(); });
-      proc.on('close', (code: number | null) => { code === 0 ? resolve(stdout) : reject(new Error(stderr || `Node exited with code ${code}`)); });
+      const proc = spawn('node', spawnArgs, {
+        cwd: this.config.cwd,
+        env: this.config.env,
+        shell: false,
+      });
+      let stdout = '',
+        stderr = '';
+      proc.stdout.on('data', (data: Buffer) => {
+        stdout += data.toString();
+      });
+      proc.stderr.on('data', (data: Buffer) => {
+        stderr += data.toString();
+      });
+      proc.on('close', (code: number | null) => {
+        code === 0 ? resolve(stdout) : reject(new Error(stderr || `Node exited with code ${code}`));
+      });
       proc.on('error', (err: Error) => reject(err));
     });
   }
@@ -922,15 +1309,22 @@ export class NativeShell extends EventEmitter {
       const cmd = os.platform() === 'win32' ? `where ${command}` : `which ${command}`;
       const result = await this.run(cmd);
       return result.trim().split('\n')[0];
-    } catch { return null; }
+    } catch {
+      return null;
+    }
   }
 
   getSystemInfo(): Record<string, any> {
     return {
-      platform: os.platform(), arch: os.arch(), hostname: os.hostname(),
-      cpus: os.cpus().length, memory: { total: os.totalmem(), free: os.freemem() },
-      uptime: os.uptime(), shell: this.config.defaultShell,
-      preferredShell: this.config.preferredShell, availableShells: this.detectAvailableShells()
+      platform: os.platform(),
+      arch: os.arch(),
+      hostname: os.hostname(),
+      cpus: os.cpus().length,
+      memory: { total: os.totalmem(), free: os.freemem() },
+      uptime: os.uptime(),
+      shell: this.config.defaultShell,
+      preferredShell: this.config.preferredShell,
+      availableShells: this.detectAvailableShells(),
     };
   }
 
@@ -948,7 +1342,9 @@ export class NativeShell extends EventEmitter {
     const shellTypes: ShellType[] = ['cmd', 'powershell', 'pwsh', 'bash', 'sh', 'zsh'];
     for (const shellType of shellTypes) {
       const shellPath = this.getShellCommand(shellType);
-      if (shellPath) { available.push(shellType); }
+      if (shellPath) {
+        available.push(shellType);
+      }
     }
     const fallbackOrder = isWindows ? SHELL_FALLBACK_ORDER.windows : SHELL_FALLBACK_ORDER.unix;
     available.sort((a, b) => {
@@ -961,14 +1357,19 @@ export class NativeShell extends EventEmitter {
 
   getAvailableShellsInfo(): ShellInfo[] {
     const now = Date.now();
-    if (this.shellCache.size > 0 && (now - this.shellCacheTime) < this.SHELL_CACHE_TTL) {
+    if (this.shellCache.size > 0 && now - this.shellCacheTime < this.SHELL_CACHE_TTL) {
       return Array.from(this.shellCache.values());
     }
     this.shellCache.clear();
     const shellTypes: ShellType[] = ['cmd', 'powershell', 'pwsh', 'bash', 'sh', 'zsh'];
     for (const shellType of shellTypes) {
       const shellPath = this.getShellCommand(shellType);
-      const info: ShellInfo = { type: shellType, path: shellPath || '', available: !!shellPath, version: shellPath ? this.getShellVersion(shellType, shellPath) : undefined };
+      const info: ShellInfo = {
+        type: shellType,
+        path: shellPath || '',
+        available: !!shellPath,
+        version: shellPath ? this.getShellVersion(shellType, shellPath) : undefined,
+      };
       this.shellCache.set(shellType, info);
     }
     this.shellCacheTime = now;
@@ -979,18 +1380,35 @@ export class NativeShell extends EventEmitter {
     try {
       let versionCmd: string;
       switch (shellType) {
-        case 'cmd': return 'Windows CMD';
-        case 'powershell': versionCmd = `"${shellPath}" -NoProfile -Command "$PSVersionTable.PSVersion.ToString()"`; break;
-        case 'pwsh': versionCmd = `"${shellPath}" -NoProfile -Command "$PSVersionTable.PSVersion.ToString()"`; break;
-        case 'bash': versionCmd = `"${shellPath}" --version`; break;
-        case 'sh': return 'POSIX shell';
-        case 'zsh': versionCmd = `"${shellPath}" --version`; break;
-        default: return undefined;
+        case 'cmd':
+          return 'Windows CMD';
+        case 'powershell':
+          versionCmd = `"${shellPath}" -NoProfile -Command "$PSVersionTable.PSVersion.ToString()"`;
+          break;
+        case 'pwsh':
+          versionCmd = `"${shellPath}" -NoProfile -Command "$PSVersionTable.PSVersion.ToString()"`;
+          break;
+        case 'bash':
+          versionCmd = `"${shellPath}" --version`;
+          break;
+        case 'sh':
+          return 'POSIX shell';
+        case 'zsh':
+          versionCmd = `"${shellPath}" --version`;
+          break;
+        default:
+          return undefined;
       }
-      const output = execSync(versionCmd, { encoding: 'utf-8', timeout: 5000, windowsHide: true }).trim();
+      const output = execSync(versionCmd, {
+        encoding: 'utf-8',
+        timeout: 5000,
+        windowsHide: true,
+      }).trim();
       const versionMatch = output.match(/(\d+\.\d+(?:\.\d+)?)/);
       return versionMatch ? versionMatch[1] : output.split('\n')[0];
-    } catch { return undefined; }
+    } catch {
+      return undefined;
+    }
   }
 
   setPreferredShell(shell: ShellType): boolean {
@@ -999,9 +1417,14 @@ export class NativeShell extends EventEmitter {
       if (this.config.autoFallback) {
         const fallbackShell = this.findFallbackShell(shell);
         if (fallbackShell) {
-          console.log(chalk.yellow(`[NativeShell] Shell '${shell}' not available, using fallback: ${fallbackShell}`));
+          console.log(
+            chalk.yellow(
+              `[NativeShell] Shell '${shell}' not available, using fallback: ${fallbackShell}`,
+            ),
+          );
           this.config.preferredShell = fallbackShell;
-          this.config.defaultShell = this.getShellCommand(fallbackShell) || this.config.defaultShell;
+          this.config.defaultShell =
+            this.getShellCommand(fallbackShell) || this.config.defaultShell;
           this.emit('shellFallback', { requested: shell, fallback: fallbackShell });
           return true;
         }
@@ -1021,7 +1444,9 @@ export class NativeShell extends EventEmitter {
     const isWindows = os.platform() === 'win32';
     const fallbackOrder = isWindows ? SHELL_FALLBACK_ORDER.windows : SHELL_FALLBACK_ORDER.unix;
     for (const shell of fallbackOrder) {
-      if (shell !== unavailableShell && this.getShellCommand(shell)) { return shell; }
+      if (shell !== unavailableShell && this.getShellCommand(shell)) {
+        return shell;
+      }
     }
     return null;
   }
@@ -1030,19 +1455,34 @@ export class NativeShell extends EventEmitter {
     const isWindows = os.platform() === 'win32';
     const paths = isWindows ? SHELL_PATHS[shell].windows : SHELL_PATHS[shell].unix;
     const cached = this.shellCache.get(shell);
-    if (cached && cached.available) { return cached.path; }
+    if (cached?.available) {
+      return cached.path;
+    }
     for (const shellPath of paths) {
-      if (path.isAbsolute(shellPath) && fs.existsSync(shellPath)) { return shellPath; }
+      if (path.isAbsolute(shellPath) && fs.existsSync(shellPath)) {
+        return shellPath;
+      }
       try {
         const findCmd = isWindows ? `where ${shellPath}` : `which ${shellPath}`;
-        const result = execSync(findCmd, { encoding: 'utf-8', timeout: 5000, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] }).trim();
-        if (result) { return result.split('\n')[0]; }
-      } catch { /* Shell not found */ }
+        const result = execSync(findCmd, {
+          encoding: 'utf-8',
+          timeout: 5000,
+          windowsHide: true,
+          stdio: ['pipe', 'pipe', 'pipe'],
+        }).trim();
+        if (result) {
+          return result.split('\n')[0];
+        }
+      } catch {
+        /* Shell not found */
+      }
     }
     return null;
   }
 
-  getPreferredShell(): ShellType | null { return this.config.preferredShell || null; }
+  getPreferredShell(): ShellType | null {
+    return this.config.preferredShell || null;
+  }
 
   getShellTypeFromPath(shellPath: string): ShellType | null {
     const normalizedPath = shellPath.toLowerCase();
@@ -1074,27 +1514,47 @@ export class NativeShell extends EventEmitter {
 
   private normalizeShellForTranslation(shell: ShellType): 'cmd' | 'powershell' | 'bash' {
     switch (shell) {
-      case 'cmd': return 'cmd';
-      case 'powershell': case 'pwsh': return 'powershell';
-      case 'bash': case 'sh': case 'zsh': return 'bash';
-      default: return 'bash';
+      case 'cmd':
+        return 'cmd';
+      case 'powershell':
+      case 'pwsh':
+        return 'powershell';
+      case 'bash':
+      case 'sh':
+      case 'zsh':
+        return 'bash';
+      default:
+        return 'bash';
     }
   }
 
-  private escapeRegex(str: string): string { return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+  private escapeRegex(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
 
   getCommandForCurrentShell(command: string, sourceShell?: ShellType): string {
     const isWindows = os.platform() === 'win32';
     const from = sourceShell || (isWindows ? 'cmd' : 'bash');
-    const to = this.config.preferredShell || this.getShellTypeFromPath(this.config.defaultShell) || (isWindows ? 'powershell' : 'bash');
+    const to =
+      this.config.preferredShell ||
+      this.getShellTypeFromPath(this.config.defaultShell) ||
+      (isWindows ? 'powershell' : 'bash');
     return this.translateCommand(command, from, to);
   }
 
-  isShellAvailable(shell: ShellType): boolean { return this.getShellCommand(shell) !== null; }
+  isShellAvailable(shell: ShellType): boolean {
+    return this.getShellCommand(shell) !== null;
+  }
 
-  async execWithShell(command: string, shell: ShellType, options?: ExecOptions): Promise<ProcessResult> {
+  async execWithShell(
+    command: string,
+    shell: ShellType,
+    options?: ExecOptions,
+  ): Promise<ProcessResult> {
     const shellPath = this.getShellCommand(shell);
-    if (!shellPath) { throw new Error(`Shell '${shell}' is not available on this system`); }
+    if (!shellPath) {
+      throw new Error(`Shell '${shell}' is not available on this system`);
+    }
     return this.exec(command, { ...options, shell: shellPath });
   }
 
@@ -1133,7 +1593,9 @@ export class NativeShell extends EventEmitter {
     for (const shell of shellsInfo) {
       if (shell.available) {
         const marker = shell.type === preferredShell ? chalk.green(' *') : '';
-        console.log(chalk.gray(`    ${shell.type}${marker}: ${shell.path} (${shell.version || 'unknown'})`));
+        console.log(
+          chalk.gray(`    ${shell.type}${marker}: ${shell.path} (${shell.version || 'unknown'})`),
+        );
       }
     }
 
@@ -1141,7 +1603,11 @@ export class NativeShell extends EventEmitter {
       console.log(chalk.cyan('\n  Running Processes:'));
       for (const proc of running) {
         const runtime = Date.now() - proc.startTime.getTime();
-        console.log(chalk.gray(`    PID ${proc.pid}: ${proc.command.slice(0, 50)}... (${Math.round(runtime / 1000)}s)`));
+        console.log(
+          chalk.gray(
+            `    PID ${proc.pid}: ${proc.command.slice(0, 50)}... (${Math.round(runtime / 1000)}s)`,
+          ),
+        );
       }
     }
 
@@ -1157,9 +1623,17 @@ export class NativeShell extends EventEmitter {
     console.log(chalk.yellow('[NativeShell] Starting destroy sequence...'));
     this.stopZombieCleanup();
     const stats = await this.killAllChildren();
-    for (const sessionId of this.sessions.keys()) { this.closeSession(sessionId); }
-    this.processes.clear(); this.sessions.clear(); this.zombieProcesses.clear();
-    console.log(chalk.green(`[NativeShell] Destroy complete. Terminated ${stats.processesTerminated} processes.`));
+    for (const sessionId of this.sessions.keys()) {
+      this.closeSession(sessionId);
+    }
+    this.processes.clear();
+    this.sessions.clear();
+    this.zombieProcesses.clear();
+    console.log(
+      chalk.green(
+        `[NativeShell] Destroy complete. Terminated ${stats.processesTerminated} processes.`,
+      ),
+    );
     this.emit('destroyed', stats);
     return stats;
   }
@@ -1168,10 +1642,16 @@ export class NativeShell extends EventEmitter {
     console.log(chalk.yellow('[NativeShell] Starting synchronous destroy...'));
     this.stopZombieCleanup();
     for (const [pid, info] of this.processes.entries()) {
-      if (info.status === 'running') { this.killProcess(pid, 'SIGKILL'); }
+      if (info.status === 'running') {
+        this.killProcess(pid, 'SIGKILL');
+      }
     }
-    for (const sessionId of this.sessions.keys()) { this.closeSession(sessionId); }
-    this.processes.clear(); this.sessions.clear(); this.zombieProcesses.clear();
+    for (const sessionId of this.sessions.keys()) {
+      this.closeSession(sessionId);
+    }
+    this.processes.clear();
+    this.sessions.clear();
+    this.zombieProcesses.clear();
     console.log(chalk.green('[NativeShell] Synchronous destroy complete.'));
   }
 
@@ -1180,18 +1660,28 @@ export class NativeShell extends EventEmitter {
   // ============================================================
 
   setEnvVar(name: string, value: string): void {
-    this.managedEnv[name] = value; this.rebuildEnvironment();
+    this.managedEnv[name] = value;
+    this.rebuildEnvironment();
     this.emit('envChanged', { name, value, action: 'set' });
   }
 
-  getEnvVar(name: string): string | undefined { return this.config.env[name]; }
+  getEnvVar(name: string): string | undefined {
+    return this.config.env[name];
+  }
 
   clearEnvVar(name: string): boolean {
-    if (name in this.managedEnv) { delete this.managedEnv[name]; this.rebuildEnvironment(); this.emit('envChanged', { name, action: 'clear' }); return true; }
+    if (name in this.managedEnv) {
+      delete this.managedEnv[name];
+      this.rebuildEnvironment();
+      this.emit('envChanged', { name, action: 'clear' });
+      return true;
+    }
     return false;
   }
 
-  getEnvironment(): Record<string, string> { return { ...this.config.env }; }
+  getEnvironment(): Record<string, string> {
+    return { ...this.config.env };
+  }
 
   getFilteredEnvironment(): Record<string, string> {
     const filtered: Record<string, string> = {};
@@ -1201,17 +1691,27 @@ export class NativeShell extends EventEmitter {
     return filtered;
   }
 
-  isSensitiveEnvVar(name: string): boolean { return SENSITIVE_ENV_PATTERNS.some(pattern => pattern.test(name)); }
+  isSensitiveEnvVar(name: string): boolean {
+    return SENSITIVE_ENV_PATTERNS.some((pattern) => pattern.test(name));
+  }
 
   setEnvironmentProfile(profile: EnvironmentProfile): void {
     const profileConfig = ENVIRONMENT_PROFILES[profile];
-    if (!profileConfig) { throw new Error(`Unknown environment profile: ${profile}`); }
-    this.config.environmentConfig = { ...this.config.environmentConfig, ...profileConfig, activeProfile: profile };
+    if (!profileConfig) {
+      throw new Error(`Unknown environment profile: ${profile}`);
+    }
+    this.config.environmentConfig = {
+      ...this.config.environmentConfig,
+      ...profileConfig,
+      activeProfile: profile,
+    };
     this.rebuildEnvironment();
     this.emit('profileChanged', { profile });
   }
 
-  getEnvironmentProfile(): EnvironmentProfile | undefined { return this.config.environmentConfig.activeProfile; }
+  getEnvironmentProfile(): EnvironmentProfile | undefined {
+    return this.config.environmentConfig.activeProfile;
+  }
 
   updateEnvironmentConfig(configUpdate: Partial<EnvironmentConfig>): void {
     this.config.environmentConfig = { ...this.config.environmentConfig, ...configUpdate };
@@ -1227,27 +1727,39 @@ export class NativeShell extends EventEmitter {
 
   removeBlockedEnvVars(vars: string[]): void {
     const toRemove = new Set(vars);
-    this.config.environmentConfig.blockedEnvVars = this.config.environmentConfig.blockedEnvVars.filter(v => !toRemove.has(v));
+    this.config.environmentConfig.blockedEnvVars =
+      this.config.environmentConfig.blockedEnvVars.filter((v) => !toRemove.has(v));
     this.rebuildEnvironment();
   }
 
-  getBlockedEnvVars(): string[] { return [...this.config.environmentConfig.blockedEnvVars]; }
+  getBlockedEnvVars(): string[] {
+    return [...this.config.environmentConfig.blockedEnvVars];
+  }
 
   private rebuildEnvironment(): void {
     const envConfig = this.config.environmentConfig;
     let env: Record<string, string> = {};
-    if (envConfig.inheritEnv) { env = { ...process.env } as Record<string, string>; }
+    if (envConfig.inheritEnv) {
+      env = { ...process.env } as Record<string, string>;
+    }
     if (envConfig.activeProfile) {
       const profileConfig = ENVIRONMENT_PROFILES[envConfig.activeProfile];
-      if (profileConfig.additionalEnv) { env = { ...env, ...profileConfig.additionalEnv }; }
+      if (profileConfig.additionalEnv) {
+        env = { ...env, ...profileConfig.additionalEnv };
+      }
     }
     env = { ...env, ...envConfig.additionalEnv };
     env = { ...env, ...this.managedEnv };
-    for (const blocked of envConfig.blockedEnvVars) { delete env[blocked]; }
+    for (const blocked of envConfig.blockedEnvVars) {
+      delete env[blocked];
+    }
     this.config.env = env;
   }
 
-  exportEnvironment(filePath: string, options?: { includeInherited?: boolean; filterSensitive?: boolean }): void {
+  exportEnvironment(
+    filePath: string,
+    options?: { includeInherited?: boolean; filterSensitive?: boolean },
+  ): void {
     const includeInherited = options?.includeInherited ?? false;
     const filterSensitive = options?.filterSensitive ?? true;
     let envToExport: Record<string, string>;
@@ -1257,16 +1769,22 @@ export class NativeShell extends EventEmitter {
       envToExport = { ...this.config.environmentConfig.additionalEnv, ...this.managedEnv };
       if (filterSensitive) {
         for (const key of Object.keys(envToExport)) {
-          if (this.isSensitiveEnvVar(key)) { envToExport[key] = '***FILTERED***'; }
+          if (this.isSensitiveEnvVar(key)) {
+            envToExport[key] = '***FILTERED***';
+          }
         }
       }
     }
-    const lines = Object.entries(envToExport).map(([key, value]) => `${key}=${this.escapeEnvValue(value)}`).join('\n');
+    const lines = Object.entries(envToExport)
+      .map(([key, value]) => `${key}=${this.escapeEnvValue(value)}`)
+      .join('\n');
     fs.writeFileSync(filePath, lines, 'utf-8');
   }
 
   importEnvironment(filePath: string): number {
-    if (!fs.existsSync(filePath)) { throw new Error(`Environment file not found: ${filePath}`); }
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`Environment file not found: ${filePath}`);
+    }
     const content = fs.readFileSync(filePath, 'utf-8');
     const lines = content.split('\n');
     let imported = 0;
@@ -1277,7 +1795,8 @@ export class NativeShell extends EventEmitter {
       if (match) {
         const [, name, value] = match;
         const cleanValue = value.replace(/^["']|["']$/g, '');
-        this.setEnvVar(name, cleanValue); imported++;
+        this.setEnvVar(name, cleanValue);
+        imported++;
       }
     }
     return imported;
@@ -1294,9 +1813,13 @@ export class NativeShell extends EventEmitter {
     console.log(chalk.cyan('\n=== Environment Manager ===\n'));
     const profile = this.config.environmentConfig.activeProfile;
     console.log(chalk.yellow(`  Active Profile: ${profile || 'none'}`));
-    console.log(chalk.yellow(`  Inherit from process.env: ${this.config.environmentConfig.inheritEnv}`));
+    console.log(
+      chalk.yellow(`  Inherit from process.env: ${this.config.environmentConfig.inheritEnv}`),
+    );
     console.log(chalk.cyan('\n  Blocked Variables:'));
-    for (const blocked of this.config.environmentConfig.blockedEnvVars) { console.log(chalk.red(`    - ${blocked}`)); }
+    for (const blocked of this.config.environmentConfig.blockedEnvVars) {
+      console.log(chalk.red(`    - ${blocked}`));
+    }
     console.log(chalk.cyan('\n  Managed Variables:'));
     for (const [key, value] of Object.entries(this.managedEnv)) {
       const displayValue = this.isSensitiveEnvVar(key) ? '***FILTERED***' : value;
@@ -1307,15 +1830,22 @@ export class NativeShell extends EventEmitter {
       const displayValue = this.isSensitiveEnvVar(key) ? '***FILTERED***' : value;
       console.log(chalk.blue(`    ${key}=${displayValue}`));
     }
-    console.log(chalk.cyan(`\n  Total Environment Variables: ${Object.keys(this.config.env).length}`));
+    console.log(
+      chalk.cyan(`\n  Total Environment Variables: ${Object.keys(this.config.env).length}`),
+    );
   }
 
-  getEnvironmentConfig(): EnvironmentConfig { return { ...this.config.environmentConfig }; }
-  getManagedEnvVars(): Record<string, string> { return { ...this.managedEnv }; }
+  getEnvironmentConfig(): EnvironmentConfig {
+    return { ...this.config.environmentConfig };
+  }
+  getManagedEnvVars(): Record<string, string> {
+    return { ...this.managedEnv };
+  }
 
   resetEnvironment(): void {
     this.config.environmentConfig = createDefaultEnvironmentConfig();
-    this.managedEnv = {}; this.rebuildEnvironment();
+    this.managedEnv = {};
+    this.rebuildEnvironment();
     this.emit('envReset');
   }
 }

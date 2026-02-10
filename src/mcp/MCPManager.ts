@@ -18,44 +18,39 @@
  * - MCPAutoDiscovery - automatic tool discovery
  */
 
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import chalk from 'chalk';
-import fs from 'fs/promises';
-import path from 'path';
-
-import {
-  logError,
-  logWarning,
-} from '../utils/errorHandling.js';
-import { logMCPConnection } from '../utils/startupLogger.js';
-import {
-  MCPServerConfig,
-  MCPTool,
-  MCPPrompt,
-  MCPResource,
-  MCPServerStatus,
-  MCPServerInfo,
-  MCPToolResult,
-  MCPBatchOperation,
-  MCPBatchResult,
-  MCPValidationResult,
-  MCPToolDiscoveryOptions,
-  ConnectedServer,
-  MCPClient,
-  MCPTransport
-} from './MCPTypes.js';
-import { resolveAlias } from './MCPAliases.js';
-import { RequestCache } from '../core/RequestCache.js';
 import { GEMINIHYDRA_DIR } from '../config/paths.config.js';
-
+import { RequestCache } from '../core/RequestCache.js';
+import { logError, logWarning } from '../utils/errorHandling.js';
+import { logMCPConnection } from '../utils/startupLogger.js';
+import { resolveAlias } from './MCPAliases.js';
+import { MCPAutoDiscovery } from './MCPAutoDiscovery.js';
+import { MCPBatchExecutor } from './MCPBatchOperations.js';
+import { MCPCircuitBreakerManager } from './MCPCircuitBreaker.js';
 // Import extracted modules
 import { MCPToolRegistry } from './MCPToolRegistry.js';
-import { MCPCircuitBreakerManager } from './MCPCircuitBreaker.js';
-import { MCPBatchExecutor } from './MCPBatchOperations.js';
-import { MCPAutoDiscovery } from './MCPAutoDiscovery.js';
-import { NativeToolsServer, NATIVE_SERVER_NAME } from './NativeToolsServer.js';
+import type {
+  ConnectedServer,
+  MCPBatchOperation,
+  MCPBatchResult,
+  MCPClient,
+  MCPPrompt,
+  MCPResource,
+  MCPServerConfig,
+  MCPServerInfo,
+  MCPServerStatus,
+  MCPTool,
+  MCPToolDiscoveryOptions,
+  MCPToolResult,
+  MCPTransport,
+  MCPValidationResult,
+} from './MCPTypes.js';
+import { NATIVE_SERVER_NAME, NativeToolsServer } from './NativeToolsServer.js';
 
 // ============================================================
 // Constants
@@ -97,7 +92,7 @@ export class MCPManager {
     // Set up circuit breaker reconnection handler
     this.circuitBreakerManager.setReconnectionHandler(async (serverName) => {
       const configs = await this.loadServerConfigs();
-      const config = configs.find(c => c.name === serverName);
+      const config = configs.find((c) => c.name === serverName);
       if (config) {
         await this.connectServer(config);
       }
@@ -107,7 +102,7 @@ export class MCPManager {
       ttl: 5 * 60 * 1000, // 5 minutes
       maxSize: 200,
       onHit: (key) => console.log(chalk.gray(`[MCP Cache] Hit: ${key}`)),
-      onMiss: () => {}
+      onMiss: () => {},
     });
   }
 
@@ -159,19 +154,14 @@ export class MCPManager {
       // Initialize (registers tools in MCPToolRegistry)
       await this.nativeToolsServer.init();
 
-      console.log(chalk.green(`[MCP] Native tools server initialized (${this.nativeToolsServer.getToolCount()} tools)`));
+      console.log(
+        chalk.green(
+          `[MCP] Native tools server initialized (${this.nativeToolsServer.getToolCount()} tools)`,
+        ),
+      );
     } catch (error) {
       logError('MCP', 'Failed to initialize native tools server', error);
     }
-  }
-
-  /**
-   * Check if a tool name refers to a native tool
-   */
-  private isNativeTool(toolName: string): boolean {
-    const resolved = resolveAlias(toolName);
-    const { serverName } = this.parseServerToolName(resolved);
-    return serverName === NATIVE_SERVER_NAME;
   }
 
   /**
@@ -209,7 +199,7 @@ export class MCPManager {
       configs = await this.loadServerConfigs();
     }
 
-    const enabledConfigs = configs.filter(c => c.enabled !== false);
+    const enabledConfigs = configs.filter((c) => c.enabled !== false);
 
     if (enabledConfigs.length === 0) {
       console.log(chalk.yellow(`[MCP] No servers configured`));
@@ -261,11 +251,13 @@ export class MCPManager {
     const projectName = path.basename(projectRoot);
 
     // Check if activate_project tool is available (not excluded in claude-code context)
-    const activateTool = serenaServer.tools.find(t => t.name === 'activate_project');
+    const activateTool = serenaServer.tools.find((t) => t.name === 'activate_project');
     if (!activateTool) {
       // In claude-code context, Serena auto-activates the project at startup
       // No need to call activate_project manually - it's excluded by design
-      console.log(chalk.green(`[Serena] Project '${projectName}' ready (auto-activated at startup)`));
+      console.log(
+        chalk.green(`[Serena] Project '${projectName}' ready (auto-activated at startup)`),
+      );
       return;
     }
 
@@ -322,7 +314,7 @@ export class MCPManager {
           args: sc.args || [],
           env: this.resolveEnvVars(sc.env || {}),
           url: sc.url,
-          enabled: true
+          enabled: true,
         });
       }
 
@@ -359,7 +351,7 @@ export class MCPManager {
 
   async addServer(config: MCPServerConfig): Promise<void> {
     const configs = await this.loadServerConfigs();
-    const existing = configs.findIndex(c => c.name === config.name);
+    const existing = configs.findIndex((c) => c.name === config.name);
 
     if (existing >= 0) {
       configs[existing] = config;
@@ -374,7 +366,7 @@ export class MCPManager {
   async removeServer(name: string): Promise<void> {
     await this.disconnectServer(name);
     const configs = await this.loadServerConfigs();
-    const filtered = configs.filter(c => c.name !== name);
+    const filtered = configs.filter((c) => c.name !== name);
     await this.saveServerConfigs(filtered);
     console.log(chalk.yellow(`[MCP] Server removed: ${name}`));
   }
@@ -411,8 +403,8 @@ export class MCPManager {
 
         // Disable Git Bash path conversion on Windows
         if (process.platform === 'win32') {
-          filteredEnv['MSYS_NO_PATHCONV'] = '1';
-          filteredEnv['MSYS2_ARG_CONV_EXCL'] = '*';
+          filteredEnv.MSYS_NO_PATHCONV = '1';
+          filteredEnv.MSYS2_ARG_CONV_EXCL = '*';
         }
 
         transport = new StdioClientTransport({
@@ -453,7 +445,6 @@ export class MCPManager {
       console.log(chalk.gray(`  Tools: ${serverInfo.tools.length}`));
       console.log(chalk.gray(`  Prompts: ${serverInfo.prompts.length}`));
       console.log(chalk.gray(`  Resources: ${serverInfo.resources.length}`));
-
     } catch (error: any) {
       serverInfo.status = 'error';
       throw error;
@@ -567,21 +558,23 @@ export class MCPManager {
    * Ensures paths don't contain AI hallucinations like trailing parentheses
    * and don't attempt path traversal attacks
    */
-  private validateMCPToolPath(toolPath: string): { valid: boolean; sanitized?: string; error?: string } {
+  private validateMCPToolPath(toolPath: string): {
+    valid: boolean;
+    sanitized?: string;
+    error?: string;
+  } {
     if (!toolPath || typeof toolPath !== 'string') {
       return { valid: false, error: 'Invalid path parameter' };
     }
 
     // Remove trailing parentheses (AI hallucinations)
-    let cleanPath = toolPath.trim().replace(/\s*\([^)]*\)\s*$/, '').replace(/\)$/, '');
+    const cleanPath = toolPath
+      .trim()
+      .replace(/\s*\([^)]*\)\s*$/, '')
+      .replace(/\)$/, '');
 
     // Check for path traversal patterns
-    const traversalPatterns = [
-      /\.\.\//,
-      /\.\.\\/,
-      /%2e%2e/i,
-      /%252e%252e/i
-    ];
+    const traversalPatterns = [/\.\.\//, /\.\.\\/, /%2e%2e/i, /%252e%252e/i];
 
     for (const pattern of traversalPatterns) {
       if (pattern.test(cleanPath)) {
@@ -597,8 +590,18 @@ export class MCPManager {
    * Converts string arguments to arrays as expected by MCP memory server
    * Fixes: [bug] request payload entities array, [bug] memory tools failures with string arguments
    */
-  private normalizeMemoryParams(toolName: string, params: Record<string, any>): Record<string, any> {
-    const memoryTools = ['create_entities', 'add_observations', 'create_relations', 'delete_entities', 'delete_relations', 'delete_observations'];
+  private normalizeMemoryParams(
+    toolName: string,
+    params: Record<string, any>,
+  ): Record<string, any> {
+    const memoryTools = [
+      'create_entities',
+      'add_observations',
+      'create_relations',
+      'delete_entities',
+      'delete_relations',
+      'delete_observations',
+    ];
     const baseTool = toolName.split('__').pop() || toolName;
 
     if (!memoryTools.includes(baseTool)) return params;
@@ -607,11 +610,13 @@ export class MCPManager {
 
     // Convert entities string → array
     if (typeof normalized.entities === 'string') {
-      normalized.entities = [{
-        name: normalized.entities,
-        entityType: 'concept',
-        observations: []
-      }];
+      normalized.entities = [
+        {
+          name: normalized.entities,
+          entityType: 'concept',
+          observations: [],
+        },
+      ];
     }
 
     // Convert observations string → array
@@ -629,11 +634,13 @@ export class MCPManager {
     if (typeof normalized.relations === 'string') {
       const match = normalized.relations.match(/(.+?)\s*(?:->|relates?\s*to)\s*(.+)/i);
       if (match) {
-        normalized.relations = [{
-          from: match[1].trim(),
-          to: match[2].trim(),
-          relationType: 'relates_to'
-        }];
+        normalized.relations = [
+          {
+            from: match[1].trim(),
+            to: match[2].trim(),
+            relationType: 'relates_to',
+          },
+        ];
       }
     }
 
@@ -642,16 +649,25 @@ export class MCPManager {
 
   async callTool(toolName: string, params: Record<string, any>): Promise<MCPToolResult> {
     // Validate path parameters before execution
-    const pathParams = ['path', 'file', 'filepath', 'filename', 'directory', 'dir', 'target', 'source'];
+    const pathParams = [
+      'path',
+      'file',
+      'filepath',
+      'filename',
+      'directory',
+      'dir',
+      'target',
+      'source',
+    ];
     for (const param of pathParams) {
-      if (params && params[param] && typeof params[param] === 'string') {
+      if (params?.[param] && typeof params[param] === 'string') {
         const validation = this.validateMCPToolPath(params[param] as string);
         if (!validation.valid) {
           console.log(chalk.red(`[MCP] Path validation failed: ${validation.error}`));
           return {
             success: false,
             content: [{ type: 'text', text: `Security error: ${validation.error}` }],
-            isError: true
+            isError: true,
           };
         }
         params[param] = validation.sanitized;
@@ -715,14 +731,14 @@ export class MCPManager {
     console.log(chalk.cyan(`[MCP] Calling ${serverName}/${actualToolName}...`));
 
     try {
-      const result = await server.client!.callTool({
+      const result = await server.client?.callTool({
         name: actualToolName,
         arguments: params,
       });
       return {
         success: !result.isError,
         content: result.content,
-        isError: result.isError
+        isError: result.isError,
       };
     } catch (error) {
       logError('MCP', 'Tool call failed', error);
@@ -734,7 +750,7 @@ export class MCPManager {
   async callToolWithRecovery(
     toolName: string,
     params: Record<string, any>,
-    options: { maxRetries?: number; retryDelay?: number } = {}
+    options: { maxRetries?: number; retryDelay?: number } = {},
   ): Promise<MCPToolResult> {
     const resolved = resolveAlias(toolName);
     const { serverName } = this.parseServerToolName(resolved);
@@ -742,7 +758,7 @@ export class MCPManager {
     return this.circuitBreakerManager.executeWithRetry(
       serverName,
       () => this.callTool(resolved, params),
-      options
+      options,
     );
   }
 
@@ -750,7 +766,7 @@ export class MCPManager {
   async callToolCached(
     toolName: string,
     params: Record<string, any>,
-    options: { bypassCache?: boolean } = {}
+    options: { bypassCache?: boolean } = {},
   ): Promise<MCPToolResult> {
     if (options.bypassCache) {
       return this.callTool(toolName, params);
@@ -788,7 +804,7 @@ export class MCPManager {
     // Validate server connection using helper method
     const server = this.validateConnectedServer(serverName);
 
-    return server.client!.getPrompt({
+    return server.client?.getPrompt({
       name: actualPromptName,
       arguments: params,
     });
@@ -803,7 +819,7 @@ export class MCPManager {
     // Validate server connection using helper method
     const server = this.validateConnectedServer(resource.serverName);
 
-    return server.client!.readResource({ uri });
+    return server.client?.readResource({ uri });
   }
 
   // ============================================================
@@ -820,20 +836,22 @@ export class MCPManager {
 
   async batchExecute(
     operations: MCPBatchOperation[],
-    options: { maxConcurrency?: number; onProgress?: (completed: number, total: number) => void } = {}
+    options: {
+      maxConcurrency?: number;
+      onProgress?: (completed: number, total: number) => void;
+    } = {},
   ): Promise<MCPBatchResult[]> {
     const { results } = await this.batchExecutor.execute(
       operations,
       (toolName, params) => this.callToolWithRecovery(toolName, params),
-      options
+      options,
     );
     return results;
   }
 
   async batchReadFiles(paths: string[]): Promise<MCPBatchResult[]> {
-    return this.batchExecutor.batchReadFiles(
-      paths,
-      (toolName, params) => this.callToolWithRecovery(toolName, params)
+    return this.batchExecutor.batchReadFiles(paths, (toolName, params) =>
+      this.callToolWithRecovery(toolName, params),
     );
   }
 
@@ -894,7 +912,7 @@ export class MCPManager {
   }
 
   getAllServers(): MCPServerInfo[] {
-    return Array.from(this.servers.values()).map(s => ({
+    return Array.from(this.servers.values()).map((s) => ({
       name: s.name,
       status: s.status,
       tools: s.tools.length,
@@ -917,7 +935,11 @@ export class MCPManager {
     // Native tools server status (always first)
     if (this.nativeToolsServer.isInitialized()) {
       console.log(chalk.green(`[OK] ${NATIVE_SERVER_NAME} (native)`));
-      console.log(chalk.gray(`    Tools: ${this.nativeToolsServer.getToolCount()} | Aliases: ${Object.keys(this.nativeToolsServer.getAllAliases()).length}`));
+      console.log(
+        chalk.gray(
+          `    Tools: ${this.nativeToolsServer.getToolCount()} | Aliases: ${Object.keys(this.nativeToolsServer.getAllAliases()).length}`,
+        ),
+      );
     } else {
       console.log(chalk.yellow(`[..] ${NATIVE_SERVER_NAME} (native) - not initialized`));
     }
@@ -930,19 +952,39 @@ export class MCPManager {
     }
 
     for (const server of servers) {
-      const statusIcon = server.status === 'connected' ? '[OK]' : server.status === 'connecting' ? '[..]' : '[X]';
-      const statusColor = server.status === 'connected' ? chalk.green : server.status === 'error' ? chalk.red : chalk.yellow;
+      const statusIcon =
+        server.status === 'connected' ? '[OK]' : server.status === 'connecting' ? '[..]' : '[X]';
+      const statusColor =
+        server.status === 'connected'
+          ? chalk.green
+          : server.status === 'error'
+            ? chalk.red
+            : chalk.yellow;
 
       console.log(statusColor(`${statusIcon} ${server.name}`));
-      console.log(chalk.gray(`    Tools: ${server.tools} | Prompts: ${server.prompts} | Resources: ${server.resources}`));
+      console.log(
+        chalk.gray(
+          `    Tools: ${server.tools} | Prompts: ${server.prompts} | Resources: ${server.resources}`,
+        ),
+      );
     }
 
     // Include native tools in total count
-    const nativeToolCount = this.nativeToolsServer.isInitialized() ? this.nativeToolsServer.getToolCount() : 0;
-    console.log(chalk.gray(`\nTotal: ${this.toolRegistry.toolCount + nativeToolCount} tools, ${this.toolRegistry.promptCount} prompts, ${this.toolRegistry.resourceCount} resources`));
+    const nativeToolCount = this.nativeToolsServer.isInitialized()
+      ? this.nativeToolsServer.getToolCount()
+      : 0;
+    console.log(
+      chalk.gray(
+        `\nTotal: ${this.toolRegistry.toolCount + nativeToolCount} tools, ${this.toolRegistry.promptCount} prompts, ${this.toolRegistry.resourceCount} resources`,
+      ),
+    );
 
     const cacheStats = this.getCacheStats();
-    console.log(chalk.gray(`Cache: ${cacheStats.size} entries, ${cacheStats.hits} hits, ${cacheStats.misses} misses\n`));
+    console.log(
+      chalk.gray(
+        `Cache: ${cacheStats.size} entries, ${cacheStats.hits} hits, ${cacheStats.misses} misses\n`,
+      ),
+    );
   }
 }
 

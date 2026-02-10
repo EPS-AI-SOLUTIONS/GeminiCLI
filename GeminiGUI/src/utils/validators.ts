@@ -91,12 +91,12 @@ export const sanitizeTitle = (title: string, maxLength: number = 100): string =>
  */
 export const escapeForShell = (code: string): string => {
   return code
-    .replace(/\\/g, '\\\\')     // Escape backslashes first
-    .replace(/"/g, '\\"')       // Escape double quotes
-    .replace(/`/g, '\\`')       // Escape backticks (command substitution)
-    .replace(/\$/g, '\\$')      // Escape dollar signs (variable expansion)
-    .replace(/!/g, '\\!')       // Escape history expansion
-    .replace(/\n/g, '\\n');     // Escape newlines
+    .replace(/\\/g, '\\\\') // Escape backslashes first
+    .replace(/"/g, '\\"') // Escape double quotes
+    .replace(/`/g, '\\`') // Escape backticks (command substitution)
+    .replace(/\$/g, '\\$') // Escape dollar signs (variable expansion)
+    .replace(/!/g, '\\!') // Escape history expansion
+    .replace(/\n/g, '\\n'); // Escape newlines
 };
 
 /**
@@ -106,17 +106,17 @@ export const escapeForShell = (code: string): string => {
  */
 export const escapeForPowerShell = (code: string): string => {
   return code
-    .replace(/`/g, '``')        // Escape backticks (PS escape char)
-    .replace(/"/g, '`"')        // Escape double quotes
-    .replace(/\$/g, '`$')       // Escape variable expansion
-    .replace(/;/g, '`;')        // Escape statement separator
-    .replace(/\|/g, '`|')       // Escape pipe operator
-    .replace(/&/g, '`&')        // Escape call operator
-    .replace(/\(/g, '`(')       // Escape subexpression
-    .replace(/\)/g, '`)')       // Escape subexpression
-    .replace(/\{/g, '`{')       // Escape script block
-    .replace(/\}/g, '`}')       // Escape script block
-    .replace(/\n/g, '`n');      // Escape newlines
+    .replace(/`/g, '``') // Escape backticks (PS escape char)
+    .replace(/"/g, '`"') // Escape double quotes
+    .replace(/\$/g, '`$') // Escape variable expansion
+    .replace(/;/g, '`;') // Escape statement separator
+    .replace(/\|/g, '`|') // Escape pipe operator
+    .replace(/&/g, '`&') // Escape call operator
+    .replace(/\(/g, '`(') // Escape subexpression
+    .replace(/\)/g, '`)') // Escape subexpression
+    .replace(/\{/g, '`{') // Escape script block
+    .replace(/\}/g, '`}') // Escape script block
+    .replace(/\n/g, '`n'); // Escape newlines
 };
 
 /**
@@ -138,10 +138,10 @@ export const DANGEROUS_PATTERNS: RegExp[] = [
   />\s*\/dev\//i,
   /\|\s*sh\s*$/i,
   /\|\s*bash\s*$/i,
-  /\|\|\s*(rm|del|sh|bash|powershell|cmd)/i,  // || OR operator with dangerous commands
-  /&&\s*(rm|del|sh|bash|powershell|cmd)/i,    // && AND operator with dangerous commands
-  /\|\|.*\b(Remove-Item|Clear-Content)\b/i,   // || with PowerShell destructive cmdlets
-  /&&.*\b(Remove-Item|Clear-Content)\b/i,     // && with PowerShell destructive cmdlets
+  /\|\|\s*(rm|del|sh|bash|powershell|cmd)/i, // || OR operator with dangerous commands
+  /&&\s*(rm|del|sh|bash|powershell|cmd)/i, // && AND operator with dangerous commands
+  /\|\|.*\b(Remove-Item|Clear-Content)\b/i, // || with PowerShell destructive cmdlets
+  /&&.*\b(Remove-Item|Clear-Content)\b/i, // && with PowerShell destructive cmdlets
   /\$\(.*\)/,
   /`[^`]+`/,
 
@@ -197,7 +197,7 @@ export const DANGEROUS_PATTERNS: RegExp[] = [
  * Returns true if dangerous patterns found
  */
 export const containsDangerousPatterns = (code: string): boolean => {
-  return DANGEROUS_PATTERNS.some(pattern => pattern.test(code));
+  return DANGEROUS_PATTERNS.some((pattern) => pattern.test(code));
 };
 
 // ============================================================================
@@ -221,8 +221,8 @@ export const isBlockedPath = (path: string): boolean => {
   ];
 
   const normalizedPath = path.replace(/\//g, '\\');
-  return blockedPaths.some(blocked =>
-    normalizedPath.toLowerCase().startsWith(blocked.toLowerCase())
+  return blockedPaths.some((blocked) =>
+    normalizedPath.toLowerCase().startsWith(blocked.toLowerCase()),
   );
 };
 

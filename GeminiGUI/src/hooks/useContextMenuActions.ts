@@ -50,14 +50,14 @@ export function useContextMenuActions(options: UseContextMenuActionsOptions): vo
         case 'analyze':
           handleSubmit(
             `[ANALIZA KODU/TEKSTU]\n\n\`\`\`\n${content}\n\`\`\`\n\nPrzeanalizuj powyższy fragment. Wskaż błędy, potencjalne problemy i zaproponuj optymalizację.`,
-            null
+            null,
           );
           break;
 
         case 'run':
           handleSubmit(
             `Chcę uruchomić komendę:\n\`${content}\`\n\nCzy jest bezpieczna? Jeśli tak, wykonaj ją.`,
-            null
+            null,
           );
           break;
       }

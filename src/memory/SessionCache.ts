@@ -8,11 +8,10 @@
  * - Temporary data between phases
  */
 
-import fs from 'fs/promises';
-import path from 'path';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import chalk from 'chalk';
-import { loadFromFile, saveToFile, fileExists } from '../native/persistence.js';
-import { GEMINIHYDRA_DIR, CACHE_DIR } from '../config/paths.config.js';
+import { loadFromFile, saveToFile } from '../native/persistence.js';
 
 /**
  * Cache configuration
@@ -26,7 +25,7 @@ export interface SessionCacheConfig {
 const DEFAULT_CONFIG: SessionCacheConfig = {
   basePath: '.serena/memories/cache',
   autoSave: true,
-  saveDebounce: 1000
+  saveDebounce: 1000,
 };
 
 /**
@@ -90,7 +89,7 @@ export class SessionCache {
         } catch (writeError) {
           retries--;
           if (retries === 0) throw writeError;
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise((resolve) => setTimeout(resolve, 100));
         }
       }
     } catch (error: any) {
@@ -259,9 +258,18 @@ export class SessionCache {
       startTime: this.get('startTime'),
       lastUpdate: this.get('lastUpdate'),
       custom: Object.fromEntries(
-        Array.from(this.cache.entries())
-          .filter(([k]) => !['objective', 'refinedObjective', 'chronicle', 'planJson', 'startTime', 'lastUpdate'].includes(k))
-      )
+        Array.from(this.cache.entries()).filter(
+          ([k]) =>
+            ![
+              'objective',
+              'refinedObjective',
+              'chronicle',
+              'planJson',
+              'startTime',
+              'lastUpdate',
+            ].includes(k),
+        ),
+      ),
     };
   }
 

@@ -2,7 +2,7 @@
  * MockService - Unit Tests
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MockService } from './mock.service';
 
 describe('MockService', () => {

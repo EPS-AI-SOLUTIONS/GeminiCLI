@@ -14,27 +14,26 @@
 // BUTTON COMPONENT
 // ============================================================================
 
-export { Button, default as ButtonDefault } from './Button';
 export type { ButtonProps } from './Button';
+export { Button, default as ButtonDefault } from './Button';
 
 // ============================================================================
 // SKELETON COMPONENTS (Loading States)
 // ============================================================================
 
+export type {
+  SkeletonAvatarProps,
+  SkeletonBaseProps,
+  SkeletonCardProps,
+  SkeletonMessageProps,
+  SkeletonTextProps,
+} from './Skeleton';
 export {
   Skeleton,
-  SkeletonText,
   SkeletonAvatar,
   SkeletonCard,
   SkeletonMessage,
-} from './Skeleton';
-
-export type {
-  SkeletonBaseProps,
-  SkeletonTextProps,
-  SkeletonAvatarProps,
-  SkeletonCardProps,
-  SkeletonMessageProps,
+  SkeletonText,
 } from './Skeleton';
 
 // ============================================================================

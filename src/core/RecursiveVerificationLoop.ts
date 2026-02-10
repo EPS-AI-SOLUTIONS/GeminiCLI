@@ -162,18 +162,18 @@ export interface VerificationOutcome {
  */
 async function defaultVerifyFn(
   claim: Claim,
-  context: VerificationContext
+  context: VerificationContext,
 ): Promise<VerificationOutcome> {
   // Base confidence from the claim itself
   let confidence = claim.confidence;
-  let reasons: string[] = [];
+  const reasons: string[] = [];
 
   // Factor 1: Dependency health (if dependencies exist)
   if (context.dependencyStates.length > 0) {
-    const depConfidences = context.dependencyStates.map(d => d.confidence);
+    const depConfidences = context.dependencyStates.map((d) => d.confidence);
     const avgDepConfidence = depConfidences.reduce((a, b) => a + b, 0) / depConfidences.length;
-    const rejectedDeps = context.dependencyStates.filter(d => d.status === 'rejected').length;
-    const verifiedDeps = context.dependencyStates.filter(d => d.status === 'verified').length;
+    const rejectedDeps = context.dependencyStates.filter((d) => d.status === 'rejected').length;
+    const verifiedDeps = context.dependencyStates.filter((d) => d.status === 'verified').length;
 
     // Adjust confidence based on dependencies
     if (rejectedDeps > 0) {
@@ -192,7 +192,7 @@ async function defaultVerifyFn(
   // Factor 2: Iteration stabilization
   if (context.verificationHistory.length >= 2) {
     const recentHistory = context.verificationHistory.slice(-3);
-    const confidenceVariance = calculateVariance(recentHistory.map(h => h.confidence));
+    const confidenceVariance = calculateVariance(recentHistory.map((h) => h.confidence));
 
     if (confidenceVariance < 5) {
       // Confidence is stabilizing, slight boost
@@ -223,7 +223,7 @@ async function defaultVerifyFn(
 
   return {
     confidence,
-    reason: reasons.length > 0 ? reasons.join('; ') : 'Standard verification'
+    reason: reasons.length > 0 ? reasons.join('; ') : 'Standard verification',
   };
 }
 
@@ -233,7 +233,7 @@ async function defaultVerifyFn(
 function calculateVariance(numbers: number[]): number {
   if (numbers.length === 0) return 0;
   const mean = numbers.reduce((a, b) => a + b, 0) / numbers.length;
-  const squaredDiffs = numbers.map(n => Math.pow(n - mean, 2));
+  const squaredDiffs = numbers.map((n) => (n - mean) ** 2);
   return squaredDiffs.reduce((a, b) => a + b, 0) / numbers.length;
 }
 
@@ -303,7 +303,7 @@ export class RecursiveVerificationLoop {
       verifyFn: options.verifyFn ?? defaultVerifyFn,
       parallelLimit: options.parallelLimit ?? 5,
       claimTimeout: options.claimTimeout ?? 10000,
-      dependencyWeight: options.dependencyWeight ?? 0.3
+      dependencyWeight: options.dependencyWeight ?? 0.3,
     };
   }
 
@@ -314,10 +314,7 @@ export class RecursiveVerificationLoop {
    * @param maxDepth - Maximum number of iterations (default: 10)
    * @returns VerificationResult with final states
    */
-  async startVerification(
-    claims: Claim[],
-    maxDepth: number = 10
-  ): Promise<VerificationResult> {
+  async startVerification(claims: Claim[], maxDepth: number = 10): Promise<VerificationResult> {
     const startTime = Date.now();
 
     // Initialize state
@@ -334,7 +331,7 @@ export class RecursiveVerificationLoop {
         confidence: claim.confidence,
         verificationCount: 0,
         lastVerifiedAt: Date.now(),
-        history: []
+        history: [],
       });
       this.verificationTraces.set(claim.id, []);
     }
@@ -343,7 +340,9 @@ export class RecursiveVerificationLoop {
     const sortedClaimIds = this.topologicalSort(claims);
 
     if (this.options.verbose) {
-      console.log(chalk.cyan(`[RecursiveVerification] Starting verification of ${claims.length} claims`));
+      console.log(
+        chalk.cyan(`[RecursiveVerification] Starting verification of ${claims.length} claims`),
+      );
       console.log(chalk.gray(`  Max depth: ${maxDepth}`));
       console.log(chalk.gray(`  Verification threshold: ${this.options.verificationThreshold}%`));
       console.log(chalk.gray(`  Rejection threshold: ${this.options.rejectionThreshold}%`));
@@ -361,14 +360,22 @@ export class RecursiveVerificationLoop {
 
       if (claimsToVerify.length === 0) {
         if (this.options.verbose) {
-          console.log(chalk.green(`[RecursiveVerification] Convergence reached at iteration ${this.currentIteration}`));
+          console.log(
+            chalk.green(
+              `[RecursiveVerification] Convergence reached at iteration ${this.currentIteration}`,
+            ),
+          );
         }
         convergenceReached = true;
         break;
       }
 
       if (this.options.verbose) {
-        console.log(chalk.blue(`[RecursiveVerification] Iteration ${this.currentIteration}: verifying ${claimsToVerify.length} claims`));
+        console.log(
+          chalk.blue(
+            `[RecursiveVerification] Iteration ${this.currentIteration}: verifying ${claimsToVerify.length} claims`,
+          ),
+        );
       }
 
       // Verify claims (with parallelism control)
@@ -381,7 +388,9 @@ export class RecursiveVerificationLoop {
       // Check for convergence (no changes in this iteration)
       if (statusChanges === 0 && this.currentIteration > 1) {
         if (this.options.verbose) {
-          console.log(chalk.green(`[RecursiveVerification] No status changes - convergence reached`));
+          console.log(
+            chalk.green(`[RecursiveVerification] No status changes - convergence reached`),
+          );
         }
         convergenceReached = true;
         break;
@@ -397,7 +406,7 @@ export class RecursiveVerificationLoop {
       // Update claim with final confidence
       const updatedClaim: Claim = {
         ...state.claim,
-        confidence: state.confidence
+        confidence: state.confidence,
       };
 
       switch (state.status) {
@@ -416,15 +425,18 @@ export class RecursiveVerificationLoop {
     const durationMs = Date.now() - startTime;
 
     // Calculate statistics
-    const totalVerificationCounts = Array.from(this.claimStates.values())
-      .map(s => s.verificationCount);
-    const avgIterations = totalVerificationCounts.length > 0
-      ? totalVerificationCounts.reduce((a, b) => a + b, 0) / totalVerificationCounts.length
-      : 0;
+    const totalVerificationCounts = Array.from(this.claimStates.values()).map(
+      (s) => s.verificationCount,
+    );
+    const avgIterations =
+      totalVerificationCounts.length > 0
+        ? totalVerificationCounts.reduce((a, b) => a + b, 0) / totalVerificationCounts.length
+        : 0;
 
     const initialAvgConfidence = claims.reduce((sum, c) => sum + c.confidence, 0) / claims.length;
-    const finalAvgConfidence = Array.from(this.claimStates.values())
-      .reduce((sum, s) => sum + s.confidence, 0) / this.claimStates.size;
+    const finalAvgConfidence =
+      Array.from(this.claimStates.values()).reduce((sum, s) => sum + s.confidence, 0) /
+      this.claimStates.size;
 
     const stats: VerificationStats = {
       totalClaims: claims.length,
@@ -436,13 +448,21 @@ export class RecursiveVerificationLoop {
       finalRejected: finalStats.rejected,
       averageIterationsPerClaim: Math.round(avgIterations * 100) / 100,
       confidenceImprovement: Math.round((finalAvgConfidence - initialAvgConfidence) * 100) / 100,
-      convergenceIteration: convergenceReached ? this.currentIteration : null
+      convergenceIteration: convergenceReached ? this.currentIteration : null,
     };
 
     if (this.options.verbose) {
       console.log(chalk.cyan(`[RecursiveVerification] Complete in ${durationMs}ms`));
-      console.log(chalk.gray(`  Verified: ${verified.length}, Uncertain: ${uncertain.length}, Rejected: ${rejected.length}`));
-      console.log(chalk.gray(`  Confidence improvement: ${stats.confidenceImprovement > 0 ? '+' : ''}${stats.confidenceImprovement}%`));
+      console.log(
+        chalk.gray(
+          `  Verified: ${verified.length}, Uncertain: ${uncertain.length}, Rejected: ${rejected.length}`,
+        ),
+      );
+      console.log(
+        chalk.gray(
+          `  Confidence improvement: ${stats.confidenceImprovement > 0 ? '+' : ''}${stats.confidenceImprovement}%`,
+        ),
+      );
     }
 
     return {
@@ -452,7 +472,7 @@ export class RecursiveVerificationLoop {
       iterations: this.currentIteration,
       convergenceReached,
       durationMs,
-      stats
+      stats,
     };
   }
 
@@ -498,7 +518,7 @@ export class RecursiveVerificationLoop {
    * Topologically sort claims based on dependencies
    */
   private topologicalSort(claims: Claim[]): string[] {
-    const claimMap = new Map(claims.map(c => [c.id, c]));
+    const claimMap = new Map(claims.map((c) => [c.id, c]));
     const visited = new Set<string>();
     const result: string[] = [];
 
@@ -534,7 +554,7 @@ export class RecursiveVerificationLoop {
     }
 
     // Subsequent iterations: only claims with confidence < threshold
-    return sortedIds.filter(id => {
+    return sortedIds.filter((id) => {
       const state = this.claimStates.get(id);
       if (!state) return false;
 
@@ -543,9 +563,10 @@ export class RecursiveVerificationLoop {
 
       // Re-verify if any dependency status changed recently
       const depStates = this.getDependencyStates(state.claim);
-      const recentlyChanged = depStates.some(ds =>
-        ds.history.length > 0 &&
-        ds.history[ds.history.length - 1].iteration === this.currentIteration - 1
+      const recentlyChanged = depStates.some(
+        (ds) =>
+          ds.history.length > 0 &&
+          ds.history[ds.history.length - 1].iteration === this.currentIteration - 1,
       );
 
       return recentlyChanged && state.confidence < 85;
@@ -561,8 +582,8 @@ export class RecursiveVerificationLoop {
     // Process in batches
     for (let i = 0; i < claimIds.length; i += this.options.parallelLimit) {
       const batch = claimIds.slice(i, i + this.options.parallelLimit);
-      const results = await Promise.all(batch.map(id => this.verifySingleClaim(id)));
-      statusChanges += results.filter(changed => changed).length;
+      const results = await Promise.all(batch.map((id) => this.verifySingleClaim(id)));
+      statusChanges += results.filter((changed) => changed).length;
     }
 
     return statusChanges;
@@ -585,7 +606,7 @@ export class RecursiveVerificationLoop {
       allClaims: this.claimStates,
       dependencyStates,
       previousConfidence,
-      verificationHistory: state.history
+      verificationHistory: state.history,
     };
 
     try {
@@ -593,8 +614,8 @@ export class RecursiveVerificationLoop {
       const outcome = await Promise.race([
         this.options.verifyFn(state.claim, context),
         new Promise<VerificationOutcome>((_, reject) =>
-          setTimeout(() => reject(new Error('Verification timeout')), this.options.claimTimeout)
-        )
+          setTimeout(() => reject(new Error('Verification timeout')), this.options.claimTimeout),
+        ),
       ]);
 
       // Update state
@@ -609,7 +630,7 @@ export class RecursiveVerificationLoop {
         status: state.status,
         confidence: state.confidence,
         reason: outcome.reason,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
       state.history.push(snapshot);
 
@@ -622,23 +643,24 @@ export class RecursiveVerificationLoop {
         confidenceDelta: state.confidence - previousConfidence,
         reason: outcome.reason,
         timestamp: Date.now(),
-        dependenciesStatus: dependencyStates.map(ds => ({
+        dependenciesStatus: dependencyStates.map((ds) => ({
           id: ds.claim.id,
-          status: ds.status
-        }))
+          status: ds.status,
+        })),
       };
       this.verificationTraces.get(claimId)?.push(trace);
 
       if (this.options.verbose && state.status !== previousStatus) {
         const arrow = state.confidence > previousConfidence ? chalk.green('UP') : chalk.red('DN');
-        console.log(chalk.gray(
-          `    [${claimId}] ${previousStatus} -> ${state.status} ` +
-          `(${previousConfidence}% -> ${state.confidence}% ${arrow}) - ${outcome.reason}`
-        ));
+        console.log(
+          chalk.gray(
+            `    [${claimId}] ${previousStatus} -> ${state.status} ` +
+              `(${previousConfidence}% -> ${state.confidence}% ${arrow}) - ${outcome.reason}`,
+          ),
+        );
       }
 
       return state.status !== previousStatus;
-
     } catch (error: any) {
       if (this.options.verbose) {
         console.log(chalk.yellow(`    [${claimId}] Verification error: ${error.message}`));
@@ -657,7 +679,7 @@ export class RecursiveVerificationLoop {
    */
   private getDependencyStates(claim: Claim): ClaimState[] {
     return claim.dependencies
-      .map(depId => this.claimStates.get(depId))
+      .map((depId) => this.claimStates.get(depId))
       .filter((state): state is ClaimState => state !== undefined);
   }
 
@@ -671,9 +693,14 @@ export class RecursiveVerificationLoop {
 
     for (const state of this.claimStates.values()) {
       switch (state.status) {
-        case 'verified': verified++; break;
-        case 'rejected': rejected++; break;
-        default: uncertain++;
+        case 'verified':
+          verified++;
+          break;
+        case 'rejected':
+          rejected++;
+          break;
+        default:
+          uncertain++;
       }
     }
 
@@ -720,14 +747,14 @@ export function createClaim(
   content: string,
   confidence: number,
   source: string,
-  dependencies: string[] = []
+  dependencies: string[] = [],
 ): Claim {
   return {
     id,
     content,
     confidence: Math.max(0, Math.min(100, confidence)),
     source,
-    dependencies
+    dependencies,
   };
 }
 
@@ -744,7 +771,7 @@ export async function quickVerify(claims: Claim[]): Promise<{
   return {
     verified: result.verified,
     uncertain: result.uncertain,
-    rejected: result.rejected
+    rejected: result.rejected,
   };
 }
 
@@ -757,15 +784,16 @@ export function formatTrace(trace: IterationTrace[]): string {
   const lines: string[] = ['=== Verification Trace ==='];
 
   for (const entry of trace) {
-    const delta = entry.confidenceDelta >= 0 ? `+${entry.confidenceDelta}` : `${entry.confidenceDelta}`;
+    const delta =
+      entry.confidenceDelta >= 0 ? `+${entry.confidenceDelta}` : `${entry.confidenceDelta}`;
     lines.push(
       `[Iteration ${entry.iteration}] ${entry.status.toUpperCase()} | ` +
-      `${entry.previousConfidence}% -> ${entry.confidence}% (${delta}%) | ` +
-      `${entry.reason}`
+        `${entry.previousConfidence}% -> ${entry.confidence}% (${delta}%) | ` +
+        `${entry.reason}`,
     );
 
     if (entry.dependenciesStatus.length > 0) {
-      const deps = entry.dependenciesStatus.map(d => `${d.id}:${d.status}`).join(', ');
+      const deps = entry.dependenciesStatus.map((d) => `${d.id}:${d.status}`).join(', ');
       lines.push(`  Dependencies: ${deps}`);
     }
   }
@@ -784,17 +812,23 @@ export function formatResult(result: VerificationResult): string {
     `Duration: ${result.durationMs}ms`,
     '',
     `Verified (${result.verified.length}):`,
-    ...result.verified.map(c => `  [OK] ${c.id}: ${c.confidence}% - ${c.content.substring(0, 50)}...`),
+    ...result.verified.map(
+      (c) => `  [OK] ${c.id}: ${c.confidence}% - ${c.content.substring(0, 50)}...`,
+    ),
     '',
     `Uncertain (${result.uncertain.length}):`,
-    ...result.uncertain.map(c => `  [??] ${c.id}: ${c.confidence}% - ${c.content.substring(0, 50)}...`),
+    ...result.uncertain.map(
+      (c) => `  [??] ${c.id}: ${c.confidence}% - ${c.content.substring(0, 50)}...`,
+    ),
     '',
     `Rejected (${result.rejected.length}):`,
-    ...result.rejected.map(c => `  [XX] ${c.id}: ${c.confidence}% - ${c.content.substring(0, 50)}...`),
+    ...result.rejected.map(
+      (c) => `  [XX] ${c.id}: ${c.confidence}% - ${c.content.substring(0, 50)}...`,
+    ),
     '',
     '--- Statistics ---',
     `Confidence improvement: ${result.stats.confidenceImprovement > 0 ? '+' : ''}${result.stats.confidenceImprovement}%`,
-    `Average iterations per claim: ${result.stats.averageIterationsPerClaim}`
+    `Average iterations per claim: ${result.stats.averageIterationsPerClaim}`,
   ];
 
   return lines.join('\n');

@@ -3,16 +3,16 @@
  * In-memory settings management with validation
  */
 
+import {
+  isValidLanguage,
+  isValidTheme,
+  NUMERIC_RANGES,
+  VALID_LANGUAGES,
+  VALID_THEMES,
+  VALIDATION_ERRORS,
+} from '../constants/index.js';
 import type { Settings } from '../types/index.js';
 import { DEFAULT_SETTINGS } from '../types/index.js';
-import {
-  VALID_THEMES,
-  VALID_LANGUAGES,
-  NUMERIC_RANGES,
-  VALIDATION_ERRORS,
-  isValidTheme,
-  isValidLanguage,
-} from '../constants/index.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Constants (from centralized config)
@@ -42,16 +42,22 @@ function validateLanguage(language: unknown): ValidationResult {
 
 function validateTemperature(temperature: unknown): ValidationResult {
   const temp = Number(temperature);
-  if (isNaN(temp) || temp < TEMP_MIN || temp > TEMP_MAX) {
-    return { valid: false, error: VALIDATION_ERRORS.OUT_OF_RANGE('temperature', TEMP_MIN, TEMP_MAX) };
+  if (Number.isNaN(temp) || temp < TEMP_MIN || temp > TEMP_MAX) {
+    return {
+      valid: false,
+      error: VALIDATION_ERRORS.OUT_OF_RANGE('temperature', TEMP_MIN, TEMP_MAX),
+    };
   }
   return { valid: true };
 }
 
 function validateMaxTokens(maxTokens: unknown): ValidationResult {
   const tokens = Number(maxTokens);
-  if (isNaN(tokens) || tokens < TOKENS_MIN || tokens > TOKENS_MAX) {
-    return { valid: false, error: VALIDATION_ERRORS.OUT_OF_RANGE('maxTokens', TOKENS_MIN, TOKENS_MAX) };
+  if (Number.isNaN(tokens) || tokens < TOKENS_MIN || tokens > TOKENS_MAX) {
+    return {
+      valid: false,
+      error: VALIDATION_ERRORS.OUT_OF_RANGE('maxTokens', TOKENS_MIN, TOKENS_MAX),
+    };
   }
   return { valid: true };
 }

@@ -2,10 +2,10 @@
  * Button Component Tests
  */
 
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { Button } from '../../../src/components/ui/Button';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { Send } from 'lucide-react';
+import { describe, expect, it, vi } from 'vitest';
+import { Button } from '../../../src/components/ui/Button';
 
 describe('Button', () => {
   describe('rendering', () => {
@@ -102,12 +102,20 @@ describe('Button', () => {
     });
 
     it('hides leftIcon when loading', () => {
-      render(<Button isLoading leftIcon={<Send data-testid="left-icon" />}>Loading</Button>);
+      render(
+        <Button isLoading leftIcon={<Send data-testid="left-icon" />}>
+          Loading
+        </Button>,
+      );
       expect(screen.queryByTestId('left-icon')).not.toBeInTheDocument();
     });
 
     it('hides rightIcon when loading', () => {
-      render(<Button isLoading rightIcon={<Send data-testid="right-icon" />}>Loading</Button>);
+      render(
+        <Button isLoading rightIcon={<Send data-testid="right-icon" />}>
+          Loading
+        </Button>,
+      );
       expect(screen.queryByTestId('right-icon')).not.toBeInTheDocument();
     });
   });
@@ -122,14 +130,22 @@ describe('Button', () => {
 
     it('does not call onClick when disabled', () => {
       const onClick = vi.fn();
-      render(<Button disabled onClick={onClick}>Disabled</Button>);
+      render(
+        <Button disabled onClick={onClick}>
+          Disabled
+        </Button>,
+      );
       fireEvent.click(screen.getByRole('button'));
       expect(onClick).not.toHaveBeenCalled();
     });
 
     it('does not call onClick when loading', () => {
       const onClick = vi.fn();
-      render(<Button isLoading onClick={onClick}>Loading</Button>);
+      render(
+        <Button isLoading onClick={onClick}>
+          Loading
+        </Button>,
+      );
       fireEvent.click(screen.getByRole('button'));
       expect(onClick).not.toHaveBeenCalled();
     });
@@ -142,7 +158,11 @@ describe('Button', () => {
     });
 
     it('passes through HTML attributes', () => {
-      render(<Button type="submit" data-testid="submit-btn">Submit</Button>);
+      render(
+        <Button type="submit" data-testid="submit-btn">
+          Submit
+        </Button>,
+      );
       const button = screen.getByTestId('submit-btn');
       expect(button).toHaveAttribute('type', 'submit');
     });

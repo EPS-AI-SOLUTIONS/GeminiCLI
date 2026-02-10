@@ -3,7 +3,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { Message, ExecutionPlan, Settings } from '../types';
+import type { ExecutionPlan, Message, Settings } from '../types';
 
 const API_BASE = '/api';
 
@@ -39,8 +39,7 @@ export function useHealthCheck() {
 export function useAgents() {
   return useQuery({
     queryKey: ['agents'],
-    queryFn: () =>
-      fetchJson<{ agents: Array<{ name: string; description: string }> }>('/agents'),
+    queryFn: () => fetchJson<{ agents: Array<{ name: string; description: string }> }>('/agents'),
   });
 }
 
@@ -134,8 +133,7 @@ export async function* executeStream(request: ExecuteRequest) {
 export function useHistory(limit = 50) {
   return useQuery({
     queryKey: ['history', limit],
-    queryFn: () =>
-      fetchJson<{ messages: Message[] }>(`/history?limit=${limit}`),
+    queryFn: () => fetchJson<{ messages: Message[] }>(`/history?limit=${limit}`),
   });
 }
 
@@ -144,8 +142,7 @@ export function useClearHistory() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () =>
-      fetchJson<{ success: boolean }>('/history', { method: 'DELETE' }),
+    mutationFn: () => fetchJson<{ success: boolean }>('/history', { method: 'DELETE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['history'] });
     },

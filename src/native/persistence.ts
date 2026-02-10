@@ -13,8 +13,8 @@
  * - Optional date field restoration
  */
 
-import fs from 'fs/promises';
-import path from 'path';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 
 // ============================================================
 // Types
@@ -85,13 +85,9 @@ export interface PersistenceResult<T = void> {
 export async function saveToFile(
   filePath: string,
   data: unknown,
-  options: SaveOptions = {}
+  options: SaveOptions = {},
 ): Promise<void> {
-  const {
-    pretty = true,
-    indent = 2,
-    createDirs = true
-  } = options;
+  const { pretty = true, indent = 2, createDirs = true } = options;
 
   const resolvedPath = path.resolve(filePath);
 
@@ -102,9 +98,7 @@ export async function saveToFile(
   }
 
   // Serialize to JSON
-  const json = pretty
-    ? JSON.stringify(data, null, indent)
-    : JSON.stringify(data);
+  const json = pretty ? JSON.stringify(data, null, indent) : JSON.stringify(data);
 
   // Write to file
   await fs.writeFile(resolvedPath, json, 'utf-8');
@@ -127,7 +121,7 @@ export async function saveToFile(
  */
 export async function loadFromFile<T>(
   filePath: string,
-  options: LoadOptions = {}
+  options: LoadOptions = {},
 ): Promise<T | null> {
   const resolvedPath = path.resolve(filePath);
 
@@ -161,18 +155,18 @@ export async function loadFromFile<T>(
  */
 export async function tryLoadFromFile<T>(
   filePath: string,
-  options: LoadOptions = {}
+  options: LoadOptions = {},
 ): Promise<PersistenceResult<T>> {
   try {
     const data = await loadFromFile<T>(filePath, options);
     return {
       success: data !== null,
-      data: data ?? undefined
+      data: data ?? undefined,
     };
   } catch (error: any) {
     return {
       success: false,
-      error
+      error,
     };
   }
 }
@@ -189,7 +183,7 @@ export async function tryLoadFromFile<T>(
 export async function trySaveToFile(
   filePath: string,
   data: unknown,
-  options: SaveOptions = {}
+  options: SaveOptions = {},
 ): Promise<PersistenceResult> {
   try {
     await saveToFile(filePath, data, options);
@@ -197,7 +191,7 @@ export async function trySaveToFile(
   } catch (error: any) {
     return {
       success: false,
-      error
+      error,
     };
   }
 }
@@ -242,19 +236,13 @@ export async function deleteFile(filePath: string): Promise<boolean> {
 /**
  * Recursively restore Date objects from string values
  */
-function restoreDateFields<T>(
-  data: T,
-  dateFields: string[],
-  recursive: boolean
-): T {
+function restoreDateFields<T>(data: T, dateFields: string[], recursive: boolean): T {
   if (data === null || data === undefined) {
     return data;
   }
 
   if (Array.isArray(data)) {
-    return data.map(item =>
-      restoreDateFields(item, dateFields, recursive)
-    ) as unknown as T;
+    return data.map((item) => restoreDateFields(item, dateFields, recursive)) as unknown as T;
   }
 
   if (typeof data === 'object') {
@@ -286,14 +274,12 @@ function restoreDateFields<T>(
  * @param dateFields - Field names that should be converted to Date
  * @returns A reviver function for JSON.parse
  */
-export function createDateReviver(
-  dateFields: string[]
-): (key: string, value: any) => any {
+export function createDateReviver(dateFields: string[]): (key: string, value: any) => any {
   return (key: string, value: any) => {
     if (dateFields.includes(key) && typeof value === 'string') {
       const date = new Date(value);
       // Only return Date if it's valid
-      if (!isNaN(date.getTime())) {
+      if (!Number.isNaN(date.getTime())) {
         return date;
       }
     }
@@ -311,7 +297,7 @@ export function createDateReviver(
  */
 export async function loadWithReviver<T>(
   filePath: string,
-  reviver: (key: string, value: any) => any
+  reviver: (key: string, value: any) => any,
 ): Promise<T | null> {
   const resolvedPath = path.resolve(filePath);
 
@@ -340,7 +326,7 @@ export async function loadWithReviver<T>(
 export async function savePersistable(
   filePath: string,
   persistable: Persistable,
-  options: SaveOptions = {}
+  options: SaveOptions = {},
 ): Promise<void> {
   const data = persistable.toJSON();
   await saveToFile(filePath, data, options);
@@ -357,7 +343,7 @@ export async function savePersistable(
 export async function loadPersistable(
   filePath: string,
   persistable: Persistable,
-  options: LoadOptions = {}
+  options: LoadOptions = {},
 ): Promise<boolean> {
   const data = await loadFromFile(filePath, options);
   if (data !== null) {

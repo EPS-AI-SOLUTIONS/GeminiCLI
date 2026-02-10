@@ -31,7 +31,7 @@ export const Styles = Object.freeze({
   DOUBLE_UNDERLINE: '\x1b[21m',
   OVERLINE: '\x1b[53m',
   FRAMED: '\x1b[51m',
-  ENCIRCLED: '\x1b[52m'
+  ENCIRCLED: '\x1b[52m',
 });
 
 // ============================================================================
@@ -56,7 +56,7 @@ export const FgColors = Object.freeze({
   BRIGHT_BLUE: '\x1b[94m',
   BRIGHT_MAGENTA: '\x1b[95m',
   BRIGHT_CYAN: '\x1b[96m',
-  BRIGHT_WHITE: '\x1b[97m'
+  BRIGHT_WHITE: '\x1b[97m',
 });
 
 // ============================================================================
@@ -80,7 +80,7 @@ export const BgColors = Object.freeze({
   BRIGHT_BLUE: '\x1b[104m',
   BRIGHT_MAGENTA: '\x1b[105m',
   BRIGHT_CYAN: '\x1b[106m',
-  BRIGHT_WHITE: '\x1b[107m'
+  BRIGHT_WHITE: '\x1b[107m',
 });
 
 // ============================================================================
@@ -128,7 +128,7 @@ export const COLORS = Object.freeze({
   bgBrightBlue: BgColors.BRIGHT_BLUE,
   bgBrightMagenta: BgColors.BRIGHT_MAGENTA,
   bgBrightCyan: BgColors.BRIGHT_CYAN,
-  bgBrightWhite: BgColors.BRIGHT_WHITE
+  bgBrightWhite: BgColors.BRIGHT_WHITE,
 });
 
 // ============================================================================
@@ -151,12 +151,12 @@ export function supportsColors() {
   }
   if (process.env.CI) {
     const supportedCI = ['TRAVIS', 'CIRCLECI', 'GITHUB_ACTIONS', 'GITLAB_CI', 'BUILDKITE'];
-    if (supportedCI.some(ci => process.env[ci])) {
+    if (supportedCI.some((ci) => process.env[ci])) {
       return true;
     }
   }
   if (process.platform === 'win32') {
-    const osRelease = require('os').release().split('.');
+    const osRelease = require('node:os').release().split('.');
     if (Number(osRelease[0]) >= 10 && Number(osRelease[2]) >= 10586) {
       return true;
     }
@@ -275,12 +275,12 @@ export function rgbTo256(r, g, b) {
   if (r === g && g === b) {
     if (r < 8) return 16;
     if (r > 248) return 231;
-    return Math.round((r - 8) / 247 * 24) + 232;
+    return Math.round(((r - 8) / 247) * 24) + 232;
   }
-  const rIndex = Math.round(r / 255 * 5);
-  const gIndex = Math.round(g / 255 * 5);
-  const bIndex = Math.round(b / 255 * 5);
-  return 16 + (36 * rIndex) + (6 * gIndex) + bIndex;
+  const rIndex = Math.round((r / 255) * 5);
+  const gIndex = Math.round((g / 255) * 5);
+  const bIndex = Math.round((b / 255) * 5);
+  return 16 + 36 * rIndex + 6 * gIndex + bIndex;
 }
 
 // ============================================================================
@@ -314,7 +314,10 @@ export function rgb(text, r, g, b) {
 export function hexToRgb(hex) {
   let clean = hex.replace('#', '');
   if (clean.length === 3) {
-    clean = clean.split('').map(c => c + c).join('');
+    clean = clean
+      .split('')
+      .map((c) => c + c)
+      .join('');
   }
   const r = parseInt(clean.substring(0, 2), 16) || 0;
   const g = parseInt(clean.substring(2, 4), 16) || 0;
@@ -335,7 +338,7 @@ export function interpolateColor(color1, color2, factor) {
   return {
     r: Math.round(color1.r + (color2.r - color1.r) * factor),
     g: Math.round(color1.g + (color2.g - color1.g) * factor),
-    b: Math.round(color1.b + (color2.b - color1.b) * factor)
+    b: Math.round(color1.b + (color2.b - color1.b) * factor),
   };
 }
 
@@ -343,7 +346,7 @@ export function createGradientColors(colors, steps) {
   if (colors.length < 2) {
     throw new Error('Gradient requires at least 2 colors');
   }
-  const rgbColors = colors.map(c => hexToRgb(c));
+  const rgbColors = colors.map((c) => hexToRgb(c));
   const result = [];
   const segmentSteps = Math.ceil(steps / (colors.length - 1));
   for (let i = 0; i < colors.length - 1; i++) {
@@ -378,7 +381,15 @@ export function gradient(text, colors) {
 }
 
 export function rainbow(text) {
-  return gradient(text, ['#ff0000', '#ff7f00', '#ffff00', '#00ff00', '#0000ff', '#4b0082', '#9400d3']);
+  return gradient(text, [
+    '#ff0000',
+    '#ff7f00',
+    '#ffff00',
+    '#00ff00',
+    '#0000ff',
+    '#4b0082',
+    '#9400d3',
+  ]);
 }
 
 // ============================================================================
@@ -390,7 +401,7 @@ export const Gradients = Object.freeze({
   MATRIX: ['#00ff00', '#003300', '#00ff00', '#009900'],
   CYBERPUNK: ['#ff00ff', '#00ffff', '#ff0080', '#00ff00'],
   SUNSET: ['#ff512f', '#f09819', '#ff5e62', '#ff9966'],
-  OCEAN: ['#2193b0', '#6dd5ed', '#00d2ff', '#3a7bd5']
+  OCEAN: ['#2193b0', '#6dd5ed', '#00d2ff', '#3a7bd5'],
 });
 
 // ============================================================================
@@ -433,12 +444,40 @@ export default {
   createColorFormatter,
   stripAnsi,
   visibleLength,
-  red, green, yellow, blue, magenta, cyan, white, gray, grey, black,
-  bold, dim, italic, underline, inverse, strikethrough,
-  error, warning, success, info, debug,
-  fg256, bg256, color256, rgbTo256,
-  fgRGB, bgRGB, rgb, hexToRgb, hex,
-  interpolateColor, createGradientColors, gradient, rainbow,
+  red,
+  green,
+  yellow,
+  blue,
+  magenta,
+  cyan,
+  white,
+  gray,
+  grey,
+  black,
+  bold,
+  dim,
+  italic,
+  underline,
+  inverse,
+  strikethrough,
+  error,
+  warning,
+  success,
+  info,
+  debug,
+  fg256,
+  bg256,
+  color256,
+  rgbTo256,
+  fgRGB,
+  bgRGB,
+  rgb,
+  hexToRgb,
+  hex,
+  interpolateColor,
+  createGradientColors,
+  gradient,
+  rainbow,
   Gradients,
-  progressBar
+  progressBar,
 };

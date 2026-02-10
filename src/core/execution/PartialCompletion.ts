@@ -8,9 +8,9 @@
  * Part of GeminiHydra ExecutionEngine
  */
 
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import chalk from 'chalk';
-import fs from 'fs/promises';
-import path from 'path';
 import { GEMINIHYDRA_DIR } from '../../config/paths.config.js';
 
 // =============================================================================
@@ -50,7 +50,9 @@ class PartialCompletionManager {
       await fs.mkdir(this.storePath, { recursive: true });
       const filePath = path.join(this.storePath, `task_${result.taskId}.json`);
       await fs.writeFile(filePath, JSON.stringify(result, null, 2));
-      console.log(chalk.gray(`[Partial] Saved progress for task #${result.taskId} (${result.progress}%)`));
+      console.log(
+        chalk.gray(`[Partial] Saved progress for task #${result.taskId} (${result.progress}%)`),
+      );
     } catch (error: any) {
       console.log(chalk.yellow(`[Partial] Could not persist: ${error.message}`));
     }
@@ -88,7 +90,7 @@ class PartialCompletionManager {
 
     return {
       context: `POPRZEDNI POSTEP:\n${partial.partialOutput}\n\nUKONCZONE KROKI:\n${partial.completedSteps.join('\n')}`,
-      remainingSteps: partial.pendingSteps
+      remainingSteps: partial.pendingSteps,
     };
   }
 
@@ -101,7 +103,7 @@ class PartialCompletionManager {
     try {
       const filePath = path.join(this.storePath, `task_${taskId}.json`);
       await fs.unlink(filePath);
-    } catch { }
+    } catch {}
   }
 
   /**
@@ -118,7 +120,7 @@ class PartialCompletionManager {
           try {
             const content = await fs.readFile(path.join(this.storePath, file), 'utf-8');
             partials.push(JSON.parse(content));
-          } catch { }
+          } catch {}
         }
       }
 
@@ -157,5 +159,5 @@ export { PartialCompletionManager };
 
 export default {
   partialManager,
-  PartialCompletionManager
+  PartialCompletionManager,
 };

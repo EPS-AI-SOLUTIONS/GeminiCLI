@@ -242,7 +242,7 @@ export const QUEUE_LIMITS = {
  * Calculate retry delay with exponential backoff
  */
 export function calculateRetryDelay(attempt: number): number {
-  const delay = RETRY_INITIAL_DELAY_MS * Math.pow(RETRY_BACKOFF_MULTIPLIER, attempt);
+  const delay = RETRY_INITIAL_DELAY_MS * RETRY_BACKOFF_MULTIPLIER ** attempt;
   return Math.min(delay, RETRY_MAX_DELAY_MS);
 }
 
@@ -263,7 +263,9 @@ export function isCacheExpired(createdAt: number, ttl: number = CACHE_TTL): bool
 /**
  * Get timeout for operation type
  */
-export function getTimeoutForOperation(type: 'fast' | 'normal' | 'long' | 'llama' | 'stream'): number {
+export function getTimeoutForOperation(
+  type: 'fast' | 'normal' | 'long' | 'llama' | 'stream',
+): number {
   switch (type) {
     case 'fast':
       return FAST_TIMEOUT_MS;

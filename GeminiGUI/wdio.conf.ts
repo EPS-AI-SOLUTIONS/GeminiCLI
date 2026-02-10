@@ -10,18 +10,15 @@
  * - msedgedriver in drivers/ directory
  */
 
-import { spawn, ChildProcess } from 'node:child_process';
+import { type ChildProcess, spawn } from 'node:child_process';
+import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import http from 'node:http';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Path to the built Tauri application binary
-const TAURI_APP_PATH = path.resolve(
-  __dirname,
-  'src-tauri/target/debug/geminigui.exe'
-);
+const TAURI_APP_PATH = path.resolve(__dirname, 'src-tauri/target/debug/geminigui.exe');
 
 // Path to msedgedriver directory
 const DRIVERS_DIR = path.resolve(__dirname, 'drivers');
@@ -40,14 +37,17 @@ async function waitForVite(timeoutMs = 30000): Promise<void> {
           resolve();
         });
         req.on('error', reject);
-        req.setTimeout(1000, () => { req.destroy(); reject(new Error('timeout')); });
+        req.setTimeout(1000, () => {
+          req.destroy();
+          reject(new Error('timeout'));
+        });
       });
       return; // Server is up
     } catch {
       await new Promise((r) => setTimeout(r, 500));
     }
   }
-  throw new Error('Vite dev server did not start within ' + timeoutMs + 'ms');
+  throw new Error(`Vite dev server did not start within ${timeoutMs}ms`);
 }
 
 export const config: WebdriverIO.Config = {
@@ -117,7 +117,7 @@ export const config: WebdriverIO.Config = {
    * 1. Start Vite dev server (the debug build loads UI from localhost:1420)
    * 2. Start tauri-driver which proxies WebDriver commands to the Tauri app.
    */
-  beforeSession: async function () {
+  beforeSession: async () => {
     // 1. Start Vite dev server for the frontend
     console.log('[WDIO] Starting Vite dev server...');
     viteServer = spawn('npx', ['vite', '--port', '1420'], {
@@ -169,7 +169,7 @@ export const config: WebdriverIO.Config = {
    * The debug binary navigates to devUrl (localhost:1420) automatically,
    * but we may need to wait or navigate manually.
    */
-  before: async function () {
+  before: async () => {
     // Check current URL - if still about:blank, the app may need a moment
     const url = await browser.getUrl();
     console.log('[WDIO] Current URL:', url);
@@ -201,7 +201,7 @@ export const config: WebdriverIO.Config = {
         timeout: 30000,
         interval: 500,
         timeoutMsg: 'Tauri app UI did not load within 30 seconds',
-      }
+      },
     );
     console.log('[WDIO] Tauri app UI loaded successfully');
   },
@@ -210,7 +210,7 @@ export const config: WebdriverIO.Config = {
    * After the test session:
    * Kill tauri-driver and Vite dev server.
    */
-  afterSession: async function () {
+  afterSession: async () => {
     if (tauriDriver) {
       console.log('[WDIO] Stopping tauri-driver...');
       tauriDriver.kill();

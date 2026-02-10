@@ -2,7 +2,7 @@
  * AppStore (Zustand) Tests
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { useAppStore } from '../../src/stores/appStore';
 
 // Reset store before each test
@@ -37,7 +37,7 @@ describe('appStore', () => {
     it('has all agents with idle status', () => {
       const { agents } = useAppStore.getState();
       expect(Object.keys(agents)).toHaveLength(6);
-      Object.values(agents).forEach(agent => {
+      Object.values(agents).forEach((agent) => {
         expect(agent.status).toBe('idle');
       });
     });
@@ -80,7 +80,7 @@ describe('appStore', () => {
 
     it('can set all status types', () => {
       const statuses = ['idle', 'thinking', 'done', 'error'] as const;
-      statuses.forEach(status => {
+      statuses.forEach((status) => {
         useAppStore.getState().setAgentStatus('geralt', status);
         expect(useAppStore.getState().agents.geralt.status).toBe(status);
       });

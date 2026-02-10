@@ -53,7 +53,7 @@ export interface PerformanceOptimization {
 
 export interface PerformanceProfile {
   file: string;
-  overallScore: number;  // 0-100
+  overallScore: number; // 0-100
   issues: PerformanceIssue[];
   hotspots: PerformanceHotspot[];
   optimizations: PerformanceOptimization[];
@@ -107,18 +107,16 @@ Focus on real performance issues, not micro-optimizations.`;
  */
 export async function profilePerformance(
   code: string,
-  filename: string
+  filename: string,
 ): Promise<PerformanceProfile> {
   console.log(chalk.cyan(`[Performance] Profiling ${filename}...`));
 
-  const prompt = PERFORMANCE_PROMPT
-    .replace('{filename}', filename)
-    .replace('{code}', code);
+  const prompt = PERFORMANCE_PROMPT.replace('{filename}', filename).replace('{code}', code);
 
   try {
     const model = genAI.getGenerativeModel({
       model: QUALITY_MODEL,
-      generationConfig: { temperature: 0.2, maxOutputTokens: 4096 }
+      generationConfig: { temperature: 0.2, maxOutputTokens: 4096 },
     });
 
     const result = await model.generateContent(prompt);
@@ -131,14 +129,18 @@ export async function profilePerformance(
 
     const parsed = JSON.parse(jsonStr);
 
-    console.log(chalk.green(`[Performance] Score: ${parsed.overallScore}/100, Issues: ${parsed.issues?.length || 0}`));
+    console.log(
+      chalk.green(
+        `[Performance] Score: ${parsed.overallScore}/100, Issues: ${parsed.issues?.length || 0}`,
+      ),
+    );
 
     return {
       file: filename,
       overallScore: parsed.overallScore || 70,
       issues: parsed.issues || [],
       hotspots: parsed.hotspots || [],
-      optimizations: parsed.optimizations || []
+      optimizations: parsed.optimizations || [],
     };
   } catch (error: any) {
     console.log(chalk.yellow(`[Performance] Profiling failed: ${error.message}`));
@@ -147,7 +149,7 @@ export async function profilePerformance(
       overallScore: 0,
       issues: [],
       hotspots: [],
-      optimizations: []
+      optimizations: [],
     };
   }
 }
@@ -161,21 +163,25 @@ export function formatPerformanceProfile(profile: PerformanceProfile): string {
   const lines: string[] = [];
 
   // Header with score
-  const scoreColor = profile.overallScore >= 80 ? chalk.green :
-                     profile.overallScore >= 60 ? chalk.yellow : chalk.red;
+  const scoreColor =
+    profile.overallScore >= 80
+      ? chalk.green
+      : profile.overallScore >= 60
+        ? chalk.yellow
+        : chalk.red;
 
   lines.push(chalk.cyan(`\n[PERFORMANCE PROFILE] ${profile.file}`));
   lines.push(scoreColor(`   Score: ${profile.overallScore}/100`));
   lines.push('');
 
   // Critical issues
-  const criticalIssues = profile.issues.filter(i => i.severity === 'critical');
-  const warningIssues = profile.issues.filter(i => i.severity === 'warning');
-  const infoIssues = profile.issues.filter(i => i.severity === 'info');
+  const criticalIssues = profile.issues.filter((i) => i.severity === 'critical');
+  const warningIssues = profile.issues.filter((i) => i.severity === 'warning');
+  const infoIssues = profile.issues.filter((i) => i.severity === 'info');
 
   if (criticalIssues.length > 0) {
     lines.push(chalk.red('[!] CRITICAL PERFORMANCE ISSUES:'));
-    criticalIssues.forEach(i => {
+    criticalIssues.forEach((i) => {
       lines.push(`   [${i.category.toUpperCase()}] ${i.location}`);
       lines.push(chalk.gray(`      ${i.description}`));
       lines.push(chalk.gray(`      Impact: ${i.impact}`));
@@ -186,7 +192,7 @@ export function formatPerformanceProfile(profile: PerformanceProfile): string {
 
   if (warningIssues.length > 0) {
     lines.push(chalk.yellow('[*] WARNINGS:'));
-    warningIssues.forEach(i => {
+    warningIssues.forEach((i) => {
       lines.push(`   [${i.category.toUpperCase()}] ${i.location}`);
       lines.push(chalk.gray(`      ${i.description}`));
       lines.push(chalk.green(`      Fix: ${i.suggestion}`));
@@ -196,7 +202,7 @@ export function formatPerformanceProfile(profile: PerformanceProfile): string {
 
   if (infoIssues.length > 0) {
     lines.push(chalk.blue('[i] SUGGESTIONS:'));
-    infoIssues.forEach(i => {
+    infoIssues.forEach((i) => {
       lines.push(`   [${i.category.toUpperCase()}] ${i.location}: ${i.description}`);
     });
     lines.push('');
@@ -205,7 +211,7 @@ export function formatPerformanceProfile(profile: PerformanceProfile): string {
   // Hotspots
   if (profile.hotspots.length > 0) {
     lines.push(chalk.magenta('[~] PERFORMANCE HOTSPOTS:'));
-    profile.hotspots.forEach(h => {
+    profile.hotspots.forEach((h) => {
       lines.push(`   ${h.location}: ${h.description}`);
     });
     lines.push('');
@@ -214,7 +220,7 @@ export function formatPerformanceProfile(profile: PerformanceProfile): string {
   // Optimizations
   if (profile.optimizations.length > 0) {
     lines.push(chalk.cyan('[>] OPTIMIZATION OPPORTUNITIES:'));
-    profile.optimizations.forEach(o => {
+    profile.optimizations.forEach((o) => {
       lines.push(chalk.gray(`   Current: ${o.current}`));
       lines.push(chalk.green(`   Better:  ${o.suggested}`));
       lines.push(chalk.white(`   Improvement: ${o.improvement}`));
@@ -233,9 +239,9 @@ export function formatPerformanceProfile(profile: PerformanceProfile): string {
  */
 export function filterIssuesByCategory(
   profile: PerformanceProfile,
-  category: PerformanceCategory
+  category: PerformanceCategory,
 ): PerformanceIssue[] {
-  return profile.issues.filter(i => i.category === category);
+  return profile.issues.filter((i) => i.category === category);
 }
 
 /**
@@ -244,17 +250,17 @@ export function filterIssuesByCategory(
  * @returns A record of category counts
  */
 export function getIssueSummaryByCategory(
-  profile: PerformanceProfile
+  profile: PerformanceProfile,
 ): Record<PerformanceCategory, number> {
   const summary: Record<PerformanceCategory, number> = {
     memory: 0,
     cpu: 0,
     io: 0,
     network: 0,
-    algorithm: 0
+    algorithm: 0,
   };
 
-  profile.issues.forEach(issue => {
+  profile.issues.forEach((issue) => {
     summary[issue.category]++;
   });
 
@@ -270,7 +276,7 @@ export function calculateSeverityScore(profile: PerformanceProfile): number {
   const weights: Record<PerformanceSeverity, number> = {
     info: 1,
     warning: 3,
-    critical: 10
+    critical: 10,
   };
 
   return profile.issues.reduce((score, issue) => {
@@ -284,7 +290,7 @@ export function calculateSeverityScore(profile: PerformanceProfile): number {
  * @returns True if there are critical issues
  */
 export function hasCriticalIssues(profile: PerformanceProfile): boolean {
-  return profile.issues.some(i => i.severity === 'critical');
+  return profile.issues.some((i) => i.severity === 'critical');
 }
 
 // ============================================================
@@ -297,5 +303,5 @@ export default {
   filterIssuesByCategory,
   getIssueSummaryByCategory,
   calculateSeverityScore,
-  hasCriticalIssues
+  hasCriticalIssues,
 };

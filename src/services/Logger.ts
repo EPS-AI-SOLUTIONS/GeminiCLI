@@ -4,8 +4,8 @@
  */
 
 import chalk from 'chalk';
-import { LogLevel } from '../types/index.js';
 import { PHASES } from '../config/constants.js';
+import type { LogLevel } from '../types/index.js';
 
 export interface LoggerOptions {
   level?: LogLevel;
@@ -20,10 +20,10 @@ export class Logger {
   private verbose: boolean = false;
 
   static getInstance(): Logger {
-    if (!this.instance) {
-      this.instance = new Logger();
+    if (!Logger.instance) {
+      Logger.instance = new Logger();
     }
-    return this.instance;
+    return Logger.instance;
   }
 
   configure(options: LoggerOptions): void {
@@ -118,7 +118,7 @@ export class Logger {
   // Banner
   banner(title: string): void {
     if (!this.shouldLog('info')) return;
-    console.log(chalk.cyan('\n' + '='.repeat(50)));
+    console.log(chalk.cyan(`\n${'='.repeat(50)}`));
     console.log(chalk.cyan(`  ${title}`));
     console.log(chalk.cyan('='.repeat(50)));
   }

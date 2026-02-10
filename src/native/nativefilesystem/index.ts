@@ -10,22 +10,20 @@
  * @module native/nativefilesystem/index
  */
 
+// Main class and factory
+export { createFileSystem, NativeFileSystem } from './NativeFileSystem.js';
 // Types and interfaces
 export type {
-  DirectoryTree,
-  WatchEvent,
-  SymlinkWarning,
-  SymlinkType,
-  NativeFileSystemConfig,
-  WriteFileOptions,
-  EnsureDirectoryResult,
   DirectoryCreationError,
-  PathValidationResult,
+  DirectoryTree,
+  EnsureDirectoryResult,
+  NativeFileSystemConfig,
   PathDiagnosticLog,
+  PathValidationResult,
+  SymlinkType,
+  SymlinkWarning,
+  WatchEvent,
+  WriteFileOptions,
 } from './types.js';
-
 // Constants
 export { DEFAULT_BLOCKED_PATHS } from './types.js';
-
-// Main class and factory
-export { NativeFileSystem, createFileSystem } from './NativeFileSystem.js';

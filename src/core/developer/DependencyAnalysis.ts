@@ -10,8 +10,8 @@
  * - Dependency size impact
  */
 
+import fs from 'node:fs/promises';
 import chalk from 'chalk';
-import fs from 'fs/promises';
 
 // ============================================================
 // Types
@@ -48,9 +48,7 @@ export interface DependencyAnalysis {
  * @param packageJsonPath - Path to the package.json file
  * @returns Dependency analysis results
  */
-export async function analyzeDependencies(
-  packageJsonPath: string
-): Promise<DependencyAnalysis> {
+export async function analyzeDependencies(packageJsonPath: string): Promise<DependencyAnalysis> {
   console.log(chalk.cyan(`[Dependencies] Analyzing ${packageJsonPath}...`));
 
   try {
@@ -67,8 +65,8 @@ export async function analyzeDependencies(
           name,
           version: version as string,
           type,
-          isOutdated: false,  // Would need npm registry API
-          hasVulnerabilities: false  // Would need npm audit
+          isOutdated: false, // Would need npm registry API
+          hasVulnerabilities: false, // Would need npm audit
         });
       }
     };
@@ -82,33 +80,37 @@ export async function analyzeDependencies(
     }
 
     // Check for common problematic patterns
-    const hasWildcardVersions = dependencies.some(d =>
-      d.version.includes('*') || d.version === 'latest'
+    const hasWildcardVersions = dependencies.some(
+      (d) => d.version.includes('*') || d.version === 'latest',
     );
     if (hasWildcardVersions) {
-      recommendations.push('Avoid using wildcard (*) or "latest" versions for better reproducibility');
+      recommendations.push(
+        'Avoid using wildcard (*) or "latest" versions for better reproducibility',
+      );
     }
 
     // Check for git dependencies
-    const hasGitDeps = dependencies.some(d =>
-      d.version.includes('git') || d.version.includes('github')
+    const hasGitDeps = dependencies.some(
+      (d) => d.version.includes('git') || d.version.includes('github'),
     );
     if (hasGitDeps) {
       recommendations.push('Git dependencies can be unstable; consider using published versions');
     }
 
     // Check for file dependencies
-    const hasFileDeps = dependencies.some(d =>
-      d.version.startsWith('file:') || d.version.startsWith('link:')
+    const hasFileDeps = dependencies.some(
+      (d) => d.version.startsWith('file:') || d.version.startsWith('link:'),
     );
     if (hasFileDeps) {
       recommendations.push('Local file dependencies may cause issues in CI/CD environments');
     }
 
-    const prodCount = dependencies.filter(d => d.type === 'production').length;
-    const devCount = dependencies.filter(d => d.type === 'development').length;
+    const prodCount = dependencies.filter((d) => d.type === 'production').length;
+    const devCount = dependencies.filter((d) => d.type === 'development').length;
 
-    console.log(chalk.green(`[Dependencies] Found ${prodCount} prod, ${devCount} dev dependencies`));
+    console.log(
+      chalk.green(`[Dependencies] Found ${prodCount} prod, ${devCount} dev dependencies`),
+    );
 
     return {
       projectPath: packageJsonPath,
@@ -116,7 +118,7 @@ export async function analyzeDependencies(
       outdatedCount: 0,
       vulnerableCount: 0,
       dependencies,
-      recommendations
+      recommendations,
     };
   } catch (error: any) {
     console.log(chalk.yellow(`[Dependencies] Analysis failed: ${error.message}`));
@@ -126,7 +128,7 @@ export async function analyzeDependencies(
       outdatedCount: 0,
       vulnerableCount: 0,
       dependencies: [],
-      recommendations: []
+      recommendations: [],
     };
   }
 }
@@ -136,12 +138,13 @@ export async function analyzeDependencies(
  * @param analysis - Dependency analysis result
  * @returns Grouped dependencies
  */
-export function groupDependenciesByType(
-  analysis: DependencyAnalysis
-): { production: DependencyInfo[]; development: DependencyInfo[] } {
+export function groupDependenciesByType(analysis: DependencyAnalysis): {
+  production: DependencyInfo[];
+  development: DependencyInfo[];
+} {
   return {
-    production: analysis.dependencies.filter(d => d.type === 'production'),
-    development: analysis.dependencies.filter(d => d.type === 'development')
+    production: analysis.dependencies.filter((d) => d.type === 'production'),
+    development: analysis.dependencies.filter((d) => d.type === 'development'),
   };
 }
 
@@ -153,10 +156,10 @@ export function groupDependenciesByType(
  */
 export function findDependencies(
   analysis: DependencyAnalysis,
-  pattern: string | RegExp
+  pattern: string | RegExp,
 ): DependencyInfo[] {
   const regex = typeof pattern === 'string' ? new RegExp(pattern, 'i') : pattern;
-  return analysis.dependencies.filter(d => regex.test(d.name));
+  return analysis.dependencies.filter((d) => regex.test(d.name));
 }
 
 // ============================================================
@@ -181,7 +184,7 @@ export function formatDependencyAnalysis(analysis: DependencyAnalysis): string {
   // Production dependencies
   if (grouped.production.length > 0) {
     lines.push(chalk.green(`📋 PRODUCTION (${grouped.production.length}):`));
-    grouped.production.forEach(d => {
+    grouped.production.forEach((d) => {
       let status = '';
       if (d.hasVulnerabilities) {
         status = chalk.red(' ⚠ VULNERABLE');
@@ -196,7 +199,7 @@ export function formatDependencyAnalysis(analysis: DependencyAnalysis): string {
   // Development dependencies
   if (grouped.development.length > 0) {
     lines.push(chalk.blue(`🔧 DEVELOPMENT (${grouped.development.length}):`));
-    grouped.development.forEach(d => {
+    grouped.development.forEach((d) => {
       let status = '';
       if (d.hasVulnerabilities) {
         status = chalk.red(' ⚠ VULNERABLE');
@@ -223,7 +226,7 @@ export function formatDependencyAnalysis(analysis: DependencyAnalysis): string {
   // Recommendations
   if (analysis.recommendations.length > 0) {
     lines.push(chalk.cyan('💡 RECOMMENDATIONS:'));
-    analysis.recommendations.forEach(r => lines.push(`   • ${r}`));
+    analysis.recommendations.forEach((r) => lines.push(`   • ${r}`));
   }
 
   return lines.join('\n');
@@ -259,7 +262,7 @@ export function generateDependencyReport(analysis: DependencyAnalysis): string {
     lines.push(`## Production Dependencies\n`);
     lines.push(`| Package | Version | Status |`);
     lines.push(`|---------|---------|--------|`);
-    grouped.production.forEach(d => {
+    grouped.production.forEach((d) => {
       let status = '✅';
       if (d.hasVulnerabilities) status = '⚠️ Vulnerable';
       else if (d.isOutdated) status = '⬆️ Outdated';
@@ -273,7 +276,7 @@ export function generateDependencyReport(analysis: DependencyAnalysis): string {
     lines.push(`## Development Dependencies\n`);
     lines.push(`| Package | Version | Status |`);
     lines.push(`|---------|---------|--------|`);
-    grouped.development.forEach(d => {
+    grouped.development.forEach((d) => {
       let status = '✅';
       if (d.hasVulnerabilities) status = '⚠️ Vulnerable';
       else if (d.isOutdated) status = '⬆️ Outdated';
@@ -285,7 +288,7 @@ export function generateDependencyReport(analysis: DependencyAnalysis): string {
   // Recommendations
   if (analysis.recommendations.length > 0) {
     lines.push(`## Recommendations\n`);
-    analysis.recommendations.forEach(r => lines.push(`- ${r}`));
+    analysis.recommendations.forEach((r) => lines.push(`- ${r}`));
   }
 
   return lines.join('\n');
@@ -300,5 +303,5 @@ export default {
   groupDependenciesByType,
   findDependencies,
   formatDependencyAnalysis,
-  generateDependencyReport
+  generateDependencyReport,
 };

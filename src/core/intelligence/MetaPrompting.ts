@@ -13,56 +13,46 @@
  * Import from here or from './metaprompting/index.js' directly.
  */
 
+// Default export
 export {
-  // Types - Optimization
-  type PromptOptimization,
-  type MetaPromptingConfig,
-  type EvolutionConfig,
   type ABTestResult,
+  AdvancedMetaPrompter,
+  advancedMetaPrompter,
   type CompressionResult,
-  type DomainOptimizationResult,
-  type RecursiveOptimizationResult,
-
-  // Types - Templates
-  type PromptTemplate,
-  type TemplateCategory,
-
-  // Types - Domain
-  type DomainType,
-
-  // Types - Legacy API
-  type MetaPromptResult,
-  type TaskType,
-
-  // Types - Internal (exported for advanced usage)
-  type PromptIndividual,
-
+  classifyTaskType,
   // Default configs
   DEFAULT_CONFIG,
   DEFAULT_EVOLUTION_CONFIG,
-
-  // Classes
-  MetaPrompter,
-  AdvancedMetaPrompter,
-  PromptTemplateLibrary,
-
-  // Singleton instances
-  metaPrompter,
-  advancedMetaPrompter,
-  promptTemplateLibrary,
-
-  // Quick functions
-  quickOptimize,
-  quickEvolve,
-  quickCompress,
-  quickABTest,
-
+  type DomainOptimizationResult,
+  // Types - Domain
+  type DomainType,
+  default,
+  type EvolutionConfig,
+  executeWithMetaPrompt,
   // Legacy API functions
   generateMetaPrompt,
-  executeWithMetaPrompt,
-  classifyTaskType,
-  getPromptTemplate
+  getPromptTemplate,
+  // Classes
+  MetaPrompter,
+  type MetaPromptingConfig,
+  // Types - Legacy API
+  type MetaPromptResult,
+  // Singleton instances
+  metaPrompter,
+  // Types - Internal (exported for advanced usage)
+  type PromptIndividual,
+  // Types - Optimization
+  type PromptOptimization,
+  // Types - Templates
+  type PromptTemplate,
+  PromptTemplateLibrary,
+  promptTemplateLibrary,
+  quickABTest,
+  quickCompress,
+  quickEvolve,
+  // Quick functions
+  quickOptimize,
+  type RecursiveOptimizationResult,
+  type TaskType,
+  type TemplateCategory,
 } from './metaprompting/index.js';
-
-// Default export
-export { default } from './metaprompting/index.js';

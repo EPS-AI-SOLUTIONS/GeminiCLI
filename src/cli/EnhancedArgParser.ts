@@ -80,14 +80,30 @@ export function tokenizeInput(input: string): string[] {
     if (escaped) {
       // Handle escape sequences
       switch (char) {
-        case 'n': current += '\n'; break;
-        case 't': current += '\t'; break;
-        case 'r': current += '\r'; break;
-        case '\\': current += '\\'; break;
-        case '"': current += '"'; break;
-        case "'": current += "'"; break;
-        case ' ': current += ' '; break;
-        default: current += char; break;
+        case 'n':
+          current += '\n';
+          break;
+        case 't':
+          current += '\t';
+          break;
+        case 'r':
+          current += '\r';
+          break;
+        case '\\':
+          current += '\\';
+          break;
+        case '"':
+          current += '"';
+          break;
+        case "'":
+          current += "'";
+          break;
+        case ' ':
+          current += ' ';
+          break;
+        default:
+          current += char;
+          break;
       }
       escaped = false;
       continue;
@@ -136,10 +152,11 @@ function setFlagValue(
   flagDefs: FlagDefinition[] | undefined,
   shortToLong: Map<string, string>,
   longFlags: Set<string>,
-  flagTypes: Map<string, 'boolean' | 'string' | 'number'>
+  flagTypes: Map<string, 'boolean' | 'string' | 'number'>,
 ): void {
   const resolvedName = shortToLong.get(flagName) || flagName;
-  const flagType = flagTypes.get(resolvedName) || (typeof value === 'boolean' ? 'boolean' : 'string');
+  const flagType =
+    flagTypes.get(resolvedName) || (typeof value === 'boolean' ? 'boolean' : 'string');
 
   // Track unknown flags
   if (flagDefs && !longFlags.has(flagName) && !shortToLong.has(flagName)) {
@@ -155,16 +172,16 @@ function setFlagValue(
       case 'boolean':
         convertedValue = value.toLowerCase() === 'true' || value === '1' || value === 'yes';
         break;
-      case 'number':
+      case 'number': {
         const num = parseFloat(value);
-        if (isNaN(num)) {
+        if (Number.isNaN(num)) {
           result.errors.push(`Flag --${resolvedName} expects a number, got "${value}"`);
           convertedValue = value;
         } else {
           convertedValue = num;
         }
         break;
-      case 'string':
+      }
       default:
         convertedValue = value;
         break;
@@ -191,7 +208,7 @@ export function parseArgs(input: string | string[], flagDefs?: FlagDefinition[])
     unknownFlags: [],
     errors: [],
     doubleDashIndex: -1,
-    passthrough: []
+    passthrough: [],
   };
 
   // Build lookup maps from flag definitions
@@ -360,7 +377,7 @@ export function parseArgs(input: string | string[], flagDefs?: FlagDefinition[])
  */
 export function validateCommandFlags(
   parsedArgs: ParsedArgs,
-  command: CommandWithFlags
+  command: CommandWithFlags,
 ): { valid: boolean; warnings: string[]; errors: string[] } {
   const warnings: string[] = [];
   const errors: string[] = [...parsedArgs.errors];
@@ -395,7 +412,7 @@ export function validateCommandFlags(
   return {
     valid: errors.length === 0,
     warnings,
-    errors
+    errors,
   };
 }
 
@@ -411,7 +428,7 @@ export function generateFlagHelp(command: CommandWithFlags): string {
   lines.push(chalk.bold('Flags:'));
 
   for (const flag of command.flags) {
-    const shortPart = flag.short ? chalk.yellow(`-${flag.short}`) + ', ' : '    ';
+    const shortPart = flag.short ? `${chalk.yellow(`-${flag.short}`)}, ` : '    ';
     const longPart = chalk.yellow(`--${flag.long}`);
     const typePart = flag.type !== 'boolean' ? chalk.blue(` <${flag.type}>`) : '';
     const reqPart = flag.required ? chalk.red(' (required)') : '';
@@ -426,7 +443,7 @@ export function generateFlagHelp(command: CommandWithFlags): string {
   }
 
   // Add negation info
-  const booleanFlags = command.flags.filter(f => f.type === 'boolean');
+  const booleanFlags = command.flags.filter((f) => f.type === 'boolean');
   if (booleanFlags.length > 0) {
     lines.push('');
     lines.push(chalk.gray('  Boolean flags can be negated with --no-<flag>'));
@@ -456,7 +473,10 @@ export class EnhancedArgParser {
   /**
    * Validate flags against command
    */
-  validate(parsedArgs: ParsedArgs, command: CommandWithFlags): { valid: boolean; warnings: string[]; errors: string[] } {
+  validate(
+    parsedArgs: ParsedArgs,
+    command: CommandWithFlags,
+  ): { valid: boolean; warnings: string[]; errors: string[] } {
     return validateCommandFlags(parsedArgs, command);
   }
 

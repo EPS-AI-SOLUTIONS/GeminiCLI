@@ -3,9 +3,9 @@
  * Features #41, #42, #43, #44, #45
  */
 
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import chalk from 'chalk';
-import fs from 'fs/promises';
-import path from 'path';
 
 import { GEMINIHYDRA_DIR, LOGS_DIR } from '../config/paths.config.js';
 
@@ -34,7 +34,7 @@ const LOG_COLORS: Record<LogLevel, (s: string) => string> = {
   info: chalk.blue,
   warn: chalk.yellow,
   error: chalk.red,
-  trace: chalk.magenta
+  trace: chalk.magenta,
 };
 
 const LOG_SYMBOLS: Record<LogLevel, string> = {
@@ -42,7 +42,7 @@ const LOG_SYMBOLS: Record<LogLevel, string> = {
   info: 'ℹ️',
   warn: '⚠️',
   error: '❌',
-  trace: '📍'
+  trace: '📍',
 };
 
 export class Logger {
@@ -55,11 +55,13 @@ export class Logger {
   private static instance: Logger | null = null;
   private static levelOrder: LogLevel[] = ['trace', 'debug', 'info', 'warn', 'error'];
 
-  constructor(options: {
-    category?: string;
-    minLevel?: LogLevel;
-    consoleOutput?: boolean;
-  } = {}) {
+  constructor(
+    options: {
+      category?: string;
+      minLevel?: LogLevel;
+      consoleOutput?: boolean;
+    } = {},
+  ) {
     this.category = options.category || 'default';
     this.minLevel = options.minLevel || 'info';
     this.consoleOutput = options.consoleOutput ?? true;
@@ -125,7 +127,7 @@ export class Logger {
 
     // File output
     if (this.fileHandle) {
-      const jsonLine = JSON.stringify(entry) + '\n';
+      const jsonLine = `${JSON.stringify(entry)}\n`;
       await this.fileHandle.write(jsonLine);
     }
   }
@@ -137,10 +139,10 @@ export class Logger {
       category: this.category,
       message,
       data,
-      ...meta
+      ...meta,
     };
 
-    this.writeEntry(entry).catch(err => {
+    this.writeEntry(entry).catch((err) => {
       console.error('Logger write error:', err);
     });
   }
@@ -169,7 +171,7 @@ export class Logger {
     const child = new Logger({
       category: `${this.category}:${category}`,
       minLevel: this.minLevel,
-      consoleOutput: this.consoleOutput
+      consoleOutput: this.consoleOutput,
     });
     child.fileHandle = this.fileHandle;
     return child;
@@ -180,11 +182,11 @@ export class Logger {
 
     if (options.level) {
       const minIdx = Logger.levelOrder.indexOf(options.level);
-      filtered = filtered.filter(e => Logger.levelOrder.indexOf(e.level) >= minIdx);
+      filtered = filtered.filter((e) => Logger.levelOrder.indexOf(e.level) >= minIdx);
     }
 
     if (options.taskId) {
-      filtered = filtered.filter(e => e.taskId === options.taskId);
+      filtered = filtered.filter((e) => e.taskId === options.taskId);
     }
 
     if (options.limit) {
@@ -222,7 +224,6 @@ export interface Metric {
 
 export class MetricsDashboard {
   private metrics: Map<string, Metric> = new Map();
-  private histogramBuckets = [10, 50, 100, 250, 500, 1000, 2500, 5000, 10000];
 
   /**
    * Increment a counter
@@ -300,14 +301,20 @@ export class MetricsDashboard {
 
   private getKey(name: string, labels?: Record<string, string>): string {
     if (!labels) return name;
-    const labelStr = Object.entries(labels).sort().map(([k, v]) => `${k}=${v}`).join(',');
+    const labelStr = Object.entries(labels)
+      .sort()
+      .map(([k, v]) => `${k}=${v}`)
+      .join(',');
     return `${name}{${labelStr}}`;
   }
 
   /**
    * Get metric statistics
    */
-  getStats(name: string, labels?: Record<string, string>): {
+  getStats(
+    name: string,
+    labels?: Record<string, string>,
+  ): {
     count: number;
     sum: number;
     avg: number;
@@ -322,7 +329,7 @@ export class MetricsDashboard {
 
     if (!metric || metric.values.length === 0) return null;
 
-    const values = metric.values.map(p => p.value).sort((a, b) => a - b);
+    const values = metric.values.map((p) => p.value).sort((a, b) => a - b);
     const count = values.length;
     const sum = values.reduce((a, b) => a + b, 0);
 
@@ -334,7 +341,7 @@ export class MetricsDashboard {
       max: values[count - 1],
       p50: values[Math.floor(count * 0.5)],
       p95: values[Math.floor(count * 0.95)],
-      p99: values[Math.floor(count * 0.99)]
+      p99: values[Math.floor(count * 0.99)],
     };
   }
 
@@ -349,7 +356,7 @@ export class MetricsDashboard {
       if (stats) {
         summary[key] = {
           type: metric.type,
-          ...stats
+          ...stats,
         };
       }
     }
@@ -425,7 +432,7 @@ export class TaskReplay {
       id,
       startedAt: new Date().toISOString(),
       mission,
-      entries: []
+      entries: [],
     };
 
     this.record('input', { mission });
@@ -441,7 +448,7 @@ export class TaskReplay {
     this.currentSession.entries.push({
       timestamp: new Date().toISOString(),
       type,
-      data
+      data,
     });
   }
 
@@ -499,7 +506,7 @@ export class TaskReplay {
             replays.push({
               id: session.id,
               mission: session.mission.substring(0, 50),
-              date: session.startedAt.split('T')[0]
+              date: session.startedAt.split('T')[0],
             });
           } catch {
             // Skip invalid files
@@ -517,7 +524,7 @@ export class TaskReplay {
    * Replay a session step by step
    */
   async *replaySteps(sessionId: string): AsyncGenerator<ReplayEntry> {
-    const session = this.sessions.get(sessionId) || await this.loadSession(sessionId);
+    const session = this.sessions.get(sessionId) || (await this.loadSession(sessionId));
     if (!session) return;
 
     for (const entry of session.entries) {
@@ -529,7 +536,7 @@ export class TaskReplay {
    * Print replay summary
    */
   async printReplaySummary(sessionId: string): Promise<void> {
-    const session = this.sessions.get(sessionId) || await this.loadSession(sessionId);
+    const session = this.sessions.get(sessionId) || (await this.loadSession(sessionId));
     if (!session) {
       console.log(chalk.red('Session not found'));
       return;
@@ -578,7 +585,7 @@ export class DryRunMode {
     wouldExecute: [],
     totalEstimatedTokens: 0,
     estimatedCost: 0,
-    warnings: []
+    warnings: [],
   };
 
   // Token cost per 1K tokens (Gemini 3 pricing)
@@ -587,7 +594,7 @@ export class DryRunMode {
     'gemini-3-pro': 0.0025,
     'gemini-3-flash-preview': 0.0005,
     'gemini-3-flash': 0.0005,
-    'local': 0
+    local: 0,
   };
 
   enable(): void {
@@ -596,7 +603,7 @@ export class DryRunMode {
       wouldExecute: [],
       totalEstimatedTokens: 0,
       estimatedCost: 0,
-      warnings: []
+      warnings: [],
     };
   }
 
@@ -628,7 +635,7 @@ export class DryRunMode {
       agent: task.agent,
       task: task.task,
       estimatedTokens,
-      mcpTools: task.mcpTools
+      mcpTools: task.mcpTools,
     });
 
     this.results.totalEstimatedTokens += estimatedTokens;
@@ -640,11 +647,15 @@ export class DryRunMode {
 
     // Check for warnings
     if (estimatedTokens > 10000) {
-      this.results.warnings.push(`Task ${task.taskId} may use a lot of tokens (${estimatedTokens})`);
+      this.results.warnings.push(
+        `Task ${task.taskId} may use a lot of tokens (${estimatedTokens})`,
+      );
     }
 
-    if (task.mcpTools?.some(t => t.includes('write') || t.includes('delete'))) {
-      this.results.warnings.push(`Task ${task.taskId} uses destructive MCP tools: ${task.mcpTools.join(', ')}`);
+    if (task.mcpTools?.some((t) => t.includes('write') || t.includes('delete'))) {
+      this.results.warnings.push(
+        `Task ${task.taskId} uses destructive MCP tools: ${task.mcpTools.join(', ')}`,
+      );
     }
   }
 
@@ -664,13 +675,17 @@ export class DryRunMode {
     console.log(chalk.cyan('═══════════════════════════════════════════════════════\n'));
 
     console.log(chalk.white(`Tasks to execute: ${this.results.wouldExecute.length}`));
-    console.log(chalk.white(`Estimated tokens: ${this.results.totalEstimatedTokens.toLocaleString()}`));
+    console.log(
+      chalk.white(`Estimated tokens: ${this.results.totalEstimatedTokens.toLocaleString()}`),
+    );
     console.log(chalk.white(`Estimated cost: $${this.results.estimatedCost.toFixed(4)}`));
     console.log('');
 
     console.log(chalk.white('Task breakdown:'));
     for (const task of this.results.wouldExecute) {
-      console.log(chalk.gray(`  #${task.taskId} [${task.agent}]: ${task.task.substring(0, 60)}...`));
+      console.log(
+        chalk.gray(`  #${task.taskId} [${task.agent}]: ${task.task.substring(0, 60)}...`),
+      );
       console.log(chalk.gray(`     Tokens: ~${task.estimatedTokens}`));
       if (task.mcpTools?.length) {
         console.log(chalk.gray(`     MCP: ${task.mcpTools.join(', ')}`));
@@ -724,7 +739,7 @@ export class AgentTrace {
       startTime: Date.now(),
       status: 'running',
       attributes,
-      events: []
+      events: [],
     };
 
     this.spans.set(id, span);
@@ -742,7 +757,7 @@ export class AgentTrace {
     this.activeSpan.events.push({
       timestamp: Date.now(),
       name,
-      data
+      data,
     });
   }
 
@@ -801,7 +816,7 @@ export class AgentTrace {
     // Second pass: build tree
     for (const node of spanMap.values()) {
       if (node.parentId && spanMap.has(node.parentId)) {
-        spanMap.get(node.parentId)!.children.push(node);
+        spanMap.get(node.parentId)?.children.push(node);
       } else {
         roots.push(node);
       }
@@ -826,9 +841,16 @@ export class AgentTrace {
     for (const node of nodes) {
       const indent = '  '.repeat(depth);
       const statusIcon = node.status === 'success' ? '✓' : node.status === 'error' ? '✗' : '⋯';
-      const statusColor = node.status === 'success' ? chalk.green : node.status === 'error' ? chalk.red : chalk.yellow;
+      const statusColor =
+        node.status === 'success'
+          ? chalk.green
+          : node.status === 'error'
+            ? chalk.red
+            : chalk.yellow;
 
-      console.log(`${indent}${statusColor(statusIcon)} ${node.name} ${chalk.gray(`(${node.duration || '...'}ms)`)}`);
+      console.log(
+        `${indent}${statusColor(statusIcon)} ${node.name} ${chalk.gray(`(${node.duration || '...'}ms)`)}`,
+      );
 
       // Print important attributes
       for (const [key, value] of Object.entries(node.attributes)) {
@@ -861,10 +883,14 @@ export class AgentTrace {
    * Export trace as JSON
    */
   toJSON(): string {
-    return JSON.stringify({
-      spans: Array.from(this.spans.values()),
-      tree: this.getTraceTree()
-    }, null, 2);
+    return JSON.stringify(
+      {
+        spans: Array.from(this.spans.values()),
+        tree: this.getTraceTree(),
+      },
+      null,
+      2,
+    );
   }
 }
 
@@ -884,5 +910,5 @@ export default {
   DryRunMode,
   dryRun,
   AgentTrace,
-  agentTrace
+  agentTrace,
 };

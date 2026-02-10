@@ -9,18 +9,29 @@
  * 20. Memory Sync - Cloud sync between instances
  */
 
-import path from 'path';
+import crypto from 'node:crypto';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import chalk from 'chalk';
-import crypto from 'crypto';
-import { loadFromFile, saveToFile, fileExists } from '../native/persistence.js';
 import { GEMINIHYDRA_DIR } from '../config/paths.config.js';
-import fs from 'fs/promises';
+import { loadFromFile, saveToFile } from '../native/persistence.js';
 
 const AGENT_MEMORY_DIR = path.join(GEMINIHYDRA_DIR, 'agents');
 
 // Agent roles
-type AgentName = 'dijkstra' | 'geralt' | 'yennefer' | 'triss' | 'vesemir' |
-                 'jaskier' | 'ciri' | 'eskel' | 'lambert' | 'zoltan' | 'regis' | 'philippa';
+type AgentName =
+  | 'dijkstra'
+  | 'geralt'
+  | 'yennefer'
+  | 'triss'
+  | 'vesemir'
+  | 'jaskier'
+  | 'ciri'
+  | 'eskel'
+  | 'lambert'
+  | 'zoltan'
+  | 'regis'
+  | 'philippa';
 
 interface JournalEntry {
   id: string;
@@ -67,8 +78,6 @@ export class AgentMemory {
     sharedKnowledge: [],
   };
 
-  constructor() {}
-
   /**
    * Initialize agent memory system
    */
@@ -78,8 +87,18 @@ export class AgentMemory {
 
     // Initialize all agent profiles
     const agents: AgentName[] = [
-      'dijkstra', 'geralt', 'yennefer', 'triss', 'vesemir',
-      'jaskier', 'ciri', 'eskel', 'lambert', 'zoltan', 'regis', 'philippa'
+      'dijkstra',
+      'geralt',
+      'yennefer',
+      'triss',
+      'vesemir',
+      'jaskier',
+      'ciri',
+      'eskel',
+      'lambert',
+      'zoltan',
+      'regis',
+      'philippa',
     ];
 
     const specialties: Record<AgentName, string> = {
@@ -122,7 +141,7 @@ export class AgentMemory {
 
     if (parsed) {
       // Restore Maps and Dates
-      for (const [name, profile] of Object.entries(parsed.profiles || {})) {
+      for (const [_name, profile] of Object.entries(parsed.profiles || {})) {
         const p = profile as any;
         p.specializations = new Map(Object.entries(p.specializations || {}));
         p.journal = (p.journal || []).map((j: any) => ({
@@ -175,7 +194,7 @@ export class AgentMemory {
     task: string,
     decision: string,
     reasoning: string,
-    tags: string[] = []
+    tags: string[] = [],
   ): Promise<string> {
     const profile = this.store.profiles[agent];
     if (!profile) throw new Error(`Unknown agent: ${agent}`);
@@ -208,18 +227,18 @@ export class AgentMemory {
   async recordOutcome(
     agent: AgentName,
     entryId: string,
-    outcome: 'success' | 'failure' | 'partial'
+    outcome: 'success' | 'failure' | 'partial',
   ): Promise<void> {
     const profile = this.store.profiles[agent];
     if (!profile) return;
 
-    const entry = profile.journal.find(j => j.id === entryId);
+    const entry = profile.journal.find((j) => j.id === entryId);
     if (entry) {
       entry.outcome = outcome;
 
       // Update success rate
-      const completedEntries = profile.journal.filter(j => j.outcome);
-      const successes = completedEntries.filter(j => j.outcome === 'success').length;
+      const completedEntries = profile.journal.filter((j) => j.outcome);
+      const successes = completedEntries.filter((j) => j.outcome === 'success').length;
       profile.successRate = successes / completedEntries.length;
 
       await this.save();
@@ -233,7 +252,7 @@ export class AgentMemory {
     const profile = this.store.profiles[agent];
     if (!profile) return;
 
-    const entry = profile.journal.find(j => j.id === entryId);
+    const entry = profile.journal.find((j) => j.id === entryId);
     if (entry) {
       entry.userFeedback = Math.min(5, Math.max(1, rating));
       await this.save();
@@ -248,11 +267,7 @@ export class AgentMemory {
   /**
    * Share knowledge between agents (Feature 17)
    */
-  async shareKnowledge(
-    contributor: AgentName,
-    topic: string,
-    insight: string
-  ): Promise<string> {
+  async shareKnowledge(contributor: AgentName, topic: string, insight: string): Promise<string> {
     const knowledge: SharedKnowledge = {
       id: crypto.randomBytes(8).toString('hex'),
       contributor,
@@ -274,7 +289,7 @@ export class AgentMemory {
    * Endorse shared knowledge
    */
   async endorseKnowledge(knowledgeId: string, endorser: AgentName): Promise<void> {
-    const knowledge = this.store.sharedKnowledge.find(k => k.id === knowledgeId);
+    const knowledge = this.store.sharedKnowledge.find((k) => k.id === knowledgeId);
     if (knowledge && !knowledge.endorsements.includes(endorser)) {
       knowledge.endorsements.push(endorser);
       await this.save();
@@ -287,12 +302,12 @@ export class AgentMemory {
   getKnowledgeForTask(task: string, agent?: AgentName): SharedKnowledge[] {
     const keywords = task.toLowerCase().split(/\W+/);
 
-    let candidates = this.store.sharedKnowledge;
+    const candidates = this.store.sharedKnowledge;
 
     // Score by relevance
-    const scored = candidates.map(k => {
-      const topicMatches = keywords.filter(kw =>
-        k.topic.toLowerCase().includes(kw) || k.insight.toLowerCase().includes(kw)
+    const scored = candidates.map((k) => {
+      const topicMatches = keywords.filter(
+        (kw) => k.topic.toLowerCase().includes(kw) || k.insight.toLowerCase().includes(kw),
       ).length;
 
       const endorsementScore = k.endorsements.length * 0.2;
@@ -311,7 +326,7 @@ export class AgentMemory {
     scored.sort((a, b) => b.score - a.score);
 
     // Update access counts
-    const results = scored.slice(0, 5).map(s => s.knowledge);
+    const results = scored.slice(0, 5).map((s) => s.knowledge);
     for (const k of results) {
       k.accessCount++;
     }
@@ -349,10 +364,12 @@ export class AgentMemory {
     // Recent relevant decisions
     const keywords = task.toLowerCase().split(/\W+/);
     const relevantJournal = profile.journal
-      .filter(j => keywords.some(kw =>
-        j.task.toLowerCase().includes(kw) ||
-        j.tags.some(t => t.toLowerCase().includes(kw))
-      ))
+      .filter((j) =>
+        keywords.some(
+          (kw) =>
+            j.task.toLowerCase().includes(kw) || j.tags.some((t) => t.toLowerCase().includes(kw)),
+        ),
+      )
       .slice(-3);
 
     if (relevantJournal.length > 0) {
@@ -393,7 +410,7 @@ export class AgentMemory {
   /**
    * Apply sync from cloud (Feature 20)
    */
-  async applySync(data: string, token: string): Promise<boolean> {
+  async applySync(data: string, _token: string): Promise<boolean> {
     try {
       const incoming = JSON.parse(data);
 
@@ -408,7 +425,7 @@ export class AgentMemory {
           const ip = incomingProfile as any;
 
           // Merge journal entries
-          const existingIds = new Set(existing.journal.map(j => j.id));
+          const existingIds = new Set(existing.journal.map((j) => j.id));
           for (const entry of ip.journal || []) {
             if (!existingIds.has(entry.id)) {
               existing.journal.push({
@@ -427,7 +444,7 @@ export class AgentMemory {
       }
 
       // Merge shared knowledge
-      const existingKnowledgeIds = new Set(this.store.sharedKnowledge.map(k => k.id));
+      const existingKnowledgeIds = new Set(this.store.sharedKnowledge.map((k) => k.id));
       for (const knowledge of incoming.sharedKnowledge || []) {
         if (!existingKnowledgeIds.has(knowledge.id)) {
           this.store.sharedKnowledge.push({
@@ -459,7 +476,7 @@ export class AgentMemory {
    * Get all agents summary
    */
   getSummary(): Array<{ name: string; tasks: number; successRate: number; specialty: string }> {
-    return Object.values(this.store.profiles).map(p => ({
+    return Object.values(this.store.profiles).map((p) => ({
       name: p.name,
       tasks: p.totalTasks,
       successRate: p.successRate,
@@ -476,10 +493,12 @@ export class AgentMemory {
     const summary = this.getSummary();
     for (const agent of summary) {
       const successIcon = agent.successRate > 0.8 ? '🌟' : agent.successRate > 0.5 ? '✓' : '○';
-      console.log(chalk.gray(
-        `${successIcon} ${agent.name.padEnd(12)} ${agent.tasks.toString().padStart(4)} tasks  ` +
-        `${(agent.successRate * 100).toFixed(0).padStart(3)}% success`
-      ));
+      console.log(
+        chalk.gray(
+          `${successIcon} ${agent.name.padEnd(12)} ${agent.tasks.toString().padStart(4)} tasks  ` +
+            `${(agent.successRate * 100).toFixed(0).padStart(3)}% success`,
+        ),
+      );
     }
 
     console.log(chalk.gray(`\nShared knowledge items: ${this.store.sharedKnowledge.length}`));

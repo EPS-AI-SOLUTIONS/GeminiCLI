@@ -50,7 +50,7 @@ export interface AgentClaim {
   claim: string;
   claimType: ClaimType;
   timestamp: number;
-  confidence?: number;  // Optional confidence score 0-100
+  confidence?: number; // Optional confidence score 0-100
 }
 
 /**
@@ -136,7 +136,7 @@ export class CrossAgentValidator {
       'dependency_added',
       'config_changed',
       'file_read',
-      'command_executed'
+      'command_executed',
     ];
 
     for (const type of claimTypes) {
@@ -158,7 +158,7 @@ export class CrossAgentValidator {
     taskId: number,
     claim: string,
     claimType: ClaimType | string,
-    confidence?: number
+    confidence?: number,
   ): void {
     // Normalize claim type
     const normalizedType = this.normalizeClaimType(claimType);
@@ -172,7 +172,7 @@ export class CrossAgentValidator {
       claim: normalizedClaim,
       claimType: normalizedType,
       timestamp: Date.now(),
-      confidence: confidence ?? 80  // Default confidence
+      confidence: confidence ?? 80, // Default confidence
     };
 
     // Add to main claims array
@@ -182,14 +182,14 @@ export class CrossAgentValidator {
     if (!this.claimsByType.has(normalizedType)) {
       this.claimsByType.set(normalizedType, []);
     }
-    this.claimsByType.get(normalizedType)!.push(agentClaim);
+    this.claimsByType.get(normalizedType)?.push(agentClaim);
 
     // Index by claim value (for detecting duplicates/agreements)
     const claimKey = `${normalizedType}:${normalizedClaim}`;
     if (!this.claimsByValue.has(claimKey)) {
       this.claimsByValue.set(claimKey, []);
     }
-    this.claimsByValue.get(claimKey)!.push(agentClaim);
+    this.claimsByValue.get(claimKey)?.push(agentClaim);
   }
 
   /**
@@ -222,7 +222,7 @@ export class CrossAgentValidator {
       if (!claimCounts.has(claim.claim)) {
         claimCounts.set(claim.claim, new Set());
       }
-      claimCounts.get(claim.claim)!.add(claim.agentId);
+      claimCounts.get(claim.claim)?.add(claim.agentId);
     }
 
     // Find agreed claims (2+ agents)
@@ -272,7 +272,7 @@ export class CrossAgentValidator {
       agreedClaims,
       unverifiedClaims,
       totalClaims,
-      participatingAgents
+      participatingAgents,
     };
   }
 
@@ -298,7 +298,7 @@ export class CrossAgentValidator {
       'dependency_added',
       'config_changed',
       'file_read',
-      'command_executed'
+      'command_executed',
     ];
 
     for (const type of claimTypes) {
@@ -317,7 +317,7 @@ export class CrossAgentValidator {
               claimType: type,
               claim,
               agents: Array.from(result.agentVotes.keys()),
-              values: Array.from(result.agentVotes.values())
+              values: Array.from(result.agentVotes.values()),
             });
           }
         }
@@ -330,21 +330,17 @@ export class CrossAgentValidator {
     }
 
     // Calculate overall score
-    const overallScore = typeCount > 0
-      ? Math.round(totalScore / typeCount)
-      : 100; // No claims = no conflicts
+    const overallScore = typeCount > 0 ? Math.round(totalScore / typeCount) : 100; // No claims = no conflicts
 
     // Determine if overall validation passes
-    const isValid =
-      allConflicts.length === 0 &&
-      overallScore >= this.CONSENSUS_THRESHOLD;
+    const isValid = allConflicts.length === 0 && overallScore >= this.CONSENSUS_THRESHOLD;
 
     return {
       overallScore,
       isValid,
       resultsByType,
       allConflicts,
-      warnings
+      warnings,
     };
   }
 
@@ -362,7 +358,7 @@ export class CrossAgentValidator {
     const fileModPatterns = [
       /===ZAPIS===\s*([^\n]+)/gi,
       /(?:zapisano|zapisuje|modyfikuj\u0119|zmodyfikowa\u0142em)\s+(?:plik\s+)?([a-zA-Z0-9_\-/.]+\.[a-zA-Z]+)/gi,
-      /(?:wrote|writing|modified|updated)\s+(?:file\s+)?([a-zA-Z0-9_\-/.]+\.[a-zA-Z]+)/gi
+      /(?:wrote|writing|modified|updated)\s+(?:file\s+)?([a-zA-Z0-9_\-/.]+\.[a-zA-Z]+)/gi,
     ];
 
     for (const pattern of fileModPatterns) {
@@ -376,7 +372,7 @@ export class CrossAgentValidator {
     const fileReadPatterns = [
       /(?:odczyta\u0142em|czytam|wczytuj\u0119)\s+(?:plik\s+)?([a-zA-Z0-9_\-/.]+\.[a-zA-Z]+)/gi,
       /(?:read|reading|loaded)\s+(?:file\s+)?([a-zA-Z0-9_\-/.]+\.[a-zA-Z]+)/gi,
-      /EXEC:\s*(?:type|cat)\s+"?([^"\n]+)"?/gi
+      /EXEC:\s*(?:type|cat)\s+"?([^"\n]+)"?/gi,
     ];
 
     for (const pattern of fileReadPatterns) {
@@ -390,7 +386,7 @@ export class CrossAgentValidator {
     const funcPatterns = [
       /(?:stworzy\u0142em|dodat\u0142em|zaimplementowa\u0142em)\s+(?:funkcj\u0119|metod\u0119|klas\u0119)\s+([a-zA-Z_][a-zA-Z0-9_]*)/gi,
       /(?:created|added|implemented)\s+(?:function|method|class)\s+([a-zA-Z_][a-zA-Z0-9_]*)/gi,
-      /(?:export\s+)?(?:function|class|interface|type)\s+([A-Z][a-zA-Z0-9_]*)/g
+      /(?:export\s+)?(?:function|class|interface|type)\s+([A-Z][a-zA-Z0-9_]*)/g,
     ];
 
     for (const pattern of funcPatterns) {
@@ -404,7 +400,7 @@ export class CrossAgentValidator {
     const testPatterns = [
       /(?:test\s+)?['"]([^'"]+)['"]\s+(?:przeszed\u0142|passed)/gi,
       /(?:test|spec)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+(?:\u2713|passed|ok)/gi,
-      /PASS\s+([a-zA-Z0-9_\-/.]+\.(?:test|spec)\.[a-zA-Z]+)/gi
+      /PASS\s+([a-zA-Z0-9_\-/.]+\.(?:test|spec)\.[a-zA-Z]+)/gi,
     ];
 
     for (const pattern of testPatterns) {
@@ -418,7 +414,7 @@ export class CrossAgentValidator {
     const errorPatterns = [
       /(?:b\u0142\u0105d|error|exception):\s*([^\n]+)/gi,
       /(?:znalaz\u0142em|wykry\u0142em|found)\s+(?:b\u0142\u0105d|error):\s*([^\n]+)/gi,
-      /(?:FAIL|ERROR)\s+([^\n]+)/gi
+      /(?:FAIL|ERROR)\s+([^\n]+)/gi,
     ];
 
     for (const pattern of errorPatterns) {
@@ -432,7 +428,7 @@ export class CrossAgentValidator {
     const cmdPatterns = [
       /EXEC:\s*([^\n]+)/gi,
       /\$\s+([^\n]+)/gi,
-      />\s+(npm|npx|node|tsc|git|yarn|pnpm)\s+[^\n]+/gi
+      />\s+(npm|npx|node|tsc|git|yarn|pnpm)\s+[^\n]+/gi,
     ];
 
     for (const pattern of cmdPatterns) {
@@ -447,14 +443,14 @@ export class CrossAgentValidator {
    * Get all claims by a specific agent
    */
   getAgentClaims(agentId: string): AgentClaim[] {
-    return this.claims.filter(c => c.agentId === agentId.toLowerCase());
+    return this.claims.filter((c) => c.agentId === agentId.toLowerCase());
   }
 
   /**
    * Get all claims for a specific task
    */
   getTaskClaims(taskId: number): AgentClaim[] {
-    return this.claims.filter(c => c.taskId === taskId);
+    return this.claims.filter((c) => c.taskId === taskId);
   }
 
   /**
@@ -473,14 +469,13 @@ export class CrossAgentValidator {
     }
 
     for (const claim of this.claims) {
-      agentParticipation[claim.agentId] =
-        (agentParticipation[claim.agentId] || 0) + 1;
+      agentParticipation[claim.agentId] = (agentParticipation[claim.agentId] || 0) + 1;
     }
 
     return {
       totalClaims: this.claims.length,
       claimsByType,
-      agentParticipation
+      agentParticipation,
     };
   }
 
@@ -502,7 +497,7 @@ export class CrossAgentValidator {
       'dependency_added',
       'config_changed',
       'file_read',
-      'command_executed'
+      'command_executed',
     ];
 
     if (validTypes.includes(normalized as ClaimType)) {
@@ -511,23 +506,23 @@ export class CrossAgentValidator {
 
     // Map common variations
     const typeMap: Record<string, ClaimType> = {
-      'file': 'file_modified',
-      'modified': 'file_modified',
-      'written': 'file_modified',
-      'wrote': 'file_modified',
-      'function': 'function_created',
-      'class': 'function_created',
-      'interface': 'function_created',
-      'created': 'function_created',
-      'test': 'test_passed',
-      'passed': 'test_passed',
-      'error': 'error_found',
-      'fail': 'error_found',
-      'dependency': 'dependency_added',
-      'config': 'config_changed',
-      'read': 'file_read',
-      'command': 'command_executed',
-      'exec': 'command_executed'
+      file: 'file_modified',
+      modified: 'file_modified',
+      written: 'file_modified',
+      wrote: 'file_modified',
+      function: 'function_created',
+      class: 'function_created',
+      interface: 'function_created',
+      created: 'function_created',
+      test: 'test_passed',
+      passed: 'test_passed',
+      error: 'error_found',
+      fail: 'error_found',
+      dependency: 'dependency_added',
+      config: 'config_changed',
+      read: 'file_read',
+      command: 'command_executed',
+      exec: 'command_executed',
     };
 
     return typeMap[normalized] || 'file_modified';
@@ -575,17 +570,17 @@ export class CrossAgentValidator {
       if (!entityClaims.has(baseEntity)) {
         entityClaims.set(baseEntity, []);
       }
-      entityClaims.get(baseEntity)!.push(claim);
+      entityClaims.get(baseEntity)?.push(claim);
     }
 
     // Check for conflicts within same entity
     for (const [entity, entityClaimList] of entityClaims) {
       // Get unique agents
-      const uniqueAgents = new Set(entityClaimList.map(c => c.agentId));
+      const uniqueAgents = new Set(entityClaimList.map((c) => c.agentId));
 
       // If multiple agents claim different things about same entity
       if (uniqueAgents.size > 1) {
-        const claimValues = new Set(entityClaimList.map(c => c.claim));
+        const claimValues = new Set(entityClaimList.map((c) => c.claim));
 
         // If there are different claim values from different agents
         if (claimValues.size > 1 && this.isConflict(entityClaimList)) {
@@ -624,7 +619,7 @@ export class CrossAgentValidator {
     // For function_created: conflict if agents claim different implementations
     // For test_passed vs error_found: conflict if same test
 
-    const types = new Set(claims.map(c => c.claimType));
+    const types = new Set(claims.map((c) => c.claimType));
 
     // Different types for same entity = potential conflict
     if (types.has('test_passed') && types.has('error_found')) {
@@ -633,7 +628,7 @@ export class CrossAgentValidator {
 
     // Multiple different claims about same file content = conflict
     if (types.size === 1 && types.has('file_modified')) {
-      const agents = new Set(claims.map(c => c.agentId));
+      const agents = new Set(claims.map((c) => c.agentId));
       return agents.size > 1; // Multiple agents modifying same file
     }
 

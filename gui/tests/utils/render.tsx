@@ -2,9 +2,10 @@
  * Custom render utilities for testing
  */
 
-import React, { type ReactNode } from 'react';
-import { render, type RenderOptions } from '@testing-library/react';
 import { QueryClientProvider } from '@tanstack/react-query';
+import { type RenderOptions, render } from '@testing-library/react';
+import type React from 'react';
+import type { ReactNode } from 'react';
 import { ThemeProvider } from '../../src/contexts/ThemeContext';
 import { createTestQueryClient } from '../mocks/query';
 
@@ -25,24 +26,18 @@ const AllProviders = ({ children }: WrapperProps) => {
 // Query-only wrapper (no theme)
 const QueryOnlyWrapper = ({ children }: WrapperProps) => {
   const queryClient = createTestQueryClient();
-  return (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
-  );
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 };
 
 // Custom render with all providers
 export const renderWithProviders = (
   ui: React.ReactElement,
-  options?: Omit<RenderOptions, 'wrapper'>
+  options?: Omit<RenderOptions, 'wrapper'>,
 ) => render(ui, { wrapper: AllProviders, ...options });
 
 // Custom render with query client only
-export const renderWithQuery = (
-  ui: React.ReactElement,
-  options?: Omit<RenderOptions, 'wrapper'>
-) => render(ui, { wrapper: QueryOnlyWrapper, ...options });
+export const renderWithQuery = (ui: React.ReactElement, options?: Omit<RenderOptions, 'wrapper'>) =>
+  render(ui, { wrapper: QueryOnlyWrapper, ...options });
 
 // Re-export everything from testing-library
 export * from '@testing-library/react';

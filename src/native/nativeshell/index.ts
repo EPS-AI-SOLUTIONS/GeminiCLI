@@ -12,63 +12,59 @@
  * @module native/nativeshell/index
  */
 
-// Types and interfaces
-export type {
-  ShellType,
-  ShellInfo,
-  CommandMapping,
-  ProcessInfo,
-  ZombieProcessInfo,
-  GracefulShutdownConfig,
-  CleanupStats,
-  OutputChunk,
-  StderrAnalysis,
-  ProcessResult,
-  ExecOptions,
-  ProgressInfo,
-  StreamingExecOptions,
-  ProgressExecOptions,
-  StreamingExecResult,
-  PipeOptions,
-  ShellSession,
-  NativeShellConfig,
-  EnvironmentConfig,
-  EnvironmentProfile,
-  ScriptExecOptions,
-  ScriptValidationResult,
-  ScriptExecutionLog,
-  ShellTimeoutConfig,
-  TimeoutProfile
-} from './types.js';
-
-// Error classes
-export {
-  CwdValidationError,
-  ScriptValidationError
-} from './types.js';
-
 // Constants
 export {
-  SHELL_PATHS,
+  ALLOWED_SCRIPT_EXTENSIONS,
   COMMAND_TRANSLATIONS,
-  SHELL_FALLBACK_ORDER,
+  DEFAULT_BLOCKED_ENV_VARS,
   DEFAULT_MAX_OUTPUT_SIZE,
   DEFAULT_PROGRESS_PATTERNS,
-  TIMEOUT_PROFILES,
-  SENSITIVE_ENV_PATTERNS,
-  DEFAULT_BLOCKED_ENV_VARS,
   ENVIRONMENT_PROFILES,
-  ALLOWED_SCRIPT_EXTENSIONS,
-  PYTHON_SANDBOX_BLOCKED_IMPORTS
+  PYTHON_SANDBOX_BLOCKED_IMPORTS,
+  SENSITIVE_ENV_PATTERNS,
+  SHELL_FALLBACK_ORDER,
+  SHELL_PATHS,
+  TIMEOUT_PROFILES,
 } from './constants.js';
-
 // Helpers
 export {
   analyzeStderr,
-  createProcessResult,
+  createDefaultEnvironmentConfig,
   createDefaultTimeoutConfig,
-  createDefaultEnvironmentConfig
+  createProcessResult,
 } from './helpers.js';
-
 // Main class and factory
-export { NativeShell, createShell } from './NativeShell.js';
+export { createShell, NativeShell } from './NativeShell.js';
+// Types and interfaces
+export type {
+  CleanupStats,
+  CommandMapping,
+  EnvironmentConfig,
+  EnvironmentProfile,
+  ExecOptions,
+  GracefulShutdownConfig,
+  NativeShellConfig,
+  OutputChunk,
+  PipeOptions,
+  ProcessInfo,
+  ProcessResult,
+  ProgressExecOptions,
+  ProgressInfo,
+  ScriptExecOptions,
+  ScriptExecutionLog,
+  ScriptValidationResult,
+  ShellInfo,
+  ShellSession,
+  ShellTimeoutConfig,
+  ShellType,
+  StderrAnalysis,
+  StreamingExecOptions,
+  StreamingExecResult,
+  TimeoutProfile,
+  ZombieProcessInfo,
+} from './types.js';
+// Error classes
+export {
+  CwdValidationError,
+  ScriptValidationError,
+} from './types.js';

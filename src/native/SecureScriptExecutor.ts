@@ -8,12 +8,12 @@
  * - Log all script executions
  */
 
-import { spawn, ChildProcess } from 'child_process';
-import { EventEmitter } from 'events';
+import { spawn } from 'node:child_process';
+import { EventEmitter } from 'node:events';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import chalk from 'chalk';
-import os from 'os';
-import fs from 'fs';
-import path from 'path';
 
 // ============================================================
 // Types
@@ -80,7 +80,7 @@ export const ALLOWED_SCRIPT_EXTENSIONS: Record<string, string[]> = {
   python: ['.py', '.pyw'],
   node: ['.js', '.mjs', '.cjs'],
   bash: ['.sh', '.bash'],
-  powershell: ['.ps1', '.psm1', '.psd1']
+  powershell: ['.ps1', '.psm1', '.psd1'],
 };
 
 /**
@@ -115,7 +115,7 @@ export const PYTHON_SANDBOX_BLOCKED_IMPORTS = [
   'zipimport',
   'pkgutil',
   'modulefinder',
-  'runpy'
+  'runpy',
 ];
 
 /**
@@ -124,13 +124,17 @@ export const PYTHON_SANDBOX_BLOCKED_IMPORTS = [
 export class ScriptValidationError extends Error {
   constructor(
     public readonly scriptPath: string,
-    public readonly reason: 'not_exists' | 'invalid_extension' | 'no_read_access' | 'sandbox_violation'
+    public readonly reason:
+      | 'not_exists'
+      | 'invalid_extension'
+      | 'no_read_access'
+      | 'sandbox_violation',
   ) {
     const messages = {
       not_exists: `Script file does not exist: ${scriptPath}`,
       invalid_extension: `Invalid script extension: ${scriptPath}`,
       no_read_access: `Cannot read script file: ${scriptPath}`,
-      sandbox_violation: `Script contains blocked imports (sandbox mode): ${scriptPath}`
+      sandbox_violation: `Script contains blocked imports (sandbox mode): ${scriptPath}`,
     };
     super(messages[reason]);
     this.name = 'ScriptValidationError';
@@ -147,16 +151,16 @@ export class SecureScriptExecutor extends EventEmitter {
   private defaultTimeout: number;
   private defaultCwd: string;
   private defaultEnv: Record<string, string>;
-  private defaultSandbox: boolean;
-  private defaultLogExecution: boolean;
 
-  constructor(options: {
-    timeout?: number;
-    cwd?: string;
-    env?: Record<string, string>;
-    sandbox?: boolean;
-    logExecution?: boolean;
-  } = {}) {
+  constructor(
+    options: {
+      timeout?: number;
+      cwd?: string;
+      env?: Record<string, string>;
+      sandbox?: boolean;
+      logExecution?: boolean;
+    } = {},
+  ) {
     super();
     this.defaultTimeout = options.timeout || 30000;
     this.defaultCwd = options.cwd || process.cwd();
@@ -174,7 +178,7 @@ export class SecureScriptExecutor extends EventEmitter {
    */
   validateScript(
     scriptPath: string,
-    interpreterType: 'python' | 'node' | 'bash' | 'powershell'
+    interpreterType: 'python' | 'node' | 'bash' | 'powershell',
   ): ScriptValidationResult {
     const absolutePath = path.isAbsolute(scriptPath)
       ? scriptPath
@@ -185,7 +189,7 @@ export class SecureScriptExecutor extends EventEmitter {
       return {
         valid: false,
         error: `Script file does not exist: ${absolutePath}`,
-        scriptPath: absolutePath
+        scriptPath: absolutePath,
       };
     }
 
@@ -198,7 +202,7 @@ export class SecureScriptExecutor extends EventEmitter {
         valid: false,
         error: `Invalid extension '${ext}' for ${interpreterType}. Allowed: ${allowedExtensions.join(', ')}`,
         scriptPath: absolutePath,
-        extension: ext
+        extension: ext,
       };
     }
 
@@ -209,7 +213,7 @@ export class SecureScriptExecutor extends EventEmitter {
       return {
         valid: false,
         error: `Cannot read script file: ${absolutePath}`,
-        scriptPath: absolutePath
+        scriptPath: absolutePath,
       };
     }
 
@@ -217,7 +221,7 @@ export class SecureScriptExecutor extends EventEmitter {
       valid: true,
       scriptPath: absolutePath,
       extension: ext,
-      interpreter: interpreterType
+      interpreter: interpreterType,
     };
   }
 
@@ -255,7 +259,7 @@ export class SecureScriptExecutor extends EventEmitter {
    * Generate Python sandbox wrapper code
    */
   private generatePythonSandboxWrapper(script: string): string {
-    const blockedModules = PYTHON_SANDBOX_BLOCKED_IMPORTS.map(m => `'${m}'`).join(', ');
+    const blockedModules = PYTHON_SANDBOX_BLOCKED_IMPORTS.map((m) => `'${m}'`).join(', ');
 
     return `
 import sys
@@ -307,7 +311,7 @@ ${script}
       log.scriptPath || '<inline>',
       log.args.length > 0 ? chalk.gray(`args: [${log.args.join(', ')}]`) : '',
       status,
-      log.duration ? chalk.gray(`${log.duration}ms`) : ''
+      log.duration ? chalk.gray(`${log.duration}ms`) : '',
     );
   }
 
@@ -350,7 +354,7 @@ ${script}
       inlineScript: true,
       args,
       cwd,
-      sandbox
+      sandbox,
     };
 
     // Check for sandbox violations if sandbox mode enabled
@@ -373,7 +377,7 @@ ${script}
       const proc = spawn(pythonExe, spawnArgs, {
         cwd,
         env,
-        shell: false  // SECURITY: Never use shell=true
+        shell: false, // SECURITY: Never use shell=true
       });
 
       const stdout: string[] = [];
@@ -441,7 +445,7 @@ ${script}
       inlineScript: true,
       args,
       cwd,
-      sandbox: false
+      sandbox: false,
     };
 
     // SECURE: use spawn with array args, no shell interpolation
@@ -451,7 +455,7 @@ ${script}
       const proc = spawn('node', spawnArgs, {
         cwd,
         env,
-        shell: false  // SECURITY: Never use shell=true
+        shell: false, // SECURITY: Never use shell=true
       });
 
       const stdout: string[] = [];
@@ -507,7 +511,11 @@ ${script}
    * @param args - Arguments to pass to the script
    * @param options - Execution options including sandbox mode
    */
-  async execPython(scriptPath: string, args: string[] = [], options?: ScriptExecOptions): Promise<string> {
+  async execPython(
+    scriptPath: string,
+    args: string[] = [],
+    options?: ScriptExecOptions,
+  ): Promise<string> {
     const startTime = Date.now();
     const cwd = options?.cwd || this.defaultCwd;
     const env = { ...this.defaultEnv, ...options?.env };
@@ -517,8 +525,9 @@ ${script}
     // Validate script
     const validation = this.validateScript(scriptPath, 'python');
     if (!validation.valid) {
-      throw new ScriptValidationError(scriptPath,
-        validation.error?.includes('extension') ? 'invalid_extension' : 'not_exists'
+      throw new ScriptValidationError(
+        scriptPath,
+        validation.error?.includes('extension') ? 'invalid_extension' : 'not_exists',
       );
     }
 
@@ -531,7 +540,7 @@ ${script}
       inlineScript: false,
       args,
       cwd,
-      sandbox
+      sandbox,
     };
 
     // Check for sandbox violations if sandbox mode enabled
@@ -551,7 +560,7 @@ ${script}
     let spawnArgs: string[];
     if (sandbox) {
       const sandboxedExec = this.generatePythonSandboxWrapper(
-        `exec(open(r'${absolutePath.replace(/\\/g, '\\\\')}').read())`
+        `exec(open(r'${absolutePath.replace(/\\/g, '\\\\')}').read())`,
       );
       spawnArgs = ['-c', sandboxedExec, ...args];
     } else {
@@ -562,7 +571,7 @@ ${script}
       const proc = spawn(pythonExe, spawnArgs, {
         cwd,
         env,
-        shell: false  // SECURITY: Never use shell=true
+        shell: false, // SECURITY: Never use shell=true
       });
 
       const stdout: string[] = [];
@@ -618,7 +627,11 @@ ${script}
    * @param args - Arguments to pass to the script
    * @param options - Execution options
    */
-  async execNode(scriptPath: string, args: string[] = [], options?: ScriptExecOptions): Promise<string> {
+  async execNode(
+    scriptPath: string,
+    args: string[] = [],
+    options?: ScriptExecOptions,
+  ): Promise<string> {
     const startTime = Date.now();
     const cwd = options?.cwd || this.defaultCwd;
     const env = { ...this.defaultEnv, ...options?.env };
@@ -627,8 +640,9 @@ ${script}
     // Validate script
     const validation = this.validateScript(scriptPath, 'node');
     if (!validation.valid) {
-      throw new ScriptValidationError(scriptPath,
-        validation.error?.includes('extension') ? 'invalid_extension' : 'not_exists'
+      throw new ScriptValidationError(
+        scriptPath,
+        validation.error?.includes('extension') ? 'invalid_extension' : 'not_exists',
       );
     }
 
@@ -641,7 +655,7 @@ ${script}
       inlineScript: false,
       args,
       cwd,
-      sandbox: false
+      sandbox: false,
     };
 
     // SECURE: use spawn with array args, no shell interpolation
@@ -651,7 +665,7 @@ ${script}
       const proc = spawn('node', spawnArgs, {
         cwd,
         env,
-        shell: false  // SECURITY: Never use shell=true
+        shell: false, // SECURITY: Never use shell=true
       });
 
       const stdout: string[] = [];
@@ -712,7 +726,7 @@ ${script}
     interpreter: string,
     scriptPath: string,
     args: string[] = [],
-    options?: ScriptExecOptions
+    options?: ScriptExecOptions,
   ): Promise<string> {
     const startTime = Date.now();
     const cwd = options?.cwd || this.defaultCwd;
@@ -720,9 +734,7 @@ ${script}
     const timeout = options?.timeout || this.defaultTimeout;
 
     // Resolve script path
-    const absolutePath = path.isAbsolute(scriptPath)
-      ? scriptPath
-      : path.resolve(cwd, scriptPath);
+    const absolutePath = path.isAbsolute(scriptPath) ? scriptPath : path.resolve(cwd, scriptPath);
 
     // Check if file exists
     if (!fs.existsSync(absolutePath)) {
@@ -743,7 +755,7 @@ ${script}
       inlineScript: false,
       args,
       cwd,
-      sandbox: false
+      sandbox: false,
     };
 
     // SECURE: use spawn with array args, no shell interpolation
@@ -753,7 +765,7 @@ ${script}
       const proc = spawn(interpreter, spawnArgs, {
         cwd,
         env,
-        shell: false  // SECURITY: Never use shell=true
+        shell: false, // SECURITY: Never use shell=true
       });
 
       const stdout: string[] = [];

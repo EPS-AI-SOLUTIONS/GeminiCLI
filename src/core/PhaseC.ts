@@ -9,9 +9,9 @@
  * 4. Save lessons learned to memory
  */
 
-import { Agent, AGENT_PERSONAS } from './agent/Agent.js';
-import { ExecutionResult, SwarmTask, AgentRole } from '../types/index.js';
-import chalk from 'chalk';
+import type { AgentRole, ExecutionResult } from '../types/index.js';
+import { AGENT_PERSONAS, Agent } from './agent/Agent.js';
+import { logger } from './LiveLogger.js';
 
 // Lista dostępnych agentów
 const VALID_AGENTS = Object.keys(AGENT_PERSONAS) as AgentRole[];
@@ -59,8 +59,8 @@ export interface PhaseCResult {
 
 const DEFAULT_CONFIG: PhaseCConfig = {
   enabled: true,
-  maxRetries: 3,    // Self-healing repair cycles (3 attempts before giving up)
-  saveLesson: true
+  maxRetries: 3, // Self-healing repair cycles (3 attempts before giving up)
+  saveLesson: true,
 };
 
 /**
@@ -132,10 +132,10 @@ WYNIK: Albo "STATUS: SUCCESS" albo poprawna tablica JSON. Nic więcej.`;
  */
 export function checkTaskResultAlignment(
   task: string,
-  result: string
+  result: string,
 ): {
   aligned: boolean;
-  score: number;        // 0-100
+  score: number; // 0-100
   matchedKeywords: string[];
   missingKeywords: string[];
   warning?: string;
@@ -147,11 +147,39 @@ export function checkTaskResultAlignment(
   // Keywords that should appear in both task and result
   const actionKeywords = [
     // English
-    'create', 'add', 'remove', 'delete', 'modify', 'update', 'fix', 'implement',
-    'write', 'read', 'list', 'find', 'search', 'analyze', 'test', 'build', 'run',
+    'create',
+    'add',
+    'remove',
+    'delete',
+    'modify',
+    'update',
+    'fix',
+    'implement',
+    'write',
+    'read',
+    'list',
+    'find',
+    'search',
+    'analyze',
+    'test',
+    'build',
+    'run',
     // Polish
-    'stwórz', 'dodaj', 'usuń', 'zmodyfikuj', 'zaktualizuj', 'napraw', 'zaimplementuj',
-    'napisz', 'odczytaj', 'wylistuj', 'znajdź', 'szukaj', 'analizuj', 'testuj', 'zbuduj'
+    'stwórz',
+    'dodaj',
+    'usuń',
+    'zmodyfikuj',
+    'zaktualizuj',
+    'napraw',
+    'zaimplementuj',
+    'napisz',
+    'odczytaj',
+    'wylistuj',
+    'znajdź',
+    'szukaj',
+    'analizuj',
+    'testuj',
+    'zbuduj',
   ];
 
   // Extract keywords from task
@@ -163,12 +191,12 @@ export function checkTaskResultAlignment(
   }
 
   // Extract file/path references from task
-  const taskPaths = task.match(/[\w\/-]+\.\w+/g) || [];
-  taskPaths.forEach(p => taskKeywords.add(p.toLowerCase()));
+  const taskPaths = task.match(/[\w/-]+\.\w+/g) || [];
+  taskPaths.forEach((p) => taskKeywords.add(p.toLowerCase()));
 
   // Extract class/function names from task
   const taskNames = task.match(/\b[A-Z][a-zA-Z]+\b/g) || [];
-  taskNames.forEach(n => taskKeywords.add(n.toLowerCase()));
+  taskNames.forEach((n) => taskKeywords.add(n.toLowerCase()));
 
   // Check which keywords appear in result
   const matchedKeywords: string[] = [];
@@ -186,9 +214,7 @@ export function checkTaskResultAlignment(
   const totalKeywords = taskKeywords.size;
   const matchedCount = matchedKeywords.length;
 
-  let score = totalKeywords > 0
-    ? Math.round((matchedCount / totalKeywords) * 100)
-    : 50; // No keywords to match
+  let score = totalKeywords > 0 ? Math.round((matchedCount / totalKeywords) * 100) : 50; // No keywords to match
 
   // Check for task-specific patterns
   const taskPatterns = [
@@ -226,7 +252,7 @@ export function checkTaskResultAlignment(
     score,
     matchedKeywords,
     missingKeywords,
-    warning
+    warning,
   };
 }
 
@@ -243,25 +269,25 @@ export async function selfHealingLoop(
   objective: string,
   results: ExecutionResult[],
   config: PhaseCConfig = {},
-  executeRepair?: (tasks: RepairTask[]) => Promise<ExecutionResult[]>
+  executeRepair?: (tasks: RepairTask[]) => Promise<ExecutionResult[]>,
 ): Promise<PhaseCResult> {
   const cfg = { ...DEFAULT_CONFIG, ...config };
 
   // Skip if disabled
   if (!cfg.enabled) {
-    console.log(chalk.gray('[PHASE C] Self-healing disabled'));
+    logger.system('[PHASE C] Self-healing disabled', 'debug');
     return {
       success: true,
       finalResults: results,
       repairCycles: 0,
-      lessons: []
+      lessons: [],
     };
   }
 
-  console.log(chalk.cyan('\n--- PHASE C: EVALUATION & REPAIR ---'));
+  logger.system('--- PHASE C: EVALUATION & REPAIR ---', 'info');
 
   const dijkstra = new Agent('dijkstra');
-  let aggregatedResults = [...results];
+  const aggregatedResults = [...results];
   let repairCycles = 0;
   const lessons: LessonLearned[] = [];
 
@@ -269,47 +295,46 @@ export async function selfHealingLoop(
     repairCycles++;
 
     // Minimize results for context (prevent token overflow)
-    const minimizedResults = aggregatedResults.map(r => ({
+    const minimizedResults = aggregatedResults.map((r) => ({
       id: r.id,
       success: r.success,
       error: r.error || undefined,
-      summary: (r.logs ?? [])[0]?.substring(0, 300) || ''
+      summary: (r.logs ?? [])[0]?.substring(0, 300) || '',
     }));
 
     // Build evaluation prompt with agent list
     const agentList = VALID_AGENTS.join(', ');
-    const evalPrompt = EVALUATION_PROMPT
-      .replace('{objective}', objective)
+    const evalPrompt = EVALUATION_PROMPT.replace('{objective}', objective)
       .replace('{results}', JSON.stringify(minimizedResults, null, 2))
       .replace('{agents}', agentList);
 
-    console.log(chalk.gray(`[PHASE C] Evaluation cycle ${repairCycles}/${cfg.maxRetries}...`));
+    logger.system(`[PHASE C] Evaluation cycle ${repairCycles}/${cfg.maxRetries}...`, 'debug');
 
     try {
       const evalResponse = await dijkstra.think(evalPrompt);
 
       // Check for success
       if (evalResponse.includes('STATUS: SUCCESS')) {
-        console.log(chalk.green('[PHASE C] Mission evaluated as SUCCESS!'));
+        logger.system('[PHASE C] Mission evaluated as SUCCESS!', 'info');
         return {
           success: true,
           finalResults: aggregatedResults,
           repairCycles,
-          lessons
+          lessons,
         };
       }
 
       // Parse repair plan
-      console.log(chalk.yellow('[PHASE C] Issues detected. Generating repair plan...'));
+      logger.system('[PHASE C] Issues detected. Generating repair plan...', 'warn');
 
       const repairPlan = parseRepairPlan(evalResponse);
 
       if (!repairPlan || repairPlan.length === 0) {
-        console.log(chalk.yellow('[PHASE C] Could not generate valid repair plan.'));
+        logger.system('[PHASE C] Could not generate valid repair plan.', 'warn');
         break;
       }
 
-      console.log(chalk.cyan(`[PHASE C] Repair plan: ${repairPlan.length} tasks`));
+      logger.system(`[PHASE C] Repair plan: ${repairPlan.length} tasks`, 'info');
 
       // Execute repair if handler provided
       if (executeRepair) {
@@ -320,10 +345,13 @@ export async function selfHealingLoop(
         if (cfg.saveLesson) {
           const lesson: LessonLearned = {
             objective,
-            problem: `Failed tasks: ${results.filter(r => !r.success).map(r => r.id).join(', ')}`,
-            solution: `Repair plan: ${JSON.stringify(repairPlan.map(t => t.task))}`,
+            problem: `Failed tasks: ${results
+              .filter((r) => !r.success)
+              .map((r) => r.id)
+              .join(', ')}`,
+            solution: `Repair plan: ${JSON.stringify(repairPlan.map((t) => t.task))}`,
             timestamp: new Date(),
-            retryCount: repairCycles
+            retryCount: repairCycles,
           };
           lessons.push(lesson);
 
@@ -333,28 +361,31 @@ export async function selfHealingLoop(
         }
       } else {
         // No repair handler, just log the plan
-        console.log(chalk.gray('[PHASE C] Repair plan generated but no executor provided:'));
-        repairPlan.forEach(t => {
-          console.log(chalk.gray(`  - [${t.agent}] ${t.task.substring(0, 50)}...`));
+        logger.system('[PHASE C] Repair plan generated but no executor provided:', 'debug');
+        repairPlan.forEach((t) => {
+          logger.system(`  - [${t.agent}] ${t.task.substring(0, 50)}...`, 'debug');
         });
         break;
       }
-
-    } catch (error: any) {
-      console.log(chalk.red(`[PHASE C] Evaluation error: ${error.message}`));
+    } catch (error: unknown) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      logger.system(`[PHASE C] Evaluation error: ${errMsg}`, 'error');
       break;
     }
   }
 
   // Max retries reached or repair failed
-  const hasFailures = aggregatedResults.some(r => !r.success);
-  console.log(chalk.yellow(`[PHASE C] Completed after ${repairCycles} cycles. Success: ${!hasFailures}`));
+  const hasFailures = aggregatedResults.some((r) => !r.success);
+  logger.system(
+    `[PHASE C] Completed after ${repairCycles} cycles. Success: ${!hasFailures}`,
+    !hasFailures ? 'info' : 'warn',
+  );
 
   return {
     success: !hasFailures,
     finalResults: aggregatedResults,
     repairCycles,
-    lessons
+    lessons,
   };
 }
 
@@ -363,67 +394,65 @@ export async function selfHealingLoop(
  */
 function mapToValidAgent(agentName: string): AgentRole | null {
   // Direct match (case insensitive)
-  const directMatch = VALID_AGENTS.find(
-    a => a.toLowerCase() === agentName.toLowerCase()
-  );
+  const directMatch = VALID_AGENTS.find((a) => a.toLowerCase() === agentName.toLowerCase());
   if (directMatch) return directMatch;
 
   // Common mappings for hallucinated agent names
   const agentMappings: Record<string, AgentRole> = {
     // File operations -> geralt (main executor with native fs)
-    'filesystem': 'geralt',
-    'fileoperator': 'geralt',
-    'file_agent': 'geralt',
-    'fileagent': 'geralt',
-    'reader': 'geralt',
-    'writer': 'geralt',
+    filesystem: 'geralt',
+    fileoperator: 'geralt',
+    file_agent: 'geralt',
+    fileagent: 'geralt',
+    reader: 'geralt',
+    writer: 'geralt',
 
     // System/shell operations -> eskel (DevOps)
-    'system_operator': 'eskel',
-    'systemoperator': 'eskel',
-    'shell': 'eskel',
-    'devops': 'eskel',
-    'builder': 'eskel',
+    system_operator: 'eskel',
+    systemoperator: 'eskel',
+    shell: 'eskel',
+    devops: 'eskel',
+    builder: 'eskel',
 
     // Memory/knowledge -> regis (deep analysis)
-    'memory': 'regis',
-    'memory_archivist': 'regis',
-    'memoryarchivist': 'regis',
-    'memoryarchitect': 'regis',
-    'knowledgeagent': 'regis',
-    'knowledge_agent': 'regis',
+    memory: 'regis',
+    memory_archivist: 'regis',
+    memoryarchivist: 'regis',
+    memoryarchitect: 'regis',
+    knowledgeagent: 'regis',
+    knowledge_agent: 'regis',
 
     // API/network -> philippa
-    'api': 'philippa',
-    'network': 'philippa',
-    'integration': 'philippa',
+    api: 'philippa',
+    network: 'philippa',
+    integration: 'philippa',
 
     // Debug/repair -> lambert
-    'debugger': 'lambert',
-    'fixer': 'lambert',
-    'repair': 'lambert',
-    'responder': 'lambert',
-    'diagnostic': 'lambert',
+    debugger: 'lambert',
+    fixer: 'lambert',
+    repair: 'lambert',
+    responder: 'lambert',
+    diagnostic: 'lambert',
 
     // Testing -> triss
-    'tester': 'triss',
-    'validator': 'triss',
-    'qa': 'triss',
+    tester: 'triss',
+    validator: 'triss',
+    qa: 'triss',
 
     // Generic/executor -> ciri (fast)
-    'executor': 'ciri',
-    'worker': 'ciri',
-    'agent': 'ciri',
-    'generic': 'ciri',
-    'helper': 'ciri',
+    executor: 'ciri',
+    worker: 'ciri',
+    agent: 'ciri',
+    generic: 'ciri',
+    helper: 'ciri',
 
     // Analyst -> regis
-    'analyst': 'regis',
-    'researcher': 'regis',
+    analyst: 'regis',
+    researcher: 'regis',
 
     // Security -> vesemir
-    'security': 'vesemir',
-    'reviewer': 'vesemir',
+    security: 'vesemir',
+    reviewer: 'vesemir',
   };
 
   const lowerName = agentName.toLowerCase().replace(/[-_\s]/g, '');
@@ -439,7 +468,7 @@ function mapToValidAgent(agentName: string): AgentRole | null {
   }
 
   // Default fallback to Geralt for unknown agents (main executor)
-  console.log(chalk.yellow(`[PHASE C] Nieznany agent "${agentName}" -> mapowanie na geralt`));
+  logger.system(`[PHASE C] Nieznany agent "${agentName}" -> mapowanie na geralt`, 'warn');
   return 'geralt';
 }
 
@@ -473,17 +502,16 @@ function parseRepairPlan(response: string): RepairTask[] | null {
         if (!validAgent) continue;
 
         validPlan.push({
-          id: typeof task.id === 'number' ? task.id : parseInt(task.id),
+          id: typeof task.id === 'number' ? task.id : parseInt(task.id, 10),
           agent: validAgent,
           task: String(task.task),
-          dependencies: Array.isArray(task.dependencies) ? task.dependencies : []
+          dependencies: Array.isArray(task.dependencies) ? task.dependencies : [],
         });
       }
     }
 
     return validPlan.length > 0 ? validPlan : null;
-
-  } catch (error) {
+  } catch (_error) {
     return null;
   }
 }
@@ -493,11 +521,11 @@ function parseRepairPlan(response: string): RepairTask[] | null {
  */
 export async function quickEvaluate(
   objective: string,
-  results: ExecutionResult[]
+  results: ExecutionResult[],
 ): Promise<boolean> {
   // Simple heuristic evaluation
-  const failedCount = results.filter(r => !r.success).length;
-  const successCount = results.filter(r => r.success).length;
+  const failedCount = results.filter((r) => !r.success).length;
+  const successCount = results.filter((r) => r.success).length;
 
   // Success if majority succeeded and no critical failures
   if (failedCount === 0) return true;
@@ -524,5 +552,5 @@ export default {
   selfHealingLoop,
   quickEvaluate,
   parseRepairPlan,
-  checkTaskResultAlignment
+  checkTaskResultAlignment,
 };

@@ -2,8 +2,8 @@
  * Card Component Tests
  */
 
-import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 import { Card } from '../../../src/components/ui/Card';
 
 describe('Card', () => {
@@ -21,24 +21,40 @@ describe('Card', () => {
 
   describe('variants', () => {
     it('renders default variant', () => {
-      render(<Card variant="default" data-testid="card">Content</Card>);
+      render(
+        <Card variant="default" data-testid="card">
+          Content
+        </Card>,
+      );
       expect(screen.getByTestId('card')).toHaveClass('card');
     });
 
     it('renders glass variant', () => {
-      render(<Card variant="glass" data-testid="card">Content</Card>);
+      render(
+        <Card variant="glass" data-testid="card">
+          Content
+        </Card>,
+      );
       expect(screen.getByTestId('card')).toHaveClass('glass-panel');
     });
 
     it('renders solid variant', () => {
-      render(<Card variant="solid" data-testid="card">Content</Card>);
+      render(
+        <Card variant="solid" data-testid="card">
+          Content
+        </Card>,
+      );
       expect(screen.getByTestId('card')).toHaveClass('glass-panel-solid');
     });
   });
 
   describe('interactive', () => {
     it('applies interactive styles when interactive=true', () => {
-      render(<Card interactive data-testid="card">Content</Card>);
+      render(
+        <Card interactive data-testid="card">
+          Content
+        </Card>,
+      );
       const card = screen.getByTestId('card');
       expect(card).toHaveClass('card-interactive', 'cursor-pointer');
     });
@@ -65,7 +81,7 @@ describe('Card', () => {
       render(
         <Card header={<span>Header</span>} footer={<span>Footer</span>}>
           Content
-        </Card>
+        </Card>,
       );
       expect(screen.getByText('Header')).toBeInTheDocument();
       expect(screen.getByText('Content')).toBeInTheDocument();
@@ -87,12 +103,20 @@ describe('Card', () => {
 
   describe('props', () => {
     it('applies custom className', () => {
-      render(<Card className="custom-class" data-testid="card">Content</Card>);
+      render(
+        <Card className="custom-class" data-testid="card">
+          Content
+        </Card>,
+      );
       expect(screen.getByTestId('card')).toHaveClass('custom-class');
     });
 
     it('passes through HTML attributes', () => {
-      render(<Card id="my-card" data-testid="card">Content</Card>);
+      render(
+        <Card id="my-card" data-testid="card">
+          Content
+        </Card>,
+      );
       expect(screen.getByTestId('card')).toHaveAttribute('id', 'my-card');
     });
   });

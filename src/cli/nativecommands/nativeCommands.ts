@@ -7,13 +7,14 @@
  */
 
 import {
-  success, error,
   type CommandResult,
-  initProjectTools,
-  getTools,
-  formatError,
   createFailedMessage,
-  Spinner
+  error,
+  formatError,
+  getTools,
+  initProjectTools,
+  Spinner,
+  success,
 } from './helpers.js';
 
 // ============================================================
@@ -33,10 +34,13 @@ export const nativeCommands = {
       await initProjectTools(rootDir);
       spinner.stop();
 
-      return success({
-        components: ['FileSystem', 'Memory', 'Shell', 'Search'],
-        rootDir
-      }, `Native tools initialized for: ${rootDir}`);
+      return success(
+        {
+          components: ['FileSystem', 'Memory', 'Shell', 'Search'],
+          rootDir,
+        },
+        `Native tools initialized for: ${rootDir}`,
+      );
     } catch (err) {
       spinner.stop();
       return error(createFailedMessage('initialize', err));
@@ -67,5 +71,5 @@ export const nativeCommands = {
     } catch (err) {
       return error(formatError(err));
     }
-  }
+  },
 };

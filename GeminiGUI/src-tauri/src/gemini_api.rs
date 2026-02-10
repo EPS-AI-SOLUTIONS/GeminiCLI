@@ -202,7 +202,6 @@ pub fn extract_text_values(raw: &str) -> Vec<String> {
             results.push(value);
             pos = end + 1;
         } else {
-            pos = value_start;
             break;
         }
     }

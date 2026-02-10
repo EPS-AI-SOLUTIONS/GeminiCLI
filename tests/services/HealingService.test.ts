@@ -2,9 +2,14 @@
  * Tests for Healing Service
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { HealingService, getHealingService } from '../../src/services/HealingService.js';
-import type { LLMProvider, ChatCompletionResponse, SwarmTask, ExecutionResult } from '../../src/types/index.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { getHealingService, HealingService } from '../../src/services/HealingService.js';
+import type {
+  ChatCompletionResponse,
+  ExecutionResult,
+  LLMProvider,
+  SwarmTask,
+} from '../../src/types/index.js';
 
 function createMockProvider(response: string): LLMProvider {
   return {
@@ -13,11 +18,13 @@ function createMockProvider(response: string): LLMProvider {
       object: 'chat.completion',
       created: Date.now(),
       model: 'test-model',
-      choices: [{
-        index: 0,
-        message: { role: 'assistant', content: response },
-        finish_reason: 'stop',
-      }],
+      choices: [
+        {
+          index: 0,
+          message: { role: 'assistant', content: response },
+          finish_reason: 'stop',
+        },
+      ],
     } satisfies ChatCompletionResponse),
   };
 }
@@ -75,10 +82,7 @@ describe('HealingService', () => {
   describe('evaluate', () => {
     it('should return success for all successful results', async () => {
       const tasks = [createTask(1), createTask(2)];
-      const results = [
-        createResult(1, true),
-        createResult(2, true),
-      ];
+      const results = [createResult(1, true), createResult(2, true)];
 
       const evaluation = await service.evaluate(tasks, results, 0);
 
@@ -92,22 +96,21 @@ describe('HealingService', () => {
       const response = JSON.stringify({
         success: false,
         failedTasks: [2],
-        repairTasks: [{
-          failedTaskId: 2,
-          reason: 'Timeout',
-          repairStrategy: 'retry',
-          repairPrompt: 'Try again',
-        }],
+        repairTasks: [
+          {
+            failedTaskId: 2,
+            reason: 'Timeout',
+            repairStrategy: 'retry',
+            repairPrompt: 'Try again',
+          },
+        ],
         maxRetriesReached: false,
       });
       provider = createMockProvider(response);
       service = new HealingService(provider, 3);
 
       const tasks = [createTask(1), createTask(2)];
-      const results = [
-        createResult(1, true),
-        createResult(2, false, 'Timeout'),
-      ];
+      const results = [createResult(1, true), createResult(2, false, 'Timeout')];
 
       const evaluation = await service.evaluate(tasks, results, 0);
 
@@ -155,12 +158,14 @@ describe('HealingService', () => {
       const response = JSON.stringify({
         success: false,
         failedTasks: [999], // Non-existent task
-        repairTasks: [{
-          failedTaskId: 999, // Non-existent
-          reason: 'Error',
-          repairStrategy: 'retry',
-          repairPrompt: 'Try again',
-        }],
+        repairTasks: [
+          {
+            failedTaskId: 999, // Non-existent
+            reason: 'Error',
+            repairStrategy: 'retry',
+            repairPrompt: 'Try again',
+          },
+        ],
       });
       provider = createMockProvider(response);
       service = new HealingService(provider, 3);
@@ -171,19 +176,25 @@ describe('HealingService', () => {
       const evaluation = await service.evaluate(tasks, results, 0);
 
       // Invalid repair task should be filtered out
-      expect(evaluation.repairTasks.every(r => r.failedTaskId === 1 || tasks.some(t => t.id === r.failedTaskId))).toBe(true);
+      expect(
+        evaluation.repairTasks.every(
+          (r) => r.failedTaskId === 1 || tasks.some((t) => t.id === r.failedTaskId),
+        ),
+      ).toBe(true);
     });
 
     it('should normalize invalid repair strategies', async () => {
       const response = JSON.stringify({
         success: false,
         failedTasks: [1],
-        repairTasks: [{
-          failedTaskId: 1,
-          reason: 'Error',
-          repairStrategy: 'invalid_strategy',
-          repairPrompt: 'Try',
-        }],
+        repairTasks: [
+          {
+            failedTaskId: 1,
+            reason: 'Error',
+            repairStrategy: 'invalid_strategy',
+            repairPrompt: 'Try',
+          },
+        ],
       });
       provider = createMockProvider(response);
       service = new HealingService(provider, 3);
@@ -194,7 +205,7 @@ describe('HealingService', () => {
       const evaluation = await service.evaluate(tasks, results, 0);
 
       // Should default to 'retry'
-      const repairTask = evaluation.repairTasks.find(r => r.failedTaskId === 1);
+      const repairTask = evaluation.repairTasks.find((r) => r.failedTaskId === 1);
       expect(repairTask?.repairStrategy).toBe('retry');
     });
 
@@ -202,12 +213,14 @@ describe('HealingService', () => {
       const response = JSON.stringify({
         success: false,
         failedTasks: [1],
-        repairTasks: [{
-          failedTaskId: 1,
-          reason: 'Error',
-          repairStrategy: 'retry',
-          repairPrompt: '', // Empty
-        }],
+        repairTasks: [
+          {
+            failedTaskId: 1,
+            reason: 'Error',
+            repairStrategy: 'retry',
+            repairPrompt: '', // Empty
+          },
+        ],
       });
       provider = createMockProvider(response);
       service = new HealingService(provider, 3);
@@ -217,7 +230,7 @@ describe('HealingService', () => {
 
       const evaluation = await service.evaluate(tasks, results, 0);
 
-      const repairTask = evaluation.repairTasks.find(r => r.failedTaskId === 1);
+      const repairTask = evaluation.repairTasks.find((r) => r.failedTaskId === 1);
       expect(repairTask?.repairPrompt).toBe('Original task prompt');
     });
   });

@@ -4,8 +4,8 @@
  * Tests for [EXECUTE: "cmd"] pattern detection and code block execution.
  */
 
-import { test, expect } from '../fixtures/test-setup';
 import { TIMEOUTS, UI_TEXTS } from '../fixtures/test-data';
+import { expect, test } from '../fixtures/test-setup';
 
 test.describe('Command Execution', () => {
   test('should detect [EXECUTE: "cmd"] pattern', async ({ page, chat }) => {
@@ -20,9 +20,18 @@ test.describe('Command Execution', () => {
 
     // Execute pattern should trigger system output
     // Look for the execute pattern or system output indicator
-    const hasExecutePattern = await page.getByText(/\[EXECUTE:/).isVisible({ timeout: TIMEOUTS.medium }).catch(() => false);
-    const hasSystemOutput = await page.getByText(UI_TEXTS.messages.systemOutput).isVisible({ timeout: 1000 }).catch(() => false);
-    const hasExecuting = await page.getByText(UI_TEXTS.messages.executing).isVisible({ timeout: 1000 }).catch(() => false);
+    const hasExecutePattern = await page
+      .getByText(/\[EXECUTE:/)
+      .isVisible({ timeout: TIMEOUTS.medium })
+      .catch(() => false);
+    const hasSystemOutput = await page
+      .getByText(UI_TEXTS.messages.systemOutput)
+      .isVisible({ timeout: 1000 })
+      .catch(() => false);
+    const hasExecuting = await page
+      .getByText(UI_TEXTS.messages.executing)
+      .isVisible({ timeout: 1000 })
+      .catch(() => false);
 
     // At least one indicator should be present
     expect(hasExecutePattern || hasSystemOutput || hasExecuting).toBe(true);
@@ -43,7 +52,9 @@ test.describe('Command Execution', () => {
     expect(hasCodeBlock).toBe(true);
 
     // Run button should be visible
-    await expect(page.locator('button[title*="Uruchom"]')).toBeVisible({ timeout: TIMEOUTS.medium });
+    await expect(page.locator('button[title*="Uruchom"]')).toBeVisible({
+      timeout: TIMEOUTS.medium,
+    });
   });
 
   test('should block dangerous commands in code execution', async ({ page, chat }) => {
@@ -78,9 +89,9 @@ test.describe('Command Execution', () => {
     // Either dialog with security message appeared, or button was disabled
     expect(
       dialogMessage.includes(UI_TEXTS.security.dangerousCommand) ||
-      dialogMessage.includes('BEZPIECZE') ||
-      dialogMessage.includes('niebezpieczn') ||
-      !buttonEnabled
+        dialogMessage.includes('BEZPIECZE') ||
+        dialogMessage.includes('niebezpieczn') ||
+        !buttonEnabled,
     ).toBe(true);
   });
 

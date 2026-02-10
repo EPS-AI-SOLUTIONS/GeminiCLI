@@ -19,11 +19,11 @@
  * Supports both GUI visualization types and intelligence graph types.
  */
 export type KnowledgeNodeType =
-  | 'concept'   // Abstract concept from intelligence layer
-  | 'entity'    // Named entity from intelligence layer
-  | 'action'    // Action/task from intelligence layer
-  | 'result'    // Execution result from intelligence layer
-  | string;     // Extensible for GUI visualization (custom types)
+  | 'concept' // Abstract concept from intelligence layer
+  | 'entity' // Named entity from intelligence layer
+  | 'action' // Action/task from intelligence layer
+  | 'result' // Execution result from intelligence layer
+  | string; // Extensible for GUI visualization (custom types)
 
 /**
  * Unified KnowledgeNode interface.
@@ -118,7 +118,7 @@ export interface IKnowledgeGraph {
 export function createKnowledgeNode(
   id: string,
   type: KnowledgeNodeType,
-  options?: Partial<Omit<KnowledgeNode, 'id' | 'type'>>
+  options?: Partial<Omit<KnowledgeNode, 'id' | 'type'>>,
 ): KnowledgeNode {
   return {
     id,
@@ -138,7 +138,7 @@ export function createKnowledgeEdge(
   source: string,
   target: string,
   relation: string,
-  weight: number = 1.0
+  weight: number = 1.0,
 ): KnowledgeEdge {
   return {
     source,

@@ -2,11 +2,11 @@
  * App Component Tests
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../src/App';
-import { createMockAppState } from './mocks/store';
 import { mockUseHealthCheck } from './mocks/query';
+import { createMockAppState } from './mocks/store';
 
 // Mock framer-motion
 vi.mock('framer-motion', async () => {

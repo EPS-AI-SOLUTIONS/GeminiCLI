@@ -13,19 +13,19 @@
  * 8. Repeat if needed
  */
 
-import fs from 'fs/promises';
-import path from 'path';
-import chalk from 'chalk';
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { exec } from 'node:child_process';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { promisify } from 'node:util';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { FileHandlers } from '../files/FileHandlers.js';
-import { Agent } from '../core/agent/Agent.js';
+import chalk from 'chalk';
 import { GEMINIHYDRA_DIR } from '../config/paths.config.js';
+import { Agent } from '../core/agent/Agent.js';
+import { FileHandlers } from '../files/FileHandlers.js';
 import 'dotenv/config';
 
 const execAsync = promisify(exec);
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const _genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 interface DebugIteration {
   iteration: number;
@@ -75,11 +75,14 @@ export class DebugLoop {
   /**
    * Start debug loop for a target
    */
-  async startDebugLoop(target: string, options?: {
-    maxIterations?: number;
-    autoFix?: boolean;
-    screenshotCommand?: string;
-  }): Promise<DebugSession> {
+  async startDebugLoop(
+    target: string,
+    options?: {
+      maxIterations?: number;
+      autoFix?: boolean;
+      screenshotCommand?: string;
+    },
+  ): Promise<DebugSession> {
     await this.init();
 
     this.maxIterations = options?.maxIterations || 10;
@@ -124,7 +127,7 @@ export class DebugLoop {
 
       if (analysis.errors.length > 0) {
         console.log(chalk.red('Errors found:'));
-        analysis.errors.forEach(e => console.log(chalk.red(`  - ${e}`)));
+        analysis.errors.forEach((e) => console.log(chalk.red(`  - ${e}`)));
       } else {
         console.log(chalk.green('✓ No errors detected'));
       }
@@ -169,7 +172,7 @@ export class DebugLoop {
 
         if (fix) {
           console.log(chalk.cyan(`Fix for: ${fix.file}`));
-          console.log(chalk.gray(fix.changes.substring(0, 200) + '...'));
+          console.log(chalk.gray(`${fix.changes.substring(0, 200)}...`));
 
           // Apply fix
           console.log(chalk.yellow('Applying fix...'));
@@ -193,7 +196,7 @@ export class DebugLoop {
         } else {
           console.log(chalk.yellow('Could not generate automatic fix'));
           console.log(chalk.cyan('Suggestions:'));
-          analysis.suggestions.forEach(s => console.log(chalk.gray(`  - ${s}`)));
+          analysis.suggestions.forEach((s) => console.log(chalk.gray(`  - ${s}`)));
         }
       }
 
@@ -228,7 +231,9 @@ export class DebugLoop {
 
         if (platform === 'win32') {
           // Windows: Use PowerShell
-          await execAsync(`powershell -Command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Screen]::PrimaryScreen | ForEach-Object { $bitmap = New-Object System.Drawing.Bitmap($_.Bounds.Width, $_.Bounds.Height); $graphics = [System.Drawing.Graphics]::FromImage($bitmap); $graphics.CopyFromScreen($_.Bounds.Location, [System.Drawing.Point]::Empty, $_.Bounds.Size); $bitmap.Save('${filepath}'); }"`);
+          await execAsync(
+            `powershell -Command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Screen]::PrimaryScreen | ForEach-Object { $bitmap = New-Object System.Drawing.Bitmap($_.Bounds.Width, $_.Bounds.Height); $graphics = [System.Drawing.Graphics]::FromImage($bitmap); $graphics.CopyFromScreen($_.Bounds.Location, [System.Drawing.Point]::Empty, $_.Bounds.Size); $bitmap.Save('${filepath}'); }"`,
+          );
         } else if (platform === 'darwin') {
           // macOS
           await execAsync(`screencapture -x ${filepath}`);
@@ -350,18 +355,19 @@ CHANGES: Manual intervention required`;
     lines.push(`Iterations: ${this.session.iterations.length}`);
     lines.push(`Resolved: ${this.session.resolved ? 'Yes ✓' : 'No ✗'}`);
 
-    const fixes = this.session.iterations.filter(i => i.fix?.applied);
+    const fixes = this.session.iterations.filter((i) => i.fix?.applied);
     if (fixes.length > 0) {
       lines.push(`\nFixes applied:`);
-      fixes.forEach(f => {
-        lines.push(`  - ${f.fix!.file}`);
+      fixes.forEach((f) => {
+        lines.push(`  - ${f.fix?.file}`);
       });
     }
 
-    const unresolvedErrors = this.session.iterations[this.session.iterations.length - 1]?.analysis.errors || [];
+    const unresolvedErrors =
+      this.session.iterations[this.session.iterations.length - 1]?.analysis.errors || [];
     if (unresolvedErrors.length > 0) {
       lines.push(`\nUnresolved errors:`);
-      unresolvedErrors.forEach(e => {
+      unresolvedErrors.forEach((e) => {
         lines.push(`  - ${e}`);
       });
     }
@@ -373,7 +379,7 @@ CHANGES: Manual intervention required`;
    * Sleep utility
    */
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
@@ -402,7 +408,7 @@ export async function debugWithScreenshot(
   options?: {
     maxIterations?: number;
     autoFix?: boolean;
-  }
+  },
 ): Promise<DebugSession> {
   const debugLoop = new DebugLoop();
   return debugLoop.startDebugLoop(target, options);

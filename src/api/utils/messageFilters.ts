@@ -54,7 +54,7 @@ export function filterBySearch(messages: Message[], query: string): Message[] {
 export function filterByDateRange(
   messages: Message[],
   startDate?: Date,
-  endDate?: Date
+  endDate?: Date,
 ): Message[] {
   return messages.filter((m) => {
     const timestamp = new Date(m.timestamp);

@@ -95,12 +95,12 @@ export interface PruneResult {
 // ============================================================
 
 const DEFAULT_CONFIG: ContextWindowConfig = {
-  maxTokens: 100000,        // 100K tokens max context
-  warningThreshold: 0.8,    // Warn at 80%
-  criticalThreshold: 0.95,  // Critical at 95%
-  minPriorityToKeep: 8,     // Always keep priority 8+
+  maxTokens: 100000, // 100K tokens max context
+  warningThreshold: 0.8, // Warn at 80%
+  criticalThreshold: 0.95, // Critical at 95%
+  minPriorityToKeep: 8, // Always keep priority 8+
   pruneAgeThreshold: 5 * 60 * 1000, // 5 minutes
-  verbose: false
+  verbose: false,
 };
 
 // ============================================================
@@ -154,7 +154,7 @@ export class ContextWindowManager {
     content: string,
     priority: number,
     source: string,
-    metadata?: Record<string, unknown>
+    metadata?: Record<string, unknown>,
   ): void {
     // Validate inputs
     const normalizedPriority = Math.max(0, Math.min(10, priority));
@@ -168,15 +168,17 @@ export class ContextWindowManager {
       tokens,
       timestamp: Date.now(),
       id,
-      metadata
+      metadata,
     };
 
     this.entries.push(entry);
 
     if (this.config.verbose) {
-      console.log(chalk.gray(
-        `[ContextWindow] Added ${tokens} tokens from "${source}" (priority: ${normalizedPriority})`
-      ));
+      console.log(
+        chalk.gray(
+          `[ContextWindow] Added ${tokens} tokens from "${source}" (priority: ${normalizedPriority})`,
+        ),
+      );
     }
 
     // Check if we need automatic pruning
@@ -199,9 +201,9 @@ export class ContextWindowManager {
     }
 
     // Score and sort entries
-    const scored = this.entries.map(entry => ({
+    const scored = this.entries.map((entry) => ({
       entry,
-      score: this.calculateEntryScore(entry)
+      score: this.calculateEntryScore(entry),
     }));
 
     // Sort by score (highest first)
@@ -225,9 +227,11 @@ export class ContextWindowManager {
     const formatted = this.formatContext(selected);
 
     if (this.config.verbose) {
-      console.log(chalk.gray(
-        `[ContextWindow] Built context: ${currentTokens}/${maxTokens} tokens from ${selected.length} entries`
-      ));
+      console.log(
+        chalk.gray(
+          `[ContextWindow] Built context: ${currentTokens}/${maxTokens} tokens from ${selected.length} entries`,
+        ),
+      );
     }
 
     return formatted;
@@ -247,7 +251,7 @@ export class ContextWindowManager {
         prunedEntries: [],
         tokensFreed: 0,
         remainingTokens: initialTokens,
-        targetAchieved: true
+        targetAchieved: true,
       };
     }
 
@@ -259,7 +263,7 @@ export class ContextWindowManager {
     const scored = this.entries.map((entry, index) => ({
       entry,
       index,
-      score: this.calculateEntryScore(entry)
+      score: this.calculateEntryScore(entry),
     }));
 
     // Sort by score (lowest first = prune first)
@@ -280,12 +284,16 @@ export class ContextWindowManager {
 
       indicesToRemove.push(index);
       tokensFreed += entry.tokens;
-      prunedEntries.push(`${entry.source}:${entry.id} (${entry.tokens} tokens, priority ${entry.priority})`);
+      prunedEntries.push(
+        `${entry.source}:${entry.id} (${entry.tokens} tokens, priority ${entry.priority})`,
+      );
 
       if (this.config.verbose) {
-        console.log(chalk.yellow(
-          `[ContextWindow] Pruning: ${entry.source} - ${entry.tokens} tokens (score: ${score.toFixed(2)})`
-        ));
+        console.log(
+          chalk.yellow(
+            `[ContextWindow] Pruning: ${entry.source} - ${entry.tokens} tokens (score: ${score.toFixed(2)})`,
+          ),
+        );
       }
     }
 
@@ -298,16 +306,18 @@ export class ContextWindowManager {
     const remainingTokens = this.getTotalTokens();
     const targetAchieved = remainingTokens <= targetTokens;
 
-    console.log(chalk.gray(
-      `[ContextWindow] Pruned ${prunedEntries.length} entries, freed ${tokensFreed} tokens ` +
-      `(${initialTokens} -> ${remainingTokens})`
-    ));
+    console.log(
+      chalk.gray(
+        `[ContextWindow] Pruned ${prunedEntries.length} entries, freed ${tokensFreed} tokens ` +
+          `(${initialTokens} -> ${remainingTokens})`,
+      ),
+    );
 
     return {
       prunedEntries,
       tokensFreed,
       remainingTokens,
-      targetAchieved
+      targetAchieved,
     };
   }
 
@@ -348,7 +358,7 @@ export class ContextWindowManager {
       entryCount: this.entries.length,
       averagePriority: this.entries.length > 0 ? totalPriority / this.entries.length : 0,
       oldestEntry,
-      newestEntry
+      newestEntry,
     };
   }
 
@@ -395,7 +405,7 @@ export class ContextWindowManager {
       agent: 10,
       result: 8,
       debug: 3,
-      log: 2
+      log: 2,
     };
 
     return sourceScores[source.toLowerCase()] || 5;
@@ -423,14 +433,14 @@ export class ContextWindowManager {
     // System messages first
     if (bySource.has('system')) {
       const systemEntries = bySource.get('system')!;
-      sections.push(systemEntries.map(e => e.content).join('\n'));
+      sections.push(systemEntries.map((e) => e.content).join('\n'));
       bySource.delete('system');
     }
 
     // Then chronological for everything else
-    const remainingEntries = entries.filter(e => e.source !== 'system');
+    const remainingEntries = entries.filter((e) => e.source !== 'system');
     if (remainingEntries.length > 0) {
-      sections.push(remainingEntries.map(e => e.content).join('\n\n'));
+      sections.push(remainingEntries.map((e) => e.content).join('\n\n'));
     }
 
     return sections.join('\n\n---\n\n');
@@ -458,14 +468,14 @@ export class ContextWindowManager {
    * Get entries by source
    */
   getEntriesBySource(source: string): ContextEntry[] {
-    return this.entries.filter(e => e.source === source);
+    return this.entries.filter((e) => e.source === source);
   }
 
   /**
    * Update priority of an entry
    */
   updatePriority(entryId: string, newPriority: number): boolean {
-    const entry = this.entries.find(e => e.id === entryId);
+    const entry = this.entries.find((e) => e.id === entryId);
     if (entry) {
       entry.priority = Math.max(0, Math.min(10, newPriority));
       return true;
@@ -477,7 +487,7 @@ export class ContextWindowManager {
    * Remove a specific entry by ID
    */
   removeEntry(entryId: string): boolean {
-    const index = this.entries.findIndex(e => e.id === entryId);
+    const index = this.entries.findIndex((e) => e.id === entryId);
     if (index !== -1) {
       this.entries.splice(index, 1);
       return true;
@@ -500,7 +510,7 @@ export class ContextWindowManager {
    */
   clearBySource(source: string): number {
     const before = this.entries.length;
-    this.entries = this.entries.filter(e => e.source !== source);
+    this.entries = this.entries.filter((e) => e.source !== source);
     const removed = before - this.entries.length;
     if (this.config.verbose && removed > 0) {
       console.log(chalk.gray(`[ContextWindow] Cleared ${removed} entries from source "${source}"`));
@@ -558,7 +568,7 @@ export class ContextWindowManager {
       `  Avg Priority: ${stats.averagePriority.toFixed(1)}`,
       `  Overflow Risk: ${stats.overflowRisk ? chalk.red('YES') : chalk.green('NO')}`,
       '',
-      '  Sources:'
+      '  Sources:',
     ];
 
     for (const [source, tokens] of stats.sources) {

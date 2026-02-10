@@ -4,7 +4,7 @@
  * Cleans up ports and starts Tauri dev server
  */
 
-import { execSync, spawn } from 'child_process';
+import { execSync, spawn } from 'node:child_process';
 
 const PORT = 1420;
 
@@ -14,7 +14,7 @@ const c = {
   green: '\x1b[32m',
   yellow: '\x1b[33m',
   red: '\x1b[31m',
-  gray: '\x1b[90m'
+  gray: '\x1b[90m',
 };
 
 console.log(`${c.cyan}--- GeminiGUI Auto-Cleanup & Launch ---${c.reset}`);
@@ -29,7 +29,7 @@ function killPort(port) {
     // Find PID using netstat
     const result = execSync(`netstat -ano | findstr :${port} | findstr LISTENING`, {
       encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
     });
 
     const lines = result.trim().split('\n');
@@ -38,7 +38,7 @@ function killPort(port) {
     for (const line of lines) {
       const parts = line.trim().split(/\s+/);
       const pid = parts[parts.length - 1];
-      if (pid && parseInt(pid) > 4) {
+      if (pid && parseInt(pid, 10) > 4) {
         pids.add(pid);
       }
     }
@@ -80,7 +80,7 @@ killPort(PORT);
 killProcess('geminigui');
 
 // 3. Wait a moment
-await new Promise(r => setTimeout(r, 500));
+await new Promise((r) => setTimeout(r, 500));
 
 console.log(`${c.cyan}Starting application...${c.reset}`);
 console.log(`${c.gray}---------------------------------------${c.reset}`);
@@ -88,7 +88,7 @@ console.log(`${c.gray}---------------------------------------${c.reset}`);
 // 4. Start Tauri dev
 const child = spawn('npm', ['run', 'tauri:dev'], {
   stdio: 'inherit',
-  shell: true
+  shell: true,
 });
 
 child.on('error', (err) => {

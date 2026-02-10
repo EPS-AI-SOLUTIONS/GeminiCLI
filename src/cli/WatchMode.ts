@@ -9,18 +9,18 @@
  * - Pattern filtering (glob)
  */
 
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 import chalk from 'chalk';
-import { Swarm } from '../core/swarm/Swarm.js';
 import { Agent } from '../core/agent/Agent.js';
+import type { Swarm } from '../core/swarm/Swarm.js';
 
 interface WatchOptions {
-  patterns?: string[];       // Glob patterns to watch
-  ignore?: string[];         // Patterns to ignore
-  debounce?: number;         // Debounce time in ms
-  agent?: string;            // Specific agent to use
-  recursive?: boolean;       // Watch subdirectories
+  patterns?: string[]; // Glob patterns to watch
+  ignore?: string[]; // Patterns to ignore
+  debounce?: number; // Debounce time in ms
+  agent?: string; // Specific agent to use
+  recursive?: boolean; // Watch subdirectories
 }
 
 interface FileChange {
@@ -63,15 +63,19 @@ export class WatchMode {
     console.log(chalk.yellow('\nPress Ctrl+C to stop watching\n'));
 
     try {
-      const watcher = fs.watch(absPath, { recursive: this.options.recursive }, (eventType, filename) => {
-        if (filename && !this.shouldIgnore(filename)) {
-          this.queueChange({
-            type: eventType === 'rename' ? 'add' : 'change',
-            path: path.join(absPath, filename),
-            timestamp: new Date(),
-          });
-        }
-      });
+      const watcher = fs.watch(
+        absPath,
+        { recursive: this.options.recursive },
+        (eventType, filename) => {
+          if (filename && !this.shouldIgnore(filename)) {
+            this.queueChange({
+              type: eventType === 'rename' ? 'add' : 'change',
+              path: path.join(absPath, filename),
+              timestamp: new Date(),
+            });
+          }
+        },
+      );
 
       this.watchers.set(absPath, watcher);
 
@@ -80,7 +84,6 @@ export class WatchMode {
         this.stop();
         process.exit(0);
       });
-
     } catch (error: any) {
       console.error(chalk.red(`Watch error: ${error.message}`));
       throw error;
@@ -92,7 +95,7 @@ export class WatchMode {
    */
   private shouldIgnore(filename: string): boolean {
     const ignorePatterns = this.options.ignore || [];
-    return ignorePatterns.some(pattern => {
+    return ignorePatterns.some((pattern) => {
       if (pattern.startsWith('*')) {
         return filename.endsWith(pattern.slice(1));
       }
@@ -131,16 +134,20 @@ export class WatchMode {
 
     // Summarize changes
     const changeTypes = {
-      add: changes.filter(c => c.type === 'add').length,
-      change: changes.filter(c => c.type === 'change').length,
-      delete: changes.filter(c => c.type === 'delete').length,
+      add: changes.filter((c) => c.type === 'add').length,
+      change: changes.filter((c) => c.type === 'change').length,
+      delete: changes.filter((c) => c.type === 'delete').length,
     };
 
-    console.log(chalk.yellow(`\n📝 Detected changes: +${changeTypes.add} ~${changeTypes.change} -${changeTypes.delete}`));
+    console.log(
+      chalk.yellow(
+        `\n📝 Detected changes: +${changeTypes.add} ~${changeTypes.change} -${changeTypes.delete}`,
+      ),
+    );
 
     // List changed files (max 5)
     const filesToShow = changes.slice(0, 5);
-    filesToShow.forEach(c => {
+    filesToShow.forEach((c) => {
       const icon = c.type === 'add' ? '+' : c.type === 'delete' ? '-' : '~';
       console.log(chalk.gray(`  ${icon} ${path.basename(c.path)}`));
     });
@@ -150,7 +157,7 @@ export class WatchMode {
 
     try {
       // Build context with changed files
-      const changedFiles = changes.map(c => c.path).join('\n');
+      const changedFiles = changes.map((c) => c.path).join('\n');
       const contextualTask = `
 Files changed:
 ${changedFiles}
@@ -170,7 +177,6 @@ Task: ${this.taskOnChange}
         console.log(chalk.green('\n✓ Swarm response:'));
         console.log(result);
       }
-
     } catch (error: any) {
       console.error(chalk.red(`\n✗ Error: ${error.message}`));
     }

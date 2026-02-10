@@ -7,8 +7,8 @@
  * file operations, code changes, test results, and other assertions.
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import chalk from 'chalk';
 
 // ============================================================================
@@ -167,7 +167,7 @@ export interface VerificationContext {
  */
 export type FactVerifier = (
   fact: ExtractedFact,
-  context: VerificationContext
+  context: VerificationContext,
 ) => Promise<VerificationResult>;
 
 /**
@@ -251,7 +251,7 @@ const EXTRACTION_PATTERNS: ExtractionPattern[] = [
     patterns: [
       /(?:Created|created|Added|added|Implemented|implemented)\s+(?:function|method|async function)\s+[`'":]?\s*(\w+)/gi,
       /(?:New|new)\s+(?:function|method)\s+[`'":]?\s*(\w+)/gi,
-      /(?:function|const|let|var)\s+(\w+)\s*(?:=\s*(?:async\s*)?\(|[\(<])/gi,
+      /(?:function|const|let|var)\s+(\w+)\s*(?:=\s*(?:async\s*)?\(|[(<])/gi,
       /(?:def|async def)\s+(\w+)\s*\(/gi,
     ],
     confidenceMultiplier: 0.8,
@@ -413,11 +413,13 @@ export class FactExtractionPipeline {
   private verificationContext: VerificationContext;
   private debug: boolean;
 
-  constructor(options: {
-    customPatterns?: ExtractionPattern[];
-    context?: Partial<VerificationContext>;
-    debug?: boolean;
-  } = {}) {
+  constructor(
+    options: {
+      customPatterns?: ExtractionPattern[];
+      context?: Partial<VerificationContext>;
+      debug?: boolean;
+    } = {},
+  ) {
     this.patterns = [...EXTRACTION_PATTERNS, ...(options.customPatterns || [])];
     this.debug = options.debug ?? false;
 
@@ -425,7 +427,14 @@ export class FactExtractionPipeline {
       workingDirectory: options.context?.workingDirectory || process.cwd(),
       executeCommands: options.context?.executeCommands ?? false,
       timeout: options.context?.timeout || 5000,
-      fileExtensions: options.context?.fileExtensions || ['.ts', '.js', '.tsx', '.jsx', '.py', '.json'],
+      fileExtensions: options.context?.fileExtensions || [
+        '.ts',
+        '.js',
+        '.tsx',
+        '.jsx',
+        '.py',
+        '.json',
+      ],
       excludeDirs: options.context?.excludeDirs || ['node_modules', '.git', 'dist', 'build'],
       previousFacts: options.context?.previousFacts || [],
       customVerifiers: options.context?.customVerifiers || new Map(),
@@ -449,7 +458,7 @@ export class FactExtractionPipeline {
 
     this.log('Starting fact extraction...');
 
-    const lines = response.split('\n');
+    const _lines = response.split('\n');
 
     for (const pattern of this.patterns) {
       for (const regex of pattern.patterns) {
@@ -474,9 +483,7 @@ export class FactExtractionPipeline {
     }
 
     // Sort by position in response
-    this.extractedFacts.sort((a, b) =>
-      (a.sourcePosition || 0) - (b.sourcePosition || 0)
-    );
+    this.extractedFacts.sort((a, b) => (a.sourcePosition || 0) - (b.sourcePosition || 0));
 
     // Find related facts
     this.linkRelatedFacts();
@@ -493,7 +500,7 @@ export class FactExtractionPipeline {
   private createFact(
     match: RegExpExecArray,
     pattern: ExtractionPattern,
-    fullResponse: string
+    fullResponse: string,
   ): ExtractedFact {
     const metadata = pattern.extractor(match);
 
@@ -556,7 +563,7 @@ export class FactExtractionPipeline {
       case FactType.COMMAND_EXECUTED:
         return `Command: ${metadata.command}`;
       case FactType.DEPENDENCY_ADDED:
-        return `Dependency added: ${metadata.packageName}${metadata.version ? '@' + metadata.version : ''}`;
+        return `Dependency added: ${metadata.packageName}${metadata.version ? `@${metadata.version}` : ''}`;
       case FactType.IMPORT_ADDED:
         return `Import added: ${metadata.packageName}`;
       case FactType.EXPORT_ADDED:
@@ -588,10 +595,11 @@ export class FactExtractionPipeline {
    * Check if fact is duplicate of existing one
    */
   private isDuplicate(newFact: ExtractedFact): boolean {
-    return this.extractedFacts.some(existing =>
-      existing.type === newFact.type &&
-      existing.content === newFact.content &&
-      Math.abs((existing.sourcePosition || 0) - (newFact.sourcePosition || 0)) < 3
+    return this.extractedFacts.some(
+      (existing) =>
+        existing.type === newFact.type &&
+        existing.content === newFact.content &&
+        Math.abs((existing.sourcePosition || 0) - (newFact.sourcePosition || 0)) < 3,
     );
   }
 
@@ -638,10 +646,7 @@ export class FactExtractionPipeline {
   /**
    * Verify a single fact
    */
-  async verifyFact(
-    fact: ExtractedFact,
-    context?: Partial<VerificationContext>
-  ): Promise<boolean> {
+  async verifyFact(fact: ExtractedFact, context?: Partial<VerificationContext>): Promise<boolean> {
     const ctx = { ...this.verificationContext, ...context };
 
     if (!fact.verifiable) {
@@ -713,7 +718,7 @@ export class FactExtractionPipeline {
    * Verify all extracted facts
    */
   async verifyAllFacts(
-    context?: Partial<VerificationContext>
+    context?: Partial<VerificationContext>,
   ): Promise<Map<ExtractedFact, boolean>> {
     const results = new Map<ExtractedFact, boolean>();
 
@@ -728,10 +733,7 @@ export class FactExtractionPipeline {
   /**
    * Verify file exists
    */
-  private async verifyFileExists(
-    fact: ExtractedFact,
-    ctx: VerificationContext
-  ): Promise<boolean> {
+  private async verifyFileExists(fact: ExtractedFact, ctx: VerificationContext): Promise<boolean> {
     const filePath = fact.metadata?.filePath;
     if (!filePath) {
       fact.verification = {
@@ -751,9 +753,7 @@ export class FactExtractionPipeline {
 
     fact.verification = {
       verified: exists,
-      explanation: exists
-        ? `File exists at: ${fullPath}`
-        : `File not found at: ${fullPath}`,
+      explanation: exists ? `File exists at: ${fullPath}` : `File not found at: ${fullPath}`,
       timestamp: Date.now(),
       method: 'filesystem_check',
     };
@@ -764,10 +764,7 @@ export class FactExtractionPipeline {
   /**
    * Verify file was deleted
    */
-  private async verifyFileDeleted(
-    fact: ExtractedFact,
-    ctx: VerificationContext
-  ): Promise<boolean> {
+  private async verifyFileDeleted(fact: ExtractedFact, ctx: VerificationContext): Promise<boolean> {
     const filePath = fact.metadata?.filePath;
     if (!filePath) {
       fact.verification = {
@@ -802,7 +799,7 @@ export class FactExtractionPipeline {
    */
   private async verifySymbolExists(
     fact: ExtractedFact,
-    ctx: VerificationContext
+    ctx: VerificationContext,
   ): Promise<boolean> {
     const symbolName = fact.metadata?.symbolName;
     if (!symbolName) {
@@ -823,7 +820,10 @@ export class FactExtractionPipeline {
       new RegExp(`class\\s+${symbolName}\\s*[{<]`, 'g'),
       new RegExp(`interface\\s+${symbolName}\\s*[{<]`, 'g'),
       new RegExp(`type\\s+${symbolName}\\s*=`, 'g'),
-      new RegExp(`export\\s+(?:default\\s+)?(?:function|class|const|let|interface|type)\\s+${symbolName}`, 'g'),
+      new RegExp(
+        `export\\s+(?:default\\s+)?(?:function|class|const|let|interface|type)\\s+${symbolName}`,
+        'g',
+      ),
     ];
 
     // Check in related file if specified
@@ -846,7 +846,7 @@ export class FactExtractionPipeline {
               return true;
             }
           }
-        } catch (error) {
+        } catch (_error) {
           // Continue to search in working directory
         }
       }
@@ -857,7 +857,7 @@ export class FactExtractionPipeline {
       ctx.workingDirectory,
       patterns,
       ctx.fileExtensions || [],
-      ctx.excludeDirs || []
+      ctx.excludeDirs || [],
     );
 
     if (searchResult.found) {
@@ -882,10 +882,7 @@ export class FactExtractionPipeline {
   /**
    * Verify dependency is installed
    */
-  private async verifyDependency(
-    fact: ExtractedFact,
-    ctx: VerificationContext
-  ): Promise<boolean> {
+  private async verifyDependency(fact: ExtractedFact, ctx: VerificationContext): Promise<boolean> {
     const packageName = fact.metadata?.packageName;
     if (!packageName) {
       fact.verification = {
@@ -944,10 +941,7 @@ export class FactExtractionPipeline {
   /**
    * Verify import exists in codebase
    */
-  private async verifyImport(
-    fact: ExtractedFact,
-    ctx: VerificationContext
-  ): Promise<boolean> {
+  private async verifyImport(fact: ExtractedFact, ctx: VerificationContext): Promise<boolean> {
     const packageName = fact.metadata?.packageName;
     if (!packageName) {
       fact.verification = {
@@ -960,15 +954,21 @@ export class FactExtractionPipeline {
     }
 
     const patterns = [
-      new RegExp(`import\\s+.*from\\s+['"]${packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]`, 'g'),
-      new RegExp(`require\\s*\\(\\s*['"]${packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]\\s*\\)`, 'g'),
+      new RegExp(
+        `import\\s+.*from\\s+['"]${packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]`,
+        'g',
+      ),
+      new RegExp(
+        `require\\s*\\(\\s*['"]${packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]\\s*\\)`,
+        'g',
+      ),
     ];
 
     const searchResult = await this.searchForPattern(
       ctx.workingDirectory,
       patterns,
       ctx.fileExtensions || [],
-      ctx.excludeDirs || []
+      ctx.excludeDirs || [],
     );
 
     fact.verification = {
@@ -986,10 +986,7 @@ export class FactExtractionPipeline {
   /**
    * Verify command was executed (heuristic)
    */
-  private verifyCommand(
-    fact: ExtractedFact,
-    _ctx: VerificationContext
-  ): boolean {
+  private verifyCommand(fact: ExtractedFact, _ctx: VerificationContext): boolean {
     // Commands can't be verified after the fact without side effects
     // We can only verify the claim was made
     fact.verification = {
@@ -1008,7 +1005,7 @@ export class FactExtractionPipeline {
     directory: string,
     patterns: RegExp[],
     extensions: string[],
-    excludeDirs: string[]
+    excludeDirs: string[],
   ): Promise<{ found: boolean; file?: string; line?: number }> {
     const searchFiles = (dir: string): string[] => {
       const results: string[] = [];
@@ -1024,12 +1021,12 @@ export class FactExtractionPipeline {
               results.push(...searchFiles(fullPath));
             }
           } else if (entry.isFile()) {
-            if (extensions.length === 0 || extensions.some(ext => entry.name.endsWith(ext))) {
+            if (extensions.length === 0 || extensions.some((ext) => entry.name.endsWith(ext))) {
               results.push(fullPath);
             }
           }
         }
-      } catch (error) {
+      } catch (_error) {
         // Ignore permission errors, etc.
       }
 
@@ -1038,7 +1035,8 @@ export class FactExtractionPipeline {
 
     const files = searchFiles(directory);
 
-    for (const file of files.slice(0, 1000)) { // Limit to prevent huge searches
+    for (const file of files.slice(0, 1000)) {
+      // Limit to prevent huge searches
       try {
         const content = fs.readFileSync(file, 'utf-8');
         for (const pattern of patterns) {
@@ -1047,7 +1045,7 @@ export class FactExtractionPipeline {
             return { found: true, file };
           }
         }
-      } catch (error) {
+      } catch (_error) {
         // Skip unreadable files
       }
     }
@@ -1066,18 +1064,17 @@ export class FactExtractionPipeline {
     const byType: Record<FactType, number> = {} as Record<FactType, number>;
 
     for (const type of Object.values(FactType)) {
-      byType[type] = this.extractedFacts.filter(f => f.type === type).length;
+      byType[type] = this.extractedFacts.filter((f) => f.type === type).length;
     }
 
-    const confidences = this.extractedFacts.map(f => f.confidence);
-    const avgConfidence = confidences.length > 0
-      ? confidences.reduce((a, b) => a + b, 0) / confidences.length
-      : 0;
+    const confidences = this.extractedFacts.map((f) => f.confidence);
+    const avgConfidence =
+      confidences.length > 0 ? confidences.reduce((a, b) => a + b, 0) / confidences.length : 0;
 
     return {
       totalFacts: this.extractedFacts.length,
       byType,
-      verifiableFacts: this.extractedFacts.filter(f => f.verifiable).length,
+      verifiableFacts: this.extractedFacts.filter((f) => f.verifiable).length,
       averageConfidence: Math.round(avgConfidence * 100) / 100,
       extractionTime: 0, // Would need to track this
     };
@@ -1087,30 +1084,28 @@ export class FactExtractionPipeline {
    * Get facts by type
    */
   getFactsByType(type: FactType): ExtractedFact[] {
-    return this.extractedFacts.filter(f => f.type === type);
+    return this.extractedFacts.filter((f) => f.type === type);
   }
 
   /**
    * Get verifiable facts only
    */
   getVerifiableFacts(): ExtractedFact[] {
-    return this.extractedFacts.filter(f => f.verifiable);
+    return this.extractedFacts.filter((f) => f.verifiable);
   }
 
   /**
    * Get verified facts
    */
   getVerifiedFacts(): ExtractedFact[] {
-    return this.extractedFacts.filter(f => f.verification?.verified === true);
+    return this.extractedFacts.filter((f) => f.verification?.verified === true);
   }
 
   /**
    * Get unverified/failed facts
    */
   getUnverifiedFacts(): ExtractedFact[] {
-    return this.extractedFacts.filter(f =>
-      f.verifiable && f.verification?.verified !== true
-    );
+    return this.extractedFacts.filter((f) => f.verifiable && f.verification?.verified !== true);
   }
 
   /**
@@ -1148,7 +1143,7 @@ export class FactExtractionPipeline {
     }
     lines.push('');
 
-    if (this.extractedFacts.some(f => f.verification)) {
+    if (this.extractedFacts.some((f) => f.verification)) {
       const verified = this.getVerifiedFacts().length;
       const failed = this.getUnverifiedFacts().length;
 
@@ -1189,7 +1184,7 @@ export function extractFacts(
   options?: {
     workingDirectory?: string;
     debug?: boolean;
-  }
+  },
 ): ExtractedFact[] {
   const pipeline = new FactExtractionPipeline({
     context: { workingDirectory: options?.workingDirectory },
@@ -1206,7 +1201,7 @@ export async function extractAndVerifyFacts(
   options?: {
     workingDirectory?: string;
     debug?: boolean;
-  }
+  },
 ): Promise<{
   facts: ExtractedFact[];
   verified: number;

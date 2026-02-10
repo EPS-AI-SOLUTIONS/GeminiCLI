@@ -9,19 +9,19 @@
  * 5. Session Export - Export to markdown/JSON
  */
 
-import fs from 'fs/promises';
-import path from 'path';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import chalk from 'chalk';
+import { SESSION_DIR } from '../config/paths.config.js';
+import { loadFromFile, saveToFile } from '../native/persistence.js';
 import {
   BaseMemory,
-  MemoryOptions,
-  MemoryStats,
-  generateId,
   estimateSize,
-  reviveDates
+  generateId,
+  type MemoryOptions,
+  type MemoryStats,
+  reviveDates,
 } from './BaseMemory.js';
-import { loadFromFile, saveToFile, fileExists } from '../native/persistence.js';
-import { SESSION_DIR } from '../config/paths.config.js';
 
 const SESSIONS_DIR = SESSION_DIR;
 
@@ -72,12 +72,18 @@ export class SessionMemory extends BaseMemory<SessionSnapshot> {
   }
 
   deserialize(data: string): void {
-    const parsed = this.deserializeData<SessionSnapshot & Record<string, unknown>>(data, ['created', 'updated']);
-    if (parsed && parsed.id) {
+    const parsed = this.deserializeData<SessionSnapshot & Record<string, unknown>>(data, [
+      'created',
+      'updated',
+    ]);
+    if (parsed?.id) {
       this.currentSession = {
         ...parsed,
-        messages: (parsed.messages || []).map((m: Message) =>
-          reviveDates(m as unknown as Record<string, unknown>, ['timestamp']) as unknown as Message
+        messages: (parsed.messages || []).map(
+          (m: Message) =>
+            reviveDates(m as unknown as Record<string, unknown>, [
+              'timestamp',
+            ]) as unknown as Message,
         ),
       } as SessionSnapshot;
     } else {
@@ -91,7 +97,7 @@ export class SessionMemory extends BaseMemory<SessionSnapshot> {
 
   getStats(): MemoryStats {
     const messages = this.currentSession?.messages || [];
-    const timestamps = messages.map(m => m.timestamp).sort((a, b) => a.getTime() - b.getTime());
+    const timestamps = messages.map((m) => m.timestamp).sort((a, b) => a.getTime() - b.getTime());
 
     return {
       entries: messages.length,
@@ -224,12 +230,16 @@ export class SessionMemory extends BaseMemory<SessionSnapshot> {
   /**
    * Add message to current session
    */
-  async addMessage(role: 'user' | 'assistant' | 'system', content: string, agent?: string): Promise<void> {
+  async addMessage(
+    role: 'user' | 'assistant' | 'system',
+    content: string,
+    agent?: string,
+  ): Promise<void> {
     if (!this.currentSession) {
       await this.startSession();
     }
 
-    this.currentSession!.messages.push({
+    this.currentSession?.messages.push({
       role,
       content,
       timestamp: new Date(),
@@ -283,10 +293,13 @@ export class SessionMemory extends BaseMemory<SessionSnapshot> {
       clearInterval(this.autoSaveInterval);
     }
 
-    this.autoSaveInterval = setInterval(async () => {
-      await this.saveSnapshot();
-      console.log(chalk.gray(`[Auto-save] Session saved`));
-    }, this.autoSaveMinutes * 60 * 1000);
+    this.autoSaveInterval = setInterval(
+      async () => {
+        await this.saveSnapshot();
+        console.log(chalk.gray(`[Auto-save] Session saved`));
+      },
+      this.autoSaveMinutes * 60 * 1000,
+    );
   }
 
   /**
@@ -302,7 +315,9 @@ export class SessionMemory extends BaseMemory<SessionSnapshot> {
   /**
    * List all sessions (Feature 3)
    */
-  async listSessions(): Promise<Array<{ id: string; name: string; updated: Date; messageCount: number }>> {
+  async listSessions(): Promise<
+    Array<{ id: string; name: string; updated: Date; messageCount: number }>
+  > {
     try {
       const files = await fs.readdir(SESSIONS_DIR);
       const sessions: Array<{ id: string; name: string; updated: Date; messageCount: number }> = [];
@@ -358,7 +373,8 @@ export class SessionMemory extends BaseMemory<SessionSnapshot> {
     md += `\n## Conversation\n\n`;
 
     for (const msg of this.currentSession.messages) {
-      const roleLabel = msg.role === 'user' ? 'User' : msg.role === 'assistant' ? 'Assistant' : 'System';
+      const roleLabel =
+        msg.role === 'user' ? 'User' : msg.role === 'assistant' ? 'Assistant' : 'System';
       const agentInfo = msg.agent ? ` (${msg.agent})` : '';
       md += `### ${roleLabel}${agentInfo}\n`;
       md += `*${msg.timestamp.toISOString()}*\n\n`;
@@ -428,7 +444,7 @@ export class SessionMemory extends BaseMemory<SessionSnapshot> {
 
         for (const msg of parsed.messages) {
           if (msg.content.toLowerCase().includes(query.toLowerCase())) {
-            matches.push(msg.content.substring(0, 100) + '...');
+            matches.push(`${msg.content.substring(0, 100)}...`);
           }
         }
 

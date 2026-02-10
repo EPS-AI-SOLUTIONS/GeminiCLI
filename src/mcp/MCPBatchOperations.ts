@@ -6,7 +6,7 @@
  */
 
 import { processBatch } from '../utils/batchProcessor.js';
-import { MCPBatchOperation, MCPBatchResult, MCPToolResult } from './MCPTypes.js';
+import type { MCPBatchOperation, MCPBatchResult, MCPToolResult } from './MCPTypes.js';
 
 // ============================================================
 // Types
@@ -25,7 +25,10 @@ export interface BatchStats {
   duration: number;
 }
 
-export type ToolExecutor = (toolName: string, params: Record<string, any>) => Promise<MCPToolResult>;
+export type ToolExecutor = (
+  toolName: string,
+  params: Record<string, any>,
+) => Promise<MCPToolResult>;
 
 // ============================================================
 // MCPBatchExecutor Class
@@ -53,31 +56,27 @@ export class MCPBatchExecutor {
   async execute(
     operations: MCPBatchOperation[],
     executor: ToolExecutor,
-    options?: BatchExecutionOptions
+    options?: BatchExecutionOptions,
   ): Promise<{ results: MCPBatchResult[]; stats: BatchStats }> {
     const opts = { ...this.defaultOptions, ...options };
     const startTime = Date.now();
 
-    const batchResult = await processBatch(
-      operations,
-      async (op) => executor(op.tool, op.params),
-      {
-        maxConcurrency: opts.maxConcurrency,
-        onProgress: opts.onProgress,
-      }
-    );
+    const batchResult = await processBatch(operations, async (op) => executor(op.tool, op.params), {
+      maxConcurrency: opts.maxConcurrency,
+      onProgress: opts.onProgress,
+    });
 
-    const results = batchResult.results.map(r => ({
+    const results = batchResult.results.map((r) => ({
       id: r.item.id,
       success: r.success,
       result: r.result,
-      error: r.error
+      error: r.error,
     }));
 
     const stats: BatchStats = {
       total: operations.length,
-      successful: results.filter(r => r.success).length,
-      failed: results.filter(r => !r.success).length,
+      successful: results.filter((r) => r.success).length,
+      failed: results.filter((r) => !r.success).length,
       duration: Date.now() - startTime,
     };
 
@@ -90,7 +89,7 @@ export class MCPBatchExecutor {
   async executeSequential(
     operations: MCPBatchOperation[],
     executor: ToolExecutor,
-    options?: { onProgress?: (completed: number, total: number) => void }
+    options?: { onProgress?: (completed: number, total: number) => void },
   ): Promise<MCPBatchResult[]> {
     const results: MCPBatchResult[] = [];
 
@@ -127,12 +126,12 @@ export class MCPBatchExecutor {
   async batchReadFiles(
     paths: string[],
     executor: ToolExecutor,
-    options?: BatchExecutionOptions
+    options?: BatchExecutionOptions,
   ): Promise<MCPBatchResult[]> {
-    const operations: MCPBatchOperation[] = paths.map(filePath => ({
+    const operations: MCPBatchOperation[] = paths.map((filePath) => ({
       tool: 'filesystem__read_file',
       params: { path: filePath },
-      id: filePath
+      id: filePath,
     }));
 
     const { results } = await this.execute(operations, executor, options);
@@ -145,12 +144,12 @@ export class MCPBatchExecutor {
   async batchWriteFiles(
     files: Array<{ path: string; content: string }>,
     executor: ToolExecutor,
-    options?: BatchExecutionOptions
+    options?: BatchExecutionOptions,
   ): Promise<MCPBatchResult[]> {
-    const operations: MCPBatchOperation[] = files.map(file => ({
+    const operations: MCPBatchOperation[] = files.map((file) => ({
       tool: 'filesystem__write_file',
       params: { path: file.path, content: file.content },
-      id: file.path
+      id: file.path,
     }));
 
     const { results } = await this.execute(operations, executor, options);
@@ -163,12 +162,12 @@ export class MCPBatchExecutor {
   async batchSearch(
     searches: Array<{ pattern: string; path?: string }>,
     executor: ToolExecutor,
-    options?: BatchExecutionOptions
+    options?: BatchExecutionOptions,
   ): Promise<MCPBatchResult[]> {
     const operations: MCPBatchOperation[] = searches.map((search, i) => ({
       tool: 'search__grep',
       params: search,
-      id: `search-${i}`
+      id: `search-${i}`,
     }));
 
     const { results } = await this.execute(operations, executor, options);
@@ -187,7 +186,7 @@ export class MCPBatchExecutor {
       operation: MCPBatchOperation;
       transform?: (result: MCPToolResult) => MCPBatchOperation | null;
     }>,
-    executor: ToolExecutor
+    executor: ToolExecutor,
   ): Promise<MCPBatchResult[]> {
     const results: MCPBatchResult[] = [];
     let previousResult: MCPToolResult | null = null;
@@ -236,15 +235,13 @@ export class MCPBatchExecutor {
     previousResults: MCPBatchResult[],
     operations: MCPBatchOperation[],
     executor: ToolExecutor,
-    options?: BatchExecutionOptions
+    options?: BatchExecutionOptions,
   ): Promise<MCPBatchResult[]> {
     // Find failed operation IDs
-    const failedIds = new Set(
-      previousResults.filter(r => !r.success).map(r => r.id)
-    );
+    const failedIds = new Set(previousResults.filter((r) => !r.success).map((r) => r.id));
 
     // Filter to only retry failed operations
-    const retryOperations = operations.filter(op => failedIds.has(op.id));
+    const retryOperations = operations.filter((op) => failedIds.has(op.id));
 
     if (retryOperations.length === 0) {
       return [];

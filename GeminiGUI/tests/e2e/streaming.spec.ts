@@ -4,8 +4,8 @@
  * Tests for real-time streaming response handling.
  */
 
-import { test, expect } from '../fixtures/test-setup';
 import { TIMEOUTS } from '../fixtures/test-data';
+import { expect, test } from '../fixtures/test-setup';
 
 test.describe('Streaming Responses', () => {
   test('should show streaming cursor during response', async ({ page, chat }) => {

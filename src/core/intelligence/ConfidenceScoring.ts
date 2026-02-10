@@ -6,8 +6,8 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import chalk from 'chalk';
-import { geminiSemaphore, withRetry } from '../TrafficControl.js';
 import { GEMINI_MODELS } from '../../config/models.config.js';
+import { geminiSemaphore, withRetry } from '../TrafficControl.js';
 
 // Initialize Gemini client
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
@@ -28,16 +28,16 @@ export interface ConfidenceScore {
   relevance: number;
 
   // Extended metrics (0-100)
-  coherence: number;        // Logical consistency and flow
-  specificity: number;      // Concreteness vs vagueness
-  actionability: number;    // Can user act on this?
-  sourceCitation: number;   // References to sources
+  coherence: number; // Logical consistency and flow
+  specificity: number; // Concreteness vs vagueness
+  actionability: number; // Can user act on this?
+  sourceCitation: number; // References to sources
 
   // Uncertainty quantification
   confidence: {
-    lower: number;          // Lower bound (95% CI)
-    upper: number;          // Upper bound (95% CI)
-    stdDev: number;         // Standard deviation
+    lower: number; // Lower bound (95% CI)
+    upper: number; // Upper bound (95% CI)
+    stdDev: number; // Standard deviation
   };
 
   // Meta information
@@ -75,7 +75,7 @@ interface CalibrationEntry {
   timestamp: number;
   taskType: string;
   predictedScore: number;
-  actualOutcome: number;  // 0-100 based on user feedback
+  actualOutcome: number; // 0-100 based on user feedback
 }
 
 /**
@@ -84,7 +84,7 @@ interface CalibrationEntry {
 export interface MultiModelConfidence {
   primary: ConfidenceScore;
   secondary?: ConfidenceScore;
-  agreement: number;        // How much models agree (0-100)
+  agreement: number; // How much models agree (0-100)
   divergenceAreas: string[];
 }
 
@@ -117,7 +117,7 @@ class CalibrationCache {
     for (const [taskType, entries] of byType) {
       if (entries.length >= 3) {
         // Calculate average offset (actual - predicted)
-        const offsets = entries.map(e => e.actualOutcome - e.predictedScore);
+        const offsets = entries.map((e) => e.actualOutcome - e.predictedScore);
         const avgOffset = offsets.reduce((a, b) => a + b, 0) / offsets.length;
         this.taskTypeOffsets.set(taskType, avgOffset);
       }
@@ -133,13 +133,13 @@ class CalibrationCache {
       return { totalEntries: 0, taskTypes: [], avgAccuracy: 0 };
     }
 
-    const errors = this.history.map(e => Math.abs(e.actualOutcome - e.predictedScore));
+    const errors = this.history.map((e) => Math.abs(e.actualOutcome - e.predictedScore));
     const avgError = errors.reduce((a, b) => a + b, 0) / errors.length;
 
     return {
       totalEntries: this.history.length,
       taskTypes: [...this.taskTypeOffsets.keys()],
-      avgAccuracy: 100 - avgError
+      avgAccuracy: 100 - avgError,
     };
   }
 }
@@ -187,12 +187,12 @@ function extractJSON(text: string): string {
  * Safe number extraction with bounds
  */
 function safeNumber(value: unknown, min: number, max: number, fallback: number): number {
-  if (typeof value === 'number' && !isNaN(value)) {
+  if (typeof value === 'number' && !Number.isNaN(value)) {
     return Math.max(min, Math.min(max, Math.round(value)));
   }
   if (typeof value === 'string') {
     const parsed = parseFloat(value);
-    if (!isNaN(parsed)) {
+    if (!Number.isNaN(parsed)) {
       return Math.max(min, Math.min(max, Math.round(parsed)));
     }
   }
@@ -213,7 +213,7 @@ function safeString(value: unknown, fallback: string): string {
  */
 function safeStringArray(value: unknown, fallback: string[]): string[] {
   if (Array.isArray(value)) {
-    return value.filter(v => typeof v === 'string').slice(0, 10);
+    return value.filter((v) => typeof v === 'string').slice(0, 10);
   }
   return fallback;
 }
@@ -270,7 +270,7 @@ function robustJSONParse(text: string): Record<string, unknown> {
         return numbers;
       }
       throw new Error('Not enough numbers extracted');
-    }
+    },
   ];
 
   for (const strategy of strategies) {
@@ -305,7 +305,7 @@ const DEFAULT_SCORE: ConfidenceScore = {
   confidence: {
     lower: 40,
     upper: 60,
-    stdDev: 15
+    stdDev: 15,
   },
   needsClarification: true,
   clarificationQuestions: ['Czy mozesz podac wiecej szczegolow?'],
@@ -320,11 +320,11 @@ const DEFAULT_SCORE: ConfidenceScore = {
     sourceCitation: 'Brak odniesien do zrodel',
     strengths: [],
     weaknesses: ['Wymagana jest dodatkowa weryfikacja'],
-    suggestions: ['Dostarczenie wiecej kontekstu pomoze w lepszej ocenie']
+    suggestions: ['Dostarczenie wiecej kontekstu pomoze w lepszej ocenie'],
   },
   calibrated: false,
   calibrationAdjustment: 0,
-  rawScore: 50
+  rawScore: 50,
 };
 
 // ============================================================================
@@ -334,24 +334,32 @@ const DEFAULT_SCORE: ConfidenceScore = {
 function detectTaskType(task: string): string {
   const taskLower = task.toLowerCase();
 
-  if (taskLower.includes('kod') || taskLower.includes('code') ||
-      taskLower.includes('program') || taskLower.includes('funkcj')) {
+  if (
+    taskLower.includes('kod') ||
+    taskLower.includes('code') ||
+    taskLower.includes('program') ||
+    taskLower.includes('funkcj')
+  ) {
     return 'coding';
   }
-  if (taskLower.includes('analiz') || taskLower.includes('zbadaj') ||
-      taskLower.includes('sprawdz')) {
+  if (
+    taskLower.includes('analiz') ||
+    taskLower.includes('zbadaj') ||
+    taskLower.includes('sprawdz')
+  ) {
     return 'analysis';
   }
-  if (taskLower.includes('napisz') || taskLower.includes('stworz') ||
-      taskLower.includes('wygeneruj')) {
+  if (
+    taskLower.includes('napisz') ||
+    taskLower.includes('stworz') ||
+    taskLower.includes('wygeneruj')
+  ) {
     return 'creative';
   }
-  if (taskLower.includes('wyjasni') || taskLower.includes('opisz') ||
-      taskLower.includes('co to')) {
+  if (taskLower.includes('wyjasni') || taskLower.includes('opisz') || taskLower.includes('co to')) {
     return 'explanation';
   }
-  if (taskLower.includes('napraw') || taskLower.includes('debug') ||
-      taskLower.includes('blad')) {
+  if (taskLower.includes('napraw') || taskLower.includes('debug') || taskLower.includes('blad')) {
     return 'debugging';
   }
 
@@ -365,10 +373,7 @@ function detectTaskType(task: string): string {
 /**
  * Score confidence in a response with robust error handling
  */
-export async function scoreConfidence(
-  task: string,
-  response: string
-): Promise<ConfidenceScore> {
+export async function scoreConfidence(task: string, response: string): Promise<ConfidenceScore> {
   return robustScoreConfidence(task, response);
 }
 
@@ -382,7 +387,7 @@ export async function robustScoreConfidence(
     retries?: number;
     timeout?: number;
     includeExplanation?: boolean;
-  } = {}
+  } = {},
 ): Promise<ConfidenceScore> {
   const { retries = 2, timeout = 30000, includeExplanation = true } = options;
 
@@ -410,10 +415,14 @@ WYMIARY OCENY:
 DODATKOWE ELEMENTY:
 - needsClarification: true/false - czy potrzeba dodatkowych informacji
 - clarificationQuestions: lista pytan dla wyjasnienia (max 3)
-${includeExplanation ? `- explanations: krotkie wyjasnienie kazdej oceny (1 zdanie)
+${
+  includeExplanation
+    ? `- explanations: krotkie wyjasnienie kazdej oceny (1 zdanie)
 - strengths: 2-3 mocne strony odpowiedzi
 - weaknesses: 1-2 slabe strony
-- suggestions: 1-2 sugestie poprawy` : ''}
+- suggestions: 1-2 sugestie poprawy`
+    : ''
+}
 
 FORMAT ODPOWIEDZI (TYLKO JSON, bez markdown):
 {
@@ -425,7 +434,9 @@ FORMAT ODPOWIEDZI (TYLKO JSON, bez markdown):
   "actionability": 65,
   "sourceCitation": 40,
   "needsClarification": false,
-  "clarificationQuestions": []${includeExplanation ? `,
+  "clarificationQuestions": []${
+    includeExplanation
+      ? `,
   "explanations": {
     "factualAccuracy": "Fakty sa poprawne...",
     "completeness": "Odpowiedz jest kompletna...",
@@ -437,7 +448,9 @@ FORMAT ODPOWIEDZI (TYLKO JSON, bez markdown):
   },
   "strengths": ["Mocna strona 1", "Mocna strona 2"],
   "weaknesses": ["Slaba strona 1"],
-  "suggestions": ["Sugestia 1"]` : ''}
+  "suggestions": ["Sugestia 1"]`
+      : ''
+  }
 }`;
 
   try {
@@ -450,7 +463,7 @@ FORMAT ODPOWIEDZI (TYLKO JSON, bez markdown):
               temperature: 0.1,
               maxOutputTokens: 1024,
               topP: 0.9,
-            }
+            },
           });
 
           const res = await model.generateContent(prompt);
@@ -462,8 +475,8 @@ FORMAT ODPOWIEDZI (TYLKO JSON, bez markdown):
         baseDelay: 1000,
         onRetry: (attempt, error) => {
           console.log(chalk.yellow(`[Confidence] Retry ${attempt}: ${error.message}`));
-        }
-      }
+        },
+      },
     );
 
     // Robust parsing
@@ -481,24 +494,32 @@ FORMAT ODPOWIEDZI (TYLKO JSON, bez markdown):
     // Calculate weighted overall score
     const rawOverall = Math.round(
       factualAccuracy * 0.25 +
-      completeness * 0.15 +
-      relevance * 0.20 +
-      coherence * 0.15 +
-      specificity * 0.10 +
-      actionability * 0.10 +
-      sourceCitation * 0.05
+        completeness * 0.15 +
+        relevance * 0.2 +
+        coherence * 0.15 +
+        specificity * 0.1 +
+        actionability * 0.1 +
+        sourceCitation * 0.05,
     );
 
     // Apply calibration
     const calibrationOffset = calibrationCache.getOffset(taskType);
-    const calibratedOverall = Math.max(0, Math.min(100,
-      Math.round(rawOverall + calibrationOffset)
-    ));
+    const calibratedOverall = Math.max(
+      0,
+      Math.min(100, Math.round(rawOverall + calibrationOffset)),
+    );
 
     // Calculate uncertainty
-    const scores = [factualAccuracy, completeness, relevance, coherence, specificity, actionability];
+    const scores = [
+      factualAccuracy,
+      completeness,
+      relevance,
+      coherence,
+      specificity,
+      actionability,
+    ];
     const mean = scores.reduce((a, b) => a + b, 0) / scores.length;
-    const variance = scores.reduce((sum, s) => sum + Math.pow(s - mean, 2), 0) / scores.length;
+    const variance = scores.reduce((sum, s) => sum + (s - mean) ** 2, 0) / scores.length;
     const stdDev = Math.sqrt(variance);
 
     // 95% confidence interval
@@ -519,13 +540,13 @@ FORMAT ODPOWIEDZI (TYLKO JSON, bez markdown):
       sourceCitation: safeString(explanations?.sourceCitation, 'Ocena odniesien do zrodel'),
       strengths: safeStringArray(parsed.strengths, ['Odpowiedz zostala udzielona']),
       weaknesses: safeStringArray(parsed.weaknesses, []),
-      suggestions: safeStringArray(parsed.suggestions, [])
+      suggestions: safeStringArray(parsed.suggestions, []),
     };
 
     const needsClarification = parsed.needsClarification === true || calibratedOverall < 60;
     const clarificationQuestions = safeStringArray(
       parsed.clarificationQuestions,
-      needsClarification ? ['Czy mozesz podac wiecej szczegolow?'] : []
+      needsClarification ? ['Czy mozesz podac wiecej szczegolow?'] : [],
     );
 
     const score: ConfidenceScore = {
@@ -540,37 +561,42 @@ FORMAT ODPOWIEDZI (TYLKO JSON, bez markdown):
       confidence: {
         lower: lowerBound,
         upper: upperBound,
-        stdDev: Math.round(stdDev * 10) / 10
+        stdDev: Math.round(stdDev * 10) / 10,
       },
       needsClarification,
       clarificationQuestions,
       explanation,
       calibrated: calibrationOffset !== 0,
       calibrationAdjustment: calibrationOffset,
-      rawScore: rawOverall
+      rawScore: rawOverall,
     };
 
     // Log summary
-    console.log(chalk.gray(
-      `[Confidence] Score: ${calibratedOverall}% [${lowerBound}-${upperBound}] ` +
-      `(F:${factualAccuracy} C:${completeness} R:${relevance} Co:${coherence} ` +
-      `S:${specificity} A:${actionability} Src:${sourceCitation})`
-    ));
+    console.log(
+      chalk.gray(
+        `[Confidence] Score: ${calibratedOverall}% [${lowerBound}-${upperBound}] ` +
+          `(F:${factualAccuracy} C:${completeness} R:${relevance} Co:${coherence} ` +
+          `S:${specificity} A:${actionability} Src:${sourceCitation})`,
+      ),
+    );
 
     if (score.calibrated) {
-      console.log(chalk.gray(`[Confidence] Calibration adjustment: ${calibrationOffset > 0 ? '+' : ''}${calibrationOffset}`));
+      console.log(
+        chalk.gray(
+          `[Confidence] Calibration adjustment: ${calibrationOffset > 0 ? '+' : ''}${calibrationOffset}`,
+        ),
+      );
     }
 
     return score;
-
   } catch (error: any) {
     console.log(chalk.yellow(`[Confidence] Scoring failed after retries: ${error.message}`));
     return {
       ...DEFAULT_SCORE,
       explanation: {
         ...DEFAULT_SCORE.explanation,
-        overall: `Blad oceny: ${error.message}`
-      }
+        overall: `Blad oceny: ${error.message}`,
+      },
     };
   }
 }
@@ -585,7 +611,7 @@ FORMAT ODPOWIEDZI (TYLKO JSON, bez markdown):
 export function recordCalibration(
   task: string,
   predictedScore: number,
-  actualOutcome: number // 0-100, e.g., user satisfaction
+  actualOutcome: number, // 0-100, e.g., user satisfaction
 ): void {
   const taskType = detectTaskType(task);
 
@@ -593,12 +619,14 @@ export function recordCalibration(
     timestamp: Date.now(),
     taskType,
     predictedScore,
-    actualOutcome
+    actualOutcome,
   });
 
-  console.log(chalk.gray(
-    `[Confidence] Calibration recorded: predicted=${predictedScore}, actual=${actualOutcome}, type=${taskType}`
-  ));
+  console.log(
+    chalk.gray(
+      `[Confidence] Calibration recorded: predicted=${predictedScore}, actual=${actualOutcome}, type=${taskType}`,
+    ),
+  );
 }
 
 /**
@@ -606,14 +634,14 @@ export function recordCalibration(
  */
 export function calibrateScore(
   rawScore: number,
-  task: string
+  task: string,
 ): { calibrated: number; adjustment: number } {
   const taskType = detectTaskType(task);
   const adjustment = calibrationCache.getOffset(taskType);
 
   return {
     calibrated: Math.max(0, Math.min(100, Math.round(rawScore + adjustment))),
-    adjustment
+    adjustment,
   };
 }
 
@@ -657,13 +685,17 @@ export function explainScore(score: ConfidenceScore): string {
 
   // Dimension breakdown
   lines.push('WYMIARY:');
-  lines.push(`  Poprawnosc faktow:  ${score.factualAccuracy}% - ${score.explanation.factualAccuracy}`);
+  lines.push(
+    `  Poprawnosc faktow:  ${score.factualAccuracy}% - ${score.explanation.factualAccuracy}`,
+  );
   lines.push(`  Kompletnosc:        ${score.completeness}% - ${score.explanation.completeness}`);
   lines.push(`  Trafnosc:           ${score.relevance}% - ${score.explanation.relevance}`);
   lines.push(`  Spojnosc:           ${score.coherence}% - ${score.explanation.coherence}`);
   lines.push(`  Konkretnosc:        ${score.specificity}% - ${score.explanation.specificity}`);
   lines.push(`  Wykonalnosc:        ${score.actionability}% - ${score.explanation.actionability}`);
-  lines.push(`  Zrodla:             ${score.sourceCitation}% - ${score.explanation.sourceCitation}`);
+  lines.push(
+    `  Zrodla:             ${score.sourceCitation}% - ${score.explanation.sourceCitation}`,
+  );
   lines.push('');
 
   // Strengths
@@ -704,7 +736,9 @@ export function explainScore(score: ConfidenceScore): string {
 
   // Calibration info
   if (score.calibrated) {
-    lines.push(`[Kalibracja: ${score.calibrationAdjustment > 0 ? '+' : ''}${score.calibrationAdjustment}, wynik surowy: ${score.rawScore}%]`);
+    lines.push(
+      `[Kalibracja: ${score.calibrationAdjustment > 0 ? '+' : ''}${score.calibrationAdjustment}, wynik surowy: ${score.rawScore}%]`,
+    );
   }
 
   return lines.join('\n');
@@ -715,10 +749,12 @@ export function explainScore(score: ConfidenceScore): string {
  */
 export function summarizeScore(score: ConfidenceScore): string {
   const emoji = score.overall >= 70 ? 'OK' : score.overall >= 50 ? '??' : '!!';
-  return `[${emoji}] ${score.overall}% (${score.confidence.lower}-${score.confidence.upper}) | ` +
+  return (
+    `[${emoji}] ${score.overall}% (${score.confidence.lower}-${score.confidence.upper}) | ` +
     `F:${score.factualAccuracy} C:${score.completeness} R:${score.relevance} ` +
     `Co:${score.coherence} S:${score.specificity}` +
-    (score.needsClarification ? ' | NEEDS CLARIFICATION' : '');
+    (score.needsClarification ? ' | NEEDS CLARIFICATION' : '')
+  );
 }
 
 // ============================================================================
@@ -731,7 +767,7 @@ export function summarizeScore(score: ConfidenceScore): string {
 export async function multiModelConfidence(
   task: string,
   response: string,
-  _secondaryModel?: string
+  _secondaryModel?: string,
 ): Promise<MultiModelConfidence> {
   // Primary scoring
   const primary = await robustScoreConfidence(task, response);
@@ -741,7 +777,7 @@ export async function multiModelConfidence(
   return {
     primary,
     agreement: 100,
-    divergenceAreas: []
+    divergenceAreas: [],
   };
 }
 
@@ -754,7 +790,7 @@ export async function multiModelConfidence(
  */
 export function quickScore(
   task: string,
-  response: string
+  response: string,
 ): Pick<ConfidenceScore, 'overall' | 'completeness' | 'specificity'> {
   // Length-based completeness heuristic
   const taskWords = task.split(/\s+/).length;
@@ -765,7 +801,7 @@ export function quickScore(
   // Specificity heuristic (numbers, code, specific terms)
   const hasNumbers = /\d+/.test(response);
   const hasCode = /```|`[^`]+`|function|const|let|var|=>/.test(response);
-  const hasLists = /^[\s]*[-*\d+\.]\s/m.test(response);
+  const hasLists = /^[\s]*[-*\d+.]\s/m.test(response);
   const specificityScore = (hasNumbers ? 25 : 0) + (hasCode ? 35 : 0) + (hasLists ? 20 : 0) + 20;
   const specificity = Math.min(100, specificityScore);
 
@@ -789,5 +825,5 @@ export default {
   summarizeScore,
   multiModelConfidence,
   quickScore,
-  DEFAULT_SCORE
+  DEFAULT_SCORE,
 };

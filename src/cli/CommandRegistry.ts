@@ -8,96 +8,94 @@
  *
  * @module cli/CommandRegistry
  */
-
-// Re-export async utilities for convenience
-export {
-  CancellationTokenSource,
-  CancellationError,
-  TimeoutError,
-  ProgressReporter,
-  isAsyncFunction,
-  wrapHandler,
-  withCancellation,
-  withProgress,
-  withCancellationAndProgress,
-  executeWithTimeout,
-  executeWithCancellation,
-  executeWithTimeoutAndCancellation,
-  delay,
-  retry,
-  OperationTracker,
-  globalOperationTracker,
-} from './AsyncUtils.js';export type {
-  CancellationToken,
-  ProgressInfo,
-  ProgressCallback,
-  SyncCommandHandler,
-  AsyncCommandHandler,
+export type {
   AnyCommandHandler,
+  AsyncCommandHandler,
+  CancellationToken,
+  ExecuteOptions,
   ExtendedCommandContext,
   ExtendedCommandHandler,
-  ExecuteOptions
+  ProgressCallback,
+  ProgressInfo,
+  SyncCommandHandler,
 } from './AsyncUtils.js';
-
-// Re-export error handling
+// Re-export async utilities for convenience
 export {
-  CommandErrorCode,
-  ERROR_SUGGESTIONS,
-  isRetryableError,
-  detectErrorCode,
-  CommandError,
-  ValidationError,
-  ExecutionError,
-  CommandTimeoutError,
-  TemporaryError,
-  ErrorLogger,
-  globalErrorLogger
-} from './CommandErrors.js';
+  CancellationError,
+  CancellationTokenSource,
+  delay,
+  executeWithCancellation,
+  executeWithTimeout,
+  executeWithTimeoutAndCancellation,
+  globalOperationTracker,
+  isAsyncFunction,
+  OperationTracker,
+  ProgressReporter,
+  retry,
+  TimeoutError,
+  withCancellation,
+  withCancellationAndProgress,
+  withProgress,
+  wrapHandler,
+} from './AsyncUtils.js';
 export type {
   ErrorHandler,
   ErrorLogEntry,
 } from './CommandErrors.js';
-
+// Re-export error handling
+export {
+  CommandError,
+  CommandErrorCode,
+  CommandTimeoutError,
+  detectErrorCode,
+  ERROR_SUGGESTIONS,
+  ErrorLogger,
+  ExecutionError,
+  globalErrorLogger,
+  isRetryableError,
+  TemporaryError,
+  ValidationError,
+} from './CommandErrors.js';
+export type {
+  ArgType,
+  Command,
+  CommandArg,
+  CommandContext,
+  CommandHandler,
+  // Command types
+  CommandInfo,
+  CommandRateLimitConfig,
+  CommandResult,
+  // Conflict types
+  ConflictInfo,
+  ConflictLogger,
+  CwdChangeEvent,
+  CwdChangeListener,
+  // CWD types
+  CwdHistoryEntry,
+  CwdManagerOptions,
+  CwdValidationResult,
+  FlagDefinition,
+  ParsedArgs,
+  // Rate limiting types
+  RateLimitConfig,
+  RateLimitStatus,
+  RegisterOptions,
+  Subcommand,
+  // Subcommand types
+  SubcommandInfo,
+  SubcommandOptions,
+  ValidationResult,
+} from './commandregistry/index.js';
 // Re-export all from commandregistry module
 export {
   // Enums and classes
   CommandPriority,
-  RateLimitExceededError,
   CommandRegistry,
   commandRegistry,
-  success,
   error,
-} from './commandregistry/index.js';
-
-export type {
-  // Conflict types
-  ConflictInfo,
-  RegisterOptions,
-  ConflictLogger,
-  // Rate limiting types
-  RateLimitConfig,
-  CommandRateLimitConfig,
-  RateLimitStatus,
-  // Subcommand types
-  SubcommandInfo,
-  SubcommandOptions,
-  Subcommand,
-  // CWD types
-  CwdHistoryEntry,
-  CwdManagerOptions,
-  CwdChangeEvent,  CwdChangeListener,
-  CwdValidationResult,
-  // Command types
-  CommandInfo,
-  ArgType,
-  CommandArg,
-  ValidationResult,
-  FlagDefinition,
-  ParsedArgs,
-  CommandResult,
-  CommandContext,
-  CommandHandler,
-  Command,
+  RateLimitExceededError,
+  success,
 } from './commandregistry/index.js';
 
 // Default export for backward compatibility

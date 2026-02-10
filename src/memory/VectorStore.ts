@@ -3,11 +3,10 @@
  * Extended with per-agent JSONL support (ported from AgentSwarm.psm1 lines 145-193)
  */
 
-import fs from 'fs/promises';
-import path from 'path';
-import { SwarmMemory, AgentRole } from '../types/index.js';
-import { loadFromFile, saveToFile, fileExists } from '../native/persistence.js';
-import { GEMINIHYDRA_DIR } from '../config/paths.config.js';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { loadFromFile, saveToFile } from '../native/persistence.js';
+import { type AgentRole, resolveAgentRoleSafe, type SwarmMemory } from '../types/index.js';
 
 /**
  * Memory entry for JSONL storage
@@ -45,14 +44,19 @@ export class VectorStore {
     await saveToFile(this.memoryPath, this.memories);
   }
 
-  async add(agent: AgentRole | string, type: SwarmMemory['type'], content: string, tags: string[] = []) {
+  async add(
+    agent: AgentRole | string,
+    type: SwarmMemory['type'],
+    content: string,
+    tags: string[] = [],
+  ) {
     const memory: SwarmMemory = {
       id: crypto.randomUUID(),
       timestamp: new Date().toISOString(),
-      agent: agent as AgentRole,  // String is acceptable as AgentRole is string literal union
+      agent: resolveAgentRoleSafe(agent as string),
       type,
       content,
-      tags
+      tags,
     };
     this.memories.push(memory);
     await this.save();
@@ -63,20 +67,20 @@ export class VectorStore {
   async search(query: string, limit: number = 5): Promise<SwarmMemory[]> {
     const terms = query.toLowerCase().split(' ');
 
-    const scored = this.memories.map(mem => {
+    const scored = this.memories.map((mem) => {
       let score = 0;
-      const text = (mem.content + ' ' + mem.tags.join(' ')).toLowerCase();
-      terms.forEach(term => {
+      const text = `${mem.content} ${mem.tags.join(' ')}`.toLowerCase();
+      terms.forEach((term) => {
         if (text.includes(term)) score++;
       });
       return { mem, score };
     });
 
     return scored
-      .filter(x => x.score > 0)
+      .filter((x) => x.score > 0)
       .sort((a, b) => b.score - a.score)
       .slice(0, limit)
-      .map(x => x.mem);
+      .map((x) => x.mem);
   }
 }
 
@@ -102,12 +106,7 @@ export class AgentVectorMemory {
    * Add memory entry (append-only JSONL)
    * Ported from PS1 lines 145-165
    */
-  async add(
-    agentName: string,
-    type: string,
-    content: string,
-    tags: string = ''
-  ): Promise<void> {
+  async add(agentName: string, type: string, content: string, tags: string = ''): Promise<void> {
     // Ensure directory exists
     await fs.mkdir(this.basePath, { recursive: true });
 
@@ -117,11 +116,11 @@ export class AgentVectorMemory {
       agent: agentName,
       type,
       content,
-      tags
+      tags,
     };
 
     const filePath = this.getFilePath(agentName);
-    await fs.appendFile(filePath, JSON.stringify(entry) + '\n');
+    await fs.appendFile(filePath, `${JSON.stringify(entry)}\n`);
   }
 
   /**
@@ -133,7 +132,7 @@ export class AgentVectorMemory {
     query: string,
     topK: number = 5,
     typeFilter?: string,
-    excludeType?: string
+    excludeType?: string,
   ): Promise<AgentMemoryEntry[]> {
     const filePath = this.getFilePath(agentName);
 
@@ -142,15 +141,15 @@ export class AgentVectorMemory {
       let memories = content
         .trim()
         .split('\n')
-        .filter(line => line.trim())
-        .map(line => JSON.parse(line) as AgentMemoryEntry);
+        .filter((line) => line.trim())
+        .map((line) => JSON.parse(line) as AgentMemoryEntry);
 
       // Apply type filters
       if (typeFilter) {
-        memories = memories.filter(m => m.type === typeFilter);
+        memories = memories.filter((m) => m.type === typeFilter);
       }
       if (excludeType) {
-        memories = memories.filter(m => m.type !== excludeType);
+        memories = memories.filter((m) => m.type !== excludeType);
       }
 
       // If no query, return latest
@@ -159,11 +158,14 @@ export class AgentVectorMemory {
       }
 
       // Keyword scoring (PS1 style)
-      const keywords = query.toLowerCase().split(/\s+/).filter(k => k.length > 2);
+      const keywords = query
+        .toLowerCase()
+        .split(/\s+/)
+        .filter((k) => k.length > 2);
 
-      const scored = memories.map(m => {
+      const scored = memories.map((m) => {
         let score = 0;
-        const text = (m.content + ' ' + m.tags).toLowerCase();
+        const text = `${m.content} ${m.tags}`.toLowerCase();
 
         for (const keyword of keywords) {
           if (text.includes(keyword)) score++;
@@ -178,11 +180,10 @@ export class AgentVectorMemory {
       });
 
       return scored
-        .filter(s => s.score > 0)
+        .filter((s) => s.score > 0)
         .sort((a, b) => b.score - a.score)
         .slice(0, topK)
-        .map(s => s.memory);
-
+        .map((s) => s.memory);
     } catch (error: any) {
       if (error.code === 'ENOENT') {
         return []; // File doesn't exist yet
@@ -198,7 +199,7 @@ export class AgentVectorMemory {
   async getContextual(
     agentName: string,
     query: string,
-    tokenLimit: number = 8192
+    tokenLimit: number = 8192,
   ): Promise<string> {
     const memories: any[] = [];
     let tokenCount = 0;
@@ -214,7 +215,7 @@ export class AgentVectorMemory {
         memories.push({
           type: mem.type,
           content: mem.content.substring(0, 500), // Truncate long content
-          timestamp: mem.timestamp
+          timestamp: mem.timestamp,
         });
         tokenCount += memTokens;
       }
@@ -238,8 +239,8 @@ export class AgentVectorMemory {
       return content
         .trim()
         .split('\n')
-        .filter(line => line.trim())
-        .map(line => JSON.parse(line) as AgentMemoryEntry);
+        .filter((line) => line.trim())
+        .map((line) => JSON.parse(line) as AgentMemoryEntry);
     } catch {
       return [];
     }
@@ -263,9 +264,7 @@ export class AgentVectorMemory {
   async listAgents(): Promise<string[]> {
     try {
       const files = await fs.readdir(this.basePath);
-      return files
-        .filter(f => f.endsWith('.jsonl'))
-        .map(f => f.replace('.jsonl', ''));
+      return files.filter((f) => f.endsWith('.jsonl')).map((f) => f.replace('.jsonl', ''));
     } catch {
       return [];
     }

@@ -7,10 +7,10 @@
  * Part of ConversationLayer refactoring - extracted from lines 27-156
  */
 
+import crypto from 'node:crypto';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import chalk from 'chalk';
-import crypto from 'crypto';
-import fs from 'fs/promises';
-import path from 'path';
 
 // ============================================================
 // Types & Interfaces
@@ -23,7 +23,7 @@ export interface ConversationTurn {
   content: string;
   intent?: string;
   entities?: Record<string, string>;
-  importance: number;  // 0-1 for pruning
+  importance: number; // 0-1 for pruning
 }
 
 export interface ConversationSession {
@@ -71,7 +71,7 @@ export class ConversationMemory {
       lastActivity: Date.now(),
       turns: [],
       context: {},
-      topics: []
+      topics: [],
     };
     this.sessions.set(sessionId, session);
     this.currentSessionId = sessionId;
@@ -79,7 +79,11 @@ export class ConversationMemory {
     return sessionId;
   }
 
-  addTurn(role: 'user' | 'assistant' | 'system', content: string, importance: number = 0.5): ConversationTurn {
+  addTurn(
+    role: 'user' | 'assistant' | 'system',
+    content: string,
+    importance: number = 0.5,
+  ): ConversationTurn {
     if (!this.currentSessionId) {
       this.startSession();
     }
@@ -90,7 +94,7 @@ export class ConversationMemory {
       timestamp: Date.now(),
       role,
       content,
-      importance
+      importance,
     };
 
     session.turns.push(turn);
@@ -119,7 +123,7 @@ export class ConversationMemory {
     if (!session) return '';
 
     const recentTurns = session.turns.slice(-maxTurns);
-    return recentTurns.map(t => `[${t.role}]: ${t.content}`).join('\n');
+    return recentTurns.map((t) => `[${t.role}]: ${t.content}`).join('\n');
   }
 
   getCurrentSession(): ConversationSession | undefined {
@@ -131,7 +135,7 @@ export class ConversationMemory {
     try {
       const data = {
         sessions: Object.fromEntries(this.sessions),
-        lastSaved: Date.now()
+        lastSaved: Date.now(),
       };
       await fs.writeFile(this.persistPath, JSON.stringify(data, null, 2));
     } catch (error: any) {
@@ -141,9 +145,9 @@ export class ConversationMemory {
 
   getSessionStats(): { sessions: number; totalTurns: number; currentTurns: number } {
     let totalTurns = 0;
-    this.sessions.forEach(s => totalTurns += s.turns.length);
+    this.sessions.forEach((s) => (totalTurns += s.turns.length));
     const currentTurns = this.currentSessionId
-      ? (this.sessions.get(this.currentSessionId)?.turns.length || 0)
+      ? this.sessions.get(this.currentSessionId)?.turns.length || 0
       : 0;
     return { sessions: this.sessions.size, totalTurns, currentTurns };
   }

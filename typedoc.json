@@ -2,12 +2,7 @@
   "$schema": "https://typedoc.org/schema.json",
   "entryPoints": ["src/index.ts"],
   "out": "docs/api",
-  "exclude": [
-    "**/node_modules/**",
-    "**/*.test.ts",
-    "**/*.spec.ts",
-    "GeminiGUI/**"
-  ],
+  "exclude": ["**/node_modules/**", "**/*.test.ts", "**/*.spec.ts", "GeminiGUI/**"],
   "tsconfig": "tsconfig.json",
   "name": "GeminiHydra API Documentation",
   "readme": "none",

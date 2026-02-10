@@ -10,10 +10,12 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import 'dotenv/config';
 import { GEMINI_MODELS } from '../../config/models.config.js';
 import { TEMPERATURE_PRESETS } from '../../config/temperatures.config.js';
+import type { TaskComplexity } from '../agent/types.js';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
-export type TaskComplexity = 'trivial' | 'simple' | 'medium' | 'complex' | 'critical';
+// Re-export for backwards compatibility (canonical definition is in agent/types.ts)
+export type { TaskComplexity } from '../agent/types.js';
 
 export interface ModelSelectionResult {
   model: string;
@@ -28,7 +30,7 @@ export async function classifyComplexity(taskText: string): Promise<TaskComplexi
   try {
     const classifier = genAI.getGenerativeModel({
       model: GEMINI_MODELS.FLASH,
-      generationConfig: { temperature: TEMPERATURE_PRESETS.PRECISE, maxOutputTokens: 20 }
+      generationConfig: { temperature: TEMPERATURE_PRESETS.PRECISE, maxOutputTokens: 20 },
     });
 
     const prompt = `Classify this task complexity. Reply with ONE word only: trivial, simple, medium, complex, or critical.
@@ -39,7 +41,7 @@ Complexity:`;
     const response = result.response.text().toLowerCase().trim();
 
     const validLevels: TaskComplexity[] = ['trivial', 'simple', 'medium', 'complex', 'critical'];
-    return validLevels.find(level => response.includes(level)) || 'medium';
+    return validLevels.find((level) => response.includes(level)) || 'medium';
   } catch {
     return 'medium';
   }
@@ -50,14 +52,14 @@ Complexity:`;
  */
 export function selectModelForTask(
   complexity: TaskComplexity,
-  agentType: string = 'general'
+  _agentType: string = 'general',
 ): ModelSelectionResult {
   const modelMap: Record<TaskComplexity, { model: string; reason: string }> = {
     trivial: { model: GEMINI_MODELS.FLASH, reason: 'Fast model for trivial tasks' },
     simple: { model: GEMINI_MODELS.FLASH, reason: 'Flash model for simple tasks' },
     medium: { model: GEMINI_MODELS.FLASH, reason: 'Balanced model for medium tasks' },
     complex: { model: GEMINI_MODELS.PRO, reason: 'Pro model for complex tasks' },
-    critical: { model: GEMINI_MODELS.PRO, reason: 'Best model for critical tasks' }
+    critical: { model: GEMINI_MODELS.PRO, reason: 'Best model for critical tasks' },
   };
 
   const selection = modelMap[complexity];

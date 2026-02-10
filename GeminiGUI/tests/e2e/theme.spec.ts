@@ -5,9 +5,9 @@
  */
 
 import { test as base, expect } from '@playwright/test';
-import { setupThemeTest } from '../fixtures/test-setup';
-import { ChatPage } from '../page-objects/ChatPage';
 import { SELECTORS, TIMEOUTS } from '../fixtures/test-data';
+import { setupThemeTest } from '../fixtures/test-setup';
+import type { ChatPage } from '../page-objects/ChatPage';
 
 // Theme tests need special setup with localStorage clearing
 // Using manual setup instead of fixtures
@@ -46,9 +46,12 @@ test.describe('Theme Toggle', () => {
 
   test('should persist theme preference', async ({ page }) => {
     // Toggle to light theme
-    const themeButton = page.locator('button').filter({
-      has: page.locator(`${SELECTORS.sunIcon}, ${SELECTORS.moonIcon}`),
-    }).first();
+    const themeButton = page
+      .locator('button')
+      .filter({
+        has: page.locator(`${SELECTORS.sunIcon}, ${SELECTORS.moonIcon}`),
+      })
+      .first();
 
     await themeButton.click();
 
@@ -76,18 +79,21 @@ test.describe('Theme Toggle', () => {
     const hasLogo = await logo.isVisible().catch(() => false);
 
     if (hasLogo) {
-      const initialSrc = await logo.getAttribute('src');
+      const _initialSrc = await logo.getAttribute('src');
 
       // Toggle theme
-      const themeButton = page.locator('button').filter({
-        has: page.locator(`${SELECTORS.sunIcon}, ${SELECTORS.moonIcon}`),
-      }).first();
+      const themeButton = page
+        .locator('button')
+        .filter({
+          has: page.locator(`${SELECTORS.sunIcon}, ${SELECTORS.moonIcon}`),
+        })
+        .first();
 
       await themeButton.click();
       await page.waitForTimeout(200);
 
       // Check if logo changed (some apps have separate dark/light logos)
-      const newSrc = await logo.getAttribute('src');
+      const _newSrc = await logo.getAttribute('src');
 
       // Logo might change or stay same depending on implementation
       // Just verify the toggle worked and logo is still visible

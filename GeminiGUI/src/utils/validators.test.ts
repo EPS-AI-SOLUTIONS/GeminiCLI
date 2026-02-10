@@ -6,23 +6,23 @@
  * Tests cover normal cases, edge cases, and security scenarios.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  isValidUrl,
+  containsDangerousPatterns,
+  escapeForShell,
+  hasBlockedExtension,
+  isBlockedPath,
+  isGeminiApiKey,
   isLocalhostUrl,
   isValidApiKey,
-  isGeminiApiKey,
+  isValidMessageRole,
+  isValidModelName,
+  isValidProvider,
+  isValidSessionId,
+  isValidTheme,
+  isValidUrl,
   sanitizeContent,
   sanitizeTitle,
-  escapeForShell,
-  containsDangerousPatterns,
-  isBlockedPath,
-  hasBlockedExtension,
-  isValidSessionId,
-  isValidModelName,
-  isValidMessageRole,
-  isValidProvider,
-  isValidTheme,
 } from './validators';
 
 // ============================================================================
@@ -181,20 +181,20 @@ describe('isGeminiApiKey', () => {
     });
 
     it('should require exactly 39 characters', () => {
-      const thirtyNineChars = 'AIza' + 'a'.repeat(35);
+      const thirtyNineChars = `AIza${'a'.repeat(35)}`;
       expect(isGeminiApiKey(thirtyNineChars)).toBe(true);
     });
   });
 
   describe('invalid Gemini API keys', () => {
     it('should reject keys not starting with AIza', () => {
-      expect(isGeminiApiKey('AIza' + 'a'.repeat(34))).toBe(false); // 38 chars
-      expect(isGeminiApiKey('GCP' + 'a'.repeat(36))).toBe(false);
+      expect(isGeminiApiKey(`AIza${'a'.repeat(34)}`)).toBe(false); // 38 chars
+      expect(isGeminiApiKey(`GCP${'a'.repeat(36)}`)).toBe(false);
     });
 
     it('should reject wrong length', () => {
-      expect(isGeminiApiKey('AIza' + 'a'.repeat(34))).toBe(false); // 38 chars
-      expect(isGeminiApiKey('AIza' + 'a'.repeat(36))).toBe(false); // 40 chars
+      expect(isGeminiApiKey(`AIza${'a'.repeat(34)}`)).toBe(false); // 38 chars
+      expect(isGeminiApiKey(`AIza${'a'.repeat(36)}`)).toBe(false); // 40 chars
     });
 
     it('should reject empty string', () => {

@@ -7,7 +7,16 @@
   "mcpServers": {
     "ollama": {
       "command": "cmd",
-      "args": ["/c", "cd", "/d", "C:\\Users\\BIURODOM\\Desktop\\GeminiHydra", "&&", "npx", "tsx", "src/mcp/servers/OllamaMCPServer.ts"],
+      "args": [
+        "/c",
+        "cd",
+        "/d",
+        "C:\\Users\\BIURODOM\\Desktop\\GeminiHydra",
+        "&&",
+        "npx",
+        "tsx",
+        "src/mcp/servers/OllamaMCPServer.ts"
+      ],
       "env": {
         "OLLAMA_HOST": "http://127.0.0.1:11434"
       },
@@ -15,7 +24,15 @@
     },
     "serena": {
       "command": "cmd",
-      "args": ["/c", "uvx", "--from", "git+https://github.com/oraios/serena", "serena", "start-mcp-server", "--project-from-cwd"],
+      "args": [
+        "/c",
+        "uvx",
+        "--from",
+        "git+https://github.com/oraios/serena",
+        "serena",
+        "start-mcp-server",
+        "--project-from-cwd"
+      ],
       "timeout": 120000
     },
     "desktop-commander": {
@@ -33,12 +50,18 @@
     },
     "filesystem": {
       "command": "cmd",
-      "args": ["/c", "cd mcp && node node_modules/@modelcontextprotocol/server-filesystem/dist/index.js . ../"],
+      "args": [
+        "/c",
+        "cd mcp && node node_modules/@modelcontextprotocol/server-filesystem/dist/index.js . ../"
+      ],
       "timeout": 60000
     },
     "memory": {
       "command": "cmd",
-      "args": ["/c", "cd mcp && node node_modules/@modelcontextprotocol/server-memory/dist/index.js"],
+      "args": [
+        "/c",
+        "cd mcp && node node_modules/@modelcontextprotocol/server-memory/dist/index.js"
+      ],
       "timeout": 60000
     },
     "sequential-thinking": {
@@ -53,7 +76,16 @@
     }
   },
   "mcp": {
-    "allowed": ["ollama", "serena", "desktop-commander", "playwright", "filesystem", "memory", "sequential-thinking", "context7"],
+    "allowed": [
+      "ollama",
+      "serena",
+      "desktop-commander",
+      "playwright",
+      "filesystem",
+      "memory",
+      "sequential-thinking",
+      "context7"
+    ],
     "parallelToolCalls": true
   },
   "model": {

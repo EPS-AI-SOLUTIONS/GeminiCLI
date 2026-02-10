@@ -3,7 +3,7 @@
  * Semantic caching with embedding-based similarity matching
  */
 
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 import chalk from 'chalk';
 
 export interface CacheEntry {
@@ -33,13 +33,13 @@ export class SemanticCache {
       const word = words[i];
       const hash = crypto.createHash('md5').update(word).digest();
       for (let j = 0; j < Math.min(hash.length, 128); j++) {
-        embedding[j] += hash[j] / 255 * (1 / (i + 1)); // Decay by position
+        embedding[j] += (hash[j] / 255) * (1 / (i + 1)); // Decay by position
       }
     }
 
     // Normalize
     const magnitude = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0));
-    return embedding.map(v => v / (magnitude || 1));
+    return embedding.map((v) => v / (magnitude || 1));
   }
 
   /**
@@ -98,8 +98,9 @@ export class SemanticCache {
   async set(query: string, response: string): Promise<void> {
     // Evict oldest entries if at capacity
     if (this.cache.size >= this.maxSize) {
-      const oldest = [...this.cache.entries()]
-        .sort((a, b) => a[1].timestamp.getTime() - b[1].timestamp.getTime())[0];
+      const oldest = [...this.cache.entries()].sort(
+        (a, b) => a[1].timestamp.getTime() - b[1].timestamp.getTime(),
+      )[0];
       if (oldest) this.cache.delete(oldest[0]);
     }
 
@@ -109,7 +110,7 @@ export class SemanticCache {
       queryEmbedding: this.generateEmbedding(query),
       response,
       timestamp: new Date(),
-      hitCount: 0
+      hitCount: 0,
     });
 
     console.log(chalk.gray(`[Cache] Stored (size: ${this.cache.size})`));

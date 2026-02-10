@@ -20,7 +20,7 @@ export class AppError extends Error {
       error: this.name,
       message: this.message,
       code: this.code,
-      statusCode: this.statusCode
+      statusCode: this.statusCode,
     };
   }
 }
@@ -37,7 +37,7 @@ export class ValidationError extends AppError {
   toJSON() {
     return {
       ...super.toJSON(),
-      field: this.field
+      field: this.field,
     };
   }
 }
@@ -56,7 +56,7 @@ export class ToolExecutionError extends AppError {
     return {
       ...super.toJSON(),
       toolName: this.toolName,
-      details: this.details
+      details: this.details,
     };
   }
 }
@@ -73,7 +73,7 @@ export class TimeoutError extends AppError {
   toJSON() {
     return {
       ...super.toJSON(),
-      timeoutMs: this.timeoutMs
+      timeoutMs: this.timeoutMs,
     };
   }
 }
@@ -104,5 +104,5 @@ export default {
   ToolExecutionError,
   TimeoutError,
   NotFoundError,
-  PermissionError
+  PermissionError,
 };

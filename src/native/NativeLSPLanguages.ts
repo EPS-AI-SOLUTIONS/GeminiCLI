@@ -61,7 +61,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsGoToDefinition: true,
     supportsFindReferences: true,
     supportsRename: true,
-    supportsDocumentSymbols: true
+    supportsDocumentSymbols: true,
   },
   {
     languageId: 'typescriptreact',
@@ -74,7 +74,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsGoToDefinition: true,
     supportsFindReferences: true,
     supportsRename: true,
-    supportsDocumentSymbols: true
+    supportsDocumentSymbols: true,
   },
   {
     languageId: 'javascript',
@@ -87,7 +87,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsGoToDefinition: true,
     supportsFindReferences: true,
     supportsRename: true,
-    supportsDocumentSymbols: true
+    supportsDocumentSymbols: true,
   },
   {
     languageId: 'javascriptreact',
@@ -100,7 +100,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsGoToDefinition: true,
     supportsFindReferences: true,
     supportsRename: true,
-    supportsDocumentSymbols: true
+    supportsDocumentSymbols: true,
   },
   {
     languageId: 'vue',
@@ -113,7 +113,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsGoToDefinition: true,
     supportsFindReferences: true,
     supportsRename: true,
-    supportsDocumentSymbols: true
+    supportsDocumentSymbols: true,
   },
 
   // ========================================================
@@ -130,15 +130,15 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
       python: {
         analysis: {
           autoSearchPaths: true,
-          useLibraryCodeForTypes: true
-        }
-      }
+          useLibraryCodeForTypes: true,
+        },
+      },
     },
     supportsWorkspaceSymbols: true,
     supportsGoToDefinition: true,
     supportsFindReferences: true,
     supportsRename: true,
-    supportsDocumentSymbols: true
+    supportsDocumentSymbols: true,
   },
 
   // ========================================================
@@ -154,7 +154,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsFindReferences: true,
     supportsRename: true,
     supportsDocumentSymbols: true,
-    installNotes: 'Install via rustup: rustup component add rust-analyzer'
+    installNotes: 'Install via rustup: rustup component add rust-analyzer',
   },
 
   // ========================================================
@@ -170,7 +170,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsFindReferences: true,
     supportsRename: true,
     supportsDocumentSymbols: true,
-    installNotes: 'Install via: go install golang.org/x/tools/gopls@latest'
+    installNotes: 'Install via: go install golang.org/x/tools/gopls@latest',
   },
 
   // ========================================================
@@ -186,7 +186,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsFindReferences: true,
     supportsRename: true,
     supportsDocumentSymbols: true,
-    installNotes: 'Install Eclipse JDT Language Server'
+    installNotes: 'Install Eclipse JDT Language Server',
   },
   {
     languageId: 'kotlin',
@@ -198,7 +198,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsFindReferences: true,
     supportsRename: true,
     supportsDocumentSymbols: true,
-    installNotes: 'Install from https://github.com/fwcd/kotlin-language-server'
+    installNotes: 'Install from https://github.com/fwcd/kotlin-language-server',
   },
   {
     languageId: 'scala',
@@ -210,7 +210,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsFindReferences: true,
     supportsRename: true,
     supportsDocumentSymbols: true,
-    installNotes: 'Install Metals via coursier'
+    installNotes: 'Install Metals via coursier',
   },
   {
     languageId: 'groovy',
@@ -221,7 +221,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsGoToDefinition: true,
     supportsFindReferences: true,
     supportsRename: false,
-    supportsDocumentSymbols: true
+    supportsDocumentSymbols: true,
   },
 
   // ========================================================
@@ -238,7 +238,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsFindReferences: true,
     supportsRename: true,
     supportsDocumentSymbols: true,
-    installNotes: 'Install OmniSharp from https://github.com/OmniSharp/omnisharp-roslyn'
+    installNotes: 'Install OmniSharp from https://github.com/OmniSharp/omnisharp-roslyn',
   },
   {
     languageId: 'fsharp',
@@ -250,7 +250,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsFindReferences: true,
     supportsRename: true,
     supportsDocumentSymbols: true,
-    installNotes: 'Install via: dotnet tool install -g fsautocomplete'
+    installNotes: 'Install via: dotnet tool install -g fsautocomplete',
   },
 
   // ========================================================
@@ -266,7 +266,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsFindReferences: true,
     supportsRename: true,
     supportsDocumentSymbols: true,
-    installNotes: 'Install clangd from LLVM'
+    installNotes: 'Install clangd from LLVM',
   },
   {
     languageId: 'cpp',
@@ -278,7 +278,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsFindReferences: true,
     supportsRename: true,
     supportsDocumentSymbols: true,
-    installNotes: 'Install clangd from LLVM'
+    installNotes: 'Install clangd from LLVM',
   },
 
   // ========================================================
@@ -295,7 +295,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsGoToDefinition: true,
     supportsFindReferences: true,
     supportsRename: true,
-    supportsDocumentSymbols: true
+    supportsDocumentSymbols: true,
   },
   {
     languageId: 'ruby',
@@ -307,7 +307,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsFindReferences: true,
     supportsRename: false,
     supportsDocumentSymbols: true,
-    installNotes: 'Install via: gem install ruby-lsp'
+    installNotes: 'Install via: gem install ruby-lsp',
   },
 
   // ========================================================
@@ -323,7 +323,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsFindReferences: true,
     supportsRename: false,
     supportsDocumentSymbols: true,
-    installNotes: 'Install ElixirLS from https://github.com/elixir-lsp/elixir-ls'
+    installNotes: 'Install ElixirLS from https://github.com/elixir-lsp/elixir-ls',
   },
   {
     languageId: 'erlang',
@@ -334,7 +334,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsGoToDefinition: true,
     supportsFindReferences: true,
     supportsRename: false,
-    supportsDocumentSymbols: true
+    supportsDocumentSymbols: true,
   },
   {
     languageId: 'haskell',
@@ -347,7 +347,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsFindReferences: true,
     supportsRename: true,
     supportsDocumentSymbols: true,
-    installNotes: 'Install via ghcup'
+    installNotes: 'Install via ghcup',
   },
   {
     languageId: 'clojure',
@@ -358,7 +358,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsGoToDefinition: true,
     supportsFindReferences: true,
     supportsRename: true,
-    supportsDocumentSymbols: true
+    supportsDocumentSymbols: true,
   },
 
   // ========================================================
@@ -374,7 +374,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsFindReferences: true,
     supportsRename: false,
     supportsDocumentSymbols: true,
-    installNotes: 'Included with Xcode'
+    installNotes: 'Included with Xcode',
   },
   {
     languageId: 'dart',
@@ -387,7 +387,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsFindReferences: true,
     supportsRename: true,
     supportsDocumentSymbols: true,
-    installNotes: 'Included with Dart SDK'
+    installNotes: 'Included with Dart SDK',
   },
 
   // ========================================================
@@ -402,7 +402,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsGoToDefinition: true,
     supportsFindReferences: true,
     supportsRename: true,
-    supportsDocumentSymbols: true
+    supportsDocumentSymbols: true,
   },
   {
     languageId: 'perl',
@@ -414,7 +414,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsGoToDefinition: true,
     supportsFindReferences: false,
     supportsRename: false,
-    supportsDocumentSymbols: true
+    supportsDocumentSymbols: true,
   },
   {
     languageId: 'r',
@@ -426,19 +426,24 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsGoToDefinition: true,
     supportsFindReferences: true,
     supportsRename: false,
-    supportsDocumentSymbols: true
+    supportsDocumentSymbols: true,
   },
   {
     languageId: 'julia',
     displayName: 'Julia',
     extensions: ['.jl'],
     serverCommand: 'julia',
-    serverArgs: ['--startup-file=no', '--history-file=no', '-e', 'using LanguageServer; runserver()'],
+    serverArgs: [
+      '--startup-file=no',
+      '--history-file=no',
+      '-e',
+      'using LanguageServer; runserver()',
+    ],
     supportsWorkspaceSymbols: true,
     supportsGoToDefinition: true,
     supportsFindReferences: true,
     supportsRename: true,
-    supportsDocumentSymbols: true
+    supportsDocumentSymbols: true,
   },
 
   // ========================================================
@@ -455,19 +460,24 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsGoToDefinition: true,
     supportsFindReferences: true,
     supportsRename: false,
-    supportsDocumentSymbols: true
+    supportsDocumentSymbols: true,
   },
   {
     languageId: 'powershell',
     displayName: 'PowerShell',
     extensions: ['.ps1', '.psm1', '.psd1'],
     serverCommand: 'pwsh',
-    serverArgs: ['-NoLogo', '-NoProfile', '-Command', 'Import-Module PowerShellEditorServices; Start-EditorServices'],
+    serverArgs: [
+      '-NoLogo',
+      '-NoProfile',
+      '-Command',
+      'Import-Module PowerShellEditorServices; Start-EditorServices',
+    ],
     supportsWorkspaceSymbols: true,
     supportsGoToDefinition: true,
     supportsFindReferences: true,
     supportsRename: true,
-    supportsDocumentSymbols: true
+    supportsDocumentSymbols: true,
   },
 
   // ========================================================
@@ -483,7 +493,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsFindReferences: true,
     supportsRename: true,
     supportsDocumentSymbols: true,
-    installNotes: 'Install from https://github.com/zigtools/zls'
+    installNotes: 'Install from https://github.com/zigtools/zls',
   },
   {
     languageId: 'nim',
@@ -495,7 +505,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsFindReferences: false,
     supportsRename: false,
     supportsDocumentSymbols: true,
-    installNotes: 'Install via: nimble install nimlsp'
+    installNotes: 'Install via: nimble install nimlsp',
   },
   {
     languageId: 'pascal',
@@ -506,7 +516,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsGoToDefinition: true,
     supportsFindReferences: true,
     supportsRename: false,
-    supportsDocumentSymbols: true
+    supportsDocumentSymbols: true,
   },
   {
     languageId: 'fortran',
@@ -518,7 +528,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsFindReferences: false,
     supportsRename: true,
     supportsDocumentSymbols: true,
-    pipPackage: 'fortran-language-server'
+    pipPackage: 'fortran-language-server',
   },
 
   // ========================================================
@@ -535,7 +545,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsGoToDefinition: false,
     supportsFindReferences: false,
     supportsRename: false,
-    supportsDocumentSymbols: true
+    supportsDocumentSymbols: true,
   },
   {
     languageId: 'toml',
@@ -547,7 +557,7 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsGoToDefinition: false,
     supportsFindReferences: false,
     supportsRename: false,
-    supportsDocumentSymbols: true
+    supportsDocumentSymbols: true,
   },
   {
     languageId: 'markdown',
@@ -558,8 +568,8 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
     supportsGoToDefinition: true,
     supportsFindReferences: true,
     supportsRename: false,
-    supportsDocumentSymbols: true
-  }
+    supportsDocumentSymbols: true,
+  },
 ];
 
 // ============================================================
@@ -570,19 +580,15 @@ export const LANGUAGE_SERVERS: LanguageServerConfig[] = [
  * Get language config by extension
  */
 export function getLanguageByExtension(ext: string): LanguageServerConfig | undefined {
-  const normalizedExt = ext.startsWith('.') ? ext : '.' + ext;
-  return LANGUAGE_SERVERS.find(lang =>
-    lang.extensions.includes(normalizedExt.toLowerCase())
-  );
+  const normalizedExt = ext.startsWith('.') ? ext : `.${ext}`;
+  return LANGUAGE_SERVERS.find((lang) => lang.extensions.includes(normalizedExt.toLowerCase()));
 }
 
 /**
  * Get language config by languageId
  */
 export function getLanguageById(id: string): LanguageServerConfig | undefined {
-  return LANGUAGE_SERVERS.find(lang =>
-    lang.languageId.toLowerCase() === id.toLowerCase()
-  );
+  return LANGUAGE_SERVERS.find((lang) => lang.languageId.toLowerCase() === id.toLowerCase());
 }
 
 /**
@@ -602,7 +608,7 @@ export function getAllSupportedExtensions(): string[] {
  * Get all language IDs
  */
 export function getAllLanguageIds(): string[] {
-  return LANGUAGE_SERVERS.map(lang => lang.languageId);
+  return LANGUAGE_SERVERS.map((lang) => lang.languageId);
 }
 
 /**
@@ -624,18 +630,23 @@ export function detectLanguageFromPath(filePath: string): LanguageServerConfig |
  * Get languages that support a capability
  */
 export function getLanguagesWithCapability(
-  capability: 'workspaceSymbols' | 'goToDefinition' | 'findReferences' | 'rename' | 'documentSymbols'
+  capability:
+    | 'workspaceSymbols'
+    | 'goToDefinition'
+    | 'findReferences'
+    | 'rename'
+    | 'documentSymbols',
 ): LanguageServerConfig[] {
   const capabilityMap: Record<string, keyof LanguageServerConfig> = {
     workspaceSymbols: 'supportsWorkspaceSymbols',
     goToDefinition: 'supportsGoToDefinition',
     findReferences: 'supportsFindReferences',
     rename: 'supportsRename',
-    documentSymbols: 'supportsDocumentSymbols'
+    documentSymbols: 'supportsDocumentSymbols',
   };
 
   const key = capabilityMap[capability];
-  return LANGUAGE_SERVERS.filter(lang => lang[key] === true);
+  return LANGUAGE_SERVERS.filter((lang) => lang[key] === true);
 }
 
 /**
@@ -651,11 +662,11 @@ export function getLanguageStats(): {
 } {
   return {
     total: LANGUAGE_SERVERS.length,
-    withWorkspaceSymbols: LANGUAGE_SERVERS.filter(l => l.supportsWorkspaceSymbols).length,
-    withGoToDefinition: LANGUAGE_SERVERS.filter(l => l.supportsGoToDefinition).length,
-    withFindReferences: LANGUAGE_SERVERS.filter(l => l.supportsFindReferences).length,
-    withRename: LANGUAGE_SERVERS.filter(l => l.supportsRename).length,
-    withDocumentSymbols: LANGUAGE_SERVERS.filter(l => l.supportsDocumentSymbols).length
+    withWorkspaceSymbols: LANGUAGE_SERVERS.filter((l) => l.supportsWorkspaceSymbols).length,
+    withGoToDefinition: LANGUAGE_SERVERS.filter((l) => l.supportsGoToDefinition).length,
+    withFindReferences: LANGUAGE_SERVERS.filter((l) => l.supportsFindReferences).length,
+    withRename: LANGUAGE_SERVERS.filter((l) => l.supportsRename).length,
+    withDocumentSymbols: LANGUAGE_SERVERS.filter((l) => l.supportsDocumentSymbols).length,
   };
 }
 

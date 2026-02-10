@@ -10,16 +10,19 @@
  * - Code files with syntax highlighting
  */
 
-import fs from 'fs/promises';
-import path from 'path';
-import chalk from 'chalk';
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { exec } from 'node:child_process';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { promisify } from 'node:util';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import chalk from 'chalk';
 import 'dotenv/config';
-import { NativeFileSystem, createFileSystem } from '../native/nativefilesystem/NativeFileSystem.js';
-import { FileInfo, FileType } from '../native/types.js';
 import { GEMINI_MODELS } from '../config/models.config.js';
+import {
+  createFileSystem,
+  type NativeFileSystem,
+} from '../native/nativefilesystem/NativeFileSystem.js';
+import type { FileInfo, FileType } from '../native/types.js';
 
 const execAsync = promisify(exec);
 
@@ -85,7 +88,7 @@ export class FileHandlers {
     return {
       path: filepath,
       name: path.basename(filepath),
-      type: this.detectType(filepath),
+      type: FileHandlers.detectType(filepath),
       size: stats.size,
       extension: ext,
     };
@@ -95,26 +98,26 @@ export class FileHandlers {
    * Extract content from any file
    */
   static async extractContent(filepath: string): Promise<ExtractedContent> {
-    const type = this.detectType(filepath);
+    const type = FileHandlers.detectType(filepath);
 
     switch (type) {
       case 'pdf':
-        return this.extractPDF(filepath);
+        return FileHandlers.extractPDF(filepath);
       case 'docx':
-        return this.extractDocx(filepath);
+        return FileHandlers.extractDocx(filepath);
       case 'image':
-        return this.analyzeImage(filepath);
+        return FileHandlers.analyzeImage(filepath);
       case 'csv':
-        return this.extractCSV(filepath);
+        return FileHandlers.extractCSV(filepath);
       case 'json':
-        return this.extractJSON(filepath);
+        return FileHandlers.extractJSON(filepath);
       case 'yaml':
-        return this.extractYAML(filepath);
+        return FileHandlers.extractYAML(filepath);
       case 'code':
       case 'text':
-        return this.extractText(filepath);
+        return FileHandlers.extractText(filepath);
       default:
-        return this.extractText(filepath);
+        return FileHandlers.extractText(filepath);
     }
   }
 
@@ -126,7 +129,9 @@ export class FileHandlers {
       // Try using pdf-parse via dynamic import or command line
       // Fallback: Use pdftotext if available (poppler-utils)
       try {
-        const { stdout } = await execAsync(`pdftotext "${filepath}" -`, { maxBuffer: 10 * 1024 * 1024 });
+        const { stdout } = await execAsync(`pdftotext "${filepath}" -`, {
+          maxBuffer: 10 * 1024 * 1024,
+        });
         return { text: stdout };
       } catch {
         // Try alternative: pdf.js or read as binary and use Gemini
@@ -159,7 +164,9 @@ export class FileHandlers {
     try {
       // Use mammoth or similar via command line
       // Fallback: Basic XML extraction from .docx (it's a zip file)
-      const { stdout } = await execAsync(`unzip -p "${filepath}" word/document.xml 2>/dev/null | sed 's/<[^>]*>//g'`);
+      const { stdout } = await execAsync(
+        `unzip -p "${filepath}" word/document.xml 2>/dev/null | sed 's/<[^>]*>//g'`,
+      );
       return { text: stdout.trim() };
     } catch {
       // Try using Gemini
@@ -206,7 +213,9 @@ export class FileHandlers {
       const mimeType = mimeTypes[ext] || 'image/png';
 
       const model = genAI.getGenerativeModel({ model: GEMINI_MODELS.FLASH });
-      const analysisPrompt = prompt || 'Describe this image in detail. If it contains text, extract it. If it shows code or a UI, describe what you see.';
+      const analysisPrompt =
+        prompt ||
+        'Describe this image in detail. If it contains text, extract it. If it shows code or a UI, describe what you see.';
 
       const result = await model.generateContent([
         analysisPrompt,
@@ -233,20 +242,21 @@ export class FileHandlers {
   static async extractCSV(filepath: string): Promise<ExtractedContent> {
     try {
       const content = await fs.readFile(filepath, 'utf-8');
-      const lines = content.split('\n').filter(l => l.trim());
+      const lines = content.split('\n').filter((l) => l.trim());
 
       const tables: any[][] = [];
-      const headers = lines[0]?.split(',').map(h => h.trim());
+      const headers = lines[0]?.split(',').map((h) => h.trim());
 
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim());
+        const values = lines[i].split(',').map((v) => v.trim());
         tables.push(values);
       }
 
       return {
-        text: `CSV with ${lines.length - 1} rows and ${headers?.length || 0} columns:\n` +
-              `Headers: ${headers?.join(', ')}\n` +
-              `Sample: ${tables[0]?.join(', ')}`,
+        text:
+          `CSV with ${lines.length - 1} rows and ${headers?.length || 0} columns:\n` +
+          `Headers: ${headers?.join(', ')}\n` +
+          `Sample: ${tables[0]?.join(', ')}`,
         tables: [headers || [], ...tables],
         metadata: {
           rows: tables.length,
@@ -267,7 +277,7 @@ export class FileHandlers {
       const content = await fs.readFile(filepath, 'utf-8');
       const data = JSON.parse(content);
 
-      const summary = this.summarizeJSON(data);
+      const summary = FileHandlers.summarizeJSON(data);
 
       return {
         text: summary,
@@ -286,13 +296,16 @@ export class FileHandlers {
 
     if (Array.isArray(data)) {
       if (data.length === 0) return '[]';
-      return `Array[${data.length}] of ${this.summarizeJSON(data[0], depth + 1)}`;
+      return `Array[${data.length}] of ${FileHandlers.summarizeJSON(data[0], depth + 1)}`;
     }
 
     if (typeof data === 'object' && data !== null) {
       const keys = Object.keys(data);
       if (keys.length === 0) return '{}';
-      const sample = keys.slice(0, 5).map(k => `${k}: ${typeof data[k]}`).join(', ');
+      const sample = keys
+        .slice(0, 5)
+        .map((k) => `${k}: ${typeof data[k]}`)
+        .join(', ');
       return `{${sample}${keys.length > 5 ? ', ...' : ''}}`;
     }
 
@@ -334,12 +347,12 @@ export class FileHandlers {
    */
   private static getFileSystem(filepath: string): NativeFileSystem {
     const rootDir = path.dirname(filepath);
-    if (!this.nativeFs || this.nativeFs.getRoot() !== rootDir) {
-      this.nativeFs = createFileSystem(rootDir, {
-        blockedPaths: [] // FileHandlers should read any file
+    if (!FileHandlers.nativeFs || FileHandlers.nativeFs.getRoot() !== rootDir) {
+      FileHandlers.nativeFs = createFileSystem(rootDir, {
+        blockedPaths: [], // FileHandlers should read any file
       });
     }
-    return this.nativeFs;
+    return FileHandlers.nativeFs;
   }
 
   /**
@@ -347,7 +360,7 @@ export class FileHandlers {
    * This is the canonical method for reading text files
    */
   static async readText(filepath: string): Promise<string> {
-    const nativeFs = this.getFileSystem(filepath);
+    const nativeFs = FileHandlers.getFileSystem(filepath);
     const filename = path.basename(filepath);
     return nativeFs.readFile(filename);
   }
@@ -359,7 +372,7 @@ export class FileHandlers {
   static async extractText(filepath: string): Promise<ExtractedContent> {
     try {
       // Delegate to NativeFileSystem via readText
-      const content = await this.readText(filepath);
+      const content = await FileHandlers.readText(filepath);
       return {
         text: content,
         metadata: {
@@ -380,7 +393,7 @@ export class FileHandlers {
 
     for (const filepath of filepaths) {
       console.log(chalk.gray(`Processing: ${path.basename(filepath)}...`));
-      const content = await this.extractContent(filepath);
+      const content = await FileHandlers.extractContent(filepath);
       results.set(filepath, content);
     }
 
@@ -396,7 +409,8 @@ export class FileHandlers {
     suggestions: string[];
     uiElements: string[];
   }> {
-    const content = await this.analyzeImage(filepath,
+    const content = await FileHandlers.analyzeImage(
+      filepath,
       `Analyze this screenshot for debugging purposes. Identify:
 1. Any error messages or warnings visible
 2. UI elements and their state
@@ -407,7 +421,7 @@ Format your response as:
 DESCRIPTION: <what you see>
 ERRORS: <list of errors>
 UI_ELEMENTS: <list of UI elements>
-SUGGESTIONS: <list of suggestions>`
+SUGGESTIONS: <list of suggestions>`,
     );
 
     // Parse the response
@@ -424,23 +438,26 @@ SUGGESTIONS: <list of suggestions>`
 
     const errorsMatch = text.match(/ERRORS:\s*(.+?)(?=UI_ELEMENTS:|SUGGESTIONS:|$)/s);
     if (errorsMatch) {
-      sections.errors = errorsMatch[1].split('\n')
-        .map(l => l.replace(/^[-*]\s*/, '').trim())
-        .filter(l => l);
+      sections.errors = errorsMatch[1]
+        .split('\n')
+        .map((l) => l.replace(/^[-*]\s*/, '').trim())
+        .filter((l) => l);
     }
 
     const uiMatch = text.match(/UI_ELEMENTS:\s*(.+?)(?=SUGGESTIONS:|$)/s);
     if (uiMatch) {
-      sections.uiElements = uiMatch[1].split('\n')
-        .map(l => l.replace(/^[-*]\s*/, '').trim())
-        .filter(l => l);
+      sections.uiElements = uiMatch[1]
+        .split('\n')
+        .map((l) => l.replace(/^[-*]\s*/, '').trim())
+        .filter((l) => l);
     }
 
     const suggestMatch = text.match(/SUGGESTIONS:\s*(.+?)$/s);
     if (suggestMatch) {
-      sections.suggestions = suggestMatch[1].split('\n')
-        .map(l => l.replace(/^[-*]\s*/, '').trim())
-        .filter(l => l);
+      sections.suggestions = suggestMatch[1]
+        .split('\n')
+        .map((l) => l.replace(/^[-*]\s*/, '').trim())
+        .filter((l) => l);
     }
 
     return sections;

@@ -5,7 +5,7 @@
  * and handler wrappers for normalizing sync/async behavior.
  */
 
-import { CommandContext, CommandResult, CommandHandler } from './CommandRegistry.js';
+import type { CommandContext, CommandHandler, CommandResult } from './CommandRegistry.js';
 
 // ============================================================================
 // Cancellation Token System
@@ -35,8 +35,12 @@ export class CancellationTokenSource {
   get token(): CancellationToken {
     const self = this;
     return {
-      get isCancelled() { return self._isCancelled; },
-      get reason() { return self._reason; },
+      get isCancelled() {
+        return self._isCancelled;
+      },
+      get reason() {
+        return self._reason;
+      },
       onCancel: (callback: (reason?: string) => void) => {
         if (this._isCancelled) {
           callback(this._reason);
@@ -48,7 +52,7 @@ export class CancellationTokenSource {
         if (this._isCancelled) {
           throw new CancellationError(this._reason);
         }
-      }
+      },
     };
   }
 
@@ -101,8 +105,12 @@ export class CancellationError extends Error {
    * Type guard for CancellationError
    */
   static isCancellationError(err: unknown): err is CancellationError {
-    return err instanceof CancellationError ||
-      (err instanceof Error && 'isCancellation' in err && (err as CancellationError).isCancellation === true);
+    return (
+      err instanceof CancellationError ||
+      (err instanceof Error &&
+        'isCancellation' in err &&
+        (err as CancellationError).isCancellation === true)
+    );
   }
 }
 
@@ -123,8 +131,10 @@ export class TimeoutError extends Error {
    * Type guard for TimeoutError
    */
   static isTimeoutError(err: unknown): err is TimeoutError {
-    return err instanceof TimeoutError ||
-      (err instanceof Error && 'isTimeout' in err && (err as TimeoutError).isTimeout === true);
+    return (
+      err instanceof TimeoutError ||
+      (err instanceof Error && 'isTimeout' in err && (err as TimeoutError).isTimeout === true)
+    );
   }
 }
 
@@ -189,7 +199,7 @@ export class ProgressReporter {
       total: this._total,
       message,
       percentage,
-      estimatedTimeRemaining
+      estimatedTimeRemaining,
     });
   }
 
@@ -304,19 +314,19 @@ export function wrapHandler(handler: AnyCommandHandler): CommandHandler {
           if (CancellationError.isCancellationError(err)) {
             return {
               success: false,
-              error: `Operation cancelled: ${err.message}`
+              error: `Operation cancelled: ${err.message}`,
             };
           }
           if (TimeoutError.isTimeoutError(err)) {
             return {
               success: false,
-              error: err.message
+              error: err.message,
             };
           }
           const errorMessage = err instanceof Error ? err.message : String(err);
           return {
             success: false,
-            error: errorMessage
+            error: errorMessage,
           };
         });
       }
@@ -328,19 +338,19 @@ export function wrapHandler(handler: AnyCommandHandler): CommandHandler {
       if (CancellationError.isCancellationError(err)) {
         return {
           success: false,
-          error: `Operation cancelled: ${err.message}`
+          error: `Operation cancelled: ${err.message}`,
         };
       }
       if (TimeoutError.isTimeoutError(err)) {
         return {
           success: false,
-          error: err.message
+          error: err.message,
         };
       }
       const errorMessage = err instanceof Error ? err.message : String(err);
       return {
         success: false,
-        error: errorMessage
+        error: errorMessage,
       };
     }
   };
@@ -350,7 +360,7 @@ export function wrapHandler(handler: AnyCommandHandler): CommandHandler {
  * Create a handler that supports cancellation
  */
 export function withCancellation(
-  handler: (ctx: CommandContext, token: CancellationToken) => Promise<CommandResult>
+  handler: (ctx: CommandContext, token: CancellationToken) => Promise<CommandResult>,
 ): ExtendedCommandHandler {
   return async (ctx: ExtendedCommandContext): Promise<CommandResult> => {
     const token = ctx.cancellationToken || new CancellationTokenSource().token;
@@ -363,7 +373,7 @@ export function withCancellation(
  */
 export function withProgress(
   handler: (ctx: CommandContext, progress: ProgressReporter) => Promise<CommandResult>,
-  totalSteps?: number
+  totalSteps?: number,
 ): ExtendedCommandHandler {
   return async (ctx: ExtendedCommandContext): Promise<CommandResult> => {
     const reporter = new ProgressReporter(ctx.onProgress, totalSteps);
@@ -375,8 +385,12 @@ export function withProgress(
  * Create a handler with both cancellation and progress support
  */
 export function withCancellationAndProgress(
-  handler: (ctx: CommandContext, token: CancellationToken, progress: ProgressReporter) => Promise<CommandResult>,
-  totalSteps?: number
+  handler: (
+    ctx: CommandContext,
+    token: CancellationToken,
+    progress: ProgressReporter,
+  ) => Promise<CommandResult>,
+  totalSteps?: number,
 ): ExtendedCommandHandler {
   return async (ctx: ExtendedCommandContext): Promise<CommandResult> => {
     const token = ctx.cancellationToken || new CancellationTokenSource().token;
@@ -407,7 +421,7 @@ export interface ExecuteOptions {
 export async function executeWithTimeout<T>(
   operation: () => Promise<T>,
   timeoutMs: number,
-  operationName?: string
+  operationName?: string,
 ): Promise<T> {
   return new Promise((resolve, reject) => {
     let isResolved = false;
@@ -445,7 +459,7 @@ export async function executeWithTimeout<T>(
  */
 export async function executeWithCancellation<T>(
   operation: (token: CancellationToken) => Promise<T>,
-  token: CancellationToken
+  token: CancellationToken,
 ): Promise<T> {
   // Check if already cancelled
   token.throwIfCancelled();
@@ -461,7 +475,7 @@ export async function executeWithTimeoutAndCancellation<T>(
   operation: (token: CancellationToken) => Promise<T>,
   token: CancellationToken,
   timeoutMs: number,
-  operationName?: string
+  operationName?: string,
 ): Promise<T> {
   return new Promise((resolve, reject) => {
     let isResolved = false;
@@ -487,7 +501,7 @@ export async function executeWithTimeoutAndCancellation<T>(
           throw new TimeoutError(timeoutMs, operationName);
         }
         token.throwIfCancelled();
-      }
+      },
     };
 
     // Listen for external cancellation
@@ -556,15 +570,9 @@ export async function retry<T>(
     backoffMultiplier?: number;
     token?: CancellationToken;
     onRetry?: (attempt: number, error: Error) => void;
-  } = {}
+  } = {},
 ): Promise<T> {
-  const {
-    maxAttempts = 3,
-    delayMs = 1000,
-    backoffMultiplier = 2,
-    token,
-    onRetry
-  } = options;
+  const { maxAttempts = 3, delayMs = 1000, backoffMultiplier = 2, token, onRetry } = options;
 
   let lastError: Error | undefined;
   let currentDelay = delayMs;
@@ -618,7 +626,7 @@ export class OperationTracker {
       cancel: () => {
         source.cancel();
         this.operations.delete(id);
-      }
+      },
     };
   }
 
@@ -651,7 +659,7 @@ export class OperationTracker {
    */
   cancelAll(reason?: string): number {
     let count = 0;
-    for (const [id, source] of this.operations) {
+    for (const [_id, source] of this.operations) {
       source.cancel(reason);
       count++;
     }
@@ -706,5 +714,5 @@ export default {
   executeWithTimeoutAndCancellation,
   delay,
   retry,
-  globalOperationTracker
+  globalOperationTracker,
 };

@@ -1,11 +1,10 @@
-import { defineConfig, loadEnv } from "vite";
-import react from "@vitejs/plugin-react";
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
-import viteCompression from 'vite-plugin-compression';
+import react from '@vitejs/plugin-react';
 import { visualizer } from 'rollup-plugin-visualizer';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import os from 'os';
+import { defineConfig, loadEnv } from 'vite';
+import viteCompression from 'vite-plugin-compression';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,24 +25,27 @@ export default defineConfig(async ({ mode }) => {
       react(),
       tailwindcss(),
       // Gzip compression for production
-      isProd && viteCompression({
-        algorithm: 'gzip',
-        threshold: 1024,
-        deleteOriginFile: false,
-      }),
+      isProd &&
+        viteCompression({
+          algorithm: 'gzip',
+          threshold: 1024,
+          deleteOriginFile: false,
+        }),
       // Brotli compression for production
-      isProd && viteCompression({
-        algorithm: 'brotliCompress',
-        threshold: 1024,
-        deleteOriginFile: false,
-      }),
+      isProd &&
+        viteCompression({
+          algorithm: 'brotliCompress',
+          threshold: 1024,
+          deleteOriginFile: false,
+        }),
       // Bundle size visualization (run with ANALYZE=true)
-      isAnalyze && visualizer({
-        filename: 'dist/bundle-stats.html',
-        open: true,
-        gzipSize: true,
-        brotliSize: true,
-      }),
+      isAnalyze &&
+        visualizer({
+          filename: 'dist/bundle-stats.html',
+          open: true,
+          gzipSize: true,
+          brotliSize: true,
+        }),
     ].filter(Boolean),
 
     resolve: {
@@ -51,12 +53,14 @@ export default defineConfig(async ({ mode }) => {
         // Shared types between frontend and backend
         '@shared': path.resolve(__dirname, '../shared'),
         // Test mocks for Tauri APIs
-        ...(isTest ? {
-          '@tauri-apps/api/core': mockPath,
-          '@tauri-apps/api/event': mockPath,
-          '@tauri-apps/api/window': mockPath,
-          '@tauri-apps/api/webviewWindow': mockPath,
-        } : {}),
+        ...(isTest
+          ? {
+              '@tauri-apps/api/core': mockPath,
+              '@tauri-apps/api/event': mockPath,
+              '@tauri-apps/api/window': mockPath,
+              '@tauri-apps/api/webviewWindow': mockPath,
+            }
+          : {}),
       },
     },
 
@@ -107,13 +111,13 @@ export default defineConfig(async ({ mode }) => {
       host: host || false,
       hmr: host
         ? {
-            protocol: "ws",
+            protocol: 'ws',
             host,
             port: 1421,
           }
         : undefined,
       watch: {
-        ignored: ["**/src-tauri/**"],
+        ignored: ['**/src-tauri/**'],
       },
       // Proxy for Ollama API (CORS bypass)
       proxy: {

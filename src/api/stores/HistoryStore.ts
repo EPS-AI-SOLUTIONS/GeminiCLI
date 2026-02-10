@@ -3,8 +3,8 @@
  * In-memory message history management
  */
 
-import type { Message, MessageRole, MessageMetadata } from '../types/index.js';
 import { API_CONFIG } from '../config/index.js';
+import type { Message, MessageMetadata, MessageRole } from '../types/index.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ID Generation
@@ -33,7 +33,7 @@ export class HistoryStore {
 
   constructor(
     maxSize: number = API_CONFIG.history.maxSize,
-    defaultLimit: number = API_CONFIG.history.defaultLimit
+    defaultLimit: number = API_CONFIG.history.defaultLimit,
   ) {
     this.maxSize = maxSize;
     this.defaultLimit = defaultLimit;
@@ -117,9 +117,7 @@ export class HistoryStore {
    */
   search(query: string): Message[] {
     const lowerQuery = query.toLowerCase();
-    return this.messages.filter((m) =>
-      m.content.toLowerCase().includes(lowerQuery)
-    );
+    return this.messages.filter((m) => m.content.toLowerCase().includes(lowerQuery));
   }
 
   /**

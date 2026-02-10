@@ -12,8 +12,8 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import chalk from 'chalk';
-import { geminiSemaphore } from '../TrafficControl.js';
 import { GEMINI_MODELS } from '../../config/models.config.js';
+import { geminiSemaphore } from '../TrafficControl.js';
 
 // Initialize Gemini client
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
@@ -84,35 +84,80 @@ export interface CoTOptions {
 const COMPLEXITY_INDICATORS = {
   extreme: {
     keywords: [
-      'zaimplementuj od podstaw', 'zaprojektuj system', 'architektura mikroserwisow',
-      'implement from scratch', 'design system', 'microservices architecture',
-      'pelna refaktoryzacja', 'full refactoring', 'enterprise', 'distributed system'
+      'zaimplementuj od podstaw',
+      'zaprojektuj system',
+      'architektura mikroserwisow',
+      'implement from scratch',
+      'design system',
+      'microservices architecture',
+      'pelna refaktoryzacja',
+      'full refactoring',
+      'enterprise',
+      'distributed system',
     ],
-    weight: 5
+    weight: 5,
   },
   high: {
     keywords: [
-      'zaimplementuj', 'zaprojektuj', 'zrefaktoryzuj', 'zoptymalizuj', 'zintegruj',
-      'implement', 'design', 'refactor', 'optimize', 'integrate', 'migrate',
-      'zlozony', 'complex', 'comprehensive', 'wieloetapowy', 'multi-step'
+      'zaimplementuj',
+      'zaprojektuj',
+      'zrefaktoryzuj',
+      'zoptymalizuj',
+      'zintegruj',
+      'implement',
+      'design',
+      'refactor',
+      'optimize',
+      'integrate',
+      'migrate',
+      'zlozony',
+      'complex',
+      'comprehensive',
+      'wieloetapowy',
+      'multi-step',
     ],
-    weight: 4
+    weight: 4,
   },
   medium: {
     keywords: [
-      'napraw', 'popraw', 'dodaj', 'rozszerz', 'zaktualizuj', 'przeanalizuj',
-      'fix', 'improve', 'add', 'extend', 'update', 'analyze', 'review',
-      'stworz', 'create', 'napisz', 'write', 'debug'
+      'napraw',
+      'popraw',
+      'dodaj',
+      'rozszerz',
+      'zaktualizuj',
+      'przeanalizuj',
+      'fix',
+      'improve',
+      'add',
+      'extend',
+      'update',
+      'analyze',
+      'review',
+      'stworz',
+      'create',
+      'napisz',
+      'write',
+      'debug',
     ],
-    weight: 2
+    weight: 2,
   },
   low: {
     keywords: [
-      'sprawdz', 'check', 'list', 'wylistuj', 'pokaz', 'show', 'find', 'znajdz',
-      'explain', 'wyjasni', 'describe', 'opisz'
+      'sprawdz',
+      'check',
+      'list',
+      'wylistuj',
+      'pokaz',
+      'show',
+      'find',
+      'znajdz',
+      'explain',
+      'wyjasni',
+      'describe',
+      'opisz',
     ],
-    weight: 1
-  }
+    weight: 1,
+  },
 };
 
 /**
@@ -127,8 +172,8 @@ export function detectComplexity(task: string): ComplexityLevel {
   let complexityScore = 0;
 
   // 1. Keyword analysis
-  for (const [level, config] of Object.entries(COMPLEXITY_INDICATORS)) {
-    const matchCount = config.keywords.filter(kw => lowercaseTask.includes(kw)).length;
+  for (const [_level, config] of Object.entries(COMPLEXITY_INDICATORS)) {
+    const matchCount = config.keywords.filter((kw) => lowercaseTask.includes(kw)).length;
     complexityScore += matchCount * config.weight;
   }
 
@@ -140,7 +185,7 @@ export function detectComplexity(task: string): ComplexityLevel {
   // 3. Multiple requirements detection
   const commaCount = (task.match(/,/g) || []).length;
   const conjunctionCount = (task.match(/\bi\b|\boraz\b|\band\b|\balso\b/gi) || []).length;
-  const numberedItems = (task.match(/\d+[\.\)]/g) || []).length;
+  const numberedItems = (task.match(/\d+[.)]/g) || []).length;
 
   if (numberedItems >= 5) complexityScore += 3;
   else if (numberedItems >= 3) complexityScore += 2;
@@ -149,15 +194,30 @@ export function detectComplexity(task: string): ComplexityLevel {
 
   // 4. Technical depth indicators
   const technicalTerms = [
-    'api', 'database', 'sql', 'typescript', 'javascript', 'python',
-    'async', 'await', 'promise', 'callback', 'regex', 'algorithm',
-    'performance', 'security', 'authentication', 'encryption'
+    'api',
+    'database',
+    'sql',
+    'typescript',
+    'javascript',
+    'python',
+    'async',
+    'await',
+    'promise',
+    'callback',
+    'regex',
+    'algorithm',
+    'performance',
+    'security',
+    'authentication',
+    'encryption',
   ];
-  const techTermCount = technicalTerms.filter(t => lowercaseTask.includes(t)).length;
+  const techTermCount = technicalTerms.filter((t) => lowercaseTask.includes(t)).length;
   complexityScore += Math.min(techTermCount, 3);
 
   // 5. Question complexity
-  const questionWords = (task.match(/\b(jak|dlaczego|kiedy|gdzie|how|why|when|where|what)\b/gi) || []).length;
+  const questionWords = (
+    task.match(/\b(jak|dlaczego|kiedy|gdzie|how|why|when|where|what)\b/gi) || []
+  ).length;
   if (questionWords >= 3) complexityScore += 2;
 
   // Map score to complexity level
@@ -177,7 +237,7 @@ export function getRecommendedSteps(complexity: ComplexityLevel): number {
     low: 2,
     medium: 3,
     high: 5,
-    extreme: 7
+    extreme: 7,
   };
   return stepMap[complexity];
 }
@@ -192,19 +252,19 @@ export function getRecommendedSteps(complexity: ComplexityLevel): number {
 function buildStepByStepPrompt(
   task: string,
   complexity: ComplexityLevel,
-  options: CoTOptions
+  options: CoTOptions,
 ): string {
   const lang = options.language || 'pl';
-  const trigger = options.stepByStepTrigger || (
-    lang === 'pl' ? 'Przemyslmy to krok po kroku.' : "Let's think step by step."
-  );
+  const trigger =
+    options.stepByStepTrigger ||
+    (lang === 'pl' ? 'Przemyslmy to krok po kroku.' : "Let's think step by step.");
 
   const recommendedSteps = getRecommendedSteps(complexity);
 
   const templates: Record<ComplexityLevel, Record<'pl' | 'en', string>> = {
     trivial: {
       pl: `ZADANIE: ${task}\n\nOdpowiedz bezposrednio i zwiezle.`,
-      en: `TASK: ${task}\n\nRespond directly and concisely.`
+      en: `TASK: ${task}\n\nRespond directly and concisely.`,
     },
     low: {
       pl: `${trigger}
@@ -222,7 +282,7 @@ TASK: ${task}
 
 RESPONSE STRUCTURE:
 1. Understanding: [what exactly needs to be done]
-2. Solution: [concrete answer/result]`
+2. Solution: [concrete answer/result]`,
     },
     medium: {
       pl: `${trigger}
@@ -246,7 +306,7 @@ RESPONSE STRUCTURE (use exactly ${recommendedSteps} steps):
 2. PLAN: Define solution strategy
 3. EXECUTION: Implement the solution
 
-Provide FINAL RESULT at the end.`
+Provide FINAL RESULT at the end.`,
     },
     high: {
       pl: `${trigger}
@@ -302,7 +362,7 @@ REQUIRED RESPONSE STRUCTURE (${recommendedSteps} steps):
 **FINAL RESULT:**
 [Complete, ready-to-use solution]
 
-IMPORTANT: Each step must contain CONCRETE content.`
+IMPORTANT: Each step must contain CONCRETE content.`,
     },
     extreme: {
       pl: `${trigger}
@@ -376,8 +436,8 @@ REQUIRED RESPONSE STRUCTURE (${recommendedSteps} steps):
 **DECISION SUMMARY:**
 [Key choices and their justification]
 
-CRITICAL: Each step must be detailed and substantive.`
-    }
+CRITICAL: Each step must be detailed and substantive.`,
+    },
   };
 
   return templates[complexity][lang];
@@ -389,7 +449,7 @@ CRITICAL: Each step must be detailed and substantive.`
 function buildMetaCognitivePrompt(
   originalTask: string,
   reasoning: ChainOfThoughtResult,
-  language: 'pl' | 'en'
+  language: 'pl' | 'en',
 ): string {
   const templates = {
     pl: `ZADANIE META-KOGNITYWNE: Ocen jakosc ponizszego rozumowania.
@@ -459,7 +519,7 @@ RESPONSE FORMAT (JSON only):
   "confidence": "<low|medium|high>",
   "assessment": "<detailed assessment in 2-3 sentences>",
   "improvements": ["<suggestion 1>", "<suggestion 2>"]
-}`
+}`,
   };
 
   return templates[language];
@@ -471,13 +531,17 @@ RESPONSE FORMAT (JSON only):
 function buildConsistencyVotingPrompt(
   task: string,
   paths: ChainOfThoughtResult[],
-  language: 'pl' | 'en'
+  language: 'pl' | 'en',
 ): string {
-  const pathsText = paths.map((p, i) => `
+  const pathsText = paths
+    .map(
+      (p, i) => `
 --- SCIEZKA ${i + 1} ---
 Kroki: ${p.steps.join(' -> ')}
 Odpowiedz: ${p.finalAnswer}
----`).join('\n');
+---`,
+    )
+    .join('\n');
 
   const templates = {
     pl: `ZADANIE WYBORU NAJLEPSZEJ SCIEZKI ROZUMOWANIA
@@ -515,7 +579,7 @@ RESPONSE FORMAT (JSON only):
   "reasoning": "<why this path is the best>",
   "commonElements": ["<common elements between paths>"],
   "divergencePoints": ["<where paths diverge>"]
-}`
+}`,
   };
 
   return templates[language];
@@ -530,7 +594,7 @@ RESPONSE FORMAT (JSON only):
  */
 export async function chainOfThought(
   task: string,
-  context: string = ''
+  context: string = '',
 ): Promise<ChainOfThoughtResult> {
   console.log(chalk.magenta('[CoT] Activating Chain-of-Thought reasoning...'));
 
@@ -561,24 +625,26 @@ Odpowiadaj PO POLSKU. Zwroc TYLKO JSON.`;
     const response = await geminiSemaphore.withPermit(async () => {
       const model = genAI.getGenerativeModel({
         model: INTELLIGENCE_MODEL,
-        generationConfig: { temperature: 0.2, maxOutputTokens: 4096 }
+        generationConfig: { temperature: 0.2, maxOutputTokens: 4096 },
       });
       const result = await model.generateContent(prompt);
       return result.response.text();
     });
 
-    const jsonStr = response.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const jsonStr = response
+      .replace(/```json/gi, '')
+      .replace(/```/g, '')
+      .trim();
     const parsed = JSON.parse(jsonStr) as ChainOfThoughtResult;
 
     console.log(chalk.green(`[CoT] Completed with ${parsed.steps.length} reasoning steps`));
     return parsed;
-
   } catch (error: any) {
     console.log(chalk.yellow(`[CoT] Failed: ${error.message}`));
     return {
       steps: ['Bezposrednia analiza'],
       reasoning: 'Chain-of-Thought nie powiodlo sie, uzyto bezposredniej odpowiedzi',
-      finalAnswer: task
+      finalAnswer: task,
     };
   }
 }
@@ -591,11 +657,11 @@ async function executeCoTPass(
   context: string,
   complexity: ComplexityLevel,
   options: CoTOptions,
-  passIndex: number = 0
+  passIndex: number = 0,
 ): Promise<ChainOfThoughtResult> {
   const temperature = options.temperature ?? 0.25;
   // Slightly vary temperature for different passes to get diverse results
-  const adjustedTemp = Math.min(0.4, temperature + (passIndex * 0.05));
+  const adjustedTemp = Math.min(0.4, temperature + passIndex * 0.05);
 
   const prompt = buildStepByStepPrompt(task, complexity, options);
   const fullPrompt = context ? `${prompt}\n\nKONTEKST:\n${context}` : prompt;
@@ -617,22 +683,24 @@ Zwroc TYLKO JSON, bez dodatkowego tekstu.`;
         model: INTELLIGENCE_MODEL,
         generationConfig: {
           temperature: adjustedTemp,
-          maxOutputTokens: options.maxOutputTokens ?? 8192
-        }
+          maxOutputTokens: options.maxOutputTokens ?? 8192,
+        },
       });
       const result = await model.generateContent(fullPrompt + jsonInstructions);
       return result.response.text();
     });
 
-    const jsonStr = response.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const jsonStr = response
+      .replace(/```json/gi, '')
+      .replace(/```/g, '')
+      .trim();
     return JSON.parse(jsonStr) as ChainOfThoughtResult;
-
   } catch (error: any) {
     console.log(chalk.yellow(`[CoT] Pass ${passIndex + 1} failed: ${error.message}`));
     return {
       steps: [`Bezposrednia analiza (pass ${passIndex + 1})`],
       reasoning: `Proba ${passIndex + 1} nie powiodla sie`,
-      finalAnswer: task
+      finalAnswer: task,
     };
   }
 }
@@ -643,7 +711,7 @@ Zwroc TYLKO JSON, bez dodatkowego tekstu.`;
 async function executeMetaCognition(
   task: string,
   reasoning: ChainOfThoughtResult,
-  options: CoTOptions
+  options: CoTOptions,
 ): Promise<{
   qualityScore: number;
   assessment: string;
@@ -657,29 +725,31 @@ async function executeMetaCognition(
     const response = await geminiSemaphore.withPermit(async () => {
       const model = genAI.getGenerativeModel({
         model: INTELLIGENCE_MODEL,
-        generationConfig: { temperature: 0.1, maxOutputTokens: 2048 }
+        generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
       });
       const result = await model.generateContent(prompt);
       return result.response.text();
     });
 
-    const jsonStr = response.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const jsonStr = response
+      .replace(/```json/gi, '')
+      .replace(/```/g, '')
+      .trim();
     const parsed = JSON.parse(jsonStr);
 
     return {
       qualityScore: parsed.overallScore ?? 70,
       assessment: parsed.assessment ?? 'Brak oceny',
       confidence: parsed.confidence ?? 'medium',
-      improvements: parsed.improvements ?? []
+      improvements: parsed.improvements ?? [],
     };
-
   } catch (error: any) {
     console.log(chalk.yellow(`[CoT Meta] Evaluation failed: ${error.message}`));
     return {
       qualityScore: 50,
       assessment: 'Nie udalo sie przeprowadzic oceny meta-kognitywnej',
       confidence: 'low',
-      improvements: []
+      improvements: [],
     };
   }
 }
@@ -690,14 +760,14 @@ async function executeMetaCognition(
 export async function advancedChainOfThought(
   task: string,
   context: string = '',
-  options: CoTOptions = {}
+  options: CoTOptions = {},
 ): Promise<AdvancedCoTResult> {
   console.log(chalk.magenta('[CoT Advanced] Initiating advanced reasoning...'));
 
   // 1. Detect or use forced complexity
-  const complexity = options.forceComplexity ?? (
-    options.autoDetectComplexity !== false ? detectComplexity(task) : 'medium'
-  );
+  const complexity =
+    options.forceComplexity ??
+    (options.autoDetectComplexity !== false ? detectComplexity(task) : 'medium');
   console.log(chalk.cyan(`[CoT Advanced] Detected complexity: ${complexity}`));
 
   // 2. Skip CoT for trivial tasks
@@ -711,7 +781,7 @@ export async function advancedChainOfThought(
       metaCognitiveAssessment: 'Proste zadanie nie wymaga zlozonego rozumowania',
       confidence: 'high',
       iterations: 1,
-      detectedComplexity: complexity
+      detectedComplexity: complexity,
     };
     return directResult;
   }
@@ -730,7 +800,7 @@ export async function advancedChainOfThought(
     qualityScore: 70,
     assessment: 'Brak oceny meta-kognitywnej',
     confidence: 'medium',
-    improvements: []
+    improvements: [],
   };
 
   if (options.enableMetaCognition !== false && complexity !== 'low') {
@@ -742,21 +812,25 @@ export async function advancedChainOfThought(
     if (metaResult.qualityScore < 60 && metaResult.improvements.length > 0) {
       console.log(chalk.yellow('[CoT Advanced] Quality low - attempting improvement...'));
 
-      const improvedContext = `${context}\n\nPOPRAW NASTEPUJACE ASPEKTY:\n${metaResult.improvements.map(i => `- ${i}`).join('\n')}`;
+      const improvedContext = `${context}\n\nPOPRAW NASTEPUJACE ASPEKTY:\n${metaResult.improvements.map((i) => `- ${i}`).join('\n')}`;
       const improvedResult = await executeCoTPass(task, improvedContext, complexity, options, 1);
 
       // Re-evaluate
       const improvedMeta = await executeMetaCognition(task, improvedResult, options);
 
       if (improvedMeta.qualityScore > metaResult.qualityScore) {
-        console.log(chalk.green(`[CoT Advanced] Improvement successful: ${metaResult.qualityScore} -> ${improvedMeta.qualityScore}`));
+        console.log(
+          chalk.green(
+            `[CoT Advanced] Improvement successful: ${metaResult.qualityScore} -> ${improvedMeta.qualityScore}`,
+          ),
+        );
         return {
           ...improvedResult,
           qualityScore: improvedMeta.qualityScore,
           metaCognitiveAssessment: improvedMeta.assessment,
           confidence: improvedMeta.confidence,
           iterations: 2,
-          detectedComplexity: complexity
+          detectedComplexity: complexity,
         };
       }
     }
@@ -768,7 +842,7 @@ export async function advancedChainOfThought(
     metaCognitiveAssessment: metaResult.assessment,
     confidence: metaResult.confidence,
     iterations: 1,
-    detectedComplexity: complexity
+    detectedComplexity: complexity,
   };
 }
 
@@ -779,15 +853,15 @@ export async function advancedChainOfThought(
 export async function selfConsistentCoT(
   task: string,
   context: string = '',
-  options: CoTOptions = {}
+  options: CoTOptions = {},
 ): Promise<SelfConsistentCoTResult> {
   const pathCount = options.selfConsistencyPaths ?? 3;
   console.log(chalk.magenta(`[CoT Self-Consistent] Generating ${pathCount} reasoning paths...`));
 
   // 1. Detect complexity
-  const complexity = options.forceComplexity ?? (
-    options.autoDetectComplexity !== false ? detectComplexity(task) : 'medium'
-  );
+  const complexity =
+    options.forceComplexity ??
+    (options.autoDetectComplexity !== false ? detectComplexity(task) : 'medium');
   console.log(chalk.cyan(`[CoT Self-Consistent] Complexity: ${complexity}`));
 
   // 2. Generate multiple paths in parallel
@@ -816,21 +890,27 @@ export async function selfConsistentCoT(
     const votingResponse = await geminiSemaphore.withPermit(async () => {
       const model = genAI.getGenerativeModel({
         model: INTELLIGENCE_MODEL,
-        generationConfig: { temperature: 0.1, maxOutputTokens: 2048 }
+        generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
       });
       const result = await model.generateContent(votingPrompt);
       return result.response.text();
     });
 
-    const jsonStr = votingResponse.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const jsonStr = votingResponse
+      .replace(/```json/gi, '')
+      .replace(/```/g, '')
+      .trim();
     const votingResult = JSON.parse(jsonStr);
 
     selectedPathIndex = Math.max(0, Math.min(pathCount - 1, (votingResult.selectedPath || 1) - 1));
     consistencyScore = votingResult.consistencyScore ?? 0.5;
 
-    console.log(chalk.green(`[CoT Self-Consistent] Selected path ${selectedPathIndex + 1}, consistency: ${(consistencyScore * 100).toFixed(0)}%`));
-
-  } catch (error: any) {
+    console.log(
+      chalk.green(
+        `[CoT Self-Consistent] Selected path ${selectedPathIndex + 1}, consistency: ${(consistencyScore * 100).toFixed(0)}%`,
+      ),
+    );
+  } catch (_error: any) {
     console.log(chalk.yellow(`[CoT Self-Consistent] Voting failed, using most common answer`));
 
     // Fallback: select path with most common answer
@@ -855,7 +935,7 @@ export async function selfConsistentCoT(
   let metaResult = {
     qualityScore: 70,
     assessment: 'Sciezka wybrana przez glosowanie spojna',
-    confidence: 'medium' as 'low' | 'medium' | 'high'
+    confidence: 'medium' as 'low' | 'medium' | 'high',
   };
 
   if (options.enableMetaCognition !== false) {
@@ -863,7 +943,7 @@ export async function selfConsistentCoT(
     metaResult = {
       qualityScore: meta.qualityScore,
       assessment: meta.assessment,
-      confidence: meta.confidence
+      confidence: meta.confidence,
     };
   }
 
@@ -885,7 +965,7 @@ export async function selfConsistentCoT(
     allPaths,
     answerVotes,
     consistencyScore,
-    selectedPathIndex
+    selectedPathIndex,
   };
 }
 
@@ -896,7 +976,7 @@ export async function selfConsistentCoT(
 export async function adaptiveCoT(
   task: string,
   context: string = '',
-  options: CoTOptions = {}
+  options: CoTOptions = {},
 ): Promise<AdvancedCoTResult | SelfConsistentCoTResult> {
   console.log(chalk.magenta('[CoT Adaptive] Starting adaptive reasoning...'));
 
@@ -912,7 +992,7 @@ export async function adaptiveCoT(
       return advancedChainOfThought(task, context, {
         ...options,
         forceComplexity: 'trivial',
-        enableMetaCognition: false
+        enableMetaCognition: false,
       });
 
     case 'low':
@@ -921,7 +1001,7 @@ export async function adaptiveCoT(
       return advancedChainOfThought(task, context, {
         ...options,
         forceComplexity: 'low',
-        enableMetaCognition: false
+        enableMetaCognition: false,
       });
 
     case 'medium':
@@ -930,7 +1010,7 @@ export async function adaptiveCoT(
       return advancedChainOfThought(task, context, {
         ...options,
         forceComplexity: 'medium',
-        enableMetaCognition: true
+        enableMetaCognition: true,
       });
 
     case 'high':
@@ -940,7 +1020,7 @@ export async function adaptiveCoT(
         ...options,
         forceComplexity: 'high',
         selfConsistencyPaths: 3,
-        enableMetaCognition: true
+        enableMetaCognition: true,
       });
 
     case 'extreme':
@@ -950,7 +1030,7 @@ export async function adaptiveCoT(
         ...options,
         forceComplexity: 'extreme',
         selfConsistencyPaths: 5,
-        enableMetaCognition: true
+        enableMetaCognition: true,
       });
 
     default:

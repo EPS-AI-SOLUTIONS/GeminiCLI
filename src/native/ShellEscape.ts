@@ -17,7 +17,7 @@
  * - Command sanitization (sanitizeCommand)
  */
 
-import os from 'os';
+import os from 'node:os';
 
 // ============================================================
 // Types
@@ -111,7 +111,7 @@ export function escapeShellArgWindows(arg: string): string {
   // Escape backslashes followed by quotes or at end of string
   // In Windows, backslashes before quotes need doubling
   escaped = escaped.replace(/(\\*)"/g, (_match, slashes: string) => {
-    return slashes + slashes + '\\"';
+    return `${slashes + slashes}\\"`;
   });
 
   // Escape trailing backslashes (they would escape the closing quote)
@@ -398,7 +398,7 @@ export function escapeForCmd(arg: string): string {
  * // Returns: echo hello 'world with space'
  */
 export function buildCommand(cmd: string, args: string[], platform?: ShellPlatform): string {
-  const escapedArgs = args.map(arg => quoteArg(arg, platform));
+  const escapedArgs = args.map((arg) => quoteArg(arg, platform));
   return [cmd, ...escapedArgs].join(' ');
 }
 
@@ -461,7 +461,7 @@ export function parseCommand(cmdString: string): { command: string; args: string
 
   return {
     command: tokens[0] || '',
-    args: tokens.slice(1)
+    args: tokens.slice(1),
   };
 }
 
@@ -509,27 +509,27 @@ export function escapeRegex(str: string): string {
 export function sanitizeCommand(cmd: string): string | null {
   // Check for common injection patterns
   const suspiciousPatterns = [
-    /;\s*rm\s/i,           // rm after semicolon
-    /\|\s*rm\s/i,          // rm after pipe
-    /\|\|\s*rm\s/i,        // rm after || (OR operator - Bash/PowerShell)
-    /&&\s*rm\s/i,          // rm after && (AND operator - Bash/PowerShell)
-    /\|\|.*\b(rm|del|Remove-Item|Clear-Content)\b/i,  // Dangerous commands after ||
-    /&&.*\b(rm|del|Remove-Item|Clear-Content)\b/i,    // Dangerous commands after &&
-    /`[^`]*`/,             // Command substitution with backticks
-    /\$\([^)]*\)/,         // Command substitution with $()
-    />\s*\/dev\/sd/,       // Writing to block devices
-    />\s*\/etc\//,         // Writing to /etc
-    /rm\s+-rf?\s+\//,      // rm -rf /
-    /:\(\)\s*{\s*:\s*\|\s*:\s*&\s*}\s*;\s*:/,  // Fork bomb (with flexible whitespace)
-    /mkfs\./,              // Filesystem formatting
-    /dd\s+if=/,            // Direct disk access
-    />\s*\/dev\/null.*2>&1.*&/,  // Background with redirect (potential hiding)
-    /base64\s+-d/,         // Base64 decode (potential obfuscation)
-    /eval\s+/,             // Eval command (dangerous)
+    /;\s*rm\s/i, // rm after semicolon
+    /\|\s*rm\s/i, // rm after pipe
+    /\|\|\s*rm\s/i, // rm after || (OR operator - Bash/PowerShell)
+    /&&\s*rm\s/i, // rm after && (AND operator - Bash/PowerShell)
+    /\|\|.*\b(rm|del|Remove-Item|Clear-Content)\b/i, // Dangerous commands after ||
+    /&&.*\b(rm|del|Remove-Item|Clear-Content)\b/i, // Dangerous commands after &&
+    /`[^`]*`/, // Command substitution with backticks
+    /\$\([^)]*\)/, // Command substitution with $()
+    />\s*\/dev\/sd/, // Writing to block devices
+    />\s*\/etc\//, // Writing to /etc
+    /rm\s+-rf?\s+\//, // rm -rf /
+    /:\(\)\s*{\s*:\s*\|\s*:\s*&\s*}\s*;\s*:/, // Fork bomb (with flexible whitespace)
+    /mkfs\./, // Filesystem formatting
+    /dd\s+if=/, // Direct disk access
+    />\s*\/dev\/null.*2>&1.*&/, // Background with redirect (potential hiding)
+    /base64\s+-d/, // Base64 decode (potential obfuscation)
+    /eval\s+/, // Eval command (dangerous)
     /curl.*\|\s*(ba)?sh/i, // Curl pipe to shell
     /wget.*\|\s*(ba)?sh/i, // Wget pipe to shell
-    /\|\|\s*(powershell|cmd|sh|bash)\b/i,  // || followed by shell execution
-    /&&\s*(powershell|cmd|sh|bash)\b/i,    // && followed by shell execution
+    /\|\|\s*(powershell|cmd|sh|bash)\b/i, // || followed by shell execution
+    /&&\s*(powershell|cmd|sh|bash)\b/i, // && followed by shell execution
   ];
 
   for (const pattern of suspiciousPatterns) {

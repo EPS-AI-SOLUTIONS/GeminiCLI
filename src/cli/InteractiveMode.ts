@@ -9,10 +9,10 @@
  * - Session memory
  */
 
-import readline from 'readline';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import readline from 'node:readline';
 import chalk from 'chalk';
-import fs from 'fs/promises';
-import path from 'path';
 
 import { GEMINIHYDRA_DIR } from '../config/paths.config.js';
 
@@ -38,7 +38,6 @@ const AGENT_COLORS: Record<string, (text: string) => string> = {
 export class InteractiveMode {
   private rl: readline.Interface;
   private history: string[] = [];
-  private historyIndex: number = 0;
   private sessionMemory: Map<string, any> = new Map();
   private currentAgent: string = 'dijkstra';
 
@@ -53,7 +52,7 @@ export class InteractiveMode {
   async loadHistory(): Promise<void> {
     try {
       const data = await fs.readFile(HISTORY_FILE, 'utf-8');
-      this.history = data.split('\n').filter(line => line.trim());
+      this.history = data.split('\n').filter((line) => line.trim());
       this.historyIndex = this.history.length;
     } catch {
       this.history = [];
@@ -105,20 +104,28 @@ export class InteractiveMode {
 
   printWelcome(): void {
     console.log(chalk.magenta('\n╔═══════════════════════════════════════════════════════════╗'));
-    console.log(chalk.magenta('║') + chalk.yellow.bold('         GEMINI HYDRA - INTERACTIVE MODE                  ') + chalk.magenta('║'));
-    console.log(chalk.magenta('║') + chalk.gray('  Commands: @agent, /help, /history, /clear, exit          ') + chalk.magenta('║'));
+    console.log(
+      chalk.magenta('║') +
+        chalk.yellow.bold('         GEMINI HYDRA - INTERACTIVE MODE                  ') +
+        chalk.magenta('║'),
+    );
+    console.log(
+      chalk.magenta('║') +
+        chalk.gray('  Commands: @agent, /help, /history, /clear, exit          ') +
+        chalk.magenta('║'),
+    );
     console.log(chalk.magenta('╚═══════════════════════════════════════════════════════════╝\n'));
   }
 
   printHelp(): void {
     console.log(chalk.cyan('\nAvailable Commands:'));
-    console.log(chalk.gray('  @<agent>      ') + 'Switch to specific agent (e.g., @geralt)');
-    console.log(chalk.gray('  /help         ') + 'Show this help');
-    console.log(chalk.gray('  /history      ') + 'Show command history');
-    console.log(chalk.gray('  /clear        ') + 'Clear screen');
-    console.log(chalk.gray('  /status       ') + 'Show session status');
-    console.log(chalk.gray('  /cost         ') + 'Show token usage');
-    console.log(chalk.gray('  exit, quit    ') + 'Exit interactive mode\n');
+    console.log(`${chalk.gray('  @<agent>      ')}Switch to specific agent (e.g., @geralt)`);
+    console.log(`${chalk.gray('  /help         ')}Show this help`);
+    console.log(`${chalk.gray('  /history      ')}Show command history`);
+    console.log(`${chalk.gray('  /clear        ')}Clear screen`);
+    console.log(`${chalk.gray('  /status       ')}Show session status`);
+    console.log(`${chalk.gray('  /cost         ')}Show token usage`);
+    console.log(`${chalk.gray('  exit, quit    ')}Exit interactive mode\n`);
   }
 
   async close(): Promise<void> {
@@ -129,14 +136,34 @@ export class InteractiveMode {
 
 // Completions for tab
 export const COMPLETIONS = [
-  '@dijkstra', '@geralt', '@yennefer', '@triss', '@vesemir',
-  '@jaskier', '@ciri', '@eskel', '@lambert', '@zoltan', '@regis', '@philippa',
-  '/help', '/history', '/clear', '/status', '/cost',
-  'exit', 'quit',
-  'analyze', 'review', 'fix', 'test', 'deploy', 'document',
+  '@dijkstra',
+  '@geralt',
+  '@yennefer',
+  '@triss',
+  '@vesemir',
+  '@jaskier',
+  '@ciri',
+  '@eskel',
+  '@lambert',
+  '@zoltan',
+  '@regis',
+  '@philippa',
+  '/help',
+  '/history',
+  '/clear',
+  '/status',
+  '/cost',
+  'exit',
+  'quit',
+  'analyze',
+  'review',
+  'fix',
+  'test',
+  'deploy',
+  'document',
 ];
 
 export function completer(line: string): [string[], string] {
-  const hits = COMPLETIONS.filter(c => c.startsWith(line.toLowerCase()));
+  const hits = COMPLETIONS.filter((c) => c.startsWith(line.toLowerCase()));
   return [hits.length ? hits : COMPLETIONS, line];
 }

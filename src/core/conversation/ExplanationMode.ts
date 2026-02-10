@@ -101,26 +101,27 @@ export class ExplanationMode {
    * @param context - Optional additional context
    * @returns Explanation object or null if disabled
    */
-  async explain(action: string, context?: string): Promise<Explanation | null> {
+  async explain(action: string, _context?: string): Promise<Explanation | null> {
     if (!this.enabled) return null;
 
     const explanation: Explanation = {
       overview: '',
       steps: [],
       assumptions: [],
-      risks: []
+      risks: [],
     };
 
     // Generate explanation based on action type
     const lowerAction = action.toLowerCase();
 
     if (lowerAction.includes('refactor') || lowerAction.includes('refaktor')) {
-      explanation.overview = 'Refaktoryzacja kodu polega na zmianie struktury bez zmiany zachowania';
+      explanation.overview =
+        'Refaktoryzacja kodu polega na zmianie struktury bez zmiany zachowania';
       explanation.steps.push({
         action: 'Refaktoryzacja',
         why: 'Poprawa czytelnosci, wydajnosci lub latwosci utrzymania kodu',
         how: 'Zmiana nazw, wydzielenie funkcji, uproszczenie logiki',
-        alternatives: ['Przepisanie od zera', 'Pozostawienie bez zmian']
+        alternatives: ['Przepisanie od zera', 'Pozostawienie bez zmian'],
       });
       explanation.risks.push('Wprowadzenie regresji - zawsze uruchom testy po refaktoryzacji');
     }
@@ -131,7 +132,7 @@ export class ExplanationMode {
         action: 'Generowanie testow',
         why: 'Zapewnienie jakosci i wykrywanie regresji',
         how: 'Utworzenie przypadkow testowych dla roznych scenariuszy',
-        alternatives: ['Testy manualne', 'Code review']
+        alternatives: ['Testy manualne', 'Code review'],
       });
       explanation.assumptions.push('Kod jest testowalny (ma zdefiniowane interfejsy)');
     }
@@ -142,7 +143,7 @@ export class ExplanationMode {
         action: 'Praca z API',
         why: 'Umozliwienie integracji i wymiany danych',
         how: 'Definicja endpointow, walidacja, obsluga bledow',
-        alternatives: ['GraphQL', 'gRPC', 'WebSocket']
+        alternatives: ['GraphQL', 'gRPC', 'WebSocket'],
       });
       explanation.risks.push('Zmiany w API moga zepsuc istniejace integracje');
     }
@@ -153,19 +154,23 @@ export class ExplanationMode {
         action: 'Wdrozenie',
         why: 'Udostepnienie nowych funkcjonalnosci uzytkownikom',
         how: 'Build, testy, deploy na serwer produkcyjny',
-        alternatives: ['Blue-green deployment', 'Canary release', 'Rolling update']
+        alternatives: ['Blue-green deployment', 'Canary release', 'Rolling update'],
       });
       explanation.risks.push('Potencjalne problemy z dostepnoscia w trakcie wdrozenia');
       explanation.assumptions.push('Srodowisko produkcyjne jest skonfigurowane poprawnie');
     }
 
-    if (lowerAction.includes('debug') || lowerAction.includes('blad') || lowerAction.includes('error')) {
+    if (
+      lowerAction.includes('debug') ||
+      lowerAction.includes('blad') ||
+      lowerAction.includes('error')
+    ) {
       explanation.overview = 'Debugowanie to proces znajdowania i naprawiania bledow w kodzie';
       explanation.steps.push({
         action: 'Debugowanie',
         why: 'Naprawa nieprawidlowego dzialania aplikacji',
         how: 'Analiza logow, stack trace, breakpointy, testy jednostkowe',
-        alternatives: ['Logi', 'Debugger IDE', 'Console.log', 'Testy']
+        alternatives: ['Logi', 'Debugger IDE', 'Console.log', 'Testy'],
       });
       explanation.assumptions.push('Blad jest powtarzalny i mozliwy do zreprodukowania');
     }
@@ -176,7 +181,7 @@ export class ExplanationMode {
         action: 'Migracja',
         why: 'Aktualizacja do nowszej wersji lub zmiana struktury danych',
         how: 'Backup, wykonanie migracji, weryfikacja, rollback jesli potrzebne',
-        alternatives: ['Migracja stopniowa', 'Big bang migration', 'Dual write']
+        alternatives: ['Migracja stopniowa', 'Big bang migration', 'Dual write'],
       });
       explanation.risks.push('Utrata danych przy niepoprawnej migracji');
       explanation.assumptions.push('Masz backup danych przed migracja');
@@ -189,7 +194,7 @@ export class ExplanationMode {
         'https://testing.googleblog.com/',
         'https://www.restapitutorial.com/',
         'https://martinfowler.com/',
-        'https://12factor.net/'
+        'https://12factor.net/',
       ];
     }
 
@@ -222,15 +227,19 @@ export class ExplanationMode {
 
     if (explanation.assumptions.length > 0 && this.verbosity !== 'minimal') {
       lines.push('');
-      lines.push(chalk.gray('Assumptions: ' + explanation.assumptions.join('; ')));
+      lines.push(chalk.gray(`Assumptions: ${explanation.assumptions.join('; ')}`));
     }
 
     if (explanation.risks.length > 0) {
       lines.push('');
-      lines.push(chalk.red('[!] Risks: ' + explanation.risks.join('; ')));
+      lines.push(chalk.red(`[!] Risks: ${explanation.risks.join('; ')}`));
     }
 
-    if (explanation.learningResources && explanation.learningResources.length > 0 && this.verbosity === 'detailed') {
+    if (
+      explanation.learningResources &&
+      explanation.learningResources.length > 0 &&
+      this.verbosity === 'detailed'
+    ) {
       lines.push('');
       lines.push(chalk.blue('Learning Resources:'));
       for (const resource of explanation.learningResources) {
@@ -267,7 +276,7 @@ export class ExplanationMode {
     steps: ExplanationStep[],
     assumptions: string[] = [],
     risks: string[] = [],
-    learningResources?: string[]
+    learningResources?: string[],
   ): Explanation {
     return { overview, steps, assumptions, risks, learningResources };
   }
@@ -285,5 +294,5 @@ export const explanationMode = new ExplanationMode();
 
 export default {
   ExplanationMode,
-  explanationMode
+  explanationMode,
 };

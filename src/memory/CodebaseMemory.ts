@@ -5,12 +5,12 @@
  * i wykorzystuje wiedzę w kolejnych sesjach/promptach.
  */
 
-import fs from 'fs/promises';
-import path from 'path';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import chalk from 'chalk';
-import { FileInfo } from '../native/types.js';
-import { loadFromFile, saveToFile, fileExists } from '../native/persistence.js';
 import { GEMINIHYDRA_DIR } from '../config/paths.config.js';
+import { loadFromFile, saveToFile } from '../native/persistence.js';
+import type { FileInfo } from '../native/types.js';
 
 // Re-export FileInfo for backward compatibility
 export type { FileInfo } from '../native/types.js';
@@ -21,30 +21,92 @@ const CODEBASE_DB_PATH = path.join(DB_DIR, 'codebase-memory.json');
 
 // File extensions to analyze
 const CODE_EXTENSIONS = new Set([
-  '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
-  '.py', '.rb', '.go', '.rs', '.java', '.kt', '.scala',
-  '.cs', '.cpp', '.c', '.h', '.hpp',
-  '.php', '.swift', '.m', '.mm',
-  '.vue', '.svelte', '.astro',
-  '.sql', '.graphql', '.prisma',
-  '.yaml', '.yml', '.json', '.toml',
-  '.md', '.mdx', '.txt',
-  '.sh', '.bash', '.ps1', '.bat',
-  '.css', '.scss', '.sass', '.less',
-  '.html', '.xml', '.svg'
+  '.ts',
+  '.tsx',
+  '.js',
+  '.jsx',
+  '.mjs',
+  '.cjs',
+  '.py',
+  '.rb',
+  '.go',
+  '.rs',
+  '.java',
+  '.kt',
+  '.scala',
+  '.cs',
+  '.cpp',
+  '.c',
+  '.h',
+  '.hpp',
+  '.php',
+  '.swift',
+  '.m',
+  '.mm',
+  '.vue',
+  '.svelte',
+  '.astro',
+  '.sql',
+  '.graphql',
+  '.prisma',
+  '.yaml',
+  '.yml',
+  '.json',
+  '.toml',
+  '.md',
+  '.mdx',
+  '.txt',
+  '.sh',
+  '.bash',
+  '.ps1',
+  '.bat',
+  '.css',
+  '.scss',
+  '.sass',
+  '.less',
+  '.html',
+  '.xml',
+  '.svg',
 ]);
 
 const CONFIG_FILES = new Set([
-  'package.json', 'tsconfig.json', 'pyproject.toml', 'Cargo.toml',
-  'go.mod', 'build.gradle', 'pom.xml', 'Gemfile', 'requirements.txt',
-  '.env.example', 'docker-compose.yml', 'Dockerfile', 'Makefile',
-  'vite.config.ts', 'webpack.config.js', 'next.config.js', 'nuxt.config.ts'
+  'package.json',
+  'tsconfig.json',
+  'pyproject.toml',
+  'Cargo.toml',
+  'go.mod',
+  'build.gradle',
+  'pom.xml',
+  'Gemfile',
+  'requirements.txt',
+  '.env.example',
+  'docker-compose.yml',
+  'Dockerfile',
+  'Makefile',
+  'vite.config.ts',
+  'webpack.config.js',
+  'next.config.js',
+  'nuxt.config.ts',
 ]);
 
 const IGNORE_DIRS = new Set([
-  'node_modules', '.git', 'dist', 'build', 'target', '__pycache__',
-  '.next', '.nuxt', '.svelte-kit', 'coverage', '.pytest_cache',
-  'vendor', 'bin', 'obj', '.idea', '.vscode', '.vs'
+  'node_modules',
+  '.git',
+  'dist',
+  'build',
+  'target',
+  '__pycache__',
+  '.next',
+  '.nuxt',
+  '.svelte-kit',
+  'coverage',
+  '.pytest_cache',
+  'vendor',
+  'bin',
+  'obj',
+  '.idea',
+  '.vscode',
+  '.vs',
 ]);
 
 // ============================================================
@@ -100,8 +162,6 @@ export class CodebaseMemory {
   private saveDebounce: NodeJS.Timeout | null = null;
   private currentProject: CodebaseAnalysis | null = null;
 
-  constructor() {}
-
   /**
    * Initialize storage
    */
@@ -118,7 +178,9 @@ export class CodebaseMemory {
     }
 
     this.initialized = true;
-    console.log(chalk.gray(`[CodebaseMemory] Loaded ${this.store.analyses.length} project analyses`));
+    console.log(
+      chalk.gray(`[CodebaseMemory] Loaded ${this.store.analyses.length} project analyses`),
+    );
   }
 
   /**
@@ -142,7 +204,7 @@ export class CodebaseMemory {
     const normalized = projectPath.replace(/\\/g, '/').toLowerCase();
     let hash = 0;
     for (let i = 0; i < normalized.length; i++) {
-      hash = ((hash << 5) - hash) + normalized.charCodeAt(i);
+      hash = (hash << 5) - hash + normalized.charCodeAt(i);
       hash = hash & hash;
     }
     return `proj_${Math.abs(hash).toString(36)}`;
@@ -151,11 +213,14 @@ export class CodebaseMemory {
   /**
    * Analyze a project/codebase
    */
-  async analyzeProject(projectPath: string, options: {
-    maxFiles?: number;
-    maxDepth?: number;
-    includeContent?: boolean;
-  } = {}): Promise<CodebaseAnalysis> {
+  async analyzeProject(
+    projectPath: string,
+    options: {
+      maxFiles?: number;
+      maxDepth?: number;
+      includeContent?: boolean;
+    } = {},
+  ): Promise<CodebaseAnalysis> {
     const { maxFiles = 500, maxDepth = 10, includeContent = false } = options;
 
     console.log(chalk.cyan(`[CodebaseMemory] Analyzing project: ${projectPath}`));
@@ -166,7 +231,7 @@ export class CodebaseMemory {
     const id = this.generateId(resolvedPath);
 
     // Check if we have existing analysis
-    const existing = this.store.analyses.find(a => a.id === id);
+    const existing = this.store.analyses.find((a) => a.id === id);
 
     // Collect files
     const files: FileInfo[] = [];
@@ -178,7 +243,7 @@ export class CodebaseMemory {
       maxDepth,
       currentDepth: 0,
       languages,
-      includeContent
+      includeContent,
     });
 
     // Detect project type and framework
@@ -202,7 +267,7 @@ export class CodebaseMemory {
       directories: directories.slice(0, 50), // Limit
       totalFiles: files.length,
       totalLines,
-      languages
+      languages,
     };
 
     // Generate summary
@@ -220,11 +285,11 @@ export class CodebaseMemory {
       summary,
       analyzedAt: new Date().toISOString(),
       lastAccessed: new Date().toISOString(),
-      accessCount: existing ? existing.accessCount + 1 : 1
+      accessCount: existing ? existing.accessCount + 1 : 1,
     };
 
     // Update or add
-    const idx = this.store.analyses.findIndex(a => a.id === id);
+    const idx = this.store.analyses.findIndex((a) => a.id === id);
     if (idx !== -1) {
       this.store.analyses[idx] = analysis;
     } else {
@@ -236,7 +301,11 @@ export class CodebaseMemory {
 
     const elapsed = Date.now() - startTime;
     console.log(chalk.green(`[CodebaseMemory] Analysis complete in ${elapsed}ms`));
-    console.log(chalk.gray(`  Files: ${files.length}, Lines: ${totalLines}, Type: ${type}${framework ? ` (${framework})` : ''}`));
+    console.log(
+      chalk.gray(
+        `  Files: ${files.length}, Lines: ${totalLines}, Type: ${type}${framework ? ` (${framework})` : ''}`,
+      ),
+    );
 
     return analysis;
   }
@@ -255,7 +324,7 @@ export class CodebaseMemory {
       currentDepth: number;
       languages: Record<string, number>;
       includeContent: boolean;
-    }
+    },
   ): Promise<void> {
     if (opts.currentDepth > opts.maxDepth || files.length >= opts.maxFiles) return;
 
@@ -263,7 +332,16 @@ export class CodebaseMemory {
       const entries = await fs.readdir(dirPath, { withFileTypes: true });
 
       // Sort entries: prioritize src, lib, app directories first
-      const priorityDirs = new Set(['src', 'lib', 'app', 'core', 'components', 'services', 'utils', 'bin']);
+      const priorityDirs = new Set([
+        'src',
+        'lib',
+        'app',
+        'core',
+        'components',
+        'services',
+        'utils',
+        'bin',
+      ]);
       entries.sort((a, b) => {
         const aIsPriority = priorityDirs.has(a.name.toLowerCase());
         const bIsPriority = priorityDirs.has(b.name.toLowerCase());
@@ -286,7 +364,7 @@ export class CodebaseMemory {
             directories.push(relativePath);
             await this.walkDirectory(fullPath, rootPath, files, directories, {
               ...opts,
-              currentDepth: opts.currentDepth + 1
+              currentDepth: opts.currentDepth + 1,
             });
           }
         } else if (entry.isFile()) {
@@ -300,7 +378,7 @@ export class CodebaseMemory {
           }
         }
       }
-    } catch (err) {
+    } catch (_err) {
       // Skip inaccessible directories
     }
   }
@@ -308,7 +386,11 @@ export class CodebaseMemory {
   /**
    * Analyze a single file
    */
-  private async analyzeFile(filePath: string, relativePath: string, includeContent: boolean): Promise<FileInfo> {
+  private async analyzeFile(
+    filePath: string,
+    relativePath: string,
+    _includeContent: boolean,
+  ): Promise<FileInfo> {
     const stats = await fs.stat(filePath);
     const ext = path.extname(filePath).toLowerCase();
 
@@ -328,7 +410,9 @@ export class CodebaseMemory {
         // Extract code structure for JS/TS files
         if (['.ts', '.tsx', '.js', '.jsx', '.mjs'].includes(ext)) {
           // Exports
-          const exportMatches = content.matchAll(/export\s+(?:default\s+)?(?:class|function|const|let|var|interface|type|enum)\s+(\w+)/g);
+          const exportMatches = content.matchAll(
+            /export\s+(?:default\s+)?(?:class|function|const|let|var|interface|type|enum)\s+(\w+)/g,
+          );
           for (const match of exportMatches) {
             exports.push(match[1]);
           }
@@ -387,14 +471,17 @@ export class CodebaseMemory {
       classes: classes.slice(0, 10),
       functions: functions.slice(0, 20),
       lastModified: stats.mtime.toISOString(),
-      analyzedAt: new Date().toISOString()
+      analyzedAt: new Date().toISOString(),
     };
   }
 
   /**
    * Detect project type and framework
    */
-  private async detectProjectType(rootPath: string, files: FileInfo[]): Promise<{
+  private async detectProjectType(
+    rootPath: string,
+    files: FileInfo[],
+  ): Promise<{
     type: string;
     framework?: string;
     configFiles: string[];
@@ -436,29 +523,29 @@ export class CodebaseMemory {
     } catch {}
 
     // Check for Python
-    if (files.some(f => f.relativePath === 'pyproject.toml' || f.relativePath === 'setup.py')) {
+    if (files.some((f) => f.relativePath === 'pyproject.toml' || f.relativePath === 'setup.py')) {
       configFiles.push('pyproject.toml');
       type = type === 'node' ? 'mixed' : 'python';
 
       try {
         const reqPath = path.join(rootPath, 'requirements.txt');
         const reqs = await fs.readFile(reqPath, 'utf-8');
-        dependencies = reqs.split('\n').filter(l => l.trim() && !l.startsWith('#'));
+        dependencies = reqs.split('\n').filter((l) => l.trim() && !l.startsWith('#'));
 
-        if (dependencies.some(d => d.includes('django'))) framework = 'Django';
-        else if (dependencies.some(d => d.includes('flask'))) framework = 'Flask';
-        else if (dependencies.some(d => d.includes('fastapi'))) framework = 'FastAPI';
+        if (dependencies.some((d) => d.includes('django'))) framework = 'Django';
+        else if (dependencies.some((d) => d.includes('flask'))) framework = 'Flask';
+        else if (dependencies.some((d) => d.includes('fastapi'))) framework = 'FastAPI';
       } catch {}
     }
 
     // Check for Rust
-    if (files.some(f => f.relativePath === 'Cargo.toml')) {
+    if (files.some((f) => f.relativePath === 'Cargo.toml')) {
       configFiles.push('Cargo.toml');
       type = type === 'unknown' ? 'rust' : 'mixed';
     }
 
     // Check for Go
-    if (files.some(f => f.relativePath === 'go.mod')) {
+    if (files.some((f) => f.relativePath === 'go.mod')) {
       configFiles.push('go.mod');
       type = type === 'unknown' ? 'go' : 'mixed';
     }
@@ -466,7 +553,11 @@ export class CodebaseMemory {
     // Add other config files found
     for (const file of files) {
       const relativePath = file.relativePath ?? file.name ?? '';
-      if (relativePath && CONFIG_FILES.has(path.basename(relativePath)) && !configFiles.includes(relativePath)) {
+      if (
+        relativePath &&
+        CONFIG_FILES.has(path.basename(relativePath)) &&
+        !configFiles.includes(relativePath)
+      ) {
         configFiles.push(relativePath);
       }
     }
@@ -477,22 +568,40 @@ export class CodebaseMemory {
   /**
    * Find entry points
    */
-  private findEntryPoints(files: FileInfo[], projectType: string): string[] {
+  private findEntryPoints(files: FileInfo[], _projectType: string): string[] {
     const entryPoints: string[] = [];
 
     const commonEntries = [
-      'src/index.ts', 'src/index.js', 'src/main.ts', 'src/main.js',
-      'index.ts', 'index.js', 'main.ts', 'main.js',
-      'src/app.ts', 'src/app.js', 'app.ts', 'app.js',
-      'src/server.ts', 'src/server.js', 'server.ts', 'server.js',
-      'src/cli.ts', 'bin/cli.ts', 'cli.ts',
-      'main.py', 'app.py', 'src/main.py',
-      'main.go', 'cmd/main.go',
-      'src/main.rs', 'src/lib.rs'
+      'src/index.ts',
+      'src/index.js',
+      'src/main.ts',
+      'src/main.js',
+      'index.ts',
+      'index.js',
+      'main.ts',
+      'main.js',
+      'src/app.ts',
+      'src/app.js',
+      'app.ts',
+      'app.js',
+      'src/server.ts',
+      'src/server.js',
+      'server.ts',
+      'server.js',
+      'src/cli.ts',
+      'bin/cli.ts',
+      'cli.ts',
+      'main.py',
+      'app.py',
+      'src/main.py',
+      'main.go',
+      'cmd/main.go',
+      'src/main.rs',
+      'src/lib.rs',
     ];
 
     for (const entry of commonEntries) {
-      if (files.some(f => (f.relativePath ?? '').replace(/\\/g, '/') === entry)) {
+      if (files.some((f) => (f.relativePath ?? '').replace(/\\/g, '/') === entry)) {
         entryPoints.push(entry);
       }
     }
@@ -525,15 +634,15 @@ export class CodebaseMemory {
 
     // Key directories
     const keyDirs = structure.directories
-      .filter(d => !d.includes('/') || d.split('/').length <= 2)
+      .filter((d) => !d.includes('/') || d.split('/').length <= 2)
       .slice(0, 10);
     if (keyDirs.length > 0) {
       lines.push(`Directories: ${keyDirs.join(', ')}`);
     }
 
     // Main exports/classes
-    const allExports = files.flatMap(f => f.exports || []).slice(0, 20);
-    const allClasses = files.flatMap(f => f.classes || []).slice(0, 15);
+    const allExports = files.flatMap((f) => f.exports || []).slice(0, 20);
+    const allClasses = files.flatMap((f) => f.classes || []).slice(0, 15);
 
     if (allClasses.length > 0) {
       lines.push(`Key classes: ${allClasses.join(', ')}`);
@@ -550,7 +659,7 @@ export class CodebaseMemory {
    */
   getAnalysis(projectPath: string): CodebaseAnalysis | undefined {
     const id = this.generateId(path.resolve(projectPath));
-    const analysis = this.store.analyses.find(a => a.id === id);
+    const analysis = this.store.analyses.find((a) => a.id === id);
 
     if (analysis) {
       analysis.lastAccessed = new Date().toISOString();
@@ -579,17 +688,24 @@ export class CodebaseMemory {
   /**
    * Enrich a prompt with project context
    */
-  enrichPrompt(userPrompt: string, options: {
-    maxContextLength?: number;
-    includeStructure?: boolean;
-    includeRelevantFiles?: boolean;
-  } = {}): { enrichedPrompt: string; context: ContextEnrichment } {
-    const { maxContextLength = 4000, includeStructure = true, includeRelevantFiles = true } = options;
+  enrichPrompt(
+    userPrompt: string,
+    options: {
+      maxContextLength?: number;
+      includeStructure?: boolean;
+      includeRelevantFiles?: boolean;
+    } = {},
+  ): { enrichedPrompt: string; context: ContextEnrichment } {
+    const {
+      maxContextLength = 4000,
+      includeStructure = true,
+      includeRelevantFiles = true,
+    } = options;
 
     if (!this.currentProject) {
       return {
         enrichedPrompt: userPrompt,
-        context: { projectContext: '', relevantFiles: [], suggestedActions: [] }
+        context: { projectContext: '', relevantFiles: [], suggestedActions: [] },
       };
     }
 
@@ -602,7 +718,9 @@ export class CodebaseMemory {
       contextParts.push(project.summary);
 
       if (project.scripts && Object.keys(project.scripts).length > 0) {
-        contextParts.push(`\nAvailable scripts: ${Object.keys(project.scripts).slice(0, 10).join(', ')}`);
+        contextParts.push(
+          `\nAvailable scripts: ${Object.keys(project.scripts).slice(0, 10).join(', ')}`,
+        );
       }
     }
 
@@ -616,10 +734,12 @@ export class CodebaseMemory {
           file.relativePath,
           ...(file.exports || []),
           ...(file.classes || []),
-          ...(file.functions || [])
-        ].join(' ').toLowerCase();
+          ...(file.functions || []),
+        ]
+          .join(' ')
+          .toLowerCase();
 
-        const matches = keywords.filter(kw => fileText.includes(kw));
+        const matches = keywords.filter((kw) => fileText.includes(kw));
         if (matches.length > 0) {
           relevantFiles.push(file);
         }
@@ -652,7 +772,7 @@ export class CodebaseMemory {
 
     // Truncate if too long
     if (projectContext.length > maxContextLength) {
-      projectContext = projectContext.slice(0, maxContextLength) + '\n...[truncated]';
+      projectContext = `${projectContext.slice(0, maxContextLength)}\n...[truncated]`;
     }
 
     const enrichedPrompt = projectContext
@@ -664,8 +784,8 @@ export class CodebaseMemory {
       context: {
         projectContext,
         relevantFiles: relevantFiles.slice(0, 5),
-        suggestedActions
-      }
+        suggestedActions,
+      },
     };
   }
 
@@ -675,45 +795,191 @@ export class CodebaseMemory {
   private extractKeywords(text: string): string[] {
     const stopWords = new Set([
       // English
-      'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been',
-      'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would',
-      'could', 'should', 'may', 'might', 'must', 'can', 'to', 'of',
-      'in', 'for', 'on', 'with', 'at', 'by', 'from', 'up', 'about',
-      'into', 'over', 'after', 'how', 'what', 'when', 'where', 'why',
-      'all', 'each', 'every', 'both', 'few', 'more', 'most', 'other',
-      'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so',
-      'than', 'too', 'very', 'just', 'and', 'but', 'if', 'or', 'this',
-      'that', 'these', 'those', 'i', 'me', 'my', 'you', 'your', 'we',
-      'want', 'need', 'please', 'help', 'make', 'create', 'add', 'fix',
-      'update', 'change', 'modify', 'implement', 'write', 'code', 'file',
+      'the',
+      'a',
+      'an',
+      'is',
+      'are',
+      'was',
+      'were',
+      'be',
+      'been',
+      'have',
+      'has',
+      'had',
+      'do',
+      'does',
+      'did',
+      'will',
+      'would',
+      'could',
+      'should',
+      'may',
+      'might',
+      'must',
+      'can',
+      'to',
+      'of',
+      'in',
+      'for',
+      'on',
+      'with',
+      'at',
+      'by',
+      'from',
+      'up',
+      'about',
+      'into',
+      'over',
+      'after',
+      'how',
+      'what',
+      'when',
+      'where',
+      'why',
+      'all',
+      'each',
+      'every',
+      'both',
+      'few',
+      'more',
+      'most',
+      'other',
+      'some',
+      'such',
+      'no',
+      'nor',
+      'not',
+      'only',
+      'own',
+      'same',
+      'so',
+      'than',
+      'too',
+      'very',
+      'just',
+      'and',
+      'but',
+      'if',
+      'or',
+      'this',
+      'that',
+      'these',
+      'those',
+      'i',
+      'me',
+      'my',
+      'you',
+      'your',
+      'we',
+      'want',
+      'need',
+      'please',
+      'help',
+      'make',
+      'create',
+      'add',
+      'fix',
+      'update',
+      'change',
+      'modify',
+      'implement',
+      'write',
+      'code',
+      'file',
       // Polish
-      'jak', 'jest', 'są', 'był', 'była', 'były', 'być', 'mieć', 'ma',
-      'mają', 'do', 'na', 'w', 'z', 'od', 'po', 'za', 'przed', 'przez',
-      'oraz', 'ale', 'lub', 'czy', 'ten', 'ta', 'to', 'te', 'tym',
-      'tego', 'tej', 'co', 'gdzie', 'kiedy', 'dlaczego', 'który', 'która',
-      'które', 'którzy', 'wszystko', 'każdy', 'żaden', 'inny', 'sam',
-      'chcę', 'potrzebuję', 'proszę', 'pomóż', 'zrób', 'stwórz', 'dodaj',
-      'napraw', 'zmień', 'pokaż', 'znajdź', 'projekcie', 'projekt', 'pliku'
+      'jak',
+      'jest',
+      'są',
+      'był',
+      'była',
+      'były',
+      'być',
+      'mieć',
+      'ma',
+      'mają',
+      'do',
+      'na',
+      'w',
+      'z',
+      'od',
+      'po',
+      'za',
+      'przed',
+      'przez',
+      'oraz',
+      'ale',
+      'lub',
+      'czy',
+      'ten',
+      'ta',
+      'to',
+      'te',
+      'tym',
+      'tego',
+      'tej',
+      'co',
+      'gdzie',
+      'kiedy',
+      'dlaczego',
+      'który',
+      'która',
+      'które',
+      'którzy',
+      'wszystko',
+      'każdy',
+      'żaden',
+      'inny',
+      'sam',
+      'chcę',
+      'potrzebuję',
+      'proszę',
+      'pomóż',
+      'zrób',
+      'stwórz',
+      'dodaj',
+      'napraw',
+      'zmień',
+      'pokaż',
+      'znajdź',
+      'projekcie',
+      'projekt',
+      'pliku',
     ]);
 
     // Technical terms to always include (preserve even if short)
     const techTerms = new Set([
-      'api', 'cli', 'gui', 'mcp', 'sql', 'css', 'tsx', 'jsx', 'ui', 'ux',
-      'git', 'npm', 'db', 'io', 'fs', 'os', 'ws'
+      'api',
+      'cli',
+      'gui',
+      'mcp',
+      'sql',
+      'css',
+      'tsx',
+      'jsx',
+      'ui',
+      'ux',
+      'git',
+      'npm',
+      'db',
+      'io',
+      'fs',
+      'os',
+      'ws',
     ]);
 
     // Extract CamelCase words
     const camelCaseWords: string[] = [];
     const camelMatches = text.match(/[A-Z][a-z]+(?=[A-Z])|[A-Z][a-z]+/g);
     if (camelMatches) {
-      camelCaseWords.push(...camelMatches.map(w => w.toLowerCase()));
+      camelCaseWords.push(...camelMatches.map((w) => w.toLowerCase()));
     }
 
     const basicKeywords = text
       .toLowerCase()
       .replace(/[^\w\sąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/g, ' ')
       .split(/\s+/)
-      .filter(word => {
+      .filter((word) => {
         if (techTerms.has(word)) return true;
         return word.length > 2 && !stopWords.has(word);
       });
@@ -735,11 +1001,16 @@ export class CodebaseMemory {
       if (project.scripts?.test) {
         suggestions.push(`Run tests: npm test`);
       }
-      const testFiles = project.files.filter(f =>
-        (f.relativePath ?? '').includes('test') || (f.relativePath ?? '').includes('spec')
+      const testFiles = project.files.filter(
+        (f) => (f.relativePath ?? '').includes('test') || (f.relativePath ?? '').includes('spec'),
       );
       if (testFiles.length > 0) {
-        suggestions.push(`Test files found: ${testFiles.slice(0, 3).map(f => f.relativePath ?? f.name).join(', ')}`);
+        suggestions.push(
+          `Test files found: ${testFiles
+            .slice(0, 3)
+            .map((f) => f.relativePath ?? f.name)
+            .join(', ')}`,
+        );
       }
     }
 
@@ -752,24 +1023,35 @@ export class CodebaseMemory {
 
     // API/route-related
     if (lower.includes('api') || lower.includes('route') || lower.includes('endpoint')) {
-      const apiFiles = project.files.filter(f =>
-        (f.relativePath ?? '').includes('api') || (f.relativePath ?? '').includes('route')
+      const apiFiles = project.files.filter(
+        (f) => (f.relativePath ?? '').includes('api') || (f.relativePath ?? '').includes('route'),
       );
       if (apiFiles.length > 0) {
-        suggestions.push(`API files: ${apiFiles.slice(0, 3).map(f => f.relativePath ?? f.name).join(', ')}`);
+        suggestions.push(
+          `API files: ${apiFiles
+            .slice(0, 3)
+            .map((f) => f.relativePath ?? f.name)
+            .join(', ')}`,
+        );
       }
     }
 
     // Component-related (React/Vue/etc)
     if (lower.includes('component') || lower.includes('komponent')) {
-      const componentFiles = project.files.filter(f =>
-        (f.relativePath ?? '').includes('component') ||
-        f.extension === '.tsx' ||
-        f.extension === '.vue' ||
-        f.extension === '.svelte'
+      const componentFiles = project.files.filter(
+        (f) =>
+          (f.relativePath ?? '').includes('component') ||
+          f.extension === '.tsx' ||
+          f.extension === '.vue' ||
+          f.extension === '.svelte',
       );
       if (componentFiles.length > 0) {
-        suggestions.push(`Component files: ${componentFiles.slice(0, 5).map(f => f.relativePath ?? f.name).join(', ')}`);
+        suggestions.push(
+          `Component files: ${componentFiles
+            .slice(0, 5)
+            .map((f) => f.relativePath ?? f.name)
+            .join(', ')}`,
+        );
       }
     }
 
@@ -782,29 +1064,37 @@ export class CodebaseMemory {
   searchProjects(query: string): CodebaseAnalysis[] {
     const keywords = this.extractKeywords(query);
 
-    return this.store.analyses.filter(analysis => {
+    return this.store.analyses.filter((analysis) => {
       const text = [
         analysis.projectName,
         analysis.structure.type,
         analysis.structure.framework || '',
         ...analysis.dependencies,
-        analysis.summary
-      ].join(' ').toLowerCase();
+        analysis.summary,
+      ]
+        .join(' ')
+        .toLowerCase();
 
-      return keywords.some(kw => text.includes(kw));
+      return keywords.some((kw) => text.includes(kw));
     });
   }
 
   /**
    * List all analyzed projects
    */
-  listProjects(): Array<{ name: string; path: string; type: string; framework?: string; analyzedAt: string }> {
-    return this.store.analyses.map(a => ({
+  listProjects(): Array<{
+    name: string;
+    path: string;
+    type: string;
+    framework?: string;
+    analyzedAt: string;
+  }> {
+    return this.store.analyses.map((a) => ({
       name: a.projectName,
       path: a.projectPath,
       type: a.structure.type,
       framework: a.structure.framework,
-      analyzedAt: a.analyzedAt
+      analyzedAt: a.analyzedAt,
     }));
   }
 
@@ -813,7 +1103,7 @@ export class CodebaseMemory {
    */
   deleteProject(projectPath: string): boolean {
     const id = this.generateId(path.resolve(projectPath));
-    const idx = this.store.analyses.findIndex(a => a.id === id);
+    const idx = this.store.analyses.findIndex((a) => a.id === id);
 
     if (idx !== -1) {
       this.store.analyses.splice(idx, 1);
@@ -833,7 +1123,7 @@ export class CodebaseMemory {
     return {
       totalProjects: this.store.analyses.length,
       totalFiles: this.store.analyses.reduce((sum, a) => sum + a.files.length, 0),
-      totalLines: this.store.analyses.reduce((sum, a) => sum + a.structure.totalLines, 0)
+      totalLines: this.store.analyses.reduce((sum, a) => sum + a.structure.totalLines, 0),
     };
   }
 

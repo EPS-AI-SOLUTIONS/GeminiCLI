@@ -10,9 +10,8 @@
  * @module core/swarm/helpers
  */
 
-import chalk from 'chalk';
-import type { ExecutionResult } from '../../types/index.js';
 import { mcpManager } from '../../mcp/index.js';
+import type { ExecutionResult } from '../../types/index.js';
 
 // ============================================================================
 // MCP CONTEXT
@@ -39,7 +38,7 @@ These are external tools that agents can use. Assign Philippa for tasks requirin
       toolsByServer.set(tool.serverName, []);
     }
     const desc = tool.description?.substring(0, 60) || 'No description';
-    toolsByServer.get(tool.serverName)!.push(`  - ${tool.name}: ${desc}...`);
+    toolsByServer.get(tool.serverName)?.push(`  - ${tool.name}: ${desc}...`);
   }
 
   for (const [server, tools] of toolsByServer) {
@@ -68,21 +67,27 @@ export async function generateNextStepSuggestions(
   objective: string,
   _report: string,
   results: ExecutionResult[],
-  success: boolean
+  success: boolean,
 ): Promise<string[]> {
   const suggestions: string[] = [];
   const objectiveLower = objective.toLowerCase();
-  const failedTasks = results.filter(r => !r.success);
-  const successTasks = results.filter(r => r.success);
+  const failedTasks = results.filter((r) => !r.success);
+  const successTasks = results.filter((r) => r.success);
 
   // 1. Sugestie oparte na statusie wykonania
   if (!success || failedTasks.length > 0) {
-    suggestions.push(`Napraw ${failedTasks.length} nieudanych zadań: "${failedTasks[0]?.error?.substring(0, 50)}..."`);
+    suggestions.push(
+      `Napraw ${failedTasks.length} nieudanych zadań: "${failedTasks[0]?.error?.substring(0, 50)}..."`,
+    );
     suggestions.push('Uruchom ponownie z trybem debugowania: @lambert diagnozuj błędy');
   }
 
   // 2. Sugestie oparte na typie zadania
-  if (objectiveLower.includes('walidacj') || objectiveLower.includes('pydantic') || objectiveLower.includes('schema')) {
+  if (
+    objectiveLower.includes('walidacj') ||
+    objectiveLower.includes('pydantic') ||
+    objectiveLower.includes('schema')
+  ) {
     suggestions.push('Uruchom testy jednostkowe dla nowych schematów walidacji');
     suggestions.push('Dodaj walidację dla pozostałych narzędzi MCP');
     suggestions.push('Wygeneruj dokumentację API dla schematów Pydantic');
@@ -119,7 +124,9 @@ export async function generateNextStepSuggestions(
 
   // 4. Sugestie oparte na wynikach
   if (successTasks.length > 5) {
-    suggestions.push(`Przejrzyj ${successTasks.length} ukończonych zadań i zoptymalizuj powtarzalne operacje`);
+    suggestions.push(
+      `Przejrzyj ${successTasks.length} ukończonych zadań i zoptymalizuj powtarzalne operacje`,
+    );
   }
 
   // Ogranicz do 5 sugestii
@@ -153,16 +160,16 @@ export function checkMultiAgentConsensus(results: ExecutionResult[]): {
     const facts = new Set<string>();
 
     // Extract file paths mentioned
-    const filePaths = content.match(/(?:src|lib|app)\/[\w\/-]+\.\w+/g) || [];
-    filePaths.forEach(p => facts.add(`file:${p}`));
+    const filePaths = content.match(/(?:src|lib|app)\/[\w/-]+\.\w+/g) || [];
+    filePaths.forEach((p) => facts.add(`file:${p}`));
 
     // Extract function/class names
     const definitions = content.match(/(?:function|class|interface|type)\s+(\w+)/g) || [];
-    definitions.forEach(d => facts.add(`def:${d}`));
+    definitions.forEach((d) => facts.add(`def:${d}`));
 
     // Extract commands executed
     const commands = content.match(/EXEC:\s*([^\n]+)/g) || [];
-    commands.forEach(c => facts.add(`cmd:${c}`));
+    commands.forEach((c) => facts.add(`cmd:${c}`));
 
     factsByAgent.set(result.id, facts);
   }
@@ -174,7 +181,7 @@ export function checkMultiAgentConsensus(results: ExecutionResult[]): {
       if (!allFacts.has(fact)) {
         allFacts.set(fact, []);
       }
-      allFacts.get(fact)!.push(taskId);
+      allFacts.get(fact)?.push(taskId);
     }
   }
 
@@ -199,7 +206,7 @@ export function checkMultiAgentConsensus(results: ExecutionResult[]): {
         if (!fileVersions.has(filePath)) {
           fileVersions.set(filePath, new Map());
         }
-        fileVersions.get(filePath)!.set(result.id, op.substring(0, 100));
+        fileVersions.get(filePath)?.set(result.id, op.substring(0, 100));
       }
     }
   }
@@ -209,8 +216,8 @@ export function checkMultiAgentConsensus(results: ExecutionResult[]): {
     if (versions.size > 1) {
       conflicts.push({
         topic: `Plik: ${file}`,
-        agents: Array.from(versions.keys()).map(id => `Zadanie #${id}`),
-        values: Array.from(versions.values())
+        agents: Array.from(versions.keys()).map((id) => `Zadanie #${id}`),
+        values: Array.from(versions.values()),
       });
     }
   }
@@ -231,7 +238,7 @@ export function checkMultiAgentConsensus(results: ExecutionResult[]): {
     hasConsensus: conflicts.length === 0 && consensusScore >= 50,
     agreements,
     conflicts,
-    consensusScore
+    consensusScore,
   };
 }
 
@@ -244,21 +251,30 @@ export function checkMultiAgentConsensus(results: ExecutionResult[]): {
  */
 export function validateAgentResults(
   results: ExecutionResult[],
-  hallucinationWarnings: string[]
+  hallucinationWarnings: string[],
 ): ExecutionResult[] {
-  return results.map(r => {
+  return results.map((r) => {
     const content = r.logs?.[0] || '';
 
     // Wzorce sugerujące że agent "proponuje" zamiast faktycznie wykonuje
     const suspiciousPatterns = [
-      { pattern: /(?:Oto|Tutaj|Poniżej).*(?:przykład|propozycja|implementacja)/i,
-        warning: 'Agent mógł wygenerować PRZYKŁADOWY kod zamiast rzeczywistych zmian' },
-      { pattern: /(?:można|należy|warto|sugeruję|zalecam).*(?:dodać|zaimplementować|stworzyć)/i,
-        warning: 'Agent opisał co MOŻNA zrobić zamiast CO FAKTYCZNIE ZROBIŁ' },
-      { pattern: /(?:w pliku|do pliku|plik)\s+[a-zA-Z]+\d+\.(ts|js|tsx|jsx)/i,
-        warning: 'Agent użył GENERYCZNEJ nazwy pliku (file1.ts, Class1.ts) - prawdopodobnie halucynacja' },
-      { pattern: /(?:Class|File|Test|Helper|Utils?)\d+\.(ts|js|tsx)/i,
-        warning: 'Wykryto generyczną nazwę klasy/pliku - może być halucynacja' }
+      {
+        pattern: /(?:Oto|Tutaj|Poniżej).*(?:przykład|propozycja|implementacja)/i,
+        warning: 'Agent mógł wygenerować PRZYKŁADOWY kod zamiast rzeczywistych zmian',
+      },
+      {
+        pattern: /(?:można|należy|warto|sugeruję|zalecam).*(?:dodać|zaimplementować|stworzyć)/i,
+        warning: 'Agent opisał co MOŻNA zrobić zamiast CO FAKTYCZNIE ZROBIŁ',
+      },
+      {
+        pattern: /(?:w pliku|do pliku|plik)\s+[a-zA-Z]+\d+\.(ts|js|tsx|jsx)/i,
+        warning:
+          'Agent użył GENERYCZNEJ nazwy pliku (file1.ts, Class1.ts) - prawdopodobnie halucynacja',
+      },
+      {
+        pattern: /(?:Class|File|Test|Helper|Utils?)\d+\.(ts|js|tsx)/i,
+        warning: 'Wykryto generyczną nazwę klasy/pliku - może być halucynacja',
+      },
     ];
 
     for (const { pattern, warning } of suspiciousPatterns) {

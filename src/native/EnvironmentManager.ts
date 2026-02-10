@@ -13,8 +13,8 @@
  * - Predefined environment profiles (development, production, test)
  */
 
-import { EventEmitter } from 'events';
-import fs from 'fs';
+import { EventEmitter } from 'node:events';
+import fs from 'node:fs';
 import chalk from 'chalk';
 
 // ============================================================
@@ -57,7 +57,7 @@ export const SENSITIVE_ENV_PATTERNS: RegExp[] = [
   /AUTH/i,
   /ACCESS[_-]?KEY/i,
   /SESSION[_-]?KEY/i,
-  /ENCRYPT/i
+  /ENCRYPT/i,
 ];
 
 /**
@@ -76,7 +76,7 @@ export const DEFAULT_BLOCKED_ENV_VARS: string[] = [
   'MONGO_PASSWORD',
   'JWT_SECRET',
   'ENCRYPTION_KEY',
-  'PRIVATE_KEY'
+  'PRIVATE_KEY',
 ];
 
 /**
@@ -88,27 +88,27 @@ export const ENVIRONMENT_PROFILES: Record<EnvironmentProfile, Partial<Environmen
     additionalEnv: {
       NODE_ENV: 'development',
       DEBUG: '*',
-      LOG_LEVEL: 'debug'
+      LOG_LEVEL: 'debug',
     },
-    blockedEnvVars: []
+    blockedEnvVars: [],
   },
   production: {
     inheritEnv: true,
     additionalEnv: {
       NODE_ENV: 'production',
-      LOG_LEVEL: 'info'
+      LOG_LEVEL: 'info',
     },
-    blockedEnvVars: [...DEFAULT_BLOCKED_ENV_VARS]
+    blockedEnvVars: [...DEFAULT_BLOCKED_ENV_VARS],
   },
   test: {
     inheritEnv: false,
     additionalEnv: {
       NODE_ENV: 'test',
       LOG_LEVEL: 'warn',
-      CI: 'true'
+      CI: 'true',
     },
-    blockedEnvVars: [...DEFAULT_BLOCKED_ENV_VARS]
-  }
+    blockedEnvVars: [...DEFAULT_BLOCKED_ENV_VARS],
+  },
 };
 
 /**
@@ -119,7 +119,7 @@ export function createDefaultEnvironmentConfig(): EnvironmentConfig {
     inheritEnv: true,
     additionalEnv: {},
     blockedEnvVars: [...DEFAULT_BLOCKED_ENV_VARS],
-    activeProfile: undefined
+    activeProfile: undefined,
   };
 }
 
@@ -139,7 +139,7 @@ export class EnvironmentManager extends EventEmitter {
     super();
     this.config = {
       ...createDefaultEnvironmentConfig(),
-      ...config
+      ...config,
     };
     this.rebuildEnvironment();
   }
@@ -203,7 +203,7 @@ export class EnvironmentManager extends EventEmitter {
    * Check if an environment variable name is sensitive
    */
   isSensitiveEnvVar(name: string): boolean {
-    return SENSITIVE_ENV_PATTERNS.some(pattern => pattern.test(name));
+    return SENSITIVE_ENV_PATTERNS.some((pattern) => pattern.test(name));
   }
 
   // ============================================================
@@ -222,7 +222,7 @@ export class EnvironmentManager extends EventEmitter {
     this.config = {
       ...this.config,
       ...profileConfig,
-      activeProfile: profile
+      activeProfile: profile,
     };
 
     this.rebuildEnvironment();
@@ -242,7 +242,7 @@ export class EnvironmentManager extends EventEmitter {
   updateEnvironmentConfig(configUpdate: Partial<EnvironmentConfig>): void {
     this.config = {
       ...this.config,
-      ...configUpdate
+      ...configUpdate,
     };
     this.rebuildEnvironment();
     this.emit('envConfigChanged', configUpdate);
@@ -266,7 +266,7 @@ export class EnvironmentManager extends EventEmitter {
    */
   removeBlockedEnvVars(vars: string[]): void {
     const toRemove = new Set(vars);
-    this.config.blockedEnvVars = this.config.blockedEnvVars.filter(v => !toRemove.has(v));
+    this.config.blockedEnvVars = this.config.blockedEnvVars.filter((v) => !toRemove.has(v));
     this.rebuildEnvironment();
   }
 
@@ -321,10 +321,13 @@ export class EnvironmentManager extends EventEmitter {
   /**
    * Export environment to a file (.env format)
    */
-  exportEnvironment(filePath: string, options?: {
-    includeInherited?: boolean;
-    filterSensitive?: boolean
-  }): void {
+  exportEnvironment(
+    filePath: string,
+    options?: {
+      includeInherited?: boolean;
+      filterSensitive?: boolean;
+    },
+  ): void {
     const includeInherited = options?.includeInherited ?? false;
     const filterSensitive = options?.filterSensitive ?? true;
 
@@ -336,7 +339,7 @@ export class EnvironmentManager extends EventEmitter {
       // Only export managed and additional env vars
       envToExport = {
         ...this.config.additionalEnv,
-        ...this.managedEnv
+        ...this.managedEnv,
       };
       if (filterSensitive) {
         for (const key of Object.keys(envToExport)) {
@@ -425,7 +428,9 @@ export class EnvironmentManager extends EventEmitter {
       console.log(chalk.blue(`    ${key}=${displayValue}`));
     }
 
-    console.log(chalk.cyan(`\n  Total Environment Variables: ${Object.keys(this.currentEnv).length}`));
+    console.log(
+      chalk.cyan(`\n  Total Environment Variables: ${Object.keys(this.currentEnv).length}`),
+    );
   }
 
   /**

@@ -8,12 +8,11 @@
  * GEMINI 3 OPTIMIZED: Uses temperature 1.0 for analytical tasks
  */
 
-import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
-import chalk from 'chalk';
+import { type GenerativeModel, GoogleGenerativeAI } from '@google/generative-ai';
 import 'dotenv/config';
 
 import { GEMINI_MODELS } from '../config/models.config.js';
-import { TEMPERATURE_PRESETS, TASK_TEMPERATURES } from '../config/temperatures.config.js';
+import { TASK_TEMPERATURES, TEMPERATURE_PRESETS } from '../config/temperatures.config.js';
 import { mcpManager } from '../mcp/index.js';
 import { nativeCodeIntelligence } from '../native/NativeCodeIntelligence.js';
 import { logger } from './LiveLogger.js';
@@ -72,9 +71,9 @@ export class CodeAnalysisEngine {
     this.model = this.genAI.getGenerativeModel({
       model: GEMINI_MODELS.FLASH,
       generationConfig: {
-        temperature: TASK_TEMPERATURES.performance_analysis,  // 0.9 for focused analysis
-        maxOutputTokens: 4096
-      }
+        temperature: TASK_TEMPERATURES.performance_analysis, // 0.9 for focused analysis
+        maxOutputTokens: 4096,
+      },
     });
   }
 
@@ -99,7 +98,7 @@ export class CodeAnalysisEngine {
       await nativeCodeIntelligence.init(projectRoot);
       this.useNative = true;
       logger.system('[CodeAnalysis] NativeCodeIntelligence ready', 'info');
-    } catch (error) {
+    } catch (_error) {
       logger.system('[CodeAnalysis] NativeCodeIntelligence not available', 'warn');
     }
 
@@ -149,11 +148,11 @@ export class CodeAnalysisEngine {
     return {
       success: true,
       summary: analysis.summary,
-      relevantFiles: [...new Set(symbols.map(s => s.file))],
+      relevantFiles: [...new Set(symbols.map((s) => s.file))],
       symbols,
       codeContext,
       suggestions: analysis.suggestions,
-      analysisTime
+      analysisTime,
     };
   }
 
@@ -182,12 +181,12 @@ Keywords:`;
       // Fallback: split by common delimiters
       return objective
         .split(/[\s,;:()]+/)
-        .filter(w => w.length > 3 && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(w));
+        .filter((w) => w.length > 3 && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(w));
     } catch {
       // Fallback: simple word extraction
       return objective
         .split(/[\s,;:()]+/)
-        .filter(w => w.length > 3 && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(w));
+        .filter((w) => w.length > 3 && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(w));
     }
   }
 
@@ -195,10 +194,14 @@ Keywords:`;
   // Symbol Search
   // ============================================================
 
-  private async findRelevantSymbols(keywords: string[], request: CodeAnalysisRequest): Promise<SymbolInfo[]> {
+  private async findRelevantSymbols(
+    keywords: string[],
+    request: CodeAnalysisRequest,
+  ): Promise<SymbolInfo[]> {
     const symbols: SymbolInfo[] = [];
 
-    for (const keyword of keywords.slice(0, 10)) {  // Limit to 10 keywords
+    for (const keyword of keywords.slice(0, 10)) {
+      // Limit to 10 keywords
       // Try Serena MCP first
       if (this.useSerena) {
         const serenaSymbols = await this.searchWithSerena(keyword);
@@ -237,7 +240,7 @@ Keywords:`;
                 name: match[1],
                 kind: match[2],
                 file: match[3],
-                line: parseInt(match[4])
+                line: parseInt(match[4], 10),
               });
             }
           }
@@ -255,11 +258,11 @@ Keywords:`;
     try {
       const results = await nativeCodeIntelligence.findSymbol(keyword);
 
-      return results.map(r => ({
+      return results.map((r) => ({
         name: r.name,
         kind: typeof r.kind === 'number' ? String(r.kind) : r.kind,
         file: r.location.uri.replace('file://', ''),
-        line: r.location.range.start.line + 1
+        line: r.location.range.start.line + 1,
       }));
     } catch (error) {
       logger.system(`[CodeAnalysis] Native search error: ${error}`, 'debug');
@@ -272,17 +275,20 @@ Keywords:`;
   // ============================================================
 
   private derivePatterns(keywords: string[]): string[] {
-    return keywords.flatMap(k => [
+    return keywords.flatMap((k) => [
       k,
       `function ${k}`,
       `class ${k}`,
       `interface ${k}`,
       `const ${k}`,
-      `export.*${k}`
+      `export.*${k}`,
     ]);
   }
 
-  private async searchCodePatterns(patterns: string[], request: CodeAnalysisRequest): Promise<CodeSearchResult[]> {
+  private async searchCodePatterns(
+    patterns: string[],
+    request: CodeAnalysisRequest,
+  ): Promise<CodeSearchResult[]> {
     const results: CodeSearchResult[] = [];
 
     for (const pattern of patterns.slice(0, 5)) {
@@ -291,7 +297,7 @@ Keywords:`;
         try {
           const result = await mcpManager.callTool('serena__search_for_pattern', {
             pattern,
-            path: request.projectRoot
+            path: request.projectRoot,
           });
 
           if (result.success && result.content) {
@@ -305,9 +311,9 @@ Keywords:`;
                   if (match) {
                     results.push({
                       file: match[1],
-                      line: parseInt(match[2]),
+                      line: parseInt(match[2], 10),
                       content: match[3],
-                      relevance: 0.8
+                      relevance: 0.8,
                     });
                   }
                 }
@@ -328,7 +334,7 @@ Keywords:`;
               file: r.file,
               line: r.line,
               content: r.text,
-              relevance: 0.7
+              relevance: 0.7,
             });
           }
         } catch {
@@ -347,7 +353,7 @@ Keywords:`;
   private async buildCodeContext(
     symbols: SymbolInfo[],
     searchResults: CodeSearchResult[],
-    request: CodeAnalysisRequest
+    request: CodeAnalysisRequest,
   ): Promise<string> {
     const contextParts: string[] = [];
 
@@ -379,7 +385,7 @@ Keywords:`;
           if (content) {
             contextParts.push(`### ${file}`);
             contextParts.push('```typescript');
-            contextParts.push(content.substring(0, 2000));  // Limit size
+            contextParts.push(content.substring(0, 2000)); // Limit size
             if (content.length > 2000) contextParts.push('// ... truncated');
             contextParts.push('```\n');
           }
@@ -425,7 +431,7 @@ Keywords:`;
   private async analyzeWithGemini(
     objective: string,
     codeContext: string,
-    symbols: SymbolInfo[]
+    symbols: SymbolInfo[],
   ): Promise<{ summary: string; suggestions: string[] }> {
     const prompt = `You are an expert code analyst. Analyze the following codebase context to help with the given task.
 
@@ -455,9 +461,9 @@ Respond in JSON format:
       const analysisModel = this.genAI.getGenerativeModel({
         model: GEMINI_MODELS.PRO,
         generationConfig: {
-          temperature: TEMPERATURE_PRESETS.BALANCED,  // 1.0 for Gemini 3
-          maxOutputTokens: 4096
-        }
+          temperature: TEMPERATURE_PRESETS.BALANCED, // 1.0 for Gemini 3
+          maxOutputTokens: 4096,
+        },
       });
 
       const result = await analysisModel.generateContent(prompt);
@@ -469,19 +475,19 @@ Respond in JSON format:
         const parsed = JSON.parse(jsonMatch[0]);
         return {
           summary: parsed.summary || 'Analysis completed',
-          suggestions: parsed.suggestions || []
+          suggestions: parsed.suggestions || [],
         };
       }
 
       return {
         summary: text.substring(0, 500),
-        suggestions: []
+        suggestions: [],
       };
     } catch (error) {
       logger.system(`[CodeAnalysis] Gemini analysis error: ${error}`, 'warn');
       return {
         summary: `Found ${symbols.length} relevant symbols for the task.`,
-        suggestions: symbols.slice(0, 5).map(s => `Review ${s.name} in ${s.file}`)
+        suggestions: symbols.slice(0, 5).map((s) => `Review ${s.name} in ${s.file}`),
       };
     }
   }
@@ -492,7 +498,7 @@ Respond in JSON format:
 
   private deduplicateSymbols(symbols: SymbolInfo[]): SymbolInfo[] {
     const seen = new Set<string>();
-    return symbols.filter(s => {
+    return symbols.filter((s) => {
       const key = `${s.name}:${s.file}:${s.line}`;
       if (seen.has(key)) return false;
       seen.add(key);
@@ -505,16 +511,47 @@ Respond in JSON format:
    */
   isCodeTask(objective: string): boolean {
     const codeKeywords = [
-      'kod', 'code', 'funkcj', 'function', 'class', 'klasa',
-      'napraw', 'fix', 'bug', 'błąd', 'error', 'implement',
-      'zaimplementuj', 'dodaj', 'add', 'zmień', 'change', 'modify',
-      'refactor', 'test', 'build', 'kompilacj', 'typescript', 'javascript',
-      'import', 'export', 'moduł', 'module', 'plik', 'file',
-      'src/', '.ts', '.js', '.tsx', '.jsx', 'npm', 'node'
+      'kod',
+      'code',
+      'funkcj',
+      'function',
+      'class',
+      'klasa',
+      'napraw',
+      'fix',
+      'bug',
+      'błąd',
+      'error',
+      'implement',
+      'zaimplementuj',
+      'dodaj',
+      'add',
+      'zmień',
+      'change',
+      'modify',
+      'refactor',
+      'test',
+      'build',
+      'kompilacj',
+      'typescript',
+      'javascript',
+      'import',
+      'export',
+      'moduł',
+      'module',
+      'plik',
+      'file',
+      'src/',
+      '.ts',
+      '.js',
+      '.tsx',
+      '.jsx',
+      'npm',
+      'node',
     ];
 
     const objectiveLower = objective.toLowerCase();
-    return codeKeywords.some(kw => objectiveLower.includes(kw));
+    return codeKeywords.some((kw) => objectiveLower.includes(kw));
   }
 
   /**
@@ -529,7 +566,7 @@ Respond in JSON format:
     const symbols = await this.findRelevantSymbols(keywords, {
       objective,
       projectRoot,
-      analysisDepth: 'quick'
+      analysisDepth: 'quick',
     });
 
     if (symbols.length === 0) {

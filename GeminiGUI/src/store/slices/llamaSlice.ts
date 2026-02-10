@@ -4,7 +4,11 @@
  */
 
 import type { StateCreator } from 'zustand';
-import { LlamaService, type GGUFModelInfo, type RecommendedModel } from '../../services/tauri.service';
+import {
+  type GGUFModelInfo,
+  LlamaService,
+  type RecommendedModel,
+} from '../../services/tauri.service';
 
 export interface LlamaState {
   // Model state

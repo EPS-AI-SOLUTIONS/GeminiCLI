@@ -2,8 +2,8 @@
  * HistoryView Tests
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { HistoryView } from '../../src/views/HistoryView';
 import { createMockAppState, type MockAppState } from '../mocks/store';
 
@@ -14,7 +14,10 @@ vi.mock('framer-motion', async () => {
 });
 
 // Mock window.confirm
-vi.stubGlobal('confirm', vi.fn(() => true));
+vi.stubGlobal(
+  'confirm',
+  vi.fn(() => true),
+);
 
 // Create mock state
 let mockState: MockAppState;
@@ -106,9 +109,7 @@ describe('HistoryView', () => {
   describe('clear functionality', () => {
     beforeEach(() => {
       mockState = createMockAppState({
-        messages: [
-          { id: '1', role: 'user', content: 'Message', timestamp: new Date() },
-        ],
+        messages: [{ id: '1', role: 'user', content: 'Message', timestamp: new Date() }],
       });
     });
 
@@ -185,8 +186,18 @@ describe('HistoryView', () => {
     beforeEach(() => {
       mockState = createMockAppState({
         messages: [
-          { id: '1', role: 'user', content: 'Day 1 message', timestamp: new Date('2024-01-15T10:00:00') },
-          { id: '2', role: 'user', content: 'Day 2 message', timestamp: new Date('2024-01-16T10:00:00') },
+          {
+            id: '1',
+            role: 'user',
+            content: 'Day 1 message',
+            timestamp: new Date('2024-01-15T10:00:00'),
+          },
+          {
+            id: '2',
+            role: 'user',
+            content: 'Day 2 message',
+            timestamp: new Date('2024-01-16T10:00:00'),
+          },
         ],
       });
     });

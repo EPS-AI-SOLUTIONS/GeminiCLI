@@ -3,7 +3,7 @@
  * Feature #9: Request Deduplication
  */
 
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 import chalk from 'chalk';
 
 export interface CacheEntry<T> {
@@ -13,15 +13,15 @@ export interface CacheEntry<T> {
 }
 
 export interface CacheOptions {
-  ttl?: number;           // Time to live in ms (default: 5 minutes)
-  maxSize?: number;       // Max entries (default: 100)
+  ttl?: number; // Time to live in ms (default: 5 minutes)
+  maxSize?: number; // Max entries (default: 100)
   onHit?: (key: string) => void;
   onMiss?: (key: string) => void;
 }
 
 const DEFAULT_OPTIONS: CacheOptions = {
-  ttl: 5 * 60 * 1000,    // 5 minutes
-  maxSize: 100
+  ttl: 5 * 60 * 1000, // 5 minutes
+  maxSize: 100,
 };
 
 /**
@@ -37,7 +37,7 @@ export class RequestCache<T = string> {
       ttl: options.ttl ?? DEFAULT_OPTIONS.ttl!,
       maxSize: options.maxSize ?? DEFAULT_OPTIONS.maxSize!,
       onHit: options.onHit ?? (() => {}),
-      onMiss: options.onMiss ?? (() => {})
+      onMiss: options.onMiss ?? (() => {}),
     };
   }
 
@@ -97,7 +97,7 @@ export class RequestCache<T = string> {
     this.cache.set(key, {
       value,
       timestamp: Date.now(),
-      hits: 0
+      hits: 0,
     });
   }
 
@@ -149,7 +149,7 @@ export class RequestCache<T = string> {
       size: this.cache.size,
       hits: this.stats.hits,
       misses: this.stats.misses,
-      hitRate: total > 0 ? this.stats.hits / total : 0
+      hitRate: total > 0 ? this.stats.hits / total : 0,
     };
   }
 }
@@ -162,7 +162,8 @@ export class RequestDeduplicator<T = string> {
   private inFlight: Map<string, Promise<T>> = new Map();
 
   private generateKey(params: any): string {
-    return crypto.createHash('sha256')
+    return crypto
+      .createHash('sha256')
       .update(JSON.stringify(params))
       .digest('hex')
       .substring(0, 16);
@@ -204,5 +205,5 @@ export default {
   RequestCache,
   RequestDeduplicator,
   requestCache,
-  requestDeduplicator
+  requestDeduplicator,
 };

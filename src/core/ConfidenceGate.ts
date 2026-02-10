@@ -100,53 +100,87 @@ const DEFAULT_MAX_RETRIES = 3;
 const DEFAULT_FACTOR_WEIGHTS: FactorWeights = {
   responseLength: 0.15,
   specificity: 0.25,
-  evidenceMarkers: 0.20,
-  uncertaintyWords: 0.20,
-  structureQuality: 0.10,
-  taskRelevance: 0.10
+  evidenceMarkers: 0.2,
+  uncertaintyWords: 0.2,
+  structureQuality: 0.1,
+  taskRelevance: 0.1,
 };
 
 /** Words indicating uncertainty or hedging */
 export const UNCERTAINTY_WORDS = [
-  'maybe', 'perhaps', 'possibly', 'might', 'could be',
-  'not sure', 'uncertain', 'unclear', 'I think', 'I believe',
-  'probably', 'likely', 'potentially', 'seems', 'appears',
-  'moze', 'byc moze', 'prawdopodobnie', 'chyba', 'wydaje sie',
-  'nie jestem pewien', 'mozliwe', 'przypuszczalnie'
+  'maybe',
+  'perhaps',
+  'possibly',
+  'might',
+  'could be',
+  'not sure',
+  'uncertain',
+  'unclear',
+  'I think',
+  'I believe',
+  'probably',
+  'likely',
+  'potentially',
+  'seems',
+  'appears',
+  'moze',
+  'byc moze',
+  'prawdopodobnie',
+  'chyba',
+  'wydaje sie',
+  'nie jestem pewien',
+  'mozliwe',
+  'przypuszczalnie',
 ];
 
 /** Markers indicating evidence or concrete examples */
 export const EVIDENCE_MARKERS = [
-  'because', 'since', 'therefore', 'for example', 'such as',
-  'specifically', 'according to', 'based on', 'evidence',
-  'data shows', 'research indicates', 'demonstrates',
-  'poniewaz', 'dlatego', 'na przyklad', 'takie jak',
-  'konkretnie', 'wedlug', 'na podstawie', 'dowody',
-  'dane pokazuja', 'badania wskazuja'
+  'because',
+  'since',
+  'therefore',
+  'for example',
+  'such as',
+  'specifically',
+  'according to',
+  'based on',
+  'evidence',
+  'data shows',
+  'research indicates',
+  'demonstrates',
+  'poniewaz',
+  'dlatego',
+  'na przyklad',
+  'takie jak',
+  'konkretnie',
+  'wedlug',
+  'na podstawie',
+  'dowody',
+  'dane pokazuja',
+  'badania wskazuja',
 ];
 
 /** Patterns indicating specific/concrete content */
 const SPECIFICITY_PATTERNS = [
-  /\d+(\.\d+)?%/,           // Percentages
-  /\d{4}-\d{2}-\d{2}/,      // Dates
+  /\d+(\.\d+)?%/, // Percentages
+  /\d{4}-\d{2}-\d{2}/, // Dates
   /\d+(\.\d+)?\s*(KB|MB|GB|TB|ms|s|min)/i, // Measurements
-  /```[\s\S]*?```/,         // Code blocks
-  /`[^`]+`/,                // Inline code
-  /\[[^\]]+\]\([^)]+\)/,    // Links
-  /https?:\/\/[^\s]+/,      // URLs
-  /"[^"]+"/,                // Quoted text
+  /```[\s\S]*?```/, // Code blocks
+  /`[^`]+`/, // Inline code
+  /\[[^\]]+\]\([^)]+\)/, // Links
+  /https?:\/\/[^\s]+/, // URLs
+  /"[^"]+"/, // Quoted text
   /\b[A-Z][a-z]+(?:[A-Z][a-z]+)+\b/, // CamelCase identifiers
-  /\b[a-z_]+\([^)]*\)/      // Function calls
+  /\b[a-z_]+\([^)]*\)/, // Function calls
 ];
 
 /** Patterns indicating good structure */
 const STRUCTURE_PATTERNS = [
-  /^#{1,6}\s/m,             // Markdown headers
-  /^\d+\.\s/m,              // Numbered lists
-  /^[-*]\s/m,               // Bullet lists
-  /^>\s/m,                  // Block quotes
-  /\n\n/,                   // Paragraph breaks
-  /:\n\s*[-*\d]/            // Lists after colons
+  /^#{1,6}\s/m, // Markdown headers
+  /^\d+\.\s/m, // Numbered lists
+  /^[-*]\s/m, // Bullet lists
+  /^>\s/m, // Block quotes
+  /\n\n/, // Paragraph breaks
+  /:\n\s*[-*\d]/, // Lists after colons
 ];
 
 // =============================================================================
@@ -177,7 +211,7 @@ export class ConfidenceGate {
     this.verbose = config.verbose ?? false;
     this.factorWeights = {
       ...DEFAULT_FACTOR_WEIGHTS,
-      ...config.factorWeights
+      ...config.factorWeights,
     };
   }
 
@@ -233,7 +267,7 @@ export class ConfidenceGate {
       factors,
       action,
       summary: this.generateSummary(confidence, factors, action),
-      suggestions: passed ? undefined : this.generateSuggestions(factors)
+      suggestions: passed ? undefined : this.generateSuggestions(factors),
     };
 
     // Store in history
@@ -254,8 +288,8 @@ export class ConfidenceGate {
    * Evaluate response length factor
    */
   private evaluateResponseLength(response: string, context: GateContext): ConfidenceFactor {
-    const words = response.split(/\s+/).filter(w => w.length > 0).length;
-    const chars = response.length;
+    const words = response.split(/\s+/).filter((w) => w.length > 0).length;
+    const _chars = response.length;
 
     // Dynamic expectations based on task type
     let minWords = 20;
@@ -304,7 +338,7 @@ export class ConfidenceGate {
       name: 'responseLength',
       weight: this.factorWeights.responseLength,
       score: Math.round(score),
-      reason
+      reason,
     };
   }
 
@@ -319,7 +353,7 @@ export class ConfidenceGate {
       const matches = response.match(pattern);
       if (matches && matches.length > 0) {
         specificityScore += Math.min(15, matches.length * 5);
-        matchedPatterns.push(pattern.toString().slice(1, 20) + '...');
+        matchedPatterns.push(`${pattern.toString().slice(1, 20)}...`);
       }
     }
 
@@ -328,8 +362,13 @@ export class ConfidenceGate {
 
     // Penalize generic responses
     const genericPhrases = [
-      'in general', 'typically', 'usually', 'often',
-      'it depends', 'varies', 'context-dependent'
+      'in general',
+      'typically',
+      'usually',
+      'often',
+      'it depends',
+      'varies',
+      'context-dependent',
     ];
 
     let genericCount = 0;
@@ -356,7 +395,7 @@ export class ConfidenceGate {
       name: 'specificity',
       weight: this.factorWeights.specificity,
       score: Math.round(specificityScore),
-      reason
+      reason,
     };
   }
 
@@ -386,15 +425,16 @@ export class ConfidenceGate {
       score = 100;
     }
 
-    const reason = evidenceCount > 0
-      ? `Found ${evidenceCount} evidence marker(s)`
-      : `No evidence markers found - response may lack supporting reasoning`;
+    const reason =
+      evidenceCount > 0
+        ? `Found ${evidenceCount} evidence marker(s)`
+        : `No evidence markers found - response may lack supporting reasoning`;
 
     return {
       name: 'evidenceMarkers',
       weight: this.factorWeights.evidenceMarkers,
       score,
-      reason
+      reason,
     };
   }
 
@@ -432,15 +472,16 @@ export class ConfidenceGate {
       score = 20;
     }
 
-    const reason = uncertaintyCount === 0
-      ? `No uncertainty markers - response is confident`
-      : `Found ${uncertaintyCount} uncertainty marker(s) (${(ratio * 100).toFixed(1)}%)`;
+    const reason =
+      uncertaintyCount === 0
+        ? `No uncertainty markers - response is confident`
+        : `Found ${uncertaintyCount} uncertainty marker(s) (${(ratio * 100).toFixed(1)}%)`;
 
     return {
       name: 'uncertaintyWords',
       weight: this.factorWeights.uncertaintyWords,
       score,
-      reason
+      reason,
     };
   }
 
@@ -463,20 +504,21 @@ export class ConfidenceGate {
 
     // Check for consistent formatting
     const lines = response.split('\n');
-    const hasConsistentIndentation = lines.filter(l => /^\s{2,}/.test(l)).length > 2;
+    const hasConsistentIndentation = lines.filter((l) => /^\s{2,}/.test(l)).length > 2;
     if (hasConsistentIndentation) {
       structureScore = Math.min(100, structureScore + 10);
     }
 
-    const reason = structureScore >= 70
-      ? `Good structure with ${featuresFound.length} formatting feature(s)`
-      : `Basic structure - consider better organization`;
+    const reason =
+      structureScore >= 70
+        ? `Good structure with ${featuresFound.length} formatting feature(s)`
+        : `Basic structure - consider better organization`;
 
     return {
       name: 'structureQuality',
       weight: this.factorWeights.structureQuality,
       score: structureScore,
-      reason
+      reason,
     };
   }
 
@@ -498,21 +540,20 @@ export class ConfidenceGate {
     }
 
     // Score based on keyword presence
-    const ratio = taskKeywords.length > 0
-      ? matchCount / taskKeywords.length
-      : 0.5;
+    const ratio = taskKeywords.length > 0 ? matchCount / taskKeywords.length : 0.5;
 
     const score = Math.round(30 + ratio * 70);
 
-    const reason = matchCount > 0
-      ? `Response addresses task type (${matchCount}/${taskKeywords.length} keywords)`
-      : `Task relevance unclear - verify response addresses the request`;
+    const reason =
+      matchCount > 0
+        ? `Response addresses task type (${matchCount}/${taskKeywords.length} keywords)`
+        : `Task relevance unclear - verify response addresses the request`;
 
     return {
       name: 'taskRelevance',
       weight: this.factorWeights.taskRelevance,
       score,
-      reason
+      reason,
     };
   }
 
@@ -536,7 +577,7 @@ export class ConfidenceGate {
    */
   private determineAction(
     confidence: number,
-    context: GateContext
+    context: GateContext,
   ): 'pass' | 'retry' | 'escalate' | 'reject' {
     // High confidence = pass
     if (confidence >= this.threshold) {
@@ -560,18 +601,10 @@ export class ConfidenceGate {
   /**
    * Generate human-readable summary
    */
-  private generateSummary(
-    confidence: number,
-    factors: ConfidenceFactor[],
-    action: string
-  ): string {
-    const lowestFactor = factors.reduce((min, f) =>
-      f.score < min.score ? f : min
-    );
+  private generateSummary(confidence: number, factors: ConfidenceFactor[], action: string): string {
+    const lowestFactor = factors.reduce((min, f) => (f.score < min.score ? f : min));
 
-    const highestFactor = factors.reduce((max, f) =>
-      f.score > max.score ? f : max
-    );
+    const highestFactor = factors.reduce((max, f) => (f.score > max.score ? f : max));
 
     let summary = `Confidence: ${confidence}% (threshold: ${this.threshold}%). `;
     summary += `Strongest: ${highestFactor.name} (${highestFactor.score}%). `;
@@ -625,10 +658,12 @@ export class ConfidenceGate {
     const color = result.passed ? chalk.green : chalk.red;
     const icon = result.passed ? '[PASS]' : '[FAIL]';
 
-    console.log(color(
-      `[ConfidenceGate] ${icon} Task ${context.taskId} (${context.agentId}): ` +
-      `${result.confidence}% (threshold: ${this.threshold}%)`
-    ));
+    console.log(
+      color(
+        `[ConfidenceGate] ${icon} Task ${context.taskId} (${context.agentId}): ` +
+          `${result.confidence}% (threshold: ${this.threshold}%)`,
+      ),
+    );
 
     if (!result.passed) {
       console.log(chalk.yellow(`[ConfidenceGate] Action: ${result.action}`));
@@ -669,7 +704,7 @@ export class ConfidenceGate {
       pass: 0,
       retry: 0,
       escalate: 0,
-      reject: 0
+      reject: 0,
     };
 
     for (const history of this.evaluationHistory.values()) {
@@ -685,7 +720,7 @@ export class ConfidenceGate {
       totalEvaluations: total,
       passRate: total > 0 ? Math.round((passed / total) * 100) : 0,
       averageConfidence: total > 0 ? Math.round(totalConfidence / total) : 0,
-      actionBreakdown: actions
+      actionBreakdown: actions,
     };
   }
 }
@@ -697,7 +732,7 @@ export class ConfidenceGate {
 /** Default singleton instance */
 export const confidenceGate = new ConfidenceGate({
   threshold: DEFAULT_THRESHOLD,
-  verbose: false
+  verbose: false,
 });
 
 // =============================================================================
@@ -707,10 +742,7 @@ export const confidenceGate = new ConfidenceGate({
 /**
  * Quick confidence check with default gate
  */
-export function checkResponseConfidence(
-  response: string,
-  context: GateContext
-): GateResult {
+export function checkResponseConfidence(response: string, context: GateContext): GateResult {
   return confidenceGate.checkConfidence(response, context);
 }
 
@@ -731,10 +763,7 @@ export function getGlobalThreshold(): number {
 /**
  * Quick pass/fail check
  */
-export function doesPassConfidence(
-  response: string,
-  context: GateContext
-): boolean {
+export function doesPassConfidence(response: string, context: GateContext): boolean {
   return confidenceGate.checkConfidence(response, context).passed;
 }
 
@@ -743,7 +772,7 @@ export function doesPassConfidence(
  */
 export function getRecommendedAction(
   response: string,
-  context: GateContext
+  context: GateContext,
 ): 'pass' | 'retry' | 'escalate' | 'reject' {
   return confidenceGate.checkConfidence(response, context).action;
 }
@@ -762,5 +791,5 @@ export default {
   getRecommendedAction,
   DEFAULT_THRESHOLD,
   UNCERTAINTY_WORDS,
-  EVIDENCE_MARKERS
+  EVIDENCE_MARKERS,
 };

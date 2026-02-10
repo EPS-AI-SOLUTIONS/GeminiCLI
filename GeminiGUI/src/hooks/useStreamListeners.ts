@@ -5,8 +5,8 @@
  * Sets up listeners for Ollama and Swarm streaming events.
  */
 
-import { useEffect, useCallback, useRef } from 'react';
 import { listen } from '@tauri-apps/api/event';
+import { useCallback, useEffect, useRef } from 'react';
 import { TAURI_EVENTS } from '../constants';
 import type { StreamPayload } from '../types';
 
@@ -54,7 +54,7 @@ export const useStreamListeners = ({
         onComplete();
       }
     },
-    [onChunk, onComplete]
+    [onChunk, onComplete],
   );
 
   useEffect(() => {
@@ -73,49 +73,49 @@ export const useStreamListeners = ({
     let cleaned = false;
 
     const setupListeners = async () => {
-      const fn1 = await listen<StreamPayload>(
-        TAURI_EVENTS.LLAMA_STREAM,
-        (event) => {
-          if (signal.aborted) return;
-          try {
-            handleStreamEvent(event.payload, signal);
-          } catch (error) {
-            console.error('[StreamListeners] Llama event error:', error);
-            onError?.(error);
-          }
+      const fn1 = await listen<StreamPayload>(TAURI_EVENTS.LLAMA_STREAM, (event) => {
+        if (signal.aborted) return;
+        try {
+          handleStreamEvent(event.payload, signal);
+        } catch (error) {
+          console.error('[StreamListeners] Llama event error:', error);
+          onError?.(error);
         }
-      );
-      if (cleaned) { fn1(); return; }
+      });
+      if (cleaned) {
+        fn1();
+        return;
+      }
       unlistenFns.push(fn1);
 
-      const fn2 = await listen<StreamPayload>(
-        TAURI_EVENTS.GEMINI_STREAM,
-        (event) => {
-          if (signal.aborted) return;
-          try {
-            handleStreamEvent(event.payload, signal);
-          } catch (error) {
-            console.error('[StreamListeners] Gemini event error:', error);
-            onError?.(error);
-          }
+      const fn2 = await listen<StreamPayload>(TAURI_EVENTS.GEMINI_STREAM, (event) => {
+        if (signal.aborted) return;
+        try {
+          handleStreamEvent(event.payload, signal);
+        } catch (error) {
+          console.error('[StreamListeners] Gemini event error:', error);
+          onError?.(error);
         }
-      );
-      if (cleaned) { fn2(); return; }
+      });
+      if (cleaned) {
+        fn2();
+        return;
+      }
       unlistenFns.push(fn2);
 
-      const fn3 = await listen<StreamPayload>(
-        TAURI_EVENTS.SWARM_DATA,
-        (event) => {
-          if (signal.aborted) return;
-          try {
-            handleStreamEvent(event.payload, signal);
-          } catch (error) {
-            console.error('[StreamListeners] Swarm event error:', error);
-            onError?.(error);
-          }
+      const fn3 = await listen<StreamPayload>(TAURI_EVENTS.SWARM_DATA, (event) => {
+        if (signal.aborted) return;
+        try {
+          handleStreamEvent(event.payload, signal);
+        } catch (error) {
+          console.error('[StreamListeners] Swarm event error:', error);
+          onError?.(error);
         }
-      );
-      if (cleaned) { fn3(); return; }
+      });
+      if (cleaned) {
+        fn3();
+        return;
+      }
       unlistenFns.push(fn3);
     };
 

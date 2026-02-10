@@ -17,38 +17,82 @@
  */
 
 // ============================================================
-// Feature #21: Conversation Memory
+// AutoCompact - Automatic Context Compaction
 // ============================================================
 export {
-  ConversationMemory,
-  conversationMemory,
-  type ConversationTurn,
-  type ConversationSession
-} from './ConversationMemory.js';
+  AutoCompact,
+  type AutoCompactConfig,
+  autoCompact,
+  type CompactionLevel,
+  type CompactionResult,
+  type CompactionStats,
+} from './AutoCompact.js';
 
 // ============================================================
 // Feature #22: Smart Context Pruning
 // ============================================================
 export {
-  SmartContextPruner,
   contextPruner,
-  type PruningStrategy,
   type PrunedContext,
-  type PruningItem
+  type PruningItem,
+  type PruningStrategy,
+  SmartContextPruner,
 } from './ContextPruner.js';
-
+// ============================================================
+// Feature #21: Conversation Memory
+// ============================================================
+export {
+  ConversationMemory,
+  type ConversationSession,
+  type ConversationTurn,
+  conversationMemory,
+} from './ConversationMemory.js';
+// ============================================================
+// Feature #25: Correction Learner
+// ============================================================
+export {
+  type Correction,
+  CorrectionLearner,
+  type CorrectionStats,
+  correctionLearner,
+  type LearnedPattern,
+} from './CorrectionLearner.js';
+// ============================================================
+// Feature #29: Dry-Run Preview
+// ============================================================
+export {
+  type ActionType,
+  calculateImpact,
+  createAction,
+  type DryRunAction,
+  type DryRunPreview,
+  formatDryRunPreview,
+  generateDryRunPreview,
+  type ImpactLevel,
+  isDestructive,
+  type TotalImpactLevel,
+} from './DryRunPreview.js';
+// ============================================================
+// Feature #30: Explanation Mode
+// ============================================================
+export {
+  type Explanation,
+  ExplanationMode,
+  type ExplanationStep,
+  explanationMode,
+  type VerbosityLevel,
+} from './ExplanationMode.js';
 // ============================================================
 // Feature #23: Intent Detection
 // ============================================================
 export {
+  type DetectedIntent,
   detectIntent,
-  getSuggestedAgents,
   getIntentCategories,
-  matchesIntent,
+  getSuggestedAgents,
   type IntentCategory,
-  type DetectedIntent
+  matchesIntent,
 } from './IntentDetection.js';
-
 // ============================================================
 // Feature #24: Proactive Suggestions
 // ============================================================
@@ -56,86 +100,46 @@ export {
   ProactiveSuggestions,
   proactiveSuggestions,
   type Suggestion,
-  type SuggestionContext
+  type SuggestionContext,
 } from './ProactiveSuggestions.js';
-
-// ============================================================
-// Feature #25: Correction Learner
-// ============================================================
-export {
-  CorrectionLearner,
-  correctionLearner,
-  type Correction,
-  type LearnedPattern,
-  type CorrectionStats
-} from './CorrectionLearner.js';
-
-// ============================================================
-// Feature #26: Task Estimation
-// ============================================================
-export {
-  estimateTask,
-  determineComplexity,
-  getEstimatesForComplexity,
-  type TaskEstimate
-} from './TaskEstimation.js';
-
 // ============================================================
 // Feature #27: Progress Tracking
 // ============================================================
 export {
+  type ProgressListener,
+  type ProgressReport,
+  type ProgressStep,
   ProgressTracker,
   progressTracker,
-  type ProgressStep,
-  type ProgressReport,
-  type ProgressListener
 } from './ProgressTracking.js';
-
 // ============================================================
 // Feature #28: Rollback Manager
 // ============================================================
 export {
-  RollbackManager,
-  rollbackManager,
   type FileSnapshot,
+  RollbackManager,
   type RollbackPoint,
-  type RollbackResult
+  type RollbackResult,
+  rollbackManager,
 } from './RollbackManager.js';
-
 // ============================================================
-// Feature #29: Dry-Run Preview
-// ============================================================
-export {
-  generateDryRunPreview,
-  formatDryRunPreview,
-  createAction,
-  calculateImpact,
-  isDestructive,
-  type ActionType,
-  type ImpactLevel,
-  type TotalImpactLevel,
-  type DryRunAction,
-  type DryRunPreview
-} from './DryRunPreview.js';
-
-// ============================================================
-// Feature #30: Explanation Mode
+// Feature #26: Task Estimation
 // ============================================================
 export {
-  ExplanationMode,
-  explanationMode,
-  type VerbosityLevel,
-  type ExplanationStep,
-  type Explanation
-} from './ExplanationMode.js';
+  determineComplexity,
+  estimateTask,
+  getEstimatesForComplexity,
+  type TaskEstimate,
+} from './TaskEstimation.js';
 
 // ============================================================
 // Initialization Helper
 // ============================================================
 
+import chalk from 'chalk';
+import { autoCompact } from './AutoCompact.js';
 import { conversationMemory } from './ConversationMemory.js';
 import { correctionLearner } from './CorrectionLearner.js';
-import chalk from 'chalk';
 
 /**
  * Initialize all conversation subsystems
@@ -143,20 +147,17 @@ import chalk from 'chalk';
 export async function initConversationSubsystems(): Promise<void> {
   console.log(chalk.cyan('[Conversation] Initializing subsystems...'));
 
-  await Promise.all([
-    conversationMemory.initialize(),
-    correctionLearner.initialize()
-  ]);
+  await Promise.all([conversationMemory.initialize(), correctionLearner.initialize()]);
 
-  console.log(chalk.green('[Conversation] All subsystems ready'));
+  // Start auto-compaction monitoring
+  autoCompact.start();
+
+  console.log(chalk.green('[Conversation] All subsystems ready (AutoCompact active)'));
 }
 
 /**
  * Persist all conversation data
  */
 export async function persistConversationData(): Promise<void> {
-  await Promise.all([
-    conversationMemory.persist(),
-    correctionLearner.persist()
-  ]);
+  await Promise.all([conversationMemory.persist(), correctionLearner.persist()]);
 }

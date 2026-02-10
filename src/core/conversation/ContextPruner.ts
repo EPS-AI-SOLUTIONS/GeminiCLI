@@ -44,12 +44,12 @@ export class SmartContextPruner {
     type: 'hybrid',
     maxTokens: 4000,
     preserveSystemMessages: true,
-    preserveRecentN: 5
+    preserveRecentN: 5,
   };
 
   async prune(
     items: PruningItem[],
-    strategy: Partial<PruningStrategy> = {}
+    strategy: Partial<PruningStrategy> = {},
   ): Promise<PrunedContext> {
     const config = { ...this.defaultStrategy, ...strategy };
 
@@ -59,11 +59,11 @@ export class SmartContextPruner {
 
     if (originalTokens <= config.maxTokens) {
       return {
-        content: items.map(i => i.content).join('\n'),
+        content: items.map((i) => i.content).join('\n'),
         originalTokens,
         prunedTokens: originalTokens,
         preservedItems: items.length,
-        removedItems: 0
+        removedItems: 0,
       };
     }
 
@@ -71,7 +71,7 @@ export class SmartContextPruner {
     const scored = items.map((item, index) => ({
       ...item,
       index,
-      score: this.calculateScore(item, index, items.length, config)
+      score: this.calculateScore(item, index, items.length, config),
     }));
 
     // Sort by score (highest first)
@@ -92,16 +92,20 @@ export class SmartContextPruner {
     // Restore original order
     selected.sort((a, b) => a.index - b.index);
 
-    const content = selected.map(i => i.content).join('\n');
+    const content = selected.map((i) => i.content).join('\n');
 
-    console.log(chalk.gray(`[ContextPruner] ${originalTokens} -> ${currentTokens} tokens (kept ${selected.length}/${items.length})`));
+    console.log(
+      chalk.gray(
+        `[ContextPruner] ${originalTokens} -> ${currentTokens} tokens (kept ${selected.length}/${items.length})`,
+      ),
+    );
 
     return {
       content,
       originalTokens,
       prunedTokens: currentTokens,
       preservedItems: selected.length,
-      removedItems: items.length - selected.length
+      removedItems: items.length - selected.length,
     };
   }
 
@@ -109,7 +113,7 @@ export class SmartContextPruner {
     item: PruningItem,
     index: number,
     total: number,
-    config: PruningStrategy
+    config: PruningStrategy,
   ): number {
     let score = 0;
 
@@ -136,7 +140,6 @@ export class SmartContextPruner {
         // Would use embeddings here
         score += item.importance * 30 + recency * 20;
         break;
-      case 'hybrid':
       default:
         score += item.importance * 25 + recency * 25;
     }

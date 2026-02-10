@@ -116,18 +116,16 @@ Focus on actionable suggestions that improve maintainability.`;
  */
 export async function analyzeRefactoring(
   code: string,
-  filename: string
+  filename: string,
 ): Promise<RefactoringAnalysis> {
   console.log(chalk.cyan(`[Refactoring] Analyzing ${filename}...`));
 
-  const prompt = REFACTORING_PROMPT
-    .replace('{filename}', filename)
-    .replace('{code}', code);
+  const prompt = REFACTORING_PROMPT.replace('{filename}', filename).replace('{code}', code);
 
   try {
     const model = genAI.getGenerativeModel({
       model: QUALITY_MODEL,
-      generationConfig: { temperature: 0.2, maxOutputTokens: 4096 }
+      generationConfig: { temperature: 0.2, maxOutputTokens: 4096 },
     });
 
     const result = await model.generateContent(prompt);
@@ -143,7 +141,7 @@ export async function analyzeRefactoring(
     // Add IDs to suggestions
     const suggestions = (parsed.suggestions || []).map((s: any, i: number) => ({
       ...s,
-      id: `refactor-${i + 1}`
+      id: `refactor-${i + 1}`,
     }));
 
     console.log(chalk.green(`[Refactoring] Found ${suggestions.length} opportunities`));
@@ -156,8 +154,8 @@ export async function analyzeRefactoring(
         linesOfCode: code.split('\n').length,
         functions: 0,
         avgFunctionLength: 0,
-        cyclomaticComplexity: 0
-      }
+        cyclomaticComplexity: 0,
+      },
     };
   } catch (error: any) {
     console.log(chalk.yellow(`[Refactoring] Analysis failed: ${error.message}`));
@@ -169,8 +167,8 @@ export async function analyzeRefactoring(
         linesOfCode: code.split('\n').length,
         functions: 0,
         avgFunctionLength: 0,
-        cyclomaticComplexity: 0
-      }
+        cyclomaticComplexity: 0,
+      },
     };
   }
 }
@@ -190,13 +188,13 @@ export function formatRefactoringAnalysis(analysis: RefactoringAnalysis): string
   lines.push('');
 
   // Group by priority
-  const highPriority = analysis.suggestions.filter(s => s.priority === 'high');
-  const mediumPriority = analysis.suggestions.filter(s => s.priority === 'medium');
-  const lowPriority = analysis.suggestions.filter(s => s.priority === 'low');
+  const highPriority = analysis.suggestions.filter((s) => s.priority === 'high');
+  const mediumPriority = analysis.suggestions.filter((s) => s.priority === 'medium');
+  const lowPriority = analysis.suggestions.filter((s) => s.priority === 'low');
 
   if (highPriority.length > 0) {
     lines.push(chalk.red('[!] HIGH PRIORITY:'));
-    highPriority.forEach(s => {
+    highPriority.forEach((s) => {
       lines.push(`   ${s.id}: ${s.title} (${s.type})`);
       lines.push(chalk.gray(`      ${s.description}`));
       lines.push(chalk.gray(`      Effort: ${s.effort}`));
@@ -206,7 +204,7 @@ export function formatRefactoringAnalysis(analysis: RefactoringAnalysis): string
 
   if (mediumPriority.length > 0) {
     lines.push(chalk.yellow('[*] MEDIUM PRIORITY:'));
-    mediumPriority.forEach(s => {
+    mediumPriority.forEach((s) => {
       lines.push(`   ${s.id}: ${s.title} (${s.type})`);
       lines.push(chalk.gray(`      ${s.description}`));
     });
@@ -215,7 +213,7 @@ export function formatRefactoringAnalysis(analysis: RefactoringAnalysis): string
 
   if (lowPriority.length > 0) {
     lines.push(chalk.blue('[i] LOW PRIORITY:'));
-    lowPriority.forEach(s => {
+    lowPriority.forEach((s) => {
       lines.push(`   ${s.id}: ${s.title} (${s.type})`);
     });
     lines.push('');
@@ -232,15 +230,19 @@ export function formatRefactoringAnalysis(analysis: RefactoringAnalysis): string
  */
 export function getSuggestionDetails(
   analysis: RefactoringAnalysis,
-  suggestionId: string
+  suggestionId: string,
 ): string | null {
-  const suggestion = analysis.suggestions.find(s => s.id === suggestionId);
+  const suggestion = analysis.suggestions.find((s) => s.id === suggestionId);
   if (!suggestion) return null;
 
   const lines: string[] = [];
 
   lines.push(chalk.cyan(`\n[REFACTORING DETAILS] ${suggestion.title}`));
-  lines.push(chalk.gray(`Type: ${suggestion.type} | Priority: ${suggestion.priority} | Effort: ${suggestion.effort}`));
+  lines.push(
+    chalk.gray(
+      `Type: ${suggestion.type} | Priority: ${suggestion.priority} | Effort: ${suggestion.effort}`,
+    ),
+  );
   lines.push('');
   lines.push(chalk.white(suggestion.description));
   lines.push('');
@@ -258,7 +260,7 @@ export function getSuggestionDetails(
   lines.push('');
 
   lines.push(chalk.cyan('BENEFITS:'));
-  suggestion.benefits.forEach(b => lines.push(`   - ${b}`));
+  suggestion.benefits.forEach((b) => lines.push(`   - ${b}`));
 
   return lines.join('\n');
 }
@@ -271,9 +273,9 @@ export function getSuggestionDetails(
  */
 export function filterSuggestionsByType(
   analysis: RefactoringAnalysis,
-  type: RefactoringType
+  type: RefactoringType,
 ): RefactoringSuggestion[] {
-  return analysis.suggestions.filter(s => s.type === type);
+  return analysis.suggestions.filter((s) => s.type === type);
 }
 
 /**
@@ -286,7 +288,7 @@ export function calculateTotalEffort(suggestions: RefactoringSuggestion[]): numb
     trivial: 1,
     small: 2,
     medium: 5,
-    large: 10
+    large: 10,
   };
 
   return suggestions.reduce((total, s) => total + effortMap[s.effort], 0);
@@ -301,5 +303,5 @@ export default {
   formatRefactoringAnalysis,
   getSuggestionDetails,
   filterSuggestionsByType,
-  calculateTotalEffort
+  calculateTotalEffort,
 };

@@ -17,158 +17,149 @@
  */
 
 // ============================================================
+// Feature #38: API Mocking
+// ============================================================
+export {
+  type ApiEndpointSpec,
+  formatMockApiConfig,
+  generateMockData,
+  generateMockEndpoints,
+  generateMockHandler,
+  generateMockList,
+  generateMockServer,
+  type MockApiConfig,
+  type MockEndpoint,
+  type MockServerOptions,
+} from './ApiMocking.js';
+// ============================================================
 // Feature #31: Code Review
 // ============================================================
 export {
-  reviewCode,
-  formatCodeReview,
-  detectLanguage,
   type CodeReviewIssue,
-  type CodeReviewResult
+  type CodeReviewResult,
+  detectLanguage,
+  formatCodeReview,
+  reviewCode,
 } from './CodeReview.js';
-
-// ============================================================
-// Feature #32: Test Generation
-// ============================================================
-export {
-  generateTests,
-  formatGeneratedTests,
-  generateTestFileContent,
-  getDefaultTestFramework,
-  getTestFileName,
-  type GeneratedTest,
-  type TestGenerationResult,
-  type TestGenerationOptions
-} from './TestGeneration.js';
-
-// ============================================================
-// Feature #33: Documentation Generation
-// ============================================================
-export {
-  generateDocumentation,
-  formatDocumentation,
-  generateJSDoc,
-  generateTableOfContents,
-  type DocEntry,
-  type DocParam,
-  type DocReturn,
-  type DocumentationResult,
-  type DocumentationFormat
-} from './DocumentationGen.js';
-
-// ============================================================
-// Feature #34: Refactoring Analysis
-// ============================================================
-export {
-  analyzeRefactoring,
-  formatRefactoringAnalysis,
-  getSuggestionDetails,
-  filterSuggestionsByType,
-  calculateTotalEffort,
-  type RefactoringSuggestion,
-  type RefactoringAnalysis,
-  type RefactoringType,
-  type RefactoringPriority,
-  type RefactoringEffort,
-  type CodeMetrics
-} from './RefactoringAnalysis.js';
-
-// ============================================================
-// Feature #35: Performance Profiling
-// ============================================================
-export {
-  profilePerformance,
-  formatPerformanceProfile,
-  filterIssuesByCategory,
-  getIssueSummaryByCategory,
-  calculateSeverityScore,
-  hasCriticalIssues,
-  type PerformanceIssue,
-  type PerformanceProfile,
-  type PerformanceHotspot,
-  type PerformanceOptimization,
-  type PerformanceSeverity,
-  type PerformanceCategory
-} from './PerformanceProfiling.js';
-
-// ============================================================
-// Feature #36: Security Scanning
-// ============================================================
-export {
-  scanSecurity,
-  formatSecurityScan,
-  type SecurityVulnerability,
-  type SecurityScanResult
-} from './SecurityScanning.js';
-
 // ============================================================
 // Feature #37: Dependency Analysis
 // ============================================================
 export {
   analyzeDependencies,
-  groupDependenciesByType,
+  type DependencyAnalysis,
+  type DependencyInfo,
   findDependencies,
   formatDependencyAnalysis,
   generateDependencyReport,
-  type DependencyInfo,
-  type DependencyAnalysis
+  groupDependenciesByType,
 } from './DependencyAnalysis.js';
-
 // ============================================================
-// Feature #38: API Mocking
+// Feature #33: Documentation Generation
 // ============================================================
 export {
-  generateMockEndpoints,
-  generateMockData,
-  generateMockList,
-  generateMockServer,
-  generateMockHandler,
-  formatMockApiConfig,
-  type MockEndpoint,
-  type MockApiConfig,
-  type ApiEndpointSpec,
-  type MockServerOptions
-} from './ApiMocking.js';
-
+  type DocEntry,
+  type DocParam,
+  type DocReturn,
+  type DocumentationFormat,
+  type DocumentationResult,
+  formatDocumentation,
+  generateDocumentation,
+  generateJSDoc,
+  generateTableOfContents,
+} from './DocumentationGen.js';
 // ============================================================
 // Feature #39: Environment Management
 // ============================================================
 export {
+  type EnvironmentConfig,
+  type EnvironmentManagerState,
+  type EnvironmentValidationResult,
   EnvManager,
   envManager,
   formatEnvironments,
-  type EnvironmentConfig,
-  type EnvironmentManagerState,
-  type EnvironmentValidationResult
 } from './EnvironmentManager.js';
-
 // ============================================================
 // Feature #40: Multi-Project Support
 // ============================================================
 export {
-  MultiProjectManager,
-  projectManager,
   formatProjectList,
   formatRecentProjects,
-  type ProjectType,
+  MultiProjectManager,
+  type ProjectFilter,
   type ProjectInfo,
+  type ProjectType,
   type ProjectWorkspace,
-  type ProjectFilter
+  projectManager,
 } from './MultiProjectManager.js';
+// ============================================================
+// Feature #35: Performance Profiling
+// ============================================================
+export {
+  calculateSeverityScore,
+  filterIssuesByCategory,
+  formatPerformanceProfile,
+  getIssueSummaryByCategory,
+  hasCriticalIssues,
+  type PerformanceCategory,
+  type PerformanceHotspot,
+  type PerformanceIssue,
+  type PerformanceOptimization,
+  type PerformanceProfile,
+  type PerformanceSeverity,
+  profilePerformance,
+} from './PerformanceProfiling.js';
+// ============================================================
+// Feature #34: Refactoring Analysis
+// ============================================================
+export {
+  analyzeRefactoring,
+  type CodeMetrics,
+  calculateTotalEffort,
+  filterSuggestionsByType,
+  formatRefactoringAnalysis,
+  getSuggestionDetails,
+  type RefactoringAnalysis,
+  type RefactoringEffort,
+  type RefactoringPriority,
+  type RefactoringSuggestion,
+  type RefactoringType,
+} from './RefactoringAnalysis.js';
+// ============================================================
+// Feature #36: Security Scanning
+// ============================================================
+export {
+  formatSecurityScan,
+  type SecurityScanResult,
+  type SecurityVulnerability,
+  scanSecurity,
+} from './SecurityScanning.js';
+// ============================================================
+// Feature #32: Test Generation
+// ============================================================
+export {
+  formatGeneratedTests,
+  type GeneratedTest,
+  generateTestFileContent,
+  generateTests,
+  getDefaultTestFramework,
+  getTestFileName,
+  type TestGenerationOptions,
+  type TestGenerationResult,
+} from './TestGeneration.js';
 
+import ApiMocking from './ApiMocking.js';
 // ============================================================
 // Default export with all modules
 // ============================================================
 import CodeReview from './CodeReview.js';
-import TestGeneration from './TestGeneration.js';
-import DocumentationGen from './DocumentationGen.js';
-import RefactoringAnalysis from './RefactoringAnalysis.js';
-import PerformanceProfiling from './PerformanceProfiling.js';
-import SecurityScanning from './SecurityScanning.js';
 import DependencyAnalysisModule from './DependencyAnalysis.js';
-import ApiMocking from './ApiMocking.js';
+import DocumentationGen from './DocumentationGen.js';
 import EnvironmentManagerModule from './EnvironmentManager.js';
 import MultiProjectManagerModule from './MultiProjectManager.js';
+import PerformanceProfiling from './PerformanceProfiling.js';
+import RefactoringAnalysis from './RefactoringAnalysis.js';
+import SecurityScanning from './SecurityScanning.js';
+import TestGeneration from './TestGeneration.js';
 
 export default {
   // Features #31-35 (original)
@@ -183,7 +174,7 @@ export default {
   DependencyAnalysis: DependencyAnalysisModule,
   ApiMocking,
   EnvironmentManager: EnvironmentManagerModule,
-  MultiProjectManager: MultiProjectManagerModule
+  MultiProjectManager: MultiProjectManagerModule,
 };
 
 // ============================================================
@@ -199,8 +190,5 @@ import { projectManager } from './MultiProjectManager.js';
  * - Project workspace
  */
 export async function initDeveloperModules(): Promise<void> {
-  await Promise.all([
-    envManager.initialize(),
-    projectManager.initialize()
-  ]);
+  await Promise.all([envManager.initialize(), projectManager.initialize()]);
 }

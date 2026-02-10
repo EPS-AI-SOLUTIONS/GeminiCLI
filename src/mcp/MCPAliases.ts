@@ -52,30 +52,30 @@ const TOOL_ALIASES: Record<string, string> = {
   // ========== [DEPRECATED] Filesystem (fs:*) ==========
   // NOTE: These point to MCP filesystem server which has been replaced
   // by native /fs command. Use /fs command instead for better performance.
-  'fs:ls': 'filesystem__list_directory',           // DEPRECATED: Use /fs list
-  'fs:list': 'filesystem__list_directory',         // DEPRECATED: Use /fs list
-  'fs:read': 'filesystem__read_file',              // DEPRECATED: Use /fs read
-  'fs:write': 'filesystem__write_file',            // DEPRECATED: Use /fs write
-  'fs:tree': 'filesystem__directory_tree',         // DEPRECATED: Use /fs tree
-  'fs:search': 'filesystem__search_files',         // DEPRECATED: Use /fs search
-  'fs:info': 'filesystem__get_file_info',          // DEPRECATED: Use /fs info
-  'fs:mkdir': 'filesystem__create_directory',      // DEPRECATED: Use /fs mkdir
-  'fs:mv': 'filesystem__move_file',                // DEPRECATED: Use /fs mv
-  'fs:cp': 'filesystem__copy_file',                // DEPRECATED: Use /fs cp
-  'fs:rm': 'filesystem__delete_file',              // DEPRECATED: Use /fs rm
+  'fs:ls': 'filesystem__list_directory', // DEPRECATED: Use /fs list
+  'fs:list': 'filesystem__list_directory', // DEPRECATED: Use /fs list
+  'fs:read': 'filesystem__read_file', // DEPRECATED: Use /fs read
+  'fs:write': 'filesystem__write_file', // DEPRECATED: Use /fs write
+  'fs:tree': 'filesystem__directory_tree', // DEPRECATED: Use /fs tree
+  'fs:search': 'filesystem__search_files', // DEPRECATED: Use /fs search
+  'fs:info': 'filesystem__get_file_info', // DEPRECATED: Use /fs info
+  'fs:mkdir': 'filesystem__create_directory', // DEPRECATED: Use /fs mkdir
+  'fs:mv': 'filesystem__move_file', // DEPRECATED: Use /fs mv
+  'fs:cp': 'filesystem__copy_file', // DEPRECATED: Use /fs cp
+  'fs:rm': 'filesystem__delete_file', // DEPRECATED: Use /fs rm
 
   // ========== [DEPRECATED] Memory (mem:*) ==========
   // NOTE: These point to MCP memory server which has been replaced
   // by native /mem command. Use /mem command instead.
-  'mem:add': 'memory__create_entities',            // DEPRECATED: Use /mem add
-  'mem:create': 'memory__create_entities',         // DEPRECATED: Use /mem add
-  'mem:search': 'memory__search_nodes',            // DEPRECATED: Use /mem search
-  'mem:find': 'memory__search_nodes',              // DEPRECATED: Use /mem search
-  'mem:read': 'memory__read_graph',                // DEPRECATED: Use /mem read
-  'mem:graph': 'memory__read_graph',               // DEPRECATED: Use /mem read
-  'mem:relate': 'memory__create_relations',        // DEPRECATED: Use /mem relate
-  'mem:observe': 'memory__add_observations',       // DEPRECATED: Use /mem observe
-  'mem:delete': 'memory__delete_entities',         // DEPRECATED: Use /mem delete
+  'mem:add': 'memory__create_entities', // DEPRECATED: Use /mem add
+  'mem:create': 'memory__create_entities', // DEPRECATED: Use /mem add
+  'mem:search': 'memory__search_nodes', // DEPRECATED: Use /mem search
+  'mem:find': 'memory__search_nodes', // DEPRECATED: Use /mem search
+  'mem:read': 'memory__read_graph', // DEPRECATED: Use /mem read
+  'mem:graph': 'memory__read_graph', // DEPRECATED: Use /mem read
+  'mem:relate': 'memory__create_relations', // DEPRECATED: Use /mem relate
+  'mem:observe': 'memory__add_observations', // DEPRECATED: Use /mem observe
+  'mem:delete': 'memory__delete_entities', // DEPRECATED: Use /mem delete
 
   // ========== Code/Serena (code:*) - NOW NATIVE ==========
   // NOTE: These now point to native implementations for better performance.
@@ -157,21 +157,21 @@ const TOOL_ALIASES: Record<string, string> = {
   'native:memwrite': 'native__write_memory',
 
   // ========== Quick Shortcuts - NOW NATIVE ==========
-  'glob': 'native__find_file',
-  'grep': 'native__search_for_pattern',
-  'rg': 'native__search_for_pattern',
+  glob: 'native__find_file',
+  grep: 'native__search_for_pattern',
+  rg: 'native__search_for_pattern',
 
   // ========== [DEPRECATED] Desktop Commander (dc:*) ==========
   // NOTE: These point to MCP desktop-commander server which has been replaced
   // by native /shell command. Use /shell command instead.
-  'dc:run': 'desktop-commander__start_process',    // DEPRECATED: Use /shell
-  'dc:exec': 'desktop-commander__start_process',   // DEPRECATED: Use /shell
-  'dc:kill': 'desktop-commander__kill_process',    // DEPRECATED: Use /shell kill
-  'dc:ps': 'desktop-commander__list_processes',    // DEPRECATED: Use /shell ps
-  'dc:read': 'desktop-commander__read_file',       // DEPRECATED: Use /fs read
-  'dc:write': 'desktop-commander__write_file',     // DEPRECATED: Use /fs write
-  'dc:ls': 'desktop-commander__list_directory',    // DEPRECATED: Use /fs list
-  'dc:search': 'desktop-commander__start_search',  // DEPRECATED: Use /search
+  'dc:run': 'desktop-commander__start_process', // DEPRECATED: Use /shell
+  'dc:exec': 'desktop-commander__start_process', // DEPRECATED: Use /shell
+  'dc:kill': 'desktop-commander__kill_process', // DEPRECATED: Use /shell kill
+  'dc:ps': 'desktop-commander__list_processes', // DEPRECATED: Use /shell ps
+  'dc:read': 'desktop-commander__read_file', // DEPRECATED: Use /fs read
+  'dc:write': 'desktop-commander__write_file', // DEPRECATED: Use /fs write
+  'dc:ls': 'desktop-commander__list_directory', // DEPRECATED: Use /fs list
+  'dc:search': 'desktop-commander__start_search', // DEPRECATED: Use /search
 
   // ========== Browser/Playwright (browser:*) - ACTIVE ==========
   'browser:open': 'playwright__browser_navigate',
@@ -194,24 +194,24 @@ const TOOL_ALIASES: Record<string, string> = {
   'doc:csv2excel': 'native__convert_csv_to_excel',
   'doc:pdf': 'native__create_pdf_file',
   'doc:create-pdf': 'native__create_pdf_file',
-  'word': 'native__create_word_document',
-  'excel': 'native__create_excel_file',
-  'pdf': 'native__create_pdf_file',
+  word: 'native__create_word_document',
+  excel: 'native__create_excel_file',
+  pdf: 'native__create_pdf_file',
 
   // ========== Quick shortcuts - MIGRATED TO NATIVE ==========
-  'list': 'native__list_dir',
-  'read': 'native__read_file',
-  'write': 'native__create_text_file',
-  'find': 'native__find_file',
-  'search': 'native__search_for_pattern',
-  'symbol': 'native__find_symbol',
-  'refs': 'native__find_referencing_symbols',
-  'overview': 'native__get_symbols_overview',
-  'replace': 'native__replace_content',
+  list: 'native__list_dir',
+  read: 'native__read_file',
+  write: 'native__create_text_file',
+  find: 'native__find_file',
+  search: 'native__search_for_pattern',
+  symbol: 'native__find_symbol',
+  refs: 'native__find_referencing_symbols',
+  overview: 'native__get_symbols_overview',
+  replace: 'native__replace_content',
 
   // ========== [DEPRECATED] Shell shortcuts ==========
-  'run': 'desktop-commander__start_process',       // DEPRECATED: Use /shell
-  'exec': 'desktop-commander__start_process'       // DEPRECATED: Use /shell
+  run: 'desktop-commander__start_process', // DEPRECATED: Use /shell
+  exec: 'desktop-commander__start_process', // DEPRECATED: Use /shell
 };
 
 // ============================================================
@@ -263,11 +263,11 @@ export const NATIVE_ALTERNATIVES: Record<string, string> = {
   'dc:search': '/search',
 
   // Quick shortcuts
-  'list': '/fs list',
-  'read': '/fs read',
-  'write': '/fs write',
-  'run': '/shell',
-  'exec': '/shell'
+  list: '/fs list',
+  read: '/fs read',
+  write: '/fs write',
+  run: '/shell',
+  exec: '/shell',
 };
 
 // ============================================================
@@ -314,16 +314,16 @@ export function clampNumber(value: number | string | unknown, min: number, max: 
  * Apply via: clampNumber(value, NUMERIC_LIMITS.maxResults.min, NUMERIC_LIMITS.maxResults.max)
  */
 export const NUMERIC_LIMITS = {
-  maxResults:   { min: 1,    max: 1000 },
-  temperature:  { min: 0,    max: 2 },
-  topK:         { min: 1,    max: 500 },
-  topP:         { min: 0,    max: 1 },
-  maxTokens:    { min: 1,    max: 100000 },
-  timeout:      { min: 1000, max: 600000 },
-  depth:        { min: 1,    max: 20 },
-  pageSize:     { min: 1,    max: 200 },
-  lineNumber:   { min: 0,    max: 1000000 },
-  contextLines: { min: 0,    max: 50 }
+  maxResults: { min: 1, max: 1000 },
+  temperature: { min: 0, max: 2 },
+  topK: { min: 1, max: 500 },
+  topP: { min: 0, max: 1 },
+  maxTokens: { min: 1, max: 100000 },
+  timeout: { min: 1000, max: 600000 },
+  depth: { min: 1, max: 20 },
+  pageSize: { min: 1, max: 200 },
+  lineNumber: { min: 0, max: 1000000 },
+  contextLines: { min: 0, max: 50 },
 } as const;
 
 /**
@@ -341,7 +341,7 @@ export const NUMERIC_LIMITS = {
  */
 export function sanitizeNumericParams(
   params: Record<string, any>,
-  limits: Record<string, { min: number; max: number }> = NUMERIC_LIMITS
+  limits: Record<string, { min: number; max: number }> = NUMERIC_LIMITS,
 ): Record<string, any> {
   const result = { ...params };
 
@@ -385,8 +385,10 @@ export function isAlias(name: string): boolean {
  */
 export function isDeprecatedAlias(alias: string): boolean {
   const normalized = alias.toLowerCase().trim();
-  return DEPRECATED_PREFIXES.some(prefix => normalized.startsWith(prefix)) ||
-         normalized in NATIVE_ALTERNATIVES;
+  return (
+    DEPRECATED_PREFIXES.some((prefix) => normalized.startsWith(prefix)) ||
+    normalized in NATIVE_ALTERNATIVES
+  );
 }
 
 /**

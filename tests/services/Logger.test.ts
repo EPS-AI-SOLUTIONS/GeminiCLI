@@ -2,7 +2,7 @@
  * Tests for Logger Service
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Logger, logger } from '../../src/services/Logger.js';
 
 describe('Logger', () => {

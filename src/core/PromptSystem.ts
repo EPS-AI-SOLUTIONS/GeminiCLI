@@ -3,21 +3,21 @@
  * Ported from AgentSwarm.psm1 lines 88 and 195-205
  */
 
-import fs from 'fs/promises';
-import path from 'path';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import chalk from 'chalk';
 
 // Extended Few-Shot System imports
 import {
-  EXTENDED_FEW_SHOT_EXAMPLES,
   AGENT_SPECIFIC_EXAMPLES,
-  selectBestExamples,
+  detectExampleCategory,
+  EXTENDED_FEW_SHOT_EXAMPLES,
   getAgentSpecificExamples,
+  getBestFewShotExamples,
+  getTopEffectiveExamples,
   recordExampleUsage,
   scoreExampleEffectiveness,
-  getTopEffectiveExamples,
-  detectExampleCategory,
-  getBestFewShotExamples
+  selectBestExamples,
 } from './fewshot/index.js';
 
 /**
@@ -135,9 +135,7 @@ ZASADY:
  * Get platform-specific prompt prefix
  */
 export function getPlatformPromptPrefix(): string {
-  const platformSuffix = process.platform === 'win32'
-    ? WINDOWS_PROMPT_SUFFIX
-    : UNIX_PROMPT_SUFFIX;
+  const platformSuffix = process.platform === 'win32' ? WINDOWS_PROMPT_SUFFIX : UNIX_PROMPT_SUFFIX;
 
   return PROMPT_PREFIX + platformSuffix;
 }
@@ -147,7 +145,7 @@ export function getPlatformPromptPrefix(): string {
  * Use this for complete agent initialization
  */
 export function getFullPromptPrefix(): string {
-  return getPlatformPromptPrefix() + '\n\n' + EXECUTION_EVIDENCE_RULES;
+  return `${getPlatformPromptPrefix()}\n\n${EXECUTION_EVIDENCE_RULES}`;
 }
 
 /**
@@ -162,7 +160,7 @@ const grimoireCache: Map<string, string> = new Map();
  */
 export async function loadGrimoires(
   names: string[],
-  rootPath: string = process.cwd()
+  rootPath: string = process.cwd(),
 ): Promise<string> {
   if (names.length === 0) return '';
 
@@ -180,7 +178,7 @@ export async function loadGrimoires(
     const possiblePaths = [
       path.join(rootPath, 'grimoires', `${name}_tools.md`),
       path.join(rootPath, 'grimoires', `${name}.md`),
-      path.join(rootPath, '.geminihydra', 'grimoires', `${name}.md`)
+      path.join(rootPath, '.geminihydra', 'grimoires', `${name}.md`),
     ];
 
     for (const filePath of possiblePaths) {
@@ -248,7 +246,7 @@ export function calculateAverage(numbers: number[]): number {
 \`\`\`
 ===KONIEC_ZAPISU===
 
-Naprawiono obsluge pustej tablicy w calculateSum`
+Naprawiono obsluge pustej tablicy w calculateSum`,
     },
     {
       input: `Napraw blad TypeScript w pliku src/api.ts - Property 'data' does not exist on type 'Response'`,
@@ -288,8 +286,8 @@ export async function fetchUsers(): Promise<User[]> {
 \`\`\`
 ===KONIEC_ZAPISU===
 
-Dodano prawidlowe typowanie dla odpowiedzi API`
-    }
+Dodano prawidlowe typowanie dla odpowiedzi API`,
+    },
   ],
 
   code_review: [
@@ -344,8 +342,8 @@ async function processData(data: DataItem[]): Promise<void> {
 
 ### Podsumowanie:
 - 3 problemy znalezione (1 krytyczny, 1 sredni, 1 niski)
-- Glowny priorytet: dodanie obslugi bledow`
-    }
+- Glowny priorytet: dodanie obslugi bledow`,
+    },
   ],
 
   list_generation: [
@@ -371,7 +369,7 @@ async function processData(data: DataItem[]): Promise<void> {
 
 9. **Generics constraints** - Uzyj generic constraints dla reuzywanych komponentow/funkcji
 
-10. **Declaration files** - Wygeneruj .d.ts dla bibliotek bez typow przez \`npm run build:types\``
+10. **Declaration files** - Wygeneruj .d.ts dla bibliotek bez typow przez \`npm run build:types\``,
     },
     {
       input: `Wymien 5 najwazniejszych zasad clean code`,
@@ -385,8 +383,8 @@ async function processData(data: DataItem[]): Promise<void> {
 
 4. **DRY (Don't Repeat Yourself)** - Powtarzajacy sie kod wydziel do funkcji/komponentow. Ale nie przesadzaj - duplikacja jest lepsza od zlej abstrakcji.
 
-5. **Comments as Last Resort** - Kod powinien byc samodokumentujacy. Komentarze tylko dla "dlaczego", nie "co". Jesli potrzebujesz komentarza - najpierw sprobuj poprawic kod.`
-    }
+5. **Comments as Last Resort** - Kod powinien byc samodokumentujacy. Komentarze tylko dla "dlaczego", nie "co". Jesli potrzebujesz komentarza - najpierw sprobuj poprawic kod.`,
+    },
   ],
 
   architecture: [
@@ -452,9 +450,9 @@ POST /auth/password     - Reset hasla
 - bcrypt dla hasel (cost factor 12)
 - Rate limiting: 5 req/min na login
 - CORS whitelist
-- Helmet.js dla security headers`
-    }
-  ]
+- Helmet.js dla security headers`,
+    },
+  ],
 };
 
 /**
@@ -473,14 +471,17 @@ export function getFewShotExamples(taskType: string, count: number = 1): string 
   // Get requested number of examples (max available)
   const selectedExamples = examples.slice(0, Math.min(count, examples.length));
 
-  const formatted = selectedExamples.map((ex, idx) =>
-    `--- PRZYKLAD ${idx + 1} ---
+  const formatted = selectedExamples
+    .map(
+      (ex, idx) =>
+        `--- PRZYKLAD ${idx + 1} ---
 ZADANIE: ${ex.input}
 
 OCZEKIWANA ODPOWIEDZ:
 ${ex.output}
---- KONIEC PRZYKLADU ${idx + 1} ---`
-  ).join('\n\n');
+--- KONIEC PRZYKLADU ${idx + 1} ---`,
+    )
+    .join('\n\n');
 
   return `\nPRZYKLADY POPRAWNYCH ODPOWIEDZI (ucz sie z nich!):\n${formatted}\n`;
 }
@@ -490,10 +491,10 @@ ${ex.output}
  */
 export function mapTaskTypeToExampleCategory(taskType: string): string | null {
   const mapping: Record<string, string> = {
-    'code': 'code_fix',
-    'analysis': 'code_review',
-    'list': 'list_generation',
-    'proposal': 'architecture'
+    code: 'code_fix',
+    analysis: 'code_review',
+    list: 'list_generation',
+    proposal: 'architecture',
   };
 
   return mapping[taskType] || null;
@@ -526,7 +527,7 @@ export const AGENT_SYSTEM_PROMPTS: Record<string, string> = {
 
   Zoltan: `Jesteś Zoltanem Chivayem, Mistrzem Danych i krasnoludzkim wojownikiem. Obsługujesz operacje na danych, analizujesz datasety, pracujesz z bazami danych i przetwarzasz JSON/CSV/YAML. "Dane są jak piwo - im więcej, tym lepiej, ale trzeba umieć je przetrawić." Odpowiadaj po polsku z rubasznym krasnoludzkim humorem.`,
 
-  Philippa: `Jesteś Philippą Eilhart, Specjalistką od API i potężną czarodziejką. Integруjesz się z zewnętrznymi usługami, używasz narzędzi MCP i obsługujesz operacje API. Rozumiesz protokoły i interfejsy lepiej niż własne intrygi. Odpowiadaj po polsku z wyrafinowaną ironią i nutą wyższości.`
+  Philippa: `Jesteś Philippą Eilhart, Specjalistką od API i potężną czarodziejką. Integруjesz się z zewnętrznymi usługami, używasz narzędzi MCP i obsługujesz operacje API. Rozumiesz protokoły i interfejsy lepiej niż własne intrygi. Odpowiadaj po polsku z wyrafinowaną ironią i nutą wyższości.`,
 };
 
 /**
@@ -549,7 +550,7 @@ export function buildAgentPrompt(options: {
     grimoires = [],
     memories = '',
     includeExecProtocol = true,
-    includeEvidenceRules = true  // Solution 20: Default enabled
+    includeEvidenceRules = true, // Solution 20: Default enabled
   } = options;
 
   const parts: string[] = [];
@@ -699,7 +700,10 @@ ${memories ? `KONTEKST: ${memories}\n` : ''}
  * Chain-of-Thought Prompting
  * Wymusza strukturyzowane myślenie krok po kroku dla złożonych zadań
  */
-export function buildChainOfThoughtPrompt(task: string, complexity: 'low' | 'medium' | 'high'): string {
+export function buildChainOfThoughtPrompt(
+  task: string,
+  complexity: 'low' | 'medium' | 'high',
+): string {
   const parts: string[] = [];
 
   // Dla złożonych zadań (medium/high) dodajemy instrukcję Chain-of-Thought
@@ -770,19 +774,52 @@ export function detectTaskComplexity(task: string): 'low' | 'medium' | 'high' {
 
   // Słowa kluczowe wskazujące na wysoką złożoność
   const highComplexityKeywords = [
-    'zaimplementuj', 'zaprojektuj', 'zrefaktoryzuj', 'zoptymalizuj',
-    'stwórz architekturę', 'przemigruj', 'zintegruj',
-    'implement', 'design', 'refactor', 'optimize', 'architect', 'migrate', 'integrate',
-    'złożony', 'complex', 'comprehensive', 'pełny', 'complete system',
-    'od podstaw', 'from scratch', 'wieloetapowy', 'multi-step'
+    'zaimplementuj',
+    'zaprojektuj',
+    'zrefaktoryzuj',
+    'zoptymalizuj',
+    'stwórz architekturę',
+    'przemigruj',
+    'zintegruj',
+    'implement',
+    'design',
+    'refactor',
+    'optimize',
+    'architect',
+    'migrate',
+    'integrate',
+    'złożony',
+    'complex',
+    'comprehensive',
+    'pełny',
+    'complete system',
+    'od podstaw',
+    'from scratch',
+    'wieloetapowy',
+    'multi-step',
   ];
 
   // Słowa kluczowe wskazujące na średnią złożoność
   const mediumComplexityKeywords = [
-    'napraw', 'popraw', 'dodaj', 'rozszerz', 'zaktualizuj',
-    'fix', 'improve', 'add', 'extend', 'update',
-    'przeanalizuj', 'analyze', 'sprawdź', 'check', 'review',
-    'stwórz', 'create', 'napisz', 'write'
+    'napraw',
+    'popraw',
+    'dodaj',
+    'rozszerz',
+    'zaktualizuj',
+    'fix',
+    'improve',
+    'add',
+    'extend',
+    'update',
+    'przeanalizuj',
+    'analyze',
+    'sprawdź',
+    'check',
+    'review',
+    'stwórz',
+    'create',
+    'napisz',
+    'write',
   ];
 
   // Sprawdź długość zadania (dłuższe = bardziej złożone)
@@ -795,14 +832,18 @@ export function detectTaskComplexity(task: string): 'low' | 'medium' | 'high' {
     (task.match(/\d+\./g) || []).length >= 2;
 
   // Określ złożoność
-  if (highComplexityKeywords.some(kw => lowercaseTask.includes(kw)) ||
-      (wordCount > 50 && hasMultipleRequirements)) {
+  if (
+    highComplexityKeywords.some((kw) => lowercaseTask.includes(kw)) ||
+    (wordCount > 50 && hasMultipleRequirements)
+  ) {
     return 'high';
   }
 
-  if (mediumComplexityKeywords.some(kw => lowercaseTask.includes(kw)) ||
-      wordCount > 20 ||
-      hasMultipleRequirements) {
+  if (
+    mediumComplexityKeywords.some((kw) => lowercaseTask.includes(kw)) ||
+    wordCount > 20 ||
+    hasMultipleRequirements
+  ) {
     return 'medium';
   }
 
@@ -823,7 +864,7 @@ export {
   scoreExampleEffectiveness,
   getTopEffectiveExamples,
   detectExampleCategory,
-  getBestFewShotExamples
+  getBestFewShotExamples,
 };
 
 /**
@@ -833,7 +874,7 @@ export {
 export function getEnhancedFewShotExamples(
   task: string,
   agentName?: string,
-  count: number = 2
+  count: number = 2,
 ): string {
   // Try extended system first
   const extendedExamples = getBestFewShotExamples(task, agentName, count);
@@ -917,84 +958,87 @@ export const EVIDENCE_RULES_V2 = `
  * ULEPSZENIE 4: Role agentów oddzielone od persony
  * Kompetencje techniczne bez "sarkastycznego humoru" itp.
  */
-export const AGENT_ROLES: Record<string, {
-  role: string;
-  style: string;
-  tools: string[];
-  priority: string[];
-}> = {
+export const AGENT_ROLES: Record<
+  string,
+  {
+    role: string;
+    style: string;
+    tools: string[];
+    priority: string[];
+  }
+> = {
   Dijkstra: {
-    role: "Strateg - planowanie, dekompozycja zadań, tworzenie planów JSON",
-    style: "Precyzyjny, analityczny, strukturyzowany",
-    tools: ["planning", "json_output"],
-    priority: ["parallel_tasks", "dependencies", "atomic_actions"]
+    role: 'Strateg - planowanie, dekompozycja zadań, tworzenie planów JSON',
+    style: 'Precyzyjny, analityczny, strukturyzowany',
+    tools: ['planning', 'json_output'],
+    priority: ['parallel_tasks', 'dependencies', 'atomic_actions'],
   },
   Geralt: {
-    role: "Security - audyt bezpieczeństwa, review kodu, identyfikacja zagrożeń",
-    style: "Ostrożny, dokładny, bezpośredni",
-    tools: ["search_for_pattern", "read_file", "find_symbol"],
-    priority: ["security_issues", "code_vulnerabilities", "veto_dangerous"]
+    role: 'Security - audyt bezpieczeństwa, review kodu, identyfikacja zagrożeń',
+    style: 'Ostrożny, dokładny, bezpośredni',
+    tools: ['search_for_pattern', 'read_file', 'find_symbol'],
+    priority: ['security_issues', 'code_vulnerabilities', 'veto_dangerous'],
   },
   Yennefer: {
-    role: "Architekt - design patterns, struktura kodu, eleganckie rozwiązania",
-    style: "Elegancki, precyzyjny, wymagający",
-    tools: ["get_symbols_overview", "find_symbol", "replace_content"],
-    priority: ["clean_code", "patterns", "maintainability"]
+    role: 'Architekt - design patterns, struktura kodu, eleganckie rozwiązania',
+    style: 'Elegancki, precyzyjny, wymagający',
+    tools: ['get_symbols_overview', 'find_symbol', 'replace_content'],
+    priority: ['clean_code', 'patterns', 'maintainability'],
   },
   Triss: {
-    role: "QA - testy, walidacja, edge cases, obsługa błędów",
-    style: "Dokładny, empatyczny, zorientowany na użytkownika",
-    tools: ["search_for_pattern", "read_file"],
-    priority: ["test_coverage", "error_handling", "edge_cases"]
+    role: 'QA - testy, walidacja, edge cases, obsługa błędów',
+    style: 'Dokładny, empatyczny, zorientowany na użytkownika',
+    tools: ['search_for_pattern', 'read_file'],
+    priority: ['test_coverage', 'error_handling', 'edge_cases'],
   },
   Ciri: {
-    role: "Scout - szybkie atomowe zadania, proste operacje",
-    style: "Zwięzły, szybki, bezpośredni",
-    tools: ["list_dir", "read_file", "find_file"],
-    priority: ["speed", "simplicity", "atomic_tasks"]
+    role: 'Scout - szybkie atomowe zadania, proste operacje',
+    style: 'Zwięzły, szybki, bezpośredni',
+    tools: ['list_dir', 'read_file', 'find_file'],
+    priority: ['speed', 'simplicity', 'atomic_tasks'],
   },
   Regis: {
-    role: "Researcher - dogłębne analizy, synteza informacji, dokumentacja",
-    style: "Metodyczny, szczegółowy, filozoficzny",
-    tools: ["search_for_pattern", "read_file", "get_symbols_overview"],
-    priority: ["thorough_analysis", "documentation", "context"]
+    role: 'Researcher - dogłębne analizy, synteza informacji, dokumentacja',
+    style: 'Metodyczny, szczegółowy, filozoficzny',
+    tools: ['search_for_pattern', 'read_file', 'get_symbols_overview'],
+    priority: ['thorough_analysis', 'documentation', 'context'],
   },
   Jaskier: {
-    role: "Komunikator - podsumowania, dokumentacja, wyjaśnienia",
-    style: "Przystępny, entuzjastyczny, klarowny",
-    tools: ["read_file"],
-    priority: ["clarity", "summaries", "user_communication"]
+    role: 'Komunikator - podsumowania, dokumentacja, wyjaśnienia',
+    style: 'Przystępny, entuzjastyczny, klarowny',
+    tools: ['read_file'],
+    priority: ['clarity', 'summaries', 'user_communication'],
   },
   Vesemir: {
-    role: "Mentor - code review, dobre praktyki, konstruktywny feedback",
-    style: "Doświadczony, ojcowski, konstruktywny",
-    tools: ["read_file", "search_for_pattern", "get_symbols_overview"],
-    priority: ["best_practices", "mentoring", "code_quality"]
+    role: 'Mentor - code review, dobre praktyki, konstruktywny feedback',
+    style: 'Doświadczony, ojcowski, konstruktywny',
+    tools: ['read_file', 'search_for_pattern', 'get_symbols_overview'],
+    priority: ['best_practices', 'mentoring', 'code_quality'],
   },
   Eskel: {
-    role: "DevOps - git, npm, build, deploy, CI/CD, komendy systemowe",
-    style: "Praktyczny, rzeczowy, operacyjny",
-    tools: ["EXEC:git", "EXEC:npm", "EXEC:tsc"],
-    priority: ["builds", "deployments", "automation"]
+    role: 'DevOps - git, npm, build, deploy, CI/CD, komendy systemowe',
+    style: 'Praktyczny, rzeczowy, operacyjny',
+    tools: ['EXEC:git', 'EXEC:npm', 'EXEC:tsc'],
+    priority: ['builds', 'deployments', 'automation'],
   },
   Lambert: {
-    role: "Debugger - analiza błędów, tropienie bugów, naprawy",
-    style: "Wytrwały, metodyczny, bezpośredni",
-    tools: ["search_for_pattern", "read_file", "replace_content"],
-    priority: ["bug_fixes", "error_analysis", "root_cause"]
+    role: 'Debugger - analiza błędów, tropienie bugów, naprawy',
+    style: 'Wytrwały, metodyczny, bezpośredni',
+    tools: ['search_for_pattern', 'read_file', 'replace_content'],
+    priority: ['bug_fixes', 'error_analysis', 'root_cause'],
   },
   Zoltan: {
-    role: "Data - operacje na danych, JSON/CSV/YAML, bazy danych",
-    style: "Praktyczny, konkretny, zorientowany na dane",
-    tools: ["read_file", "search_for_pattern"],
-    priority: ["data_processing", "transformations", "analysis"]
+    role: 'Data - operacje na danych, JSON/CSV/YAML, bazy danych',
+    style: 'Praktyczny, konkretny, zorientowany na dane',
+    tools: ['read_file', 'search_for_pattern'],
+    priority: ['data_processing', 'transformations', 'analysis'],
   },
   Philippa: {
-    role: "API - integracje MCP, REST endpoints, protokoły",
-    style: "Wyrafinowany, precyzyjny, zorientowany na interfejsy",
-    tools: ["MCP_tools", "search_for_pattern"],
-    priority: ["api_integration", "protocols", "mcp_tools"]
-  }
+    role: 'API - integracje MCP, REST endpoints, protokoły',
+    style: 'Wyrafinowany, precyzyjny, zorientowany na interfejsy',
+    tools: ['MCP_tools', 'search_for_pattern'],
+    priority: ['api_integration', 'protocols', 'mcp_tools'],
+  },
 };
 
 /**
@@ -1018,11 +1062,11 @@ CZĘSTE BŁĘDY I ROZWIĄZANIA:
  * ULEPSZENIE 6: Centralne źródło zasad (zamiast redundancji)
  */
 export const CORE_RULES = {
-  files: "Pliki: używaj MCP (serena__*), NIE shell commands",
-  shell: "Shell (EXEC): tylko git, npm, tsc, python",
-  output: "Output: polski, konkretne wyniki, format JSON dla zapisów",
-  evidence: "Dowody: każda akcja musi mieć dowód wykonania",
-  errors: "Błędy: analizuj, próbuj alternatyw, zgłaszaj jasno"
+  files: 'Pliki: używaj MCP (serena__*), NIE shell commands',
+  shell: 'Shell (EXEC): tylko git, npm, tsc, python',
+  output: 'Output: polski, konkretne wyniki, format JSON dla zapisów',
+  evidence: 'Dowody: każda akcja musi mieć dowód wykonania',
+  errors: 'Błędy: analizuj, próbuj alternatyw, zgłaszaj jasno',
 };
 
 /**
@@ -1080,7 +1124,7 @@ export function buildContextAwarePrompt(
   agentName: string,
   task: string,
   projectContext?: ProjectContext,
-  mode?: 'strict' | 'creative' | 'balanced'
+  mode?: 'strict' | 'creative' | 'balanced',
 ): string {
   const parts: string[] = [];
 
@@ -1106,13 +1150,15 @@ export function buildContextAwarePrompt(
 
   // 3. Mode-specific rules
   if (mode === 'strict') {
-    parts.push('\n' + PRIORITY_RULES);
+    parts.push(`\n${PRIORITY_RULES}`);
     parts.push(EVIDENCE_RULES_V2);
   } else if (mode === 'creative') {
-    parts.push('\nTRYB KREATYWNY: Dozwolone sugestie i propozycje. Nie wymagane dowody dla brainstormingu.');
+    parts.push(
+      '\nTRYB KREATYWNY: Dozwolone sugestie i propozycje. Nie wymagane dowody dla brainstormingu.',
+    );
   } else {
     // Default - balanced
-    parts.push('\n' + EVIDENCE_RULES_V2);
+    parts.push(`\n${EVIDENCE_RULES_V2}`);
   }
 
   // 4. MCP examples
@@ -1125,7 +1171,7 @@ export function buildContextAwarePrompt(
   parts.push(`\n📌 ZADANIE:\n${task}`);
 
   // 7. Output reminder
-  parts.push('\n' + OUTPUT_FORMAT_V2);
+  parts.push(`\n${OUTPUT_FORMAT_V2}`);
 
   return parts.join('\n');
 }
@@ -1144,8 +1190,8 @@ export const EXECUTION_MODES = {
       'Każda akcja wymaga dowodu wykonania',
       'Nie interpretuj, nie sugeruj - wykonuj',
       'Output w formacie JSON',
-      'Błędy zgłaszaj natychmiast'
-    ]
+      'Błędy zgłaszaj natychmiast',
+    ],
   },
   creative: {
     name: 'creative',
@@ -1157,8 +1203,8 @@ export const EXECUTION_MODES = {
       'Możesz proponować rozwiązania',
       'Dozwolone "można by...", "warto rozważyć..."',
       'Output w formacie markdown',
-      'Eksploracja dozwolona'
-    ]
+      'Eksploracja dozwolona',
+    ],
   },
   balanced: {
     name: 'balanced',
@@ -1169,22 +1215,24 @@ export const EXECUTION_MODES = {
     rules: [
       'Akcje wymagają dowodów',
       'Analiza może zawierać sugestie',
-      'Najpierw wykonaj, potem proponuj ulepszenia'
-    ]
-  }
+      'Najpierw wykonaj, potem proponuj ulepszenia',
+    ],
+  },
 };
 
 /**
  * Get execution mode rules as string
  */
-export function getExecutionModeRules(mode: 'strict' | 'creative' | 'balanced' = 'balanced'): string {
+export function getExecutionModeRules(
+  mode: 'strict' | 'creative' | 'balanced' = 'balanced',
+): string {
   const modeConfig = EXECUTION_MODES[mode];
   return `
 🎯 TRYB: ${modeConfig.name.toUpperCase()}
 ${modeConfig.description}
 
 Zasady:
-${modeConfig.rules.map(r => `• ${r}`).join('\n')}
+${modeConfig.rules.map((r) => `• ${r}`).join('\n')}
 `;
 }
 
@@ -1198,13 +1246,7 @@ export function buildPromptV2(options: {
   mode?: 'strict' | 'creative' | 'balanced';
   includeExamples?: boolean;
 }): string {
-  const {
-    agentName,
-    task,
-    projectContext,
-    mode = 'balanced',
-    includeExamples = true
-  } = options;
+  const { agentName, task, projectContext, mode = 'balanced', includeExamples = true } = options;
 
   const parts: string[] = [];
 
@@ -1264,16 +1306,16 @@ export default {
   getEnhancedFewShotExamples,
 
   // V2 IMPROVEMENTS (10 ulepszeń)
-  PROMPT_PREFIX_V2,           // 1. Uproszczony META-INSTRUCTION
-  MCP_EXAMPLES,               // 2. Jasne przykłady MCP
-  EVIDENCE_RULES_V2,          // 3. Uproszczone dowody
-  AGENT_ROLES,                // 4. Role oddzielone od persony
-  ERROR_HANDLING_RULES,       // 5. Obsługa błędów
-  CORE_RULES,                 // 6. Centralne zasady
-  PRIORITY_RULES,             // 7. Priorytety
-  OUTPUT_FORMAT_V2,           // 8. Format JSON
-  buildContextAwarePrompt,    // 9. Kontekst projektu
-  EXECUTION_MODES,            // 10. Tryby wykonania
+  PROMPT_PREFIX_V2, // 1. Uproszczony META-INSTRUCTION
+  MCP_EXAMPLES, // 2. Jasne przykłady MCP
+  EVIDENCE_RULES_V2, // 3. Uproszczone dowody
+  AGENT_ROLES, // 4. Role oddzielone od persony
+  ERROR_HANDLING_RULES, // 5. Obsługa błędów
+  CORE_RULES, // 6. Centralne zasady
+  PRIORITY_RULES, // 7. Priorytety
+  OUTPUT_FORMAT_V2, // 8. Format JSON
+  buildContextAwarePrompt, // 9. Kontekst projektu
+  EXECUTION_MODES, // 10. Tryby wykonania
   getExecutionModeRules,
-  buildPromptV2
+  buildPromptV2,
 };

@@ -60,7 +60,7 @@ export class ErrorHandler {
    */
   registerHandler(
     category: ErrorCategory,
-    handler: (error: GeminiHydraError) => ErrorHandleResult
+    handler: (error: GeminiHydraError) => ErrorHandleResult,
   ): void {
     this.handlers.set(category, handler);
   }
@@ -82,7 +82,7 @@ export class ErrorHandler {
     return {
       handled: false,
       action: 'abort',
-      message: error.message
+      message: error.message,
     };
   }
 
@@ -106,7 +106,11 @@ export class ErrorHandler {
   static categorize(error: Error): ErrorCategory {
     const message = error.message.toLowerCase();
 
-    if (message.includes('network') || message.includes('fetch') || message.includes('econnrefused')) {
+    if (
+      message.includes('network') ||
+      message.includes('fetch') ||
+      message.includes('econnrefused')
+    ) {
       return 'network';
     }
     if (message.includes('api') || message.includes('rate limit') || message.includes('quota')) {
@@ -115,13 +119,25 @@ export class ErrorHandler {
     if (message.includes('timeout') || message.includes('timed out')) {
       return 'timeout';
     }
-    if (message.includes('auth') || message.includes('unauthorized') || message.includes('forbidden')) {
+    if (
+      message.includes('auth') ||
+      message.includes('unauthorized') ||
+      message.includes('forbidden')
+    ) {
       return 'auth';
     }
-    if (message.includes('enoent') || message.includes('permission denied') || message.includes('file')) {
+    if (
+      message.includes('enoent') ||
+      message.includes('permission denied') ||
+      message.includes('file')
+    ) {
       return 'filesystem';
     }
-    if (message.includes('validation') || message.includes('invalid') || message.includes('required')) {
+    if (
+      message.includes('validation') ||
+      message.includes('invalid') ||
+      message.includes('required')
+    ) {
       return 'validation';
     }
     if (message.includes('config') || message.includes('missing key')) {

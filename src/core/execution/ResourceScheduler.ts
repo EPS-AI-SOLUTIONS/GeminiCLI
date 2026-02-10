@@ -6,7 +6,7 @@
  */
 
 import chalk from 'chalk';
-import { PrioritizedTask } from './TaskPrioritization.js';
+import type { PrioritizedTask } from './TaskPrioritization.js';
 
 // =============================================================================
 // TYPES
@@ -45,10 +45,10 @@ class ResourceScheduler {
     memoryUsageMB: 0,
     activeTasks: 0,
     maxConcurrentTasks: 12,
-    lastApiCall: new Date()
+    lastApiCall: new Date(),
   };
 
-  private taskQueue: Array<{ task: PrioritizedTask; resolve: (value: void) => void }> = [];
+  private taskQueue: Array<{ task: PrioritizedTask; resolve: (value: undefined) => void }> = [];
 
   /**
    * Update resource state
@@ -67,7 +67,7 @@ class ResourceScheduler {
   /**
    * Check if resources are available for task
    */
-  canExecute(task: PrioritizedTask): CanExecuteResult {
+  canExecute(_task: PrioritizedTask): CanExecuteResult {
     // Check concurrency limit
     if (this.state.activeTasks >= this.state.maxConcurrentTasks) {
       return { canRun: false, reason: 'Max concurrent tasks reached', waitTime: 1000 };
@@ -83,7 +83,8 @@ class ResourceScheduler {
 
     // Check memory (rough estimate)
     const memoryUsage = process.memoryUsage().heapUsed / 1024 / 1024;
-    if (memoryUsage > 500) { // 500MB threshold
+    if (memoryUsage > 500) {
+      // 500MB threshold
       return { canRun: false, reason: 'High memory usage', waitTime: 5000 };
     }
 
@@ -104,7 +105,7 @@ class ResourceScheduler {
     // Queue and wait
     console.log(chalk.yellow(`[Scheduler] Task #${task.id} waiting: ${check.reason}`));
 
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
       this.taskQueue.push({ task, resolve });
 
       // Set up periodic check
@@ -113,7 +114,7 @@ class ResourceScheduler {
         if (recheck.canRun) {
           clearInterval(checkInterval);
           this.state.activeTasks++;
-          const idx = this.taskQueue.findIndex(q => q.task.id === task.id);
+          const idx = this.taskQueue.findIndex((q) => q.task.id === task.id);
           if (idx >= 0) this.taskQueue.splice(idx, 1);
           resolve();
         }
@@ -172,7 +173,7 @@ class ResourceScheduler {
       return {
         recommendedConcurrency: 2,
         shouldPause: true,
-        reason: 'API quota critically low'
+        reason: 'API quota critically low',
       };
     }
 
@@ -180,14 +181,14 @@ class ResourceScheduler {
       return {
         recommendedConcurrency: 4,
         shouldPause: false,
-        reason: 'API quota low, reducing concurrency'
+        reason: 'API quota low, reducing concurrency',
       };
     }
 
     return {
       recommendedConcurrency: this.state.maxConcurrentTasks,
       shouldPause: false,
-      reason: 'Resources healthy'
+      reason: 'Resources healthy',
     };
   }
 
@@ -236,7 +237,11 @@ class ResourceScheduler {
     const memoryUsage = this.getCurrentMemoryUsageMB();
     const quotaPercent = this.state.apiQuotaRemaining / this.state.apiQuotaLimit;
 
-    return memoryUsage > 400 || quotaPercent < 0.2 || this.state.activeTasks >= this.state.maxConcurrentTasks;
+    return (
+      memoryUsage > 400 ||
+      quotaPercent < 0.2 ||
+      this.state.activeTasks >= this.state.maxConcurrentTasks
+    );
   }
 }
 

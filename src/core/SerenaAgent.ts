@@ -177,7 +177,7 @@ export class SerenaAgent {
       includeBody?: boolean;
       includeInfo?: boolean;
       depth?: number;
-    }
+    },
   ): Promise<SerenaSymbol[]> {
     return this.callSerenaTool(SERENA_TOOLS.FIND_SYMBOL, {
       name_path_pattern: pattern,
@@ -265,7 +265,7 @@ export class SerenaAgent {
       relativePath?: string;
       filePattern?: string;
       restrictToCode?: boolean;
-    }
+    },
   ): Promise<SerenaSearchResult[]> {
     return this.callSerenaTool(SERENA_TOOLS.SEARCH_FOR_PATTERN, {
       substring_pattern: pattern,
@@ -310,7 +310,11 @@ export class SerenaAgent {
   /**
    * Replace content in a file
    */
-  async replaceContent(relativePath: string, oldContent: string, newContent: string): Promise<void> {
+  async replaceContent(
+    relativePath: string,
+    oldContent: string,
+    newContent: string,
+  ): Promise<void> {
     return this.callSerenaTool(SERENA_TOOLS.REPLACE_CONTENT, {
       relative_path: relativePath,
       old_content: oldContent,

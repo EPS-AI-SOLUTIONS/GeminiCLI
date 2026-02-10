@@ -2,8 +2,8 @@
  * GeminiHydra - Cache Unit Tests
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { TTLCache, HealthCheckCache, type EvictionPolicy } from '../../src/core/cache.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { HealthCheckCache, TTLCache } from '../../src/core/cache.js';
 
 describe('TTLCache', () => {
   let cache: TTLCache<string>;

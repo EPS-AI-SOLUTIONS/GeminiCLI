@@ -3,13 +3,8 @@
  * Testy cache zapytan: RequestCache, RequestDeduplicator
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import {
-  RequestCache,
-  RequestDeduplicator,
-  type CacheEntry,
-  type CacheOptions,
-} from '../../src/core/RequestCache.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { RequestCache, RequestDeduplicator } from '../../src/core/RequestCache.js';
 
 // Mock moduly zewnetrzne
 vi.mock('chalk', () => ({
@@ -129,9 +124,7 @@ describe('RequestCache', () => {
     it('powinien propagowac bledy z compute', async () => {
       const compute = vi.fn().mockRejectedValue(new Error('compute failed'));
 
-      await expect(
-        cache.getOrCompute({ key: 'error' }, compute)
-      ).rejects.toThrow('compute failed');
+      await expect(cache.getOrCompute({ key: 'error' }, compute)).rejects.toThrow('compute failed');
     });
   });
 
@@ -192,9 +185,9 @@ describe('RequestCache', () => {
     it('powinien sledzic trafienia i pudelka', () => {
       cache.set({ key: 'test' }, 'value');
 
-      cache.get({ key: 'test' });   // hit
-      cache.get({ key: 'test' });   // hit
-      cache.get({ key: 'miss' });   // miss
+      cache.get({ key: 'test' }); // hit
+      cache.get({ key: 'test' }); // hit
+      cache.get({ key: 'miss' }); // miss
 
       const stats = cache.getStats();
       expect(stats.hits).toBe(2);
@@ -275,10 +268,7 @@ describe('RequestDeduplicator', () => {
 
   describe('execute - deduplikacja', () => {
     it('powinien wykonac funkcje i zwrocic wynik', async () => {
-      const result = await dedup.execute(
-        { query: 'test' },
-        async () => 'result'
-      );
+      const result = await dedup.execute({ query: 'test' }, async () => 'result');
       expect(result).toBe('result');
     });
 
@@ -286,7 +276,7 @@ describe('RequestDeduplicator', () => {
       let callCount = 0;
       const fn = async () => {
         callCount++;
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise((resolve) => setTimeout(resolve, 50));
         return 'result';
       };
 
@@ -307,8 +297,8 @@ describe('RequestDeduplicator', () => {
         return `result-${callCount}`;
       };
 
-      const result1 = await dedup.execute({ query: 'a' }, fn);
-      const result2 = await dedup.execute({ query: 'b' }, fn);
+      const _result1 = await dedup.execute({ query: 'a' }, fn);
+      const _result2 = await dedup.execute({ query: 'b' }, fn);
 
       expect(callCount).toBe(2);
     });
@@ -320,10 +310,9 @@ describe('RequestDeduplicator', () => {
 
     it('powinien usunac in-flight po bledzie', async () => {
       try {
-        await dedup.execute(
-          { query: 'error' },
-          async () => { throw new Error('fail'); }
-        );
+        await dedup.execute({ query: 'error' }, async () => {
+          throw new Error('fail');
+        });
       } catch {}
 
       expect(dedup.getInFlightCount()).toBe(0);
@@ -337,7 +326,7 @@ describe('RequestDeduplicator', () => {
 
     it('powinien sledzic aktywne zapytania', async () => {
       const slowFn = async () => {
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
         return 'slow';
       };
 
@@ -352,7 +341,9 @@ describe('RequestDeduplicator', () => {
   describe('edge cases', () => {
     it('powinien propagowac bledy', async () => {
       await expect(
-        dedup.execute({ key: 'err' }, async () => { throw new Error('boom'); })
+        dedup.execute({ key: 'err' }, async () => {
+          throw new Error('boom');
+        }),
       ).rejects.toThrow('boom');
     });
   });

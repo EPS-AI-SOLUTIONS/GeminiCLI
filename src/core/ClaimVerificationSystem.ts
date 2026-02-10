@@ -22,7 +22,7 @@ export enum ClaimType {
   BUG_FIXED = 'bug_fixed',
   TEST_PASSED = 'test_passed',
   COMMAND_RUN = 'command_run',
-  ERROR_FOUND = 'error_found'
+  ERROR_FOUND = 'error_found',
 }
 
 /**
@@ -221,7 +221,7 @@ const DEFAULT_CONFIG: Required<ClaimVerificationConfig> = {
   enableCrossAgentValidation: true,
   strictFileVerification: true,
   maxClaimAge: 3600000, // 1 hour
-  debug: false
+  debug: false,
 };
 
 // =============================================================================
@@ -258,7 +258,7 @@ export class ClaimVerificationSystem {
       registeredAt: new Date(),
       status: 'pending',
       verificationAttempts: 0,
-      relatedClaims: this.findRelatedClaims(claim)
+      relatedClaims: this.findRelatedClaims(claim),
     };
 
     this.claims.set(claimId, registeredClaim);
@@ -288,7 +288,7 @@ export class ClaimVerificationSystem {
         confidence: 0,
         evidence: [],
         contradictions: [`Claim ${claimId} not found`],
-        status: 'unverified'
+        status: 'unverified',
       };
     }
 
@@ -325,7 +325,11 @@ export class ClaimVerificationSystem {
 
     // Cross-agent validation
     if (this.config.enableCrossAgentValidation && verificationContext.otherAgentClaims) {
-      result = this.crossValidateWithOtherAgents(claim, result, verificationContext.otherAgentClaims);
+      result = this.crossValidateWithOtherAgents(
+        claim,
+        result,
+        verificationContext.otherAgentClaims,
+      );
     }
 
     // Update claim status
@@ -346,7 +350,7 @@ export class ClaimVerificationSystem {
    */
   batchVerify(
     claimIds: string[],
-    verificationContext: VerificationContext
+    verificationContext: VerificationContext,
   ): Map<string, VerificationResult> {
     const results = new Map<string, VerificationResult>();
 
@@ -363,7 +367,7 @@ export class ClaimVerificationSystem {
    * @returns Array of registered claims
    */
   getClaimsByTask(taskId: number): RegisteredClaim[] {
-    return Array.from(this.claims.values()).filter(claim => claim.taskId === taskId);
+    return Array.from(this.claims.values()).filter((claim) => claim.taskId === taskId);
   }
 
   /**
@@ -372,7 +376,7 @@ export class ClaimVerificationSystem {
    * @returns Array of registered claims
    */
   getClaimsByAgent(agentId: string): RegisteredClaim[] {
-    return Array.from(this.claims.values()).filter(claim => claim.agentId === agentId);
+    return Array.from(this.claims.values()).filter((claim) => claim.agentId === agentId);
   }
 
   /**
@@ -380,7 +384,7 @@ export class ClaimVerificationSystem {
    * @returns Array of pending claims
    */
   getPendingClaims(): RegisteredClaim[] {
-    return Array.from(this.claims.values()).filter(claim => claim.status === 'pending');
+    return Array.from(this.claims.values()).filter((claim) => claim.status === 'pending');
   }
 
   /**
@@ -389,11 +393,11 @@ export class ClaimVerificationSystem {
    */
   getStats(): VerificationStats {
     const allClaims = Array.from(this.claims.values());
-    const verified = allClaims.filter(c => c.status === 'verified');
-    const unverified = allClaims.filter(c => c.status === 'unverified');
-    const contradicted = allClaims.filter(c => c.status === 'contradicted');
-    const partial = allClaims.filter(c => c.status === 'partial');
-    const pending = allClaims.filter(c => c.status === 'pending');
+    const verified = allClaims.filter((c) => c.status === 'verified');
+    const unverified = allClaims.filter((c) => c.status === 'unverified');
+    const contradicted = allClaims.filter((c) => c.status === 'contradicted');
+    const partial = allClaims.filter((c) => c.status === 'partial');
+    const pending = allClaims.filter((c) => c.status === 'pending');
 
     const totalVerified = verified.length + partial.length * 0.5;
     const totalAttempted = allClaims.length - pending.length;
@@ -406,7 +410,7 @@ export class ClaimVerificationSystem {
       partialClaims: partial.length,
       pendingClaims: pending.length,
       verificationRate: totalAttempted > 0 ? totalVerified / totalAttempted : 0,
-      averageConfidence: this.calculateAverageConfidence()
+      averageConfidence: this.calculateAverageConfidence(),
     };
   }
 
@@ -460,7 +464,7 @@ export class ClaimVerificationSystem {
    */
   private verifyFileCreated(
     claim: RegisteredClaim,
-    context: VerificationContext
+    context: VerificationContext,
   ): VerificationResult {
     const evidence: string[] = [];
     const contradictions: string[] = [];
@@ -475,7 +479,7 @@ export class ClaimVerificationSystem {
         confidence: 0,
         evidence: [],
         contradictions: ['Could not extract file path from claim'],
-        status: 'unverified'
+        status: 'unverified',
       };
     }
 
@@ -492,7 +496,7 @@ export class ClaimVerificationSystem {
     // Check MCP operations
     if (context.mcpOperations) {
       const createOp = context.mcpOperations.find(
-        op => op.operation === 'create' && op.target === filePath && op.success
+        (op) => op.operation === 'create' && op.target === filePath && op.success,
       );
       if (createOp) {
         evidence.push(`MCP create operation found for: ${filePath}`);
@@ -500,7 +504,7 @@ export class ClaimVerificationSystem {
       }
 
       const writeOp = context.mcpOperations.find(
-        op => op.operation === 'write' && op.target === filePath && op.success
+        (op) => op.operation === 'write' && op.target === filePath && op.success,
       );
       if (writeOp) {
         evidence.push(`MCP write operation found for: ${filePath}`);
@@ -518,7 +522,7 @@ export class ClaimVerificationSystem {
 
     // Add claim's own evidence
     if (claim.evidence) {
-      evidence.push(...claim.evidence.map(e => `Claim evidence: ${e}`));
+      evidence.push(...claim.evidence.map((e) => `Claim evidence: ${e}`));
     }
 
     return this.buildResult(confidence, evidence, contradictions);
@@ -529,7 +533,7 @@ export class ClaimVerificationSystem {
    */
   private verifyFileModified(
     claim: RegisteredClaim,
-    context: VerificationContext
+    context: VerificationContext,
   ): VerificationResult {
     const evidence: string[] = [];
     const contradictions: string[] = [];
@@ -543,14 +547,14 @@ export class ClaimVerificationSystem {
         confidence: 0,
         evidence: [],
         contradictions: ['Could not extract file path from claim'],
-        status: 'unverified'
+        status: 'unverified',
       };
     }
 
     // Check MCP operations
     if (context.mcpOperations) {
       const writeOps = context.mcpOperations.filter(
-        op => op.operation === 'write' && op.target === filePath && op.success
+        (op) => op.operation === 'write' && op.target === filePath && op.success,
       );
       if (writeOps.length > 0) {
         evidence.push(`Found ${writeOps.length} MCP write operation(s) for: ${filePath}`);
@@ -567,7 +571,7 @@ export class ClaimVerificationSystem {
     }
 
     // Check file exists
-    if (context.fileSystemState && context.fileSystemState.includes(filePath)) {
+    if (context.fileSystemState?.includes(filePath)) {
       evidence.push(`File exists: ${filePath}`);
       confidence += 0.1;
     } else if (context.fileSystemState) {
@@ -575,7 +579,7 @@ export class ClaimVerificationSystem {
     }
 
     if (claim.evidence) {
-      evidence.push(...claim.evidence.map(e => `Claim evidence: ${e}`));
+      evidence.push(...claim.evidence.map((e) => `Claim evidence: ${e}`));
       confidence += 0.1;
     }
 
@@ -587,7 +591,7 @@ export class ClaimVerificationSystem {
    */
   private verifyCodeAdded(
     claim: RegisteredClaim,
-    context: VerificationContext
+    context: VerificationContext,
   ): VerificationResult {
     const evidence: string[] = [];
     const contradictions: string[] = [];
@@ -595,9 +599,7 @@ export class ClaimVerificationSystem {
 
     // Check for write operations
     if (context.mcpOperations) {
-      const writeOps = context.mcpOperations.filter(
-        op => op.operation === 'write' && op.success
-      );
+      const writeOps = context.mcpOperations.filter((op) => op.operation === 'write' && op.success);
       if (writeOps.length > 0) {
         evidence.push(`Found ${writeOps.length} write operation(s) that may contain added code`);
         confidence += 0.3;
@@ -606,10 +608,7 @@ export class ClaimVerificationSystem {
 
     // Check Git for modifications
     if (context.gitStatus) {
-      const changedFiles = [
-        ...context.gitStatus.modifiedFiles,
-        ...context.gitStatus.createdFiles
-      ];
+      const changedFiles = [...context.gitStatus.modifiedFiles, ...context.gitStatus.createdFiles];
       if (changedFiles.length > 0) {
         evidence.push(`Git shows ${changedFiles.length} changed file(s)`);
         confidence += 0.3;
@@ -624,7 +623,7 @@ export class ClaimVerificationSystem {
     }
 
     if (claim.evidence) {
-      evidence.push(...claim.evidence.map(e => `Claim evidence: ${e}`));
+      evidence.push(...claim.evidence.map((e) => `Claim evidence: ${e}`));
       confidence += 0.2;
     }
 
@@ -634,18 +633,15 @@ export class ClaimVerificationSystem {
   /**
    * Verify a bug_fixed claim
    */
-  private verifyBugFixed(
-    claim: RegisteredClaim,
-    context: VerificationContext
-  ): VerificationResult {
+  private verifyBugFixed(claim: RegisteredClaim, context: VerificationContext): VerificationResult {
     const evidence: string[] = [];
     const contradictions: string[] = [];
     let confidence = 0;
 
     // Check for successful tests
     if (context.testResults) {
-      const passedTests = context.testResults.filter(t => t.passed);
-      const failedTests = context.testResults.filter(t => !t.passed);
+      const passedTests = context.testResults.filter((t) => t.passed);
+      const failedTests = context.testResults.filter((t) => !t.passed);
 
       if (passedTests.length > 0 && failedTests.length === 0) {
         evidence.push(`All ${passedTests.length} test(s) passing`);
@@ -657,7 +653,7 @@ export class ClaimVerificationSystem {
 
     // Check for file modifications
     if (context.mcpOperations) {
-      const writeOps = context.mcpOperations.filter(op => op.operation === 'write' && op.success);
+      const writeOps = context.mcpOperations.filter((op) => op.operation === 'write' && op.success);
       if (writeOps.length > 0) {
         evidence.push(`Found ${writeOps.length} file modification(s) that may contain fix`);
         confidence += 0.2;
@@ -667,7 +663,7 @@ export class ClaimVerificationSystem {
     // Check for no recent errors
     if (context.errorLogs) {
       const recentErrors = context.errorLogs.filter(
-        e => Date.now() - e.timestamp.getTime() < 300000 // 5 minutes
+        (e) => Date.now() - e.timestamp.getTime() < 300000, // 5 minutes
       );
       if (recentErrors.length === 0) {
         evidence.push('No recent errors in logs');
@@ -678,7 +674,7 @@ export class ClaimVerificationSystem {
     }
 
     if (claim.evidence) {
-      evidence.push(...claim.evidence.map(e => `Claim evidence: ${e}`));
+      evidence.push(...claim.evidence.map((e) => `Claim evidence: ${e}`));
       confidence += 0.2;
     }
 
@@ -690,7 +686,7 @@ export class ClaimVerificationSystem {
    */
   private verifyTestPassed(
     claim: RegisteredClaim,
-    context: VerificationContext
+    context: VerificationContext,
   ): VerificationResult {
     const evidence: string[] = [];
     const contradictions: string[] = [];
@@ -703,8 +699,8 @@ export class ClaimVerificationSystem {
     if (context.testResults) {
       if (testName) {
         // Look for specific test
-        const matchingTest = context.testResults.find(
-          t => t.testName.toLowerCase().includes(testName.toLowerCase())
+        const matchingTest = context.testResults.find((t) =>
+          t.testName.toLowerCase().includes(testName.toLowerCase()),
         );
         if (matchingTest) {
           if (matchingTest.passed) {
@@ -716,7 +712,7 @@ export class ClaimVerificationSystem {
         }
       } else {
         // General test check
-        const passedCount = context.testResults.filter(t => t.passed).length;
+        const passedCount = context.testResults.filter((t) => t.passed).length;
         const totalCount = context.testResults.length;
         if (passedCount === totalCount && totalCount > 0) {
           evidence.push(`All ${totalCount} test(s) passed`);
@@ -730,8 +726,8 @@ export class ClaimVerificationSystem {
 
     // Check command results for test commands
     if (context.commandResults) {
-      const testCommands = context.commandResults.filter(
-        c => /test|jest|mocha|vitest|pytest|cargo test|go test/i.test(c.command)
+      const testCommands = context.commandResults.filter((c) =>
+        /test|jest|mocha|vitest|pytest|cargo test|go test/i.test(c.command),
       );
       for (const cmd of testCommands) {
         if (cmd.exitCode === 0) {
@@ -744,7 +740,7 @@ export class ClaimVerificationSystem {
     }
 
     if (claim.evidence) {
-      evidence.push(...claim.evidence.map(e => `Claim evidence: ${e}`));
+      evidence.push(...claim.evidence.map((e) => `Claim evidence: ${e}`));
     }
 
     return this.buildResult(confidence, evidence, contradictions);
@@ -755,7 +751,7 @@ export class ClaimVerificationSystem {
    */
   private verifyCommandRun(
     claim: RegisteredClaim,
-    context: VerificationContext
+    context: VerificationContext,
   ): VerificationResult {
     const evidence: string[] = [];
     const contradictions: string[] = [];
@@ -764,17 +760,17 @@ export class ClaimVerificationSystem {
     // Extract command from claim
     const commandMatch = claim.content.match(/`([^`]+)`|'([^']+)'|"([^"]+)"|ran\s+(\S+)/i);
     const commandPattern = commandMatch
-      ? (commandMatch[1] || commandMatch[2] || commandMatch[3] || commandMatch[4])
+      ? commandMatch[1] || commandMatch[2] || commandMatch[3] || commandMatch[4]
       : null;
 
     if (context.commandResults) {
       if (commandPattern) {
         // Look for matching command
-        const matchingCmd = context.commandResults.find(
-          c => c.command.includes(commandPattern)
-        );
+        const matchingCmd = context.commandResults.find((c) => c.command.includes(commandPattern));
         if (matchingCmd) {
-          evidence.push(`Found matching command execution: ${matchingCmd.command.substring(0, 100)}`);
+          evidence.push(
+            `Found matching command execution: ${matchingCmd.command.substring(0, 100)}`,
+          );
           confidence += 0.5;
           if (matchingCmd.exitCode === 0) {
             evidence.push(`Command completed successfully (exit code 0)`);
@@ -797,7 +793,7 @@ export class ClaimVerificationSystem {
 
     // Check MCP execute operations
     if (context.mcpOperations) {
-      const execOps = context.mcpOperations.filter(op => op.operation === 'execute');
+      const execOps = context.mcpOperations.filter((op) => op.operation === 'execute');
       if (execOps.length > 0) {
         evidence.push(`Found ${execOps.length} MCP execute operation(s)`);
         confidence += 0.2;
@@ -805,7 +801,7 @@ export class ClaimVerificationSystem {
     }
 
     if (claim.evidence) {
-      evidence.push(...claim.evidence.map(e => `Claim evidence: ${e}`));
+      evidence.push(...claim.evidence.map((e) => `Claim evidence: ${e}`));
     }
 
     return this.buildResult(confidence, evidence, contradictions);
@@ -816,7 +812,7 @@ export class ClaimVerificationSystem {
    */
   private verifyErrorFound(
     claim: RegisteredClaim,
-    context: VerificationContext
+    context: VerificationContext,
   ): VerificationResult {
     const evidence: string[] = [];
     const contradictions: string[] = [];
@@ -830,8 +826,9 @@ export class ClaimVerificationSystem {
       // Look for matching error message
       const errorPattern = claim.content.toLowerCase();
       const matchingError = context.errorLogs.find(
-        e => e.message.toLowerCase().includes(errorPattern) ||
-             errorPattern.includes(e.message.toLowerCase().substring(0, 50))
+        (e) =>
+          e.message.toLowerCase().includes(errorPattern) ||
+          errorPattern.includes(e.message.toLowerCase().substring(0, 50)),
       );
       if (matchingError) {
         evidence.push(`Found matching error: ${matchingError.message.substring(0, 100)}`);
@@ -841,14 +838,14 @@ export class ClaimVerificationSystem {
 
     // Check command results for errors
     if (context.commandResults) {
-      const failedCmds = context.commandResults.filter(c => c.exitCode !== 0);
+      const failedCmds = context.commandResults.filter((c) => c.exitCode !== 0);
       if (failedCmds.length > 0) {
         evidence.push(`Found ${failedCmds.length} failed command(s)`);
         confidence += 0.2;
       }
 
       // Check stderr
-      const stderrCmds = context.commandResults.filter(c => c.stderr && c.stderr.length > 0);
+      const stderrCmds = context.commandResults.filter((c) => c.stderr && c.stderr.length > 0);
       if (stderrCmds.length > 0) {
         evidence.push(`Found ${stderrCmds.length} command(s) with stderr output`);
         confidence += 0.1;
@@ -857,7 +854,7 @@ export class ClaimVerificationSystem {
 
     // Check test results for failures
     if (context.testResults) {
-      const failedTests = context.testResults.filter(t => !t.passed);
+      const failedTests = context.testResults.filter((t) => !t.passed);
       if (failedTests.length > 0) {
         evidence.push(`Found ${failedTests.length} failing test(s)`);
         confidence += 0.2;
@@ -865,7 +862,7 @@ export class ClaimVerificationSystem {
     }
 
     if (claim.evidence) {
-      evidence.push(...claim.evidence.map(e => `Claim evidence: ${e}`));
+      evidence.push(...claim.evidence.map((e) => `Claim evidence: ${e}`));
     }
 
     return this.buildResult(confidence, evidence, contradictions);
@@ -876,7 +873,7 @@ export class ClaimVerificationSystem {
    */
   private genericVerification(
     claim: RegisteredClaim,
-    context: VerificationContext
+    context: VerificationContext,
   ): VerificationResult {
     const evidence: string[] = [];
     const contradictions: string[] = [];
@@ -884,13 +881,13 @@ export class ClaimVerificationSystem {
 
     // Basic checks
     if (claim.evidence && claim.evidence.length > 0) {
-      evidence.push(...claim.evidence.map(e => `Claim evidence: ${e}`));
+      evidence.push(...claim.evidence.map((e) => `Claim evidence: ${e}`));
       confidence += 0.3;
     }
 
     // Check for any MCP activity
     if (context.mcpOperations && context.mcpOperations.length > 0) {
-      const successfulOps = context.mcpOperations.filter(op => op.success);
+      const successfulOps = context.mcpOperations.filter((op) => op.success);
       if (successfulOps.length > 0) {
         evidence.push(`Found ${successfulOps.length} successful MCP operation(s)`);
         confidence += 0.2;
@@ -912,17 +909,18 @@ export class ClaimVerificationSystem {
   private crossValidateWithOtherAgents(
     claim: RegisteredClaim,
     currentResult: VerificationResult,
-    otherClaims: Claim[]
+    otherClaims: Claim[],
   ): VerificationResult {
     const evidence = [...currentResult.evidence];
     const contradictions = [...currentResult.contradictions];
     let confidence = currentResult.confidence;
 
     // Find corroborating claims from other agents
-    const corroboratingClaims = otherClaims.filter(other =>
-      other.agentId !== claim.agentId &&
-      other.taskId === claim.taskId &&
-      this.claimsRelated(claim, other)
+    const corroboratingClaims = otherClaims.filter(
+      (other) =>
+        other.agentId !== claim.agentId &&
+        other.taskId === claim.taskId &&
+        this.claimsRelated(claim, other),
     );
 
     if (corroboratingClaims.length > 0) {
@@ -931,10 +929,11 @@ export class ClaimVerificationSystem {
     }
 
     // Find contradicting claims
-    const contradictingClaims = otherClaims.filter(other =>
-      other.agentId !== claim.agentId &&
-      other.taskId === claim.taskId &&
-      this.claimsContradict(claim, other)
+    const contradictingClaims = otherClaims.filter(
+      (other) =>
+        other.agentId !== claim.agentId &&
+        other.taskId === claim.taskId &&
+        this.claimsContradict(claim, other),
     );
 
     if (contradictingClaims.length > 0) {
@@ -993,7 +992,7 @@ export class ClaimVerificationSystem {
       [ClaimType.BUG_FIXED]: [ClaimType.TEST_PASSED, ClaimType.FILE_MODIFIED],
       [ClaimType.TEST_PASSED]: [ClaimType.BUG_FIXED],
       [ClaimType.COMMAND_RUN]: [ClaimType.TEST_PASSED, ClaimType.ERROR_FOUND],
-      [ClaimType.ERROR_FOUND]: [ClaimType.BUG_FIXED]
+      [ClaimType.ERROR_FOUND]: [ClaimType.BUG_FIXED],
     };
 
     return relatedTypes[claim1.claimType]?.includes(claim2.claimType) ?? false;
@@ -1011,7 +1010,7 @@ export class ClaimVerificationSystem {
       [ClaimType.FILE_CREATED]: [],
       [ClaimType.FILE_MODIFIED]: [],
       [ClaimType.CODE_ADDED]: [],
-      [ClaimType.COMMAND_RUN]: []
+      [ClaimType.COMMAND_RUN]: [],
     };
 
     return oppositions[claim1.claimType]?.includes(claim2.claimType) ?? false;
@@ -1027,8 +1026,8 @@ export class ClaimVerificationSystem {
       /file\s+([a-zA-Z0-9_\-./\\]+\.[a-zA-Z0-9]+)/i,
       /created?\s+([a-zA-Z0-9_\-./\\]+\.[a-zA-Z0-9]+)/i,
       /modified?\s+([a-zA-Z0-9_\-./\\]+\.[a-zA-Z0-9]+)/i,
-      /([a-zA-Z0-9_\-]+\/[a-zA-Z0-9_\-./\\]+\.[a-zA-Z0-9]+)/,
-      /([a-zA-Z]:\\[a-zA-Z0-9_\-./\\]+\.[a-zA-Z0-9]+)/i
+      /([a-zA-Z0-9_-]+\/[a-zA-Z0-9_\-./\\]+\.[a-zA-Z0-9]+)/,
+      /([a-zA-Z]:\\[a-zA-Z0-9_\-./\\]+\.[a-zA-Z0-9]+)/i,
     ];
 
     for (const pattern of patterns) {
@@ -1047,7 +1046,7 @@ export class ClaimVerificationSystem {
   private buildResult(
     confidence: number,
     evidence: string[],
-    contradictions: string[]
+    contradictions: string[],
   ): VerificationResult {
     // Cap confidence
     confidence = Math.min(1.0, Math.max(0, confidence));
@@ -1071,7 +1070,7 @@ export class ClaimVerificationSystem {
       confidence,
       evidence,
       contradictions,
-      status
+      status,
     };
   }
 
@@ -1080,7 +1079,7 @@ export class ClaimVerificationSystem {
    */
   private calculateAverageConfidence(): number {
     const verifiedClaims = Array.from(this.claims.values()).filter(
-      c => c.status === 'verified' || c.status === 'partial'
+      (c) => c.status === 'verified' || c.status === 'partial',
     );
 
     if (verifiedClaims.length === 0) return 0;
@@ -1090,9 +1089,14 @@ export class ClaimVerificationSystem {
     let totalConfidence = 0;
     for (const claim of verifiedClaims) {
       switch (claim.status) {
-        case 'verified': totalConfidence += 0.9; break;
-        case 'partial': totalConfidence += 0.5; break;
-        default: break;
+        case 'verified':
+          totalConfidence += 0.9;
+          break;
+        case 'partial':
+          totalConfidence += 0.5;
+          break;
+        default:
+          break;
       }
     }
 
@@ -1108,7 +1112,7 @@ export class ClaimVerificationSystem {
       unverified: chalk.red,
       contradicted: chalk.red,
       partial: chalk.yellow,
-      pending: chalk.gray
+      pending: chalk.gray,
     };
 
     const color = statusColor[result.status] || chalk.white;
@@ -1119,12 +1123,12 @@ export class ClaimVerificationSystem {
 
     if (result.evidence.length > 0) {
       console.log(chalk.green('  Evidence:'));
-      result.evidence.forEach(e => console.log(chalk.gray(`    - ${e}`)));
+      result.evidence.forEach((e) => console.log(chalk.gray(`    - ${e}`)));
     }
 
     if (result.contradictions.length > 0) {
       console.log(chalk.red('  Contradictions:'));
-      result.contradictions.forEach(c => console.log(chalk.gray(`    - ${c}`)));
+      result.contradictions.forEach((c) => console.log(chalk.gray(`    - ${c}`)));
     }
   }
 }
@@ -1186,7 +1190,7 @@ export function logVerificationSummary(): void {
  */
 export function verifyTaskClaims(
   taskId: number,
-  context: VerificationContext
+  context: VerificationContext,
 ): Map<string, VerificationResult> {
   const claims = claimVerificationSystem.getClaimsByTask(taskId);
   const results = new Map<string, VerificationResult>();
@@ -1246,7 +1250,7 @@ export function getPhaseDVerificationReport(taskId: number): {
     verifiedClaims: verifiedCount,
     issues,
     overallConfidence,
-    recommendation
+    recommendation,
   };
 }
 

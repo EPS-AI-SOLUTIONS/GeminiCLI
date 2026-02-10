@@ -108,17 +108,37 @@ export interface ExtendedLLMProvider extends LLMProvider {
 // ============================================
 
 /**
- * Result from a provider generation request
+ * Result from a provider generation request.
+ *
+ * TYPE SAFETY (#20): Generic parameter `T` allows typed structured data.
+ *
+ * @example
+ * ```ts
+ * // Basic text result (backwards-compatible, T defaults to unknown)
+ * const result: ProviderResult = { content: 'Hello', model: 'gemini-3', success: true };
+ *
+ * // Typed structured data
+ * interface Analysis { sentiment: string; score: number }
+ * const typed: ProviderResult<Analysis> = {
+ *   content: '...raw text...',
+ *   model: 'gemini-3-pro',
+ *   success: true,
+ *   data: { sentiment: 'positive', score: 0.95 }
+ * };
+ * ```
  */
-export interface ProviderResult {
+export interface ProviderResult<T = unknown> {
   content: string;
   model: string;
   success: boolean;
+  /** Intentional snake_case: matches OpenAI API response format for interop */
   duration_ms?: number;
   tokens?: number;
   error?: string;
   usage?: TokenUsage;
   finishReason?: string;
+  /** Typed structured data from the provider (e.g., parsed JSON) */
+  data?: T;
 }
 
 /**
@@ -407,6 +427,8 @@ export interface AgentPersona {
   systemPrompt?: string;
   model?: string;
   temperature?: number;
+  /** Gemini model tier for cloud agents: 'pro' | 'flash' | undefined (for Ollama-only agents) */
+  geminiTier?: 'pro' | 'flash';
 }
 
 /**

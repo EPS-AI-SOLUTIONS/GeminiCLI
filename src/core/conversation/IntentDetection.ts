@@ -14,11 +14,21 @@ import chalk from 'chalk';
 // ============================================================
 
 export type IntentCategory =
-  | 'code_generation' | 'code_modification' | 'code_review'
-  | 'debugging' | 'explanation' | 'documentation'
-  | 'testing' | 'refactoring' | 'deployment'
-  | 'research' | 'question' | 'conversation'
-  | 'file_operation' | 'git_operation' | 'unknown';
+  | 'code_generation'
+  | 'code_modification'
+  | 'code_review'
+  | 'debugging'
+  | 'explanation'
+  | 'documentation'
+  | 'testing'
+  | 'refactoring'
+  | 'deployment'
+  | 'research'
+  | 'question'
+  | 'conversation'
+  | 'file_operation'
+  | 'git_operation'
+  | 'unknown';
 
 export interface DetectedIntent {
   primary: IntentCategory;
@@ -34,8 +44,14 @@ export interface DetectedIntent {
 // ============================================================
 
 const INTENT_PATTERNS: Record<IntentCategory, RegExp[]> = {
-  code_generation: [/napisz|stwórz|wygeneruj|zaimplementuj|dodaj/i, /create|write|generate|implement|add/i],
-  code_modification: [/zmień|zmodyfikuj|popraw|ulepsz|napraw/i, /change|modify|fix|improve|update/i],
+  code_generation: [
+    /napisz|stwórz|wygeneruj|zaimplementuj|dodaj/i,
+    /create|write|generate|implement|add/i,
+  ],
+  code_modification: [
+    /zmień|zmodyfikuj|popraw|ulepsz|napraw/i,
+    /change|modify|fix|improve|update/i,
+  ],
   code_review: [/sprawdź|przejrzyj|review|oceń/i, /review|check|audit|evaluate/i],
   debugging: [/debug|błąd|error|nie działa|crash/i, /debug|error|bug|crash|broken/i],
   explanation: [/wyjaśnij|wytłumacz|jak działa|co to/i, /explain|how does|what is|describe/i],
@@ -48,7 +64,7 @@ const INTENT_PATTERNS: Record<IntentCategory, RegExp[]> = {
   conversation: [/hej|cześć|dzięki|ok|super/i, /hi|hello|thanks|ok|great/i],
   file_operation: [/plik|folder|katalog|skopiuj|przenieś/i, /file|folder|directory|copy|move/i],
   git_operation: [/commit|push|pull|branch|merge/i, /commit|push|pull|branch|merge/i],
-  unknown: []
+  unknown: [],
 };
 
 // ============================================================
@@ -70,7 +86,7 @@ const INTENT_AGENT_MAP: Record<IntentCategory, string[]> = {
   conversation: ['regis', 'ciri', 'vesemir'],
   file_operation: ['eskel', 'geralt', 'ciri'],
   git_operation: ['eskel', 'geralt', 'triss'],
-  unknown: ['dijkstra', 'regis', 'geralt']
+  unknown: ['dijkstra', 'regis', 'geralt'],
 };
 
 // ============================================================
@@ -109,7 +125,9 @@ export async function detectIntent(input: string): Promise<DetectedIntent> {
   if (pathMatch) entities.paths = pathMatch.join(', ');
 
   // Function/class names
-  const identifierMatch = input.match(/(?:funkcja|function|class|klasa)\s+([A-Za-z_][A-Za-z0-9_]*)/gi);
+  const identifierMatch = input.match(
+    /(?:funkcja|function|class|klasa)\s+([A-Za-z_][A-Za-z0-9_]*)/gi,
+  );
   if (identifierMatch) entities.identifiers = identifierMatch.join(', ');
 
   // Numbers
@@ -118,7 +136,9 @@ export async function detectIntent(input: string): Promise<DetectedIntent> {
 
   const confidence = sorted[0] ? Math.min(sorted[0][1] / 2, 1) : 0.3;
 
-  console.log(chalk.gray(`[IntentDetection] Primary: ${primary} (${(confidence * 100).toFixed(0)}%)`));
+  console.log(
+    chalk.gray(`[IntentDetection] Primary: ${primary} (${(confidence * 100).toFixed(0)}%)`),
+  );
 
   return {
     primary,
@@ -126,7 +146,7 @@ export async function detectIntent(input: string): Promise<DetectedIntent> {
     confidence,
     entities,
     suggestedAgents: INTENT_AGENT_MAP[primary] || INTENT_AGENT_MAP.unknown,
-    reasoning: `Detected ${primary} intent based on keyword patterns`
+    reasoning: `Detected ${primary} intent based on keyword patterns`,
   };
 }
 
@@ -149,5 +169,5 @@ export function getIntentCategories(): IntentCategory[] {
  */
 export function matchesIntent(input: string, intent: IntentCategory): boolean {
   const patterns = INTENT_PATTERNS[intent];
-  return patterns.some(pattern => pattern.test(input));
+  return patterns.some((pattern) => pattern.test(input));
 }

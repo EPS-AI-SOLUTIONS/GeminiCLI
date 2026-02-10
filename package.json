@@ -14,6 +14,7 @@
     "lint": "biome check .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "test:gui": "cd GeminiGUI && npm test",
     "test:all": "vitest run && cd GeminiGUI && npm test",
     "prestart": "npm run build",
@@ -67,6 +68,6 @@
     "vitest": "^4.0.18"
   },
   "lint-staged": {
-    "*.{js,ts,tsx,json}": "biome check --write"
+    "*.{js,ts,tsx,json}": "biome format --write"
   }
 }

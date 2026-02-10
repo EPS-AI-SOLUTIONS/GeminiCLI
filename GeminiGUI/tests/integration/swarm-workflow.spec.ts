@@ -5,20 +5,20 @@
  * and complex interactions.
  */
 
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { createSwarmAgentMessages } from '../fixtures/stream-simulator';
+import { injectTauriMocks } from '../fixtures/tauri-mocks';
+import { TEST_PROMPTS, TIMEOUTS, UI_TEXTS } from '../fixtures/test-data';
 import { ChatPage } from '../page-objects/ChatPage';
+import { MemoryPanel } from '../page-objects/MemoryPanel';
 import { SessionSidebar } from '../page-objects/SessionSidebar';
 import { SettingsModal } from '../page-objects/SettingsModal';
-import { MemoryPanel } from '../page-objects/MemoryPanel';
-import { injectTauriMocks } from '../fixtures/tauri-mocks';
-import { createSwarmAgentMessages } from '../fixtures/stream-simulator';
-import { TEST_PROMPTS, TIMEOUTS, UI_TEXTS } from '../fixtures/test-data';
 
 test.describe('Swarm Workflow Integration', () => {
   let chat: ChatPage;
   let sidebar: SessionSidebar;
   let settings: SettingsModal;
-  let memory: MemoryPanel;
+  let _memory: MemoryPanel;
 
   test.beforeEach(async ({ page }) => {
     await injectTauriMocks(page);
@@ -27,7 +27,7 @@ test.describe('Swarm Workflow Integration', () => {
     chat = new ChatPage(page);
     sidebar = new SessionSidebar(page);
     settings = new SettingsModal(page);
-    memory = new MemoryPanel(page);
+    _memory = new MemoryPanel(page);
     await chat.waitForAppReady();
   });
 

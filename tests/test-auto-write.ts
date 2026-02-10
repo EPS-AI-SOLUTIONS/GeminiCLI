@@ -3,8 +3,8 @@
  * Ten test sprawdza czy mechanizm ===ZAPIS=== działa poprawnie
  */
 
-import { mcpManager } from '../src/mcp/index.js';
 import chalk from 'chalk';
+import { mcpManager } from '../src/mcp/index.js';
 
 // Symulacja odpowiedzi agenta z blokiem ZAPIS
 const mockAgentResponse = `
@@ -39,7 +39,8 @@ Zmiany zostały przygotowane do zapisu.
 `;
 
 // Pattern do wykrywania bloków ZAPIS (taki sam jak w GraphProcessor)
-const savePattern = /===ZAPIS===\s*\n\s*PLIK:\s*(.+?)\s*\n\s*KOD:\s*\n```[\w]*\n([\s\S]*?)\n```\s*\n===KONIEC_ZAPISU===/gi;
+const savePattern =
+  /===ZAPIS===\s*\n\s*PLIK:\s*(.+?)\s*\n\s*KOD:\s*\n```[\w]*\n([\s\S]*?)\n```\s*\n===KONIEC_ZAPISU===/gi;
 
 async function testAutoWrite() {
   console.log(chalk.cyan('\n========================================'));
@@ -78,7 +79,7 @@ async function testAutoWrite() {
     console.log(chalk.gray(`  Dostępne narzędzia: ${tools.length}`));
 
     // Sprawdź czy filesystem__write_file jest dostępny
-    const hasWriteFile = tools.some(t => t.name === 'write_file');
+    const hasWriteFile = tools.some((t) => t.name === 'write_file');
     if (hasWriteFile) {
       console.log(chalk.green('  ✓ Narzędzie write_file dostępne'));
     } else {
@@ -100,7 +101,7 @@ async function testAutoWrite() {
 
       const result = await mcpManager.callTool('filesystem__write_file', {
         path: filePath,
-        content: codeContent
+        content: codeContent,
       });
 
       if (result.isError) {
@@ -121,7 +122,7 @@ async function testAutoWrite() {
 
     try {
       const readResult = await mcpManager.callTool('filesystem__read_file', {
-        path: filePath
+        path: filePath,
       });
 
       if (readResult.isError) {
@@ -145,10 +146,10 @@ async function testAutoWrite() {
 
 // Uruchom test
 testAutoWrite()
-  .then(success => {
+  .then((success) => {
     process.exit(success ? 0 : 1);
   })
-  .catch(error => {
+  .catch((error) => {
     console.error(chalk.red('Fatal error:'), error);
     process.exit(1);
   });

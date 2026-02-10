@@ -7,44 +7,39 @@
  * from src/core/intelligence/TreeOfThoughts.ts for backward compatibility.
  */
 
+// Default export
 export {
+  aggregateThoughts,
+  beamExplore,
+  bfsExplore,
+  bfsTreeOfThoughts,
+  calculatePruneThreshold,
+  calculateThoughtSimilarity,
+  deduplicateThoughts,
+  default,
+  dfsExplore,
+  dfsTreeOfThoughts,
+  type ExplorationStats,
+  extractSolution,
+  formatToTResult,
+  // Utility functions
+  generateChildThoughts,
+  getPathFromRoot,
+  type LLMInterface,
+  // Search strategy implementations
+  mctsExplore,
+  mctsTreeOfThoughts,
+  parallelTreeOfThoughts,
+  pruneNodes,
+  quickTreeOfThoughts,
   // Types
   type SearchStrategy,
   type ThoughtNode,
   type ToTOptions,
-  type ExplorationStats,
+  // Class
+  TreeOfThoughts,
   type TreeOfThoughtsResult,
-  type LLMInterface,
-
   // Main functions
   treeOfThoughts,
-  quickTreeOfThoughts,
-  mctsTreeOfThoughts,
-  bfsTreeOfThoughts,
-  dfsTreeOfThoughts,
-  parallelTreeOfThoughts,
-  formatToTResult,
-
-  // Utility functions
-  generateChildThoughts,
-  extractSolution,
-  calculateThoughtSimilarity,
-  deduplicateThoughts,
-  aggregateThoughts,
-  pruneNodes,
-  calculatePruneThreshold,
   visualizeTree,
-  getPathFromRoot,
-
-  // Search strategy implementations
-  mctsExplore,
-  bfsExplore,
-  dfsExplore,
-  beamExplore,
-
-  // Class
-  TreeOfThoughts
 } from './intelligence/TreeOfThoughts.js';
-
-// Default export
-export { default } from './intelligence/TreeOfThoughts.js';

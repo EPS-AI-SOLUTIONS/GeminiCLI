@@ -11,23 +11,21 @@
  */
 
 import {
-  escapeShellArg,
-  escapeShellArgWindows,
-  escapeShellArgUnix,
-  escapeShellCommand,
-  escapeShellCommandWindows,
-  escapeShellCommandUnix,
-  quoteArg,
-  quoteArgWindows,
-  quoteArgUnix,
-  escapeForPowerShell,
-  escapeForCmd,
   buildCommand,
-  parseCommand,
-  escapeGlobPattern,
-  sanitizeCommand,
-  isCommandSafe,
   createEnvAssignment,
+  escapeForCmd,
+  escapeForPowerShell,
+  escapeGlobPattern,
+  escapeShellArg,
+  escapeShellArgUnix,
+  escapeShellArgWindows,
+  escapeShellCommandUnix,
+  escapeShellCommandWindows,
+  isCommandSafe,
+  parseCommand,
+  quoteArgUnix,
+  quoteArgWindows,
+  sanitizeCommand,
 } from '../src/native/ShellEscape';
 
 // ============================================================
@@ -59,7 +57,7 @@ describe('escapeShellArg', () => {
     });
 
     it('should handle double quotes', () => {
-      expect(escapeShellArgUnix('say "hello"')).toBe("'say \"hello\"'");
+      expect(escapeShellArgUnix('say "hello"')).toBe('\'say "hello"\'');
     });
 
     it('should handle backslashes', () => {
@@ -123,7 +121,7 @@ describe('escapeShellArg', () => {
 
     it('should handle mixed special characters', () => {
       expect(escapeShellArgUnix('$HOME/path with spaces')).toBe("'$HOME/path with spaces'");
-      expect(escapeShellArgUnix('echo "hello" | grep world')).toBe("'echo \"hello\" | grep world'");
+      expect(escapeShellArgUnix('echo "hello" | grep world')).toBe('\'echo "hello" | grep world\'');
     });
   });
 
@@ -264,7 +262,7 @@ describe('quoteArg', () => {
     it('should use double quotes when string has single quotes but no special chars', () => {
       const result = quoteArgUnix("it's");
       // Should use escaped single quotes or double quotes
-      expect(result === "\"it's\"" || result.includes("'\\''")).toBe(true);
+      expect(result === '"it\'s"' || result.includes("'\\''")).toBe(true);
     });
   });
 
@@ -560,7 +558,7 @@ describe('createEnvAssignment', () => {
   it('should create Unix export statement', () => {
     const result = createEnvAssignment('PATH', '/usr/bin', 'unix');
     // Simple path without special chars doesn't need quoting
-    expect(result).toBe("export PATH=/usr/bin");
+    expect(result).toBe('export PATH=/usr/bin');
   });
 
   it('should create PowerShell env statement', () => {
@@ -569,7 +567,7 @@ describe('createEnvAssignment', () => {
   });
 
   it('should escape values properly for Unix', () => {
-    const result = createEnvAssignment('MSG', "hello world", 'unix');
+    const result = createEnvAssignment('MSG', 'hello world', 'unix');
     expect(result).toBe("export MSG='hello world'");
   });
 });
@@ -608,13 +606,13 @@ describe('Edge Cases', () => {
   });
 
   it('should handle paths with spaces and special chars', () => {
-    const path = "/home/user/My Documents/file (1).txt";
+    const path = '/home/user/My Documents/file (1).txt';
     const result = escapeShellArgUnix(path);
     expect(result).toBe(`'${path}'`);
   });
 
   it('should handle Windows paths with backslashes', () => {
-    const path = "C:\\Users\\John Doe\\Documents\\file.txt";
+    const path = 'C:\\Users\\John Doe\\Documents\\file.txt';
     const result = escapeShellArgWindows(path);
     expect(result).toContain('John Doe');
   });

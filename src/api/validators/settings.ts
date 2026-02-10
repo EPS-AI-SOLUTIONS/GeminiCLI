@@ -3,15 +3,15 @@
  * Validators for settings endpoint requests
  */
 
-import { ValidationError } from '../middleware/index.js';
 import { API_CONFIG } from '../config/index.js';
 import {
-  VALID_THEMES,
-  VALID_LANGUAGES,
-  VALIDATION_ERRORS,
-  isValidTheme,
   isValidLanguage,
+  isValidTheme,
+  VALID_LANGUAGES,
+  VALID_THEMES,
+  VALIDATION_ERRORS,
 } from '../constants/index.js';
+import { ValidationError } from '../middleware/index.js';
 import type { Settings } from '../types/index.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -93,7 +93,7 @@ export function validateLanguage(language: unknown): Settings['language'] {
 export function validateTemperature(temperature: unknown): number {
   const temp = Number(temperature);
   const { min, max } = API_CONFIG.settings.temperature;
-  if (isNaN(temp) || temp < min || temp > max) {
+  if (Number.isNaN(temp) || temp < min || temp > max) {
     throw new ValidationError(VALIDATION_ERRORS.OUT_OF_RANGE('temperature', min, max));
   }
   return temp;
@@ -105,7 +105,7 @@ export function validateTemperature(temperature: unknown): number {
 export function validateMaxTokens(maxTokens: unknown): number {
   const tokens = Number(maxTokens);
   const { min, max } = API_CONFIG.settings.tokens;
-  if (isNaN(tokens) || tokens < min || tokens > max) {
+  if (Number.isNaN(tokens) || tokens < min || tokens > max) {
     throw new ValidationError(VALIDATION_ERRORS.OUT_OF_RANGE('maxTokens', min, max));
   }
   return tokens;

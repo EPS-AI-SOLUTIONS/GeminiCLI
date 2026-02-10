@@ -3,15 +3,15 @@
  * Defines the contract for all AI providers
  */
 
-import type {
-  ProviderResult,
-  HealthCheckResult,
-  ProviderOptions,
-  ProviderStats,
-  ProviderConfig
-} from '../types/provider.js';
-import type { CircuitBreakerStatus } from '../core/retry.js';
 import type { PoolStatus } from '../core/pool.js';
+import type { CircuitBreakerStatus } from '../core/retry.js';
+import type {
+  HealthCheckResult,
+  ProviderConfig,
+  ProviderOptions,
+  ProviderResult,
+  ProviderStats,
+} from '../types/provider.js';
 
 /**
  * Provider status
@@ -60,7 +60,7 @@ export abstract class BaseProvider {
     failedRequests: 0,
     totalTokens: 0,
     totalDuration: 0,
-    errors: []
+    errors: [],
   };
 
   /**
@@ -83,7 +83,10 @@ export abstract class BaseProvider {
    * Stream completion from the provider
    * MUST be implemented by subclasses
    */
-  abstract streamGenerate(prompt: string, options?: ProviderOptions): AsyncGenerator<string, void, unknown>;
+  abstract streamGenerate(
+    prompt: string,
+    options?: ProviderOptions,
+  ): AsyncGenerator<string, void, unknown>;
 
   /**
    * Perform health check on the provider
@@ -109,16 +112,16 @@ export abstract class BaseProvider {
       totalTokens: this._stats.totalTokens,
       totalLatency: this._stats.totalDuration,
       totalDuration: this._stats.totalDuration,
-      averageLatency: this._stats.totalRequests > 0
-        ? this._stats.totalDuration / this._stats.totalRequests
-        : 0,
-      successRate: this._stats.totalRequests > 0
-        ? (this._stats.successfulRequests / this._stats.totalRequests * 100)
-        : 0,
-      lastErrors: this._stats.errors.slice(-10).map(e => ({
+      averageLatency:
+        this._stats.totalRequests > 0 ? this._stats.totalDuration / this._stats.totalRequests : 0,
+      successRate:
+        this._stats.totalRequests > 0
+          ? (this._stats.successfulRequests / this._stats.totalRequests) * 100
+          : 0,
+      lastErrors: this._stats.errors.slice(-10).map((e) => ({
         message: e.error,
-        timestamp: e.timestamp.toISOString()
-      }))
+        timestamp: e.timestamp.toISOString(),
+      })),
     };
   }
 
@@ -132,7 +135,7 @@ export abstract class BaseProvider {
       failedRequests: 0,
       totalTokens: 0,
       totalDuration: 0,
-      errors: []
+      errors: [],
     };
   }
 
@@ -150,7 +153,7 @@ export abstract class BaseProvider {
       this._stats.failedRequests++;
       this._stats.errors.push({
         error: result.error ?? 'Unknown error',
-        timestamp: new Date()
+        timestamp: new Date(),
       });
 
       // Keep only last 100 errors
@@ -188,10 +191,11 @@ export abstract class BaseProvider {
     return {
       name: this.name,
       healthy: this._healthCache?.available ?? false,
-      lastCheck: this._healthCacheExpiry > 0
-        ? new Date(this._healthCacheExpiry - 30000).toISOString()
-        : null,
-      stats: this.getStats()
+      lastCheck:
+        this._healthCacheExpiry > 0
+          ? new Date(this._healthCacheExpiry - 30000).toISOString()
+          : null,
+      stats: this.getStats(),
     };
   }
 

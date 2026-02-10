@@ -5,8 +5,8 @@
  * Extracted from App.tsx for better separation of concerns.
  */
 
-import { useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { useCallback } from 'react';
 import { toast } from 'sonner';
 import { STATUS, TAURI_COMMANDS } from '../constants';
 import type { Message } from '../types';
@@ -47,7 +47,7 @@ export interface UseCommandExecutionReturn {
  * ```
  */
 export function useCommandExecution(
-  options: UseCommandExecutionOptions
+  options: UseCommandExecutionOptions,
 ): UseCommandExecutionReturn {
   const { addMessage, updateLastMessage, isTauri } = options;
 
@@ -60,8 +60,8 @@ export function useCommandExecution(
       });
 
       if (!isTauri) {
-        const output = '[WEB SIMULATION] Command executed: ' + cmd;
-        updateLastMessage('\n\n' + output);
+        const output = `[WEB SIMULATION] Command executed: ${cmd}`;
+        updateLastMessage(`\n\n${output}`);
         return { command: cmd, success: true, output };
       }
 
@@ -69,16 +69,16 @@ export function useCommandExecution(
         const result = await invoke<string>(TAURI_COMMANDS.RUN_SYSTEM_COMMAND, {
           command: cmd,
         });
-        updateLastMessage('\n\nRESULT:\n```\n' + result + '\n```\n');
+        updateLastMessage(`\n\nRESULT:\n\`\`\`\n${result}\n\`\`\`\n`);
         return { command: cmd, success: true, output: result };
       } catch (err) {
         const errorStr = String(err);
-        updateLastMessage('\n\nERROR:\n' + errorStr);
+        updateLastMessage(`\n\nERROR:\n${errorStr}`);
         toast.error(`Błąd komendy: ${err}`);
         return { command: cmd, success: false, output: errorStr };
       }
     },
-    [addMessage, updateLastMessage, isTauri]
+    [addMessage, updateLastMessage, isTauri],
   );
 
   return { executeCommand };

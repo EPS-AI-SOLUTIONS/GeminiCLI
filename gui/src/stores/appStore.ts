@@ -4,7 +4,7 @@
 
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
-import type { Agent, AgentRole, Message, Task, ExecutionPlan, Settings } from '../types';
+import type { Agent, AgentRole, ExecutionPlan, Message, Settings, Task } from '../types';
 
 // Agent definitions
 const AGENTS: Record<AgentRole, Agent> = {
@@ -91,7 +91,7 @@ export const useAppStore = create<AppState>()(
               currentPlan: {
                 ...state.currentPlan,
                 tasks: state.currentPlan.tasks.map((task) =>
-                  task.id === taskId ? { ...task, ...updates } : task
+                  task.id === taskId ? { ...task, ...updates } : task,
                 ),
               },
             };
@@ -106,8 +106,7 @@ export const useAppStore = create<AppState>()(
 
         // UI State
         isSidebarOpen: true,
-        toggleSidebar: () =>
-          set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
+        toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
         isStreaming: false,
         setIsStreaming: (streaming) => set({ isStreaming: streaming }),
       }),
@@ -117,8 +116,8 @@ export const useAppStore = create<AppState>()(
           settings: state.settings,
           isSidebarOpen: state.isSidebarOpen,
         }),
-      }
+      },
     ),
-    { name: 'GeminiHydra' }
-  )
+    { name: 'GeminiHydra' },
+  ),
 );

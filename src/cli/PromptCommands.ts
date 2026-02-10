@@ -14,14 +14,14 @@
  * - /prompt stats - statystyki
  */
 
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import chalk from 'chalk';
-import fs from 'fs/promises';
-import path from 'path';
 import {
+  type PromptCategory,
+  type PromptSearchOptions,
   promptMemory,
-  SavedPrompt,
-  PromptCategory,
-  PromptSearchOptions
+  type SavedPrompt,
 } from '../memory/PromptMemory.js';
 
 // ============================================================
@@ -137,7 +137,7 @@ export class PromptCommands {
         }
         return {
           success: false,
-          message: `Nieznana komenda: ${subcommand}. Użyj /prompt help`
+          message: `Nieznana komenda: ${subcommand}. Użyj /prompt help`,
         };
     }
   }
@@ -150,7 +150,7 @@ export class PromptCommands {
     if (args.length === 0 && !this.lastUserInput) {
       return {
         success: false,
-        message: 'Użycie: /prompt save <tytuł> [#tag1 #tag2] lub po wpisaniu prompta'
+        message: 'Użycie: /prompt save <tytuł> [#tag1 #tag2] lub po wpisaniu prompta',
       };
     }
 
@@ -179,13 +179,13 @@ export class PromptCommands {
     if (!title) {
       return {
         success: false,
-        message: 'Podaj tytuł dla prompta'
+        message: 'Podaj tytuł dla prompta',
       };
     }
 
     if (!content) {
       // Use args as content if no last input
-      content = args.filter(a => !a.startsWith('#') && !a.startsWith('@')).join(' ');
+      content = args.filter((a) => !a.startsWith('#') && !a.startsWith('@')).join(' ');
       title = content.slice(0, 50);
     }
 
@@ -193,7 +193,7 @@ export class PromptCommands {
       const prompt = await promptMemory.savePrompt({
         title,
         content,
-        tags
+        tags,
       });
 
       console.log(chalk.green(`\n✓ Prompt zapisany!`));
@@ -201,10 +201,12 @@ export class PromptCommands {
       console.log(chalk.gray(`  Tytuł: ${prompt.title}`));
       console.log(chalk.gray(`  Kategoria: ${prompt.category}`));
       if (prompt.tags.length > 0) {
-        console.log(chalk.gray(`  Tagi: ${prompt.tags.map(t => '#' + t).join(' ')}`));
+        console.log(chalk.gray(`  Tagi: ${prompt.tags.map((t) => `#${t}`).join(' ')}`));
       }
       if (prompt.variables && prompt.variables.length > 0) {
-        console.log(chalk.gray(`  Zmienne: ${prompt.variables.map(v => '{{' + v.name + '}}').join(', ')}`));
+        console.log(
+          chalk.gray(`  Zmienne: ${prompt.variables.map((v) => `{{${v.name}}}`).join(', ')}`),
+        );
       }
       console.log('');
 
@@ -212,7 +214,7 @@ export class PromptCommands {
     } catch (error: any) {
       return {
         success: false,
-        message: `Błąd zapisu: ${error.message}`
+        message: `Błąd zapisu: ${error.message}`,
       };
     }
   }
@@ -224,7 +226,7 @@ export class PromptCommands {
   private async listPrompts(args: string[]): Promise<PromptCommandResult> {
     const options: PromptSearchOptions = {
       limit: 20,
-      sortBy: 'recent'
+      sortBy: 'recent',
     };
 
     // Parse args
@@ -241,7 +243,22 @@ export class PromptCommands {
       } else {
         // Może to kategoria
         const cat = arg.toLowerCase() as PromptCategory;
-        if (['coding', 'analysis', 'refactoring', 'debugging', 'testing', 'docs', 'git', 'architecture', 'review', 'explain', 'translate', 'custom'].includes(cat)) {
+        if (
+          [
+            'coding',
+            'analysis',
+            'refactoring',
+            'debugging',
+            'testing',
+            'docs',
+            'git',
+            'architecture',
+            'review',
+            'explain',
+            'translate',
+            'custom',
+          ].includes(cat)
+        ) {
           options.category = cat;
         }
       }
@@ -258,7 +275,7 @@ export class PromptCommands {
     }
 
     const favorites = await promptMemory.getFavorites();
-    const favIds = favorites.map(f => f.id);
+    const favIds = favorites.map((f) => f.id);
 
     for (const p of prompts) {
       const star = favIds.includes(p.id) ? chalk.yellow('★') : chalk.gray('○');
@@ -266,7 +283,9 @@ export class PromptCommands {
       const usage = p.usageCount > 0 ? chalk.gray(` (${p.usageCount}x)`) : '';
 
       console.log(`${star} ${chalk.white(p.id.slice(0, 8))} ${chalk.cyan(p.title)}${usage}`);
-      console.log(chalk.gray(`    [${p.category}] ${p.tags.map(t => '#' + t).join(' ')} ${rating}`));
+      console.log(
+        chalk.gray(`    [${p.category}] ${p.tags.map((t) => `#${t}`).join(' ')} ${rating}`),
+      );
     }
 
     console.log(chalk.gray(`\nPokazano ${prompts.length} promptów`));
@@ -283,7 +302,7 @@ export class PromptCommands {
     if (args.length === 0) {
       return {
         success: false,
-        message: 'Użycie: /prompt search <zapytanie>'
+        message: 'Użycie: /prompt search <zapytanie>',
       };
     }
 
@@ -291,7 +310,7 @@ export class PromptCommands {
     const prompts = await promptMemory.searchPrompts({
       query,
       sortBy: 'relevance',
-      limit: 10
+      limit: 10,
     });
 
     console.log(chalk.cyan(`\n═══ Wyniki dla "${query}" ═══\n`));
@@ -318,7 +337,7 @@ export class PromptCommands {
     if (args.length === 0) {
       return {
         success: false,
-        message: 'Użycie: /prompt use <id> [zmienna=wartość ...]'
+        message: 'Użycie: /prompt use <id> [zmienna=wartość ...]',
       };
     }
 
@@ -327,23 +346,23 @@ export class PromptCommands {
 
     // Find prompt by ID prefix
     const allPrompts = await promptMemory.getAllPrompts();
-    const matches = allPrompts.filter(p => p.id.startsWith(idPrefix));
+    const matches = allPrompts.filter((p) => p.id.startsWith(idPrefix));
 
     if (matches.length === 0) {
       return {
         success: false,
-        message: `Nie znaleziono prompta o ID rozpoczynającym się od: ${idPrefix}`
+        message: `Nie znaleziono prompta o ID rozpoczynającym się od: ${idPrefix}`,
       };
     }
 
     if (matches.length > 1) {
       console.log(chalk.yellow(`\nZnaleziono ${matches.length} pasujących promptów:`));
-      matches.forEach(p => {
+      matches.forEach((p) => {
         console.log(chalk.gray(`  ${p.id.slice(0, 8)} - ${p.title}`));
       });
       return {
         success: false,
-        message: 'Podaj bardziej precyzyjny ID'
+        message: 'Podaj bardziej precyzyjny ID',
       };
     }
 
@@ -362,18 +381,18 @@ export class PromptCommands {
 
     // Check for missing required variables
     if (prompt.variables) {
-      const missing = prompt.variables.filter(v =>
-        v.required && !variables[v.name] && !v.defaultValue
+      const missing = prompt.variables.filter(
+        (v) => v.required && !variables[v.name] && !v.defaultValue,
       );
 
       if (missing.length > 0) {
         console.log(chalk.yellow(`\nBrakujące zmienne dla "${prompt.title}":`));
-        missing.forEach(v => {
-          console.log(chalk.gray(`  {{${v.name}}}${v.description ? ' - ' + v.description : ''}`));
+        missing.forEach((v) => {
+          console.log(chalk.gray(`  {{${v.name}}}${v.description ? ` - ${v.description}` : ''}`));
         });
         return {
           success: false,
-          message: 'Podaj brakujące zmienne: ' + missing.map(v => `${v.name}=...`).join(' ')
+          message: `Podaj brakujące zmienne: ${missing.map((v) => `${v.name}=...`).join(' ')}`,
         };
       }
     }
@@ -384,7 +403,7 @@ export class PromptCommands {
     // Record usage
     await promptMemory.recordUsage(prompt.id, {
       context: this.lastContext,
-      variables
+      variables,
     });
 
     console.log(chalk.green(`\n✓ Prompt "${prompt.title}" gotowy:\n`));
@@ -394,7 +413,7 @@ export class PromptCommands {
     return {
       success: true,
       prompt,
-      compiledPrompt
+      compiledPrompt,
     };
   }
 
@@ -406,18 +425,18 @@ export class PromptCommands {
     if (args.length === 0) {
       return {
         success: false,
-        message: 'Użycie: /prompt show <id>'
+        message: 'Użycie: /prompt show <id>',
       };
     }
 
     const idPrefix = args[0];
     const allPrompts = await promptMemory.getAllPrompts();
-    const prompt = allPrompts.find(p => p.id.startsWith(idPrefix));
+    const prompt = allPrompts.find((p) => p.id.startsWith(idPrefix));
 
     if (!prompt) {
       return {
         success: false,
-        message: `Nie znaleziono prompta: ${idPrefix}`
+        message: `Nie znaleziono prompta: ${idPrefix}`,
       };
     }
 
@@ -426,11 +445,13 @@ export class PromptCommands {
     console.log(chalk.cyan(`\n═══ ${prompt.title} ═══\n`));
     console.log(chalk.gray(`ID: ${prompt.id}`));
     console.log(chalk.gray(`Kategoria: ${prompt.category}`));
-    console.log(chalk.gray(`Tagi: ${prompt.tags.map(t => '#' + t).join(' ') || 'brak'}`));
+    console.log(chalk.gray(`Tagi: ${prompt.tags.map((t) => `#${t}`).join(' ') || 'brak'}`));
     console.log(chalk.gray(`Ulubiony: ${isFav ? 'tak' : 'nie'}`));
     console.log(chalk.gray(`Użycia: ${prompt.usageCount}`));
     if (prompt.rating) {
-      console.log(chalk.gray(`Ocena: ${'★'.repeat(prompt.rating)}${'☆'.repeat(5 - prompt.rating)}`));
+      console.log(
+        chalk.gray(`Ocena: ${'★'.repeat(prompt.rating)}${'☆'.repeat(5 - prompt.rating)}`),
+      );
     }
     console.log(chalk.gray(`Utworzono: ${prompt.createdAt.toLocaleString()}`));
     if (prompt.lastUsedAt) {
@@ -439,8 +460,10 @@ export class PromptCommands {
 
     if (prompt.variables && prompt.variables.length > 0) {
       console.log(chalk.gray('\nZmienne:'));
-      prompt.variables.forEach(v => {
-        console.log(chalk.gray(`  {{${v.name}}}${v.required ? '*' : ''} - ${v.description || 'brak opisu'}`));
+      prompt.variables.forEach((v) => {
+        console.log(
+          chalk.gray(`  {{${v.name}}}${v.required ? '*' : ''} - ${v.description || 'brak opisu'}`),
+        );
       });
     }
 
@@ -463,18 +486,18 @@ export class PromptCommands {
     if (args.length === 0) {
       return {
         success: false,
-        message: 'Użycie: /prompt fav <id>'
+        message: 'Użycie: /prompt fav <id>',
       };
     }
 
     const idPrefix = args[0];
     const allPrompts = await promptMemory.getAllPrompts();
-    const prompt = allPrompts.find(p => p.id.startsWith(idPrefix));
+    const prompt = allPrompts.find((p) => p.id.startsWith(idPrefix));
 
     if (!prompt) {
       return {
         success: false,
-        message: `Nie znaleziono prompta: ${idPrefix}`
+        message: `Nie znaleziono prompta: ${idPrefix}`,
       };
     }
 
@@ -497,18 +520,18 @@ export class PromptCommands {
     if (args.length === 0) {
       return {
         success: false,
-        message: 'Użycie: /prompt delete <id>'
+        message: 'Użycie: /prompt delete <id>',
       };
     }
 
     const idPrefix = args[0];
     const allPrompts = await promptMemory.getAllPrompts();
-    const prompt = allPrompts.find(p => p.id.startsWith(idPrefix));
+    const prompt = allPrompts.find((p) => p.id.startsWith(idPrefix));
 
     if (!prompt) {
       return {
         success: false,
-        message: `Nie znaleziono prompta: ${idPrefix}`
+        message: `Nie znaleziono prompta: ${idPrefix}`,
       };
     }
 
@@ -526,19 +549,20 @@ export class PromptCommands {
     if (args.length < 2) {
       return {
         success: false,
-        message: 'Użycie: /prompt edit <id> <pole>=<wartość>\n' +
-                 '  Pola: title, content, tags, notes, category'
+        message:
+          'Użycie: /prompt edit <id> <pole>=<wartość>\n' +
+          '  Pola: title, content, tags, notes, category',
       };
     }
 
     const idPrefix = args[0];
     const allPrompts = await promptMemory.getAllPrompts();
-    const prompt = allPrompts.find(p => p.id.startsWith(idPrefix));
+    const prompt = allPrompts.find((p) => p.id.startsWith(idPrefix));
 
     if (!prompt) {
       return {
         success: false,
-        message: `Nie znaleziono prompta: ${idPrefix}`
+        message: `Nie znaleziono prompta: ${idPrefix}`,
       };
     }
 
@@ -559,7 +583,7 @@ export class PromptCommands {
             updates.content = value;
             break;
           case 'tags':
-            updates.tags = value.split(',').map(t => t.trim().replace(/^#/, ''));
+            updates.tags = value.split(',').map((t) => t.trim().replace(/^#/, ''));
             break;
           case 'notes':
             updates.notes = value;
@@ -574,7 +598,7 @@ export class PromptCommands {
     if (Object.keys(updates).length === 0) {
       return {
         success: false,
-        message: 'Brak zmian do zapisania'
+        message: 'Brak zmian do zapisania',
       };
     }
 
@@ -592,32 +616,34 @@ export class PromptCommands {
     if (args.length < 2) {
       return {
         success: false,
-        message: 'Użycie: /prompt rate <id> <1-5>'
+        message: 'Użycie: /prompt rate <id> <1-5>',
       };
     }
 
     const idPrefix = args[0];
-    const rating = parseInt(args[1]);
+    const rating = parseInt(args[1], 10);
 
-    if (isNaN(rating) || rating < 1 || rating > 5) {
+    if (Number.isNaN(rating) || rating < 1 || rating > 5) {
       return {
         success: false,
-        message: 'Ocena musi być liczbą od 1 do 5'
+        message: 'Ocena musi być liczbą od 1 do 5',
       };
     }
 
     const allPrompts = await promptMemory.getAllPrompts();
-    const prompt = allPrompts.find(p => p.id.startsWith(idPrefix));
+    const prompt = allPrompts.find((p) => p.id.startsWith(idPrefix));
 
     if (!prompt) {
       return {
         success: false,
-        message: `Nie znaleziono prompta: ${idPrefix}`
+        message: `Nie znaleziono prompta: ${idPrefix}`,
       };
     }
 
     await promptMemory.ratePrompt(prompt.id, rating);
-    console.log(chalk.yellow(`\n${'★'.repeat(rating)}${'☆'.repeat(5 - rating)} "${prompt.title}"\n`));
+    console.log(
+      chalk.yellow(`\n${'★'.repeat(rating)}${'☆'.repeat(5 - rating)} "${prompt.title}"\n`),
+    );
 
     return { success: true, prompt };
   }
@@ -631,7 +657,7 @@ export class PromptCommands {
     const filepath = path.resolve(filename);
 
     const json = await promptMemory.exportPrompts({
-      includeHistory: args.includes('--history')
+      includeHistory: args.includes('--history'),
     });
 
     await fs.writeFile(filepath, json, 'utf-8');
@@ -648,7 +674,7 @@ export class PromptCommands {
     if (args.length === 0) {
       return {
         success: false,
-        message: 'Użycie: /prompt import <plik.json> [--overwrite]'
+        message: 'Użycie: /prompt import <plik.json> [--overwrite]',
       };
     }
 
@@ -666,7 +692,7 @@ export class PromptCommands {
       console.log(chalk.gray(`  Pominięto (duplikaty): ${result.skipped}`));
       if (result.errors.length > 0) {
         console.log(chalk.red(`  Błędy: ${result.errors.length}`));
-        result.errors.forEach(e => console.log(chalk.red(`    - ${e}`)));
+        result.errors.forEach((e) => console.log(chalk.red(`    - ${e}`)));
       }
       console.log('');
 
@@ -674,7 +700,7 @@ export class PromptCommands {
     } catch (error: any) {
       return {
         success: false,
-        message: `Błąd importu: ${error.message}`
+        message: `Błąd importu: ${error.message}`,
       };
     }
   }
@@ -687,7 +713,7 @@ export class PromptCommands {
     if (!this.lastContext) {
       return {
         success: false,
-        message: 'Brak kontekstu do sugestii. Wpisz coś najpierw.'
+        message: 'Brak kontekstu do sugestii. Wpisz coś najpierw.',
       };
     }
 
@@ -701,14 +727,17 @@ export class PromptCommands {
     console.log(chalk.cyan('\n═══ Sugerowane Prompty ═══\n'));
 
     for (const s of suggestions) {
-      const scoreBar = '█'.repeat(Math.round(s.score * 5)) + '░'.repeat(5 - Math.round(s.score * 5));
-      console.log(`${chalk.gray(scoreBar)} ${chalk.white(s.prompt.id.slice(0, 8))} ${chalk.cyan(s.prompt.title)}`);
+      const scoreBar =
+        '█'.repeat(Math.round(s.score * 5)) + '░'.repeat(5 - Math.round(s.score * 5));
+      console.log(
+        `${chalk.gray(scoreBar)} ${chalk.white(s.prompt.id.slice(0, 8))} ${chalk.cyan(s.prompt.title)}`,
+      );
       console.log(chalk.gray(`    ${s.reason}`));
     }
 
     console.log(chalk.gray('\nUżyj /prompt use <id> aby użyć prompta\n'));
 
-    return { success: true, prompts: suggestions.map(s => s.prompt) };
+    return { success: true, prompts: suggestions.map((s) => s.prompt) };
   }
 
   // ============================================================
@@ -728,27 +757,27 @@ export class PromptCommands {
     console.log(chalk.cyan('\n═══ Prompt Memory - Pomoc ═══\n'));
 
     console.log(chalk.white('Zapisywanie i zarządzanie:'));
-    console.log(chalk.gray('  /prompt save <tytuł> [#tag1 #tag2]') + ' - zapisz ostatni prompt');
-    console.log(chalk.gray('  /prompt list [kategoria] [--fav]') + '  - lista promptów');
-    console.log(chalk.gray('  /prompt search <zapytanie>') + '        - wyszukaj prompty');
-    console.log(chalk.gray('  /prompt show <id>') + '                 - pokaż szczegóły');
-    console.log(chalk.gray('  /prompt edit <id> pole=wartość') + '    - edytuj prompt');
-    console.log(chalk.gray('  /prompt delete <id>') + '               - usuń prompt');
+    console.log(`${chalk.gray('  /prompt save <tytuł> [#tag1 #tag2]')} - zapisz ostatni prompt`);
+    console.log(`${chalk.gray('  /prompt list [kategoria] [--fav]')}  - lista promptów`);
+    console.log(`${chalk.gray('  /prompt search <zapytanie>')}        - wyszukaj prompty`);
+    console.log(`${chalk.gray('  /prompt show <id>')}                 - pokaż szczegóły`);
+    console.log(`${chalk.gray('  /prompt edit <id> pole=wartość')}    - edytuj prompt`);
+    console.log(`${chalk.gray('  /prompt delete <id>')}               - usuń prompt`);
 
     console.log(chalk.white('\nUżywanie:'));
-    console.log(chalk.gray('  /prompt use <id> [zmienna=wartość]') + ' - użyj prompta');
-    console.log(chalk.gray('  /prompt suggest') + '                    - sugestie dla kontekstu');
+    console.log(`${chalk.gray('  /prompt use <id> [zmienna=wartość]')} - użyj prompta`);
+    console.log(`${chalk.gray('  /prompt suggest')}                    - sugestie dla kontekstu`);
 
     console.log(chalk.white('\nOcenianie i ulubione:'));
-    console.log(chalk.gray('  /prompt fav <id>') + '                  - dodaj/usuń z ulubionych');
-    console.log(chalk.gray('  /prompt rate <id> <1-5>') + '           - oceń prompt');
+    console.log(`${chalk.gray('  /prompt fav <id>')}                  - dodaj/usuń z ulubionych`);
+    console.log(`${chalk.gray('  /prompt rate <id> <1-5>')}           - oceń prompt`);
 
     console.log(chalk.white('\nImport/Export:'));
-    console.log(chalk.gray('  /prompt export [plik]') + '             - eksportuj prompty');
-    console.log(chalk.gray('  /prompt import <plik>') + '             - importuj prompty');
+    console.log(`${chalk.gray('  /prompt export [plik]')}             - eksportuj prompty`);
+    console.log(`${chalk.gray('  /prompt import <plik>')}             - importuj prompty`);
 
     console.log(chalk.white('\nStatystyki:'));
-    console.log(chalk.gray('  /prompt stats') + '                     - statystyki użycia');
+    console.log(`${chalk.gray('  /prompt stats')}                     - statystyki użycia`);
 
     console.log(chalk.white('\nKategorie:'));
     console.log(chalk.gray('  coding, analysis, refactoring, debugging, testing,'));

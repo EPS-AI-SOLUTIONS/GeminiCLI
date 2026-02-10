@@ -101,10 +101,26 @@ const SPECULATIVE_PATTERNS: { pattern: RegExp; replacement: string; description:
   { pattern: /\bzakładając\b/gi, replacement: '', description: 'zakladajac' },
 
   // Polish proposal phrases (agent proposes instead of executes)
-  { pattern: /\bmozna\s+(?:dodac|zaimplementowac|stworzyc|napisac)\b/gi, replacement: '[PROPOZYCJA]', description: 'mozna + action' },
-  { pattern: /\bmożna\s+(?:dodać|zaimplementować|stworzyć|napisać)\b/gi, replacement: '[PROPOZYCJA]', description: 'mozna + action' },
-  { pattern: /\bproponuje\s+(?:dodac|zaimplementowac|stworzyc|napisac)\b/gi, replacement: '[PROPOZYCJA]', description: 'proponuje + action' },
-  { pattern: /\bproponuję\s+(?:dodać|zaimplementować|stworzyć|napisać)\b/gi, replacement: '[PROPOZYCJA]', description: 'proponuje + action' },
+  {
+    pattern: /\bmozna\s+(?:dodac|zaimplementowac|stworzyc|napisac)\b/gi,
+    replacement: '[PROPOZYCJA]',
+    description: 'mozna + action',
+  },
+  {
+    pattern: /\bmożna\s+(?:dodać|zaimplementować|stworzyć|napisać)\b/gi,
+    replacement: '[PROPOZYCJA]',
+    description: 'mozna + action',
+  },
+  {
+    pattern: /\bproponuje\s+(?:dodac|zaimplementowac|stworzyc|napisac)\b/gi,
+    replacement: '[PROPOZYCJA]',
+    description: 'proponuje + action',
+  },
+  {
+    pattern: /\bproponuję\s+(?:dodać|zaimplementować|stworzyć|napisać)\b/gi,
+    replacement: '[PROPOZYCJA]',
+    description: 'proponuje + action',
+  },
 
   // English speculative phrases
   { pattern: /\bprobably\b/gi, replacement: '', description: 'probably' },
@@ -122,8 +138,16 @@ const SPECULATIVE_PATTERNS: { pattern: RegExp; replacement: string; description:
   { pattern: /\byou could\b/gi, replacement: '[SUGGESTION]', description: 'you could' },
   { pattern: /\byou can\b/gi, replacement: '[SUGGESTION]', description: 'you can' },
   { pattern: /\byou should\b/gi, replacement: '[SUGGESTION]', description: 'you should' },
-  { pattern: /\byou might want to\b/gi, replacement: '[SUGGESTION]', description: 'you might want to' },
-  { pattern: /\bconsider\s+(?:adding|implementing|creating|using)\b/gi, replacement: '[SUGGESTION]', description: 'consider + action' },
+  {
+    pattern: /\byou might want to\b/gi,
+    replacement: '[SUGGESTION]',
+    description: 'you might want to',
+  },
+  {
+    pattern: /\bconsider\s+(?:adding|implementing|creating|using)\b/gi,
+    replacement: '[SUGGESTION]',
+    description: 'consider + action',
+  },
 ];
 
 /**
@@ -131,22 +155,43 @@ const SPECULATIVE_PATTERNS: { pattern: RegExp; replacement: string; description:
  */
 const GENERIC_NAME_PATTERNS: { pattern: RegExp; description: string }[] = [
   // Files with numbers
-  { pattern: /\b(?:file|class|component|module|service|helper|util|test|spec)\d+\.(ts|js|tsx|jsx|py|java)\b/gi, description: 'numbered file' },
+  {
+    pattern:
+      /\b(?:file|class|component|module|service|helper|util|test|spec)\d+\.(ts|js|tsx|jsx|py|java)\b/gi,
+    description: 'numbered file',
+  },
 
   // Classes with numbers
-  { pattern: /\b(?:Class|File|Test|Helper|Utils?|Service|Component|Module|Handler|Manager|Controller|Factory)\d+\b/g, description: 'numbered class' },
+  {
+    pattern:
+      /\b(?:Class|File|Test|Helper|Utils?|Service|Component|Module|Handler|Manager|Controller|Factory)\d+\b/g,
+    description: 'numbered class',
+  },
 
   // Common placeholders
-  { pattern: /\b(?:foo|bar|baz|qux|quux|corge|grault|garply|waldo|fred|plugh|xyzzy|thud)\b/gi, description: 'placeholder name' },
+  {
+    pattern: /\b(?:foo|bar|baz|qux|quux|corge|grault|garply|waldo|fred|plugh|xyzzy|thud)\b/gi,
+    description: 'placeholder name',
+  },
 
   // Example/sample files
-  { pattern: /\b(?:example|sample|demo|dummy|mock|fake|temp|tmp)\d*\.(ts|js|tsx|jsx)\b/gi, description: 'example file' },
+  {
+    pattern: /\b(?:example|sample|demo|dummy|mock|fake|temp|tmp)\d*\.(ts|js|tsx|jsx)\b/gi,
+    description: 'example file',
+  },
 
   // Generic function names
-  { pattern: /\bfunction\s+(?:doSomething|handleIt|processData|myFunction|testFunc|func\d+)\b/gi, description: 'generic function' },
+  {
+    pattern: /\bfunction\s+(?:doSomething|handleIt|processData|myFunction|testFunc|func\d+)\b/gi,
+    description: 'generic function',
+  },
 
   // Fake paths
-  { pattern: /(?:\/path\/to\/|C:\\path\\to\\|\/your\/|\/user\/project\/|src\/components\/Example)/gi, description: 'fake path' },
+  {
+    pattern:
+      /(?:\/path\/to\/|C:\\path\\to\\|\/your\/|\/user\/project\/|src\/components\/Example)/gi,
+    description: 'fake path',
+  },
 
   // MyXxx pattern often used as example
   { pattern: /\bMy[A-Z][a-zA-Z]+\d*\.(ts|js|tsx|jsx)\b/g, description: 'MyXxx file pattern' },
@@ -157,23 +202,48 @@ const GENERIC_NAME_PATTERNS: { pattern: RegExp; description: string }[] = [
  */
 const UNVERIFIED_CLAIM_PATTERNS: { pattern: RegExp; warning: string }[] = [
   // Claims about file contents without evidence
-  { pattern: /(?:plik|file)\s+(?:zawiera|contains)\s+[^.]+(?:klasy?|classes?|funkcj[ei]|functions?)/gi, warning: '[NIEZWERYFIKOWANE: Twierdzenie o zawartosci pliku bez cytatu]' },
+  {
+    pattern:
+      /(?:plik|file)\s+(?:zawiera|contains)\s+[^.]+(?:klasy?|classes?|funkcj[ei]|functions?)/gi,
+    warning: '[NIEZWERYFIKOWANE: Twierdzenie o zawartosci pliku bez cytatu]',
+  },
 
   // Vague implementation claims
-  { pattern: /(?:zaimplementowano|implemented|dodano|added)\s+(?:logike|logic|funkcjonalnosc|functionality)/gi, warning: '[NIEZWERYFIKOWANE: Ogolne twierdzenie o implementacji]' },
+  {
+    pattern:
+      /(?:zaimplementowano|implemented|dodano|added)\s+(?:logike|logic|funkcjonalnosc|functionality)/gi,
+    warning: '[NIEZWERYFIKOWANE: Ogolne twierdzenie o implementacji]',
+  },
 
   // Unspecified "changes made"
-  { pattern: /(?:wprowadzono|made)\s+(?:zmiany|changes)\s+(?:w|in|to)\s+[^.]+/gi, warning: '[NIEZWERYFIKOWANE: Nieokreslone zmiany]' },
+  {
+    pattern: /(?:wprowadzono|made)\s+(?:zmiany|changes)\s+(?:w|in|to)\s+[^.]+/gi,
+    warning: '[NIEZWERYFIKOWANE: Nieokreslone zmiany]',
+  },
 
   // Future-oriented statements (proposal not execution)
-  { pattern: /\b(?:I will|I would|I'll|I'm going to|Let me)\s+(?:create|write|implement|add|fix)\b/gi, warning: '[OSTRZEZENIE: Agent proponuje zamiast wykonac]' },
-  { pattern: /\b(?:Moge|Bede|Zamierzam|Powinienem)\s+(?:stworzyc|napisac|zaimplementowac|dodac)\b/gi, warning: '[OSTRZEZENIE: Agent proponuje zamiast wykonac]' },
+  {
+    pattern:
+      /\b(?:I will|I would|I'll|I'm going to|Let me)\s+(?:create|write|implement|add|fix)\b/gi,
+    warning: '[OSTRZEZENIE: Agent proponuje zamiast wykonac]',
+  },
+  {
+    pattern:
+      /\b(?:Moge|Bede|Zamierzam|Powinienem)\s+(?:stworzyc|napisac|zaimplementowac|dodac)\b/gi,
+    warning: '[OSTRZEZENIE: Agent proponuje zamiast wykonac]',
+  },
 
   // Example code indicators
-  { pattern: /(?:na przyklad|for example|oto przyklad|here's an example|przykladowo)/gi, warning: '[OSTRZEZENIE: Kod moze byc przykladem, nie rzeczywista implementacja]' },
+  {
+    pattern: /(?:na przyklad|for example|oto przyklad|here's an example|przykladowo)/gi,
+    warning: '[OSTRZEZENIE: Kod moze byc przykladem, nie rzeczywista implementacja]',
+  },
 
   // Hypothetical responses
-  { pattern: /(?:if you want|jesli chcesz|optionally|opcjonalnie|alternatively|alternatywnie)/gi, warning: '[UWAGA: Odpowiedz hipotetyczna]' },
+  {
+    pattern: /(?:if you want|jesli chcesz|optionally|opcjonalnie|alternatively|alternatywnie)/gi,
+    warning: '[UWAGA: Odpowiedz hipotetyczna]',
+  },
 ];
 
 /**
@@ -217,7 +287,7 @@ export class OutputSanitizer {
       removeGenericNames: true,
       removeUnverifiedClaims: true,
       verbose: false,
-      ...defaultOptions
+      ...defaultOptions,
     };
     this.whitelist = [...DEFAULT_WHITELIST, ...(defaultOptions?.whitelist || [])];
   }
@@ -239,7 +309,7 @@ export class OutputSanitizer {
       unverifiedClaimsFlagged: 0,
       originalLength: content.length,
       sanitizedLength: 0,
-      modificationPercent: 0
+      modificationPercent: 0,
     };
 
     // 1. Remove speculative language
@@ -252,7 +322,11 @@ export class OutputSanitizer {
           removedPatterns.push(`[SPECULATIVE] ${description}: ${matches.length} occurrence(s)`);
 
           if (opts.verbose) {
-            console.log(chalk.yellow(`[Sanitizer] Removing speculative: "${description}" (${matches.length}x)`));
+            console.log(
+              chalk.yellow(
+                `[Sanitizer] Removing speculative: "${description}" (${matches.length}x)`,
+              ),
+            );
           }
 
           // Replace with empty or marker, then clean up multiple spaces
@@ -280,7 +354,7 @@ export class OutputSanitizer {
         const matches = sanitized.match(pattern);
         if (matches && matches.length > 0) {
           // Filter out whitelisted matches
-          const filteredMatches = matches.filter(m => !whitelist.some(wp => wp.test(m)));
+          const filteredMatches = matches.filter((m) => !whitelist.some((wp) => wp.test(m)));
 
           if (filteredMatches.length > 0) {
             stats.genericNamesReplaced += filteredMatches.length;
@@ -288,12 +362,17 @@ export class OutputSanitizer {
             removedPatterns.push(`[GENERIC] ${description}: ${filteredMatches.join(', ')}`);
 
             if (opts.verbose) {
-              console.log(chalk.red(`[Sanitizer] Generic name detected: "${filteredMatches.join(', ')}"`));
+              console.log(
+                chalk.red(`[Sanitizer] Generic name detected: "${filteredMatches.join(', ')}"`),
+              );
             }
 
             // Replace each non-whitelisted match with marker
             for (const match of filteredMatches) {
-              sanitized = sanitized.replace(new RegExp(this.escapeRegex(match), 'g'), UNKNOWN_NAME_MARKER);
+              sanitized = sanitized.replace(
+                new RegExp(this.escapeRegex(match), 'g'),
+                UNKNOWN_NAME_MARKER,
+              );
             }
           }
         }
@@ -324,21 +403,21 @@ export class OutputSanitizer {
 
     // 4. Clean up multiple spaces and empty lines created by removals
     sanitized = sanitized
-      .replace(/  +/g, ' ')
+      .replace(/ {2,}/g, ' ')
       .replace(/\n\s*\n\s*\n/g, '\n\n')
       .trim();
 
     // Calculate final stats
     stats.sanitizedLength = sanitized.length;
     stats.modificationPercent = Math.round(
-      ((stats.originalLength - stats.sanitizedLength) / stats.originalLength) * 100
+      ((stats.originalLength - stats.sanitizedLength) / stats.originalLength) * 100,
     );
 
     return {
       content: sanitized,
       removedPatterns,
       warningsAdded,
-      stats
+      stats,
     };
   }
 
@@ -354,7 +433,7 @@ export class OutputSanitizer {
         const matches = content.match(pattern);
         if (matches) {
           // Check if any match is not whitelisted
-          if (matches.some(m => !this.whitelist.some(wp => wp.test(m)))) {
+          if (matches.some((m) => !this.whitelist.some((wp) => wp.test(m)))) {
             return true;
           }
         }
@@ -390,12 +469,12 @@ export class OutputSanitizer {
 
     if (result.removedPatterns.length > 0) {
       lines.push('Patterns removed:');
-      result.removedPatterns.forEach(p => lines.push(`  ${p}`));
+      result.removedPatterns.forEach((p) => lines.push(`  ${p}`));
     }
 
     if (result.warningsAdded.length > 0) {
       lines.push('Warnings added:');
-      result.warningsAdded.forEach(w => lines.push(`  ${w}`));
+      result.warningsAdded.forEach((w) => lines.push(`  ${w}`));
     }
 
     return lines.join('\n');
@@ -419,7 +498,10 @@ export const outputSanitizer = new OutputSanitizer();
 /**
  * Convenience function to sanitize content
  */
-export function sanitizeOutput(content: string, options?: Partial<SanitizeOptions>): SanitizedOutput {
+export function sanitizeOutput(
+  content: string,
+  options?: Partial<SanitizeOptions>,
+): SanitizedOutput {
   return outputSanitizer.sanitize(content, options);
 }
 
@@ -435,11 +517,11 @@ export function hasSuspiciousPatterns(content: string): boolean {
  */
 export function sanitizeMultipleOutputs(
   outputs: { id: number | string; content: string }[],
-  options?: Partial<SanitizeOptions>
+  options?: Partial<SanitizeOptions>,
 ): { id: number | string; result: SanitizedOutput }[] {
-  return outputs.map(output => ({
+  return outputs.map((output) => ({
     id: output.id,
-    result: outputSanitizer.sanitize(output.content, options)
+    result: outputSanitizer.sanitize(output.content, options),
   }));
 }
 
@@ -452,14 +534,21 @@ export function logSanitizationResults(result: SanitizedOutput, prefix: string =
     return;
   }
 
-  const color = result.stats.genericNamesReplaced > 0 ? chalk.red :
-                result.stats.speculativeRemoved > 3 ? chalk.yellow :
-                chalk.gray;
+  const color =
+    result.stats.genericNamesReplaced > 0
+      ? chalk.red
+      : result.stats.speculativeRemoved > 3
+        ? chalk.yellow
+        : chalk.gray;
 
-  console.log(color(`${prefix}[Sanitizer] Modified: ${result.stats.modificationPercent}% | ` +
-    `Generic: ${result.stats.genericNamesReplaced} | ` +
-    `Speculative: ${result.stats.speculativeRemoved} | ` +
-    `Unverified: ${result.stats.unverifiedClaimsFlagged}`));
+  console.log(
+    color(
+      `${prefix}[Sanitizer] Modified: ${result.stats.modificationPercent}% | ` +
+        `Generic: ${result.stats.genericNamesReplaced} | ` +
+        `Speculative: ${result.stats.speculativeRemoved} | ` +
+        `Unverified: ${result.stats.unverifiedClaimsFlagged}`,
+    ),
+  );
 
   if (result.warningsAdded.length > 0) {
     console.log(chalk.yellow(`${prefix}  Warnings: ${result.warningsAdded.join(', ')}`));
@@ -480,5 +569,5 @@ export default {
   UNKNOWN_NAME_MARKER,
   SPECULATIVE_PATTERNS,
   GENERIC_NAME_PATTERNS,
-  UNVERIFIED_CLAIM_PATTERNS
+  UNVERIFIED_CLAIM_PATTERNS,
 };

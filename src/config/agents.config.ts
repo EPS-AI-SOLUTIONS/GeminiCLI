@@ -32,6 +32,8 @@ export const AGENT_ROLES = {
   REGIS: 'regis',
   /** Philippa - Strategy, planning and optimization */
   PHILIPPA: 'philippa',
+  /** Serena - Code Intelligence Agent, uses real Serena MCP */
+  SERENA: 'serena',
 } as const;
 
 export type AgentRole = (typeof AGENT_ROLES)[keyof typeof AGENT_ROLES];
@@ -120,6 +122,12 @@ export const AGENT_DESCRIPTIONS: Record<AgentRole, AgentDescription> = {
     specialty: 'Planning, optimization, long-term strategy',
     personality: 'Strategic, ambitious, always three steps ahead',
   },
+  [AGENT_ROLES.SERENA]: {
+    name: 'Serena',
+    title: 'Code Intelligence Agent',
+    specialty: 'Code analysis, symbol navigation, refactoring via MCP',
+    personality: 'Precise, structural, understands code at symbol level',
+  },
 };
 
 // ============================================================================
@@ -139,6 +147,7 @@ export const AGENT_COLORS: Record<AgentRole, string> = {
   [AGENT_ROLES.ZOLTAN]: 'yellowBright',
   [AGENT_ROLES.REGIS]: 'blueBright',
   [AGENT_ROLES.PHILIPPA]: 'magentaBright',
+  [AGENT_ROLES.SERENA]: 'cyanBright',
 };
 
 // ============================================================================
@@ -161,6 +170,7 @@ export const AGENT_FALLBACK_CHAINS: Record<AgentRole, AgentRole[]> = {
   [AGENT_ROLES.ZOLTAN]: [AGENT_ROLES.LAMBERT, AGENT_ROLES.CIRI],
   [AGENT_ROLES.REGIS]: [AGENT_ROLES.TRISS, AGENT_ROLES.PHILIPPA],
   [AGENT_ROLES.PHILIPPA]: [AGENT_ROLES.DIJKSTRA, AGENT_ROLES.YENNEFER],
+  [AGENT_ROLES.SERENA]: [AGENT_ROLES.GERALT, AGENT_ROLES.YENNEFER],
 };
 
 // ============================================================================
@@ -243,6 +253,8 @@ export function getAllAgentRoles(): AgentRole[] {
  * Resolve agent role from string (case-insensitive, fallback to geralt)
  */
 export function resolveAgentRole(name: string): AgentRole {
-  const normalized = name.toLowerCase() as AgentRole;
-  return Object.values(AGENT_ROLES).includes(normalized) ? normalized : 'geralt';
+  const normalized = name.toLowerCase();
+  return (Object.values(AGENT_ROLES) as string[]).includes(normalized)
+    ? (normalized as AgentRole)
+    : 'geralt';
 }

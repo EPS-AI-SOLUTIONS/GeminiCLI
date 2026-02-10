@@ -15,7 +15,7 @@ export type ExpectedResponseType = 'list' | 'code' | 'text' | 'json';
 export function scoreResponseQuality(
   response: string,
   expectedType: ExpectedResponseType,
-  expectedLength?: number
+  expectedLength?: number,
 ): QualityScore {
   let completeness = 0;
   let format = 0;
@@ -31,15 +31,17 @@ export function scoreResponseQuality(
 
   // Format scoring
   switch (expectedType) {
-    case 'list':
+    case 'list': {
       const listItems = (response.match(/^\d+\./gm) || []).length;
       format = listItems > 0 ? Math.min(1, listItems / 10) : 0;
       break;
+    }
 
-    case 'code':
+    case 'code': {
       const hasCode = /```|function|class|const|let|var|def |import /i.test(response);
       format = hasCode ? 1 : 0.3;
       break;
+    }
 
     case 'json':
       try {

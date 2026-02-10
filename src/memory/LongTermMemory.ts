@@ -9,20 +9,18 @@
  * 10. Memory Decay - Older memories lose priority
  */
 
-import fs from 'fs/promises';
-import path from 'path';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import chalk from 'chalk';
-import crypto from 'crypto';
 import {
   BaseMemory,
-  MemoryOptions,
-  MemoryStats,
-  generateId,
   estimateSize,
   extractTags,
-  pruneOldEntries,
+  generateId,
   getDefaultBaseDir,
-  reviveDates
+  type MemoryOptions,
+  type MemoryStats,
+  reviveDates,
 } from './BaseMemory.js';
 
 const MEMORY_DIR = path.join(getDefaultBaseDir(), 'memory');
@@ -30,26 +28,26 @@ const MEMORY_FILE = path.join(MEMORY_DIR, 'long-term.json');
 
 // Memory categories (Feature 9)
 export type MemoryCategory =
-  | 'decision'      // Architectural/design decisions
-  | 'bug'           // Known bugs and fixes
-  | 'pattern'       // Code patterns used
-  | 'preference'    // User preferences
-  | 'todo'          // Things to remember
-  | 'fact'          // General facts
-  | 'learning'      // Things learned from interactions
-  | 'context';      // Project context
+  | 'decision' // Architectural/design decisions
+  | 'bug' // Known bugs and fixes
+  | 'pattern' // Code patterns used
+  | 'preference' // User preferences
+  | 'todo' // Things to remember
+  | 'fact' // General facts
+  | 'learning' // Things learned from interactions
+  | 'context'; // Project context
 
 interface Memory {
   id: string;
   content: string;
   category: MemoryCategory;
   tags: string[];
-  embedding?: number[];       // For semantic search (Feature 7)
-  importance: number;         // 0-1, decays over time (Feature 10)
-  accessCount: number;        // How often retrieved
+  embedding?: number[]; // For semantic search (Feature 7)
+  importance: number; // 0-1, decays over time (Feature 10)
+  accessCount: number; // How often retrieved
   created: Date;
   lastAccessed: Date;
-  source?: string;            // Where this memory came from
+  source?: string; // Where this memory came from
   relatedMemories?: string[]; // IDs of related memories
 }
 
@@ -91,14 +89,23 @@ export class LongTermMemory extends BaseMemory<MemoryStore> {
   }
 
   deserialize(data: string): void {
-    const parsed = this.deserializeData<MemoryStore & Record<string, unknown>>(data, ['lastCleanup']);
+    const parsed = this.deserializeData<MemoryStore & Record<string, unknown>>(data, [
+      'lastCleanup',
+    ]);
     if (parsed) {
       this.store = {
         ...parsed,
-        memories: (parsed.memories || []).map((m: Memory) =>
-          reviveDates(m as unknown as Record<string, unknown>, ['created', 'lastAccessed']) as unknown as Memory
+        memories: (parsed.memories || []).map(
+          (m: Memory) =>
+            reviveDates(m as unknown as Record<string, unknown>, [
+              'created',
+              'lastAccessed',
+            ]) as unknown as Memory,
         ),
-        lastCleanup: parsed.lastCleanup instanceof Date ? parsed.lastCleanup : new Date(parsed.lastCleanup as string),
+        lastCleanup:
+          parsed.lastCleanup instanceof Date
+            ? parsed.lastCleanup
+            : new Date(parsed.lastCleanup as string),
       } as MemoryStore;
     } else {
       this.initializeEmpty();
@@ -115,7 +122,7 @@ export class LongTermMemory extends BaseMemory<MemoryStore> {
 
   getStats(): MemoryStats {
     const timestamps = this.store.memories
-      .map(m => m.created)
+      .map((m) => m.created)
       .sort((a, b) => a.getTime() - b.getTime());
 
     return {
@@ -159,7 +166,7 @@ export class LongTermMemory extends BaseMemory<MemoryStore> {
     content: string,
     category: MemoryCategory = 'fact',
     tags: string[] = [],
-    importance: number = 0.5
+    importance: number = 0.5,
   ): Promise<string> {
     const id = generateId();
 
@@ -194,7 +201,7 @@ export class LongTermMemory extends BaseMemory<MemoryStore> {
   /**
    * Auto-extract memories from text (Feature 8)
    */
-  async autoExtract(text: string, source?: string): Promise<string[]> {
+  async autoExtract(text: string, _source?: string): Promise<string[]> {
     const extractedIds: string[] = [];
 
     // Extract decisions
@@ -214,12 +221,7 @@ export class LongTermMemory extends BaseMemory<MemoryStore> {
     }
 
     // Extract bugs
-    const bugPatterns = [
-      /bug: (.+)/gi,
-      /fixed: (.+)/gi,
-      /issue: (.+)/gi,
-      /error in (.+)/gi,
-    ];
+    const bugPatterns = [/bug: (.+)/gi, /fixed: (.+)/gi, /issue: (.+)/gi, /error in (.+)/gi];
 
     for (const pattern of bugPatterns) {
       const matches = text.matchAll(pattern);
@@ -264,21 +266,21 @@ export class LongTermMemory extends BaseMemory<MemoryStore> {
 
     let candidates = this.store.memories;
     if (category) {
-      candidates = candidates.filter(m => m.category === category);
+      candidates = candidates.filter((m) => m.category === category);
     }
 
     // Score by semantic similarity + importance + recency
-    const scored = candidates.map(memory => {
+    const scored = candidates.map((memory) => {
       const similarity = this.cosineSimilarity(queryEmbedding, memory.embedding || []);
       const recencyBonus = this.getRecencyScore(memory.lastAccessed);
-      const score = (similarity * 0.6) + (memory.importance * 0.3) + (recencyBonus * 0.1);
+      const score = similarity * 0.6 + memory.importance * 0.3 + recencyBonus * 0.1;
 
       return { memory, score };
     });
 
     // Sort by score and take top results
     scored.sort((a, b) => b.score - a.score);
-    const results = scored.slice(0, limit).map(s => s.memory);
+    const results = scored.slice(0, limit).map((s) => s.memory);
 
     // Update access counts
     for (const memory of results) {
@@ -298,7 +300,7 @@ export class LongTermMemory extends BaseMemory<MemoryStore> {
    */
   getByCategory(category: MemoryCategory, limit: number = 10): Memory[] {
     return this.store.memories
-      .filter(m => m.category === category)
+      .filter((m) => m.category === category)
       .sort((a, b) => b.importance - a.importance)
       .slice(0, limit);
   }
@@ -308,7 +310,7 @@ export class LongTermMemory extends BaseMemory<MemoryStore> {
    */
   getByTag(tag: string, limit: number = 10): Memory[] {
     return this.store.memories
-      .filter(m => m.tags.includes(tag))
+      .filter((m) => m.tags.includes(tag))
       .sort((a, b) => b.importance - a.importance)
       .slice(0, limit);
   }
@@ -318,12 +320,14 @@ export class LongTermMemory extends BaseMemory<MemoryStore> {
    */
   private applyDecay(): void {
     const now = new Date();
-    const daysSinceCleanup = (now.getTime() - this.store.lastCleanup.getTime()) / (1000 * 60 * 60 * 24);
+    const daysSinceCleanup =
+      (now.getTime() - this.store.lastCleanup.getTime()) / (1000 * 60 * 60 * 24);
 
     if (daysSinceCleanup < 1) return; // Only decay once per day
 
     for (const memory of this.store.memories) {
-      const daysSinceAccess = (now.getTime() - memory.lastAccessed.getTime()) / (1000 * 60 * 60 * 24);
+      const daysSinceAccess =
+        (now.getTime() - memory.lastAccessed.getTime()) / (1000 * 60 * 60 * 24);
       const decay = this.decayRate * daysSinceAccess;
       memory.importance = Math.max(0.01, memory.importance - decay); // Never fully forget
     }
@@ -354,7 +358,7 @@ export class LongTermMemory extends BaseMemory<MemoryStore> {
    * Forget a memory
    */
   async forget(memoryId: string): Promise<boolean> {
-    const index = this.store.memories.findIndex(m => m.id === memoryId);
+    const index = this.store.memories.findIndex((m) => m.id === memoryId);
     if (index === -1) return false;
 
     this.store.memories.splice(index, 1);
@@ -391,7 +395,9 @@ export class LongTermMemory extends BaseMemory<MemoryStore> {
 
     console.log(chalk.cyan('\n=== Long-term Memory Summary ===\n'));
     console.log(chalk.gray(`Total memories: ${stats.totalMemories}`));
-    console.log(chalk.gray(`Average importance: ${((stats.averageImportance as number) * 100).toFixed(1)}%`));
+    console.log(
+      chalk.gray(`Average importance: ${((stats.averageImportance as number) * 100).toFixed(1)}%`),
+    );
 
     console.log(chalk.yellow('\nBy Category:'));
     for (const [category, count] of Object.entries(stats.byCategory as Record<string, number>)) {
@@ -406,7 +412,10 @@ export class LongTermMemory extends BaseMemory<MemoryStore> {
 
   private generateEmbedding(text: string): number[] {
     // Simple bag-of-words embedding (in production, use proper embedding model)
-    const words = text.toLowerCase().split(/\W+/).filter(w => w.length > 2);
+    const words = text
+      .toLowerCase()
+      .split(/\W+/)
+      .filter((w) => w.length > 2);
     const embedding = new Array(100).fill(0);
 
     for (const word of words) {
@@ -417,14 +426,14 @@ export class LongTermMemory extends BaseMemory<MemoryStore> {
 
     // Normalize
     const magnitude = Math.sqrt(embedding.reduce((sum: number, v: number) => sum + v * v, 0));
-    return embedding.map((v: number) => magnitude > 0 ? v / magnitude : 0);
+    return embedding.map((v: number) => (magnitude > 0 ? v / magnitude : 0));
   }
 
   private hashCode(str: string): number {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash;
     }
     return hash;
@@ -465,7 +474,7 @@ export class LongTermMemory extends BaseMemory<MemoryStore> {
   async importMemories(memories: Memory[]): Promise<number> {
     let added = 0;
     for (const memory of memories) {
-      if (!this.store.memories.some(m => m.id === memory.id)) {
+      if (!this.store.memories.some((m) => m.id === memory.id)) {
         this.store.memories.push({
           ...memory,
           created: new Date(memory.created),

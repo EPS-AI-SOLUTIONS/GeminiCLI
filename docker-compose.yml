@@ -1,0 +1,64 @@
+# ============================================================
+# GeminiHydra - Docker Compose
+# Orchestrates: hydra-core + ollama (local models)
+# ============================================================
+
+services:
+  # --- GeminiHydra Core ---
+  hydra:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gemini-hydra
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - OLLAMA_HOST=http://ollama:11434
+      - PORT=3000
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    volumes:
+      - hydra-data:/app/.geminihydra
+    depends_on:
+      ollama:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r=>{if(!r.ok)throw new Error();process.exit(0)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - hydra-net
+
+  # --- Ollama (local LLM runtime for Ciri/Eskel/Serena) ---
+  ollama:
+    image: ollama/ollama:latest
+    container_name: gemini-hydra-ollama
+    restart: unless-stopped
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    # Uncomment for GPU support:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+    networks:
+      - hydra-net
+
+volumes:
+  hydra-data:
+    driver: local
+  ollama-data:
+    driver: local
+
+networks:
+  hydra-net:
+    driver: bridge

@@ -3,13 +3,12 @@
  * Testy systemu priorytetyzacji: kolejka, detekcja priorytetu, sortowanie
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  TaskPriorityQueue,
   detectPriority,
-  prioritizeTasks,
-  type Priority,
   type PrioritizedTask,
+  prioritizeTasks,
+  TaskPriorityQueue,
 } from '../../src/core/TaskPriority.js';
 
 // Mock chalk

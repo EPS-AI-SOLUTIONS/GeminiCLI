@@ -27,7 +27,7 @@ export {
   classifyError,
   DEFAULT_RETRY_CONFIGS,
   type ErrorType,
-  type RetryConfig
+  type RetryConfig,
 } from './AdaptiveRetry.js';
 
 // =============================================================================
@@ -35,9 +35,9 @@ export {
 // =============================================================================
 
 export {
-  partialManager,
   PartialCompletionManager,
-  type PartialResult
+  type PartialResult,
+  partialManager,
 } from './PartialCompletion.js';
 
 // =============================================================================
@@ -46,11 +46,11 @@ export {
 
 export {
   detectParallelGroups,
-  executeParallelGroups,
   estimateParallelDuration,
+  executeParallelGroups,
   getParallelizationEfficiency,
+  type ParallelExecutionResult,
   type SubTask,
-  type ParallelExecutionResult
 } from './ParallelExecution.js';
 
 // =============================================================================
@@ -59,16 +59,16 @@ export {
 
 export {
   autoDetectDependencies,
+  ENTITY_PATTERN,
   extractEntities,
-  taskProducesOutput,
-  taskConsumesInput,
-  visualizeDependencies,
-  getTopologicalOrder,
-  OUTPUT_KEYWORDS,
-  INPUT_KEYWORDS,
-  FILE_WRITE_KEYWORDS,
   FILE_READ_KEYWORDS,
-  ENTITY_PATTERN
+  FILE_WRITE_KEYWORDS,
+  getTopologicalOrder,
+  INPUT_KEYWORDS,
+  OUTPUT_KEYWORDS,
+  taskConsumesInput,
+  taskProducesOutput,
+  visualizeDependencies,
 } from './DependencyDetection.js';
 
 // =============================================================================
@@ -76,11 +76,11 @@ export {
 // =============================================================================
 
 export {
-  checkpointManager,
+  type Checkpoint,
   CheckpointManager,
+  checkpointManager,
   createCheckpointId,
   parseCheckpointId,
-  type Checkpoint
 } from './CheckpointSystem.js';
 
 // =============================================================================
@@ -88,15 +88,15 @@ export {
 // =============================================================================
 
 export {
-  detectTaskPriority,
   calculatePriorityScore,
-  sortByPriority,
   createPrioritizedTask,
+  detectTaskPriority,
   getPriorityLabel,
-  PRIORITY_WEIGHTS,
   PRIORITY_KEYWORDS,
+  PRIORITY_WEIGHTS,
+  type PrioritizedTask,
+  sortByPriority,
   type TaskPriority,
-  type PrioritizedTask
 } from './TaskPrioritization.js';
 
 // =============================================================================
@@ -104,11 +104,11 @@ export {
 // =============================================================================
 
 export {
-  resourceScheduler,
+  type CanExecuteResult,
   ResourceScheduler,
   type ResourceState,
-  type CanExecuteResult,
-  type SchedulingRecommendation
+  resourceScheduler,
+  type SchedulingRecommendation,
 } from './ResourceScheduler.js';
 
 // =============================================================================
@@ -116,12 +116,12 @@ export {
 // =============================================================================
 
 export {
+  DEGRADATION_LEVELS,
+  type DegradationLevel,
+  type DegradationLevelName,
+  type DegradationStatus,
   degradationManager,
   GracefulDegradationManager,
-  DEGRADATION_LEVELS,
-  type DegradationLevelName,
-  type DegradationLevel,
-  type DegradationStatus
 } from './GracefulDegradation.js';
 
 // =============================================================================
@@ -129,11 +129,11 @@ export {
 // =============================================================================
 
 export {
-  taskTemplateManager,
-  TaskTemplateManager,
   type TaskTemplate,
+  type TaskTemplateJSON,
+  TaskTemplateManager,
   type TaskTemplateStructure,
-  type TaskTemplateJSON
+  taskTemplateManager,
 } from './TaskTemplating.js';
 
 // =============================================================================
@@ -141,12 +141,12 @@ export {
 // =============================================================================
 
 export {
-  executionProfiler,
-  ExecutionProfiler,
-  type ExecutionProfile,
-  type ExecutionStats,
   type AgentStats,
-  type ModelStats
+  type ExecutionProfile,
+  ExecutionProfiler,
+  type ExecutionStats,
+  executionProfiler,
+  type ModelStats,
 } from './ExecutionProfiler.js';
 
 // =============================================================================
@@ -180,17 +180,17 @@ const DEFAULT_ENGINE_CONFIG: ExecutionEngineConfig = {
   enableTemplating: true,
   enableProfiling: true,
   maxConcurrentTasks: 12,
-  apiQuotaLimit: 1000
+  apiQuotaLimit: 1000,
 };
 
 // =============================================================================
 // STATE
 // =============================================================================
 
-import { resourceScheduler } from './ResourceScheduler.js';
-import { degradationManager } from './GracefulDegradation.js';
-import { taskTemplateManager } from './TaskTemplating.js';
 import { executionProfiler } from './ExecutionProfiler.js';
+import { degradationManager } from './GracefulDegradation.js';
+import { resourceScheduler } from './ResourceScheduler.js';
+import { taskTemplateManager } from './TaskTemplating.js';
 
 let engineInitialized = false;
 let engineConfig: ExecutionEngineConfig = { ...DEFAULT_ENGINE_CONFIG };
@@ -260,7 +260,7 @@ export function getExecutionEngineStatus(): {
     degradation: degradationManager.getStatus(),
     resources: resourceScheduler.getState(),
     profiling: executionProfiler.getStats(),
-    templates: taskTemplateManager.getTemplateCount()
+    templates: taskTemplateManager.getTemplateCount(),
   };
 }
 
@@ -293,8 +293,12 @@ export function printExecutionEngineStatus(): void {
   console.log(`  Recovery Attempts: ${status.degradation.recoveryAttempts}`);
 
   console.log(chalk.gray('\nResources:'));
-  console.log(`  Active Tasks: ${status.resources.activeTasks}/${status.resources.maxConcurrentTasks}`);
-  console.log(`  API Quota: ${status.resources.apiQuotaRemaining}/${status.resources.apiQuotaLimit}`);
+  console.log(
+    `  Active Tasks: ${status.resources.activeTasks}/${status.resources.maxConcurrentTasks}`,
+  );
+  console.log(
+    `  API Quota: ${status.resources.apiQuotaRemaining}/${status.resources.apiQuotaLimit}`,
+  );
   console.log(`  Memory: ${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(1)} MB`);
 
   console.log(chalk.gray('\nProfiling:'));
@@ -353,11 +357,11 @@ export function getEngineHealth(): {
 
   let recommendation = 'System operating normally';
   if (issues.length > 0) {
-    if (issues.some(i => i.includes('quota'))) {
+    if (issues.some((i) => i.includes('quota'))) {
       recommendation = 'Consider reducing concurrency or waiting for quota reset';
-    } else if (issues.some(i => i.includes('Degraded'))) {
+    } else if (issues.some((i) => i.includes('Degraded'))) {
       recommendation = 'System has auto-degraded, will recover after successful operations';
-    } else if (issues.some(i => i.includes('pressure'))) {
+    } else if (issues.some((i) => i.includes('pressure'))) {
       recommendation = 'Reduce workload or increase resources';
     } else {
       recommendation = 'Initialize engine before executing tasks';
@@ -367,7 +371,7 @@ export function getEngineHealth(): {
   return {
     healthy: issues.length === 0,
     issues,
-    recommendation
+    recommendation,
   };
 }
 
@@ -388,5 +392,5 @@ export default {
   resourceScheduler,
   degradationManager,
   taskTemplateManager,
-  executionProfiler
+  executionProfiler,
 };

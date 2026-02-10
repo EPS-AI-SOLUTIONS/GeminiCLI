@@ -5,8 +5,8 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import chalk from 'chalk';
-import { geminiSemaphore } from '../TrafficControl.js';
 import { GEMINI_MODELS } from '../../config/models.config.js';
+import { geminiSemaphore } from '../TrafficControl.js';
 
 // Initialize Gemini client
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
@@ -31,9 +31,11 @@ export interface MultiPerspectiveResult {
  */
 export async function multiPerspectiveAnalysis(
   task: string,
-  perspectives: string[] = ['Optymista', 'Pesymista', 'Pragmatyk']
+  perspectives: string[] = ['Optymista', 'Pesymista', 'Pragmatyk'],
 ): Promise<MultiPerspectiveResult> {
-  console.log(chalk.magenta(`[MultiPerspective] Analyzing from ${perspectives.length} viewpoints...`));
+  console.log(
+    chalk.magenta(`[MultiPerspective] Analyzing from ${perspectives.length} viewpoints...`),
+  );
 
   const analysisPromises = perspectives.map(async (viewpoint) => {
     const prompt = `Jesteś ekspertem z perspektywą: ${viewpoint.toUpperCase()}
@@ -56,21 +58,23 @@ Odpowiadaj PO POLSKU. Zwróć TYLKO JSON.`;
       const result = await geminiSemaphore.withPermit(async () => {
         const model = genAI.getGenerativeModel({
           model: INTELLIGENCE_MODEL,
-          generationConfig: { temperature: 0.4, maxOutputTokens: 1024 }
+          generationConfig: { temperature: 0.4, maxOutputTokens: 1024 },
         });
         const res = await model.generateContent(prompt);
         return res.response.text();
       });
 
-      const jsonStr = result.replace(/```json/gi, '').replace(/```/g, '').trim();
+      const jsonStr = result
+        .replace(/```json/gi, '')
+        .replace(/```/g, '')
+        .trim();
       return JSON.parse(jsonStr) as Perspective;
-
-    } catch (error: any) {
+    } catch (_error: any) {
       return {
         viewpoint,
         analysis: `Analiza ${viewpoint} nie powiodła się`,
         recommendation: 'Brak rekomendacji',
-        confidence: 0
+        confidence: 0,
       };
     }
   });
@@ -78,8 +82,8 @@ Odpowiadaj PO POLSKU. Zwróć TYLKO JSON.`;
   const perspectiveResults = await Promise.all(analysisPromises);
 
   // Synthesize perspectives
-  const recommendations = perspectiveResults.map(p => p.recommendation);
-  const analyses = perspectiveResults.map(p => `${p.viewpoint}: ${p.analysis}`);
+  const _recommendations = perspectiveResults.map((p) => p.recommendation);
+  const _analyses = perspectiveResults.map((p) => `${p.viewpoint}: ${p.analysis}`);
 
   // Find consensus and disagreements
   const disagreements: string[] = [];
@@ -88,7 +92,7 @@ Odpowiadaj PO POLSKU. Zwróć TYLKO JSON.`;
       for (let j = i + 1; j < perspectiveResults.length; j++) {
         if (Math.abs(perspectiveResults[i].confidence - perspectiveResults[j].confidence) > 30) {
           disagreements.push(
-            `${perspectiveResults[i].viewpoint} vs ${perspectiveResults[j].viewpoint}`
+            `${perspectiveResults[i].viewpoint} vs ${perspectiveResults[j].viewpoint}`,
           );
         }
       }
@@ -96,12 +100,14 @@ Odpowiadaj PO POLSKU. Zwróć TYLKO JSON.`;
   }
 
   // Build consensus
-  const avgConfidence = perspectiveResults.reduce((sum, p) => sum + p.confidence, 0) / perspectiveResults.length;
-  const consensus = avgConfidence > 70
-    ? 'Wysoka zgodność między perspektywami'
-    : avgConfidence > 50
-    ? 'Umiarkowana zgodność, pewne różnice zdań'
-    : 'Niska zgodność, znaczące różnice w ocenie';
+  const avgConfidence =
+    perspectiveResults.reduce((sum, p) => sum + p.confidence, 0) / perspectiveResults.length;
+  const consensus =
+    avgConfidence > 70
+      ? 'Wysoka zgodność między perspektywami'
+      : avgConfidence > 50
+        ? 'Umiarkowana zgodność, pewne różnice zdań'
+        : 'Niska zgodność, znaczące różnice w ocenie';
 
   console.log(chalk.green(`[MultiPerspective] Completed: ${consensus}`));
 
@@ -109,7 +115,8 @@ Odpowiadaj PO POLSKU. Zwróć TYLKO JSON.`;
     perspectives: perspectiveResults,
     consensus,
     disagreements,
-    finalRecommendation: perspectiveResults
-      .sort((a, b) => b.confidence - a.confidence)[0]?.recommendation || 'Brak rekomendacji'
+    finalRecommendation:
+      perspectiveResults.sort((a, b) => b.confidence - a.confidence)[0]?.recommendation ||
+      'Brak rekomendacji',
   };
 }

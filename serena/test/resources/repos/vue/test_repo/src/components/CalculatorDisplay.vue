@@ -1,60 +1,60 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { storeToRefs } from 'pinia'
-import { useCalculatorStore } from '@/stores/calculator'
-import type { HistoryEntry } from '@/types'
+import { storeToRefs } from 'pinia';
+import { computed, ref } from 'vue';
+import { useCalculatorStore } from '@/stores/calculator';
+import type { HistoryEntry } from '@/types';
 
 // Get the calculator store
-const store = useCalculatorStore()
+const store = useCalculatorStore();
 
 // Use storeToRefs to get reactive references to store state
-const { recentHistory, hasHistory, currentValue, operation } = storeToRefs(store)
+const { recentHistory, hasHistory, currentValue, operation } = storeToRefs(store);
 
 // Local ref for display options
-const showFullHistory = ref(false)
-const maxHistoryItems = ref(5)
+const showFullHistory = ref(false);
+const maxHistoryItems = ref(5);
 
 // Computed property for filtered history
-const displayedHistory = computed((): HistoryEntry[] => {
+const _displayedHistory = computed((): HistoryEntry[] => {
   if (showFullHistory.value) {
-    return recentHistory.value
+    return recentHistory.value;
   }
-  return recentHistory.value.slice(0, maxHistoryItems.value)
-})
+  return recentHistory.value.slice(0, maxHistoryItems.value);
+});
 
 // Format date for display
-const formatDate = (date: Date): string => {
-  return new Date(date).toLocaleTimeString()
-}
+const _formatDate = (date: Date): string => {
+  return new Date(date).toLocaleTimeString();
+};
 
 // Format the current calculation status
-const currentCalculation = computed((): string => {
+const _currentCalculation = computed((): string => {
   if (operation.value && store.previousValue !== null) {
     const opSymbol = {
       add: '+',
       subtract: '-',
       multiply: '×',
-      divide: '÷'
-    }[operation.value]
-    return `${store.previousValue} ${opSymbol} ${currentValue.value}`
+      divide: '÷',
+    }[operation.value];
+    return `${store.previousValue} ${opSymbol} ${currentValue.value}`;
   }
-  return currentValue.value.toString()
-})
+  return currentValue.value.toString();
+});
 
 // Toggle history view
-const toggleHistoryView = () => {
-  showFullHistory.value = !showFullHistory.value
-}
+const _toggleHistoryView = () => {
+  showFullHistory.value = !showFullHistory.value;
+};
 
 // Clear history handler
-const clearHistory = () => {
-  store.clearHistory()
-}
+const _clearHistory = () => {
+  store.clearHistory();
+};
 
 // Check if history is empty
-const isHistoryEmpty = computed((): boolean => {
-  return !hasHistory.value
-})
+const _isHistoryEmpty = computed((): boolean => {
+  return !hasHistory.value;
+});
 </script>
 
 <template>
