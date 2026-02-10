@@ -62,6 +62,8 @@ import {
   generateNextStepSuggestions,
   validateAgentResults,
 } from './helpers.js';
+// Verification Agent (Keira Metz - inter-phase quality gate)
+import { VerificationAgent, type PhaseVerdict } from '../VerificationAgent.js';
 // Local modules
 import type { YoloConfig } from './types.js';
 import { DEFAULT_CONFIG } from './types.js';
@@ -422,6 +424,22 @@ export class Swarm {
       }
 
       // =========================================
+      // VERIFICATION GATE: Phase A (Keira Metz)
+      // =========================================
+      if (this.config.enableVerification) {
+        const verifier = new VerificationAgent(this.config.verificationConfig);
+        const phaseAVerdict: PhaseVerdict = await verifier.verifyPhaseA(plan, ORIGINAL_OBJECTIVE);
+        if (!verifier.shouldContinue(phaseAVerdict)) {
+          logger.system(
+            `[Keira] Phase A FAILED verification (score: ${phaseAVerdict.score}). Aborting pipeline.`,
+            'error',
+          );
+          clearTimeout(totalTimeoutHandle);
+          return `Verification failed after Phase A (score: ${phaseAVerdict.score}/100): ${phaseAVerdict.issues.join('; ')}`;
+        }
+      }
+
+      // =========================================
       // PHASE B: EXECUTION
       // =========================================
 
@@ -483,6 +501,25 @@ export class Swarm {
             .map((r) => `- Task #${r.id}: ${(r.logs?.[0] || '').substring(0, 200)}`)
             .join('\n');
         return partialReport;
+      }
+
+      // =========================================
+      // VERIFICATION GATE: Phase B (Keira Metz)
+      // =========================================
+      if (this.config.enableVerification) {
+        const verifier = new VerificationAgent(this.config.verificationConfig);
+        const phaseBVerdict: PhaseVerdict = await verifier.verifyPhaseB(
+          executionResults,
+          plan,
+          ORIGINAL_OBJECTIVE,
+        );
+        // Phase B FAIL does NOT abort — proceeds to Phase C for self-healing
+        if (phaseBVerdict.verdict === 'FAIL') {
+          logger.system(
+            `[Keira] Phase B verification: FAIL (score: ${phaseBVerdict.score}). Proceeding to Phase C for self-healing.`,
+            'warn',
+          );
+        }
       }
 
       // =========================================
@@ -560,6 +597,27 @@ export class Swarm {
           chalk.yellow('[WARNING] Prompt drift detected! Using original objective for synthesis.'),
         );
         console.log(promptAudit.getSummary());
+      }
+
+      // =========================================
+      // VERIFICATION GATE: Phase C (Keira Metz)
+      // =========================================
+      if (this.config.enableVerification && this.config.enablePhaseC && !skipPhaseC) {
+        const verifier = new VerificationAgent(this.config.verificationConfig);
+        const _phaseCVerdict: PhaseVerdict = await verifier.verifyPhaseC(
+          {
+            repairCycles: 0,
+            repairedTasks: finalResults.filter((r) => r.repairAttempt).length,
+            successRateBefore: Math.round(
+              (executionResults.filter((r) => r.success).length / executionResults.length) * 100,
+            ),
+            successRateAfter: Math.round(
+              (finalResults.filter((r) => r.success).length / finalResults.length) * 100,
+            ),
+          },
+          executionResults,
+          ORIGINAL_OBJECTIVE,
+        );
       }
 
       // =========================================
@@ -784,6 +842,28 @@ ZASADY:
       logger.spinSuccess('synthesis', 'Mission Complete');
       logger.agentSuccess('regis', { chars: report.length, time: Date.now() - startTime });
       logger.phaseEnd('D', { success: true });
+
+      // =========================================
+      // VERIFICATION GATE: Phase D (Keira Metz)
+      // =========================================
+      if (this.config.enableVerification) {
+        const verifier = new VerificationAgent(this.config.verificationConfig);
+        const phaseDVerdict: PhaseVerdict = await verifier.verifyPhaseD(
+          report,
+          finalResults,
+          ORIGINAL_OBJECTIVE,
+        );
+        if (phaseDVerdict.verdict === 'FAIL') {
+          report += `\n\n⚠️ OSTRZEŻENIE KEIRA METZ: Raport nie przeszedł weryfikacji (${phaseDVerdict.score}/100)\n`;
+          report += phaseDVerdict.issues.map((i) => `  ❌ ${i}`).join('\n');
+        }
+        // Generate and log overall mission verdict
+        const missionVerdict = verifier.generateVerdict();
+        logger.system(
+          `[Keira] Mission verdict: ${missionVerdict.overallVerdict} (${missionVerdict.overallScore}/100)`,
+          'info',
+        );
+      }
 
       // Solution 8: Show original objective in report
       const originalObjectiveHeader = `

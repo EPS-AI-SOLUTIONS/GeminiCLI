@@ -216,6 +216,19 @@ export const AGENT_SPECS: Record<AgentRole, AgentSpec> = {
     ],
     tier: 'executor',
   },
+
+  keira: {
+    persona: 'Sorceress & Phase Verification Gate',
+    focus: 'Inter-Phase Verification, Quality Gating, Verdict Generation',
+    skills: [
+      'Phase output validation and scoring',
+      'Quality gate enforcement between pipeline phases',
+      'Hallucination and scope creep detection',
+      'Structured verdict generation (JSON)',
+      'Weighted mission verdict aggregation',
+    ],
+    tier: 'coordinator',
+  },
 };
 
 /**

@@ -224,6 +224,14 @@ export const AGENT_PERSONAS: Record<AgentRole, AgentPersona> = {
     geminiTier: 'flash',
     description: 'Code Intelligence via Serena MCP. LSP-powered symbol search, refactoring.',
   },
+  keira: {
+    name: 'keira',
+    role: 'Verifier',
+    model: 'gemini-cloud',
+    geminiTier: 'flash',
+    description:
+      'Phase Verification Agent using Gemini 3 Flash. Validates outputs between pipeline phases with precision analysis.',
+  },
 
   // === OLLAMA agents (speed-critical, local) ===
   ciri: {

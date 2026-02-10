@@ -199,6 +199,20 @@ const AGENT_KEYWORDS: Record<AgentRole, string[]> = {
     'code analysis',
     'semantic search',
   ],
+
+  // Phase Verification Agent
+  keira: [
+    'verify phase',
+    'quality gate',
+    'phase verification',
+    'inter-phase',
+    'verification gate',
+    'verify output',
+    'validate phase',
+    'pipeline verification',
+    'quality check',
+    'verdict',
+  ],
 };
 
 /**

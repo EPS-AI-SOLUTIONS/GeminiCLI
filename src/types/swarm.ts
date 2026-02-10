@@ -27,10 +27,11 @@ export const AGENT_ROLES = [
   'dijkstra',
   'philippa',
   'serena', // Code Intelligence Agent - uses real Serena MCP
+  'keira', // Phase Verification Agent - inter-phase quality gate
 ] as const;
 
 /**
- * Agent roles (12 Witcher agents + Serena)
+ * Agent roles (12 Witcher agents + Serena + Keira)
  */
 export type AgentRole = (typeof AGENT_ROLES)[number];
 

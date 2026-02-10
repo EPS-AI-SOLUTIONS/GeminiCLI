@@ -207,6 +207,7 @@ export const STEP_PRECONDITIONS = {
       'dijkstra',
       'philippa',
       'serena',
+      'keira',
     ];
     if (!validAgents.includes(agent)) {
       throw new StepValidationError(
@@ -352,6 +353,8 @@ Respond ONLY with the JSON plan, no additional text.
       dijkstra: `You are Dijkstra, the Spymaster. Focus on strategy and planning.`,
       // Code Intelligence Agent
       serena: `You are Serena, the Code Intelligence Agent. Focus on code navigation, symbol search, and semantic analysis using LSP.`,
+      // Phase Verification Agent
+      keira: `You are Keira Metz, the Phase Verification Gate. Focus on verifying outputs between pipeline phases with precision and structured JSON verdicts.`,
     };
 
     return `

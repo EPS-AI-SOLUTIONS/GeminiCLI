@@ -34,6 +34,8 @@ export const AGENT_ROLES = {
   PHILIPPA: 'philippa',
   /** Serena - Code Intelligence Agent, uses real Serena MCP */
   SERENA: 'serena',
+  /** Keira - Phase Verification Agent, inter-phase quality gate */
+  KEIRA: 'keira',
 } as const;
 
 export type AgentRole = (typeof AGENT_ROLES)[keyof typeof AGENT_ROLES];
@@ -128,6 +130,12 @@ export const AGENT_DESCRIPTIONS: Record<AgentRole, AgentDescription> = {
     specialty: 'Code analysis, symbol navigation, refactoring via MCP',
     personality: 'Precise, structural, understands code at symbol level',
   },
+  [AGENT_ROLES.KEIRA]: {
+    name: 'Keira',
+    title: 'Phase Verification Gate',
+    specialty: 'Inter-phase verification, quality gating, verdict generation',
+    personality: 'Analytical, exacting, trusts only evidence and structured proof',
+  },
 };
 
 // ============================================================================
@@ -148,6 +156,7 @@ export const AGENT_COLORS: Record<AgentRole, string> = {
   [AGENT_ROLES.REGIS]: 'blueBright',
   [AGENT_ROLES.PHILIPPA]: 'magentaBright',
   [AGENT_ROLES.SERENA]: 'cyanBright',
+  [AGENT_ROLES.KEIRA]: 'whiteBright',
 };
 
 // ============================================================================
@@ -171,6 +180,7 @@ export const AGENT_FALLBACK_CHAINS: Record<AgentRole, AgentRole[]> = {
   [AGENT_ROLES.REGIS]: [AGENT_ROLES.TRISS, AGENT_ROLES.PHILIPPA],
   [AGENT_ROLES.PHILIPPA]: [AGENT_ROLES.DIJKSTRA, AGENT_ROLES.YENNEFER],
   [AGENT_ROLES.SERENA]: [AGENT_ROLES.GERALT, AGENT_ROLES.YENNEFER],
+  [AGENT_ROLES.KEIRA]: [AGENT_ROLES.TRISS, AGENT_ROLES.VESEMIR],
 };
 
 // ============================================================================
@@ -189,6 +199,7 @@ export type TaskCategory =
   | 'planning'
   | 'review'
   | 'fast'
+  | 'verification'
   | 'general';
 
 /**
@@ -206,6 +217,7 @@ export const TASK_ROUTING: Record<TaskCategory, AgentRole> = {
   planning: AGENT_ROLES.PHILIPPA,
   review: AGENT_ROLES.VESEMIR,
   fast: AGENT_ROLES.CIRI,
+  verification: AGENT_ROLES.KEIRA,
   general: AGENT_ROLES.DIJKSTRA,
 };
 

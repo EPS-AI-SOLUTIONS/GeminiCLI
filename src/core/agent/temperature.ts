@@ -229,6 +229,23 @@ export const DEFAULT_AGENT_PROFILES: Record<string, AgentTemperatureProfile> = {
     preferredTemp: 0.85,
     performanceHistory: [],
   },
+  // Keira Metz - Phase Verification Agent: lowest temperature in the system for deterministic verdicts
+  keira: {
+    name: 'keira',
+    role: 'Verifier',
+    baseRanges: {
+      code: [0.25, 0.4],
+      fix: [0.25, 0.4],
+      analysis: [0.3, 0.5],
+      creative: [0.5, 0.7],
+      planning: [0.3, 0.45],
+      general: [0.3, 0.5],
+    },
+    creativityBias: -0.15,
+    precisionBias: 0.2,
+    preferredTemp: 0.35,
+    performanceHistory: [],
+  },
 };
 
 /**

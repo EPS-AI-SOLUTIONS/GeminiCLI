@@ -40,6 +40,14 @@ export interface YoloConfig {
   // Results storage limits (Fix #14)
   maxStoredResults?: number; // Max results kept in memory (default: 500)
   resultTtlMs?: number; // TTL for stored results in ms (default: 1 hour)
+  // Inter-phase verification gate (Keira Metz)
+  enableVerification?: boolean; // Enable verification between phases (default: true)
+  verificationConfig?: {
+    passThreshold?: number; // Score >= this = PASS (default: 70)
+    reviewThreshold?: number; // Score >= this = REVIEW (default: 40)
+    failOnReview?: boolean; // If true, REVIEW stops pipeline (default: false)
+    verbose?: boolean; // Log detailed verification output (default: false)
+  };
 }
 
 export const DEFAULT_CONFIG: YoloConfig = {
@@ -62,6 +70,8 @@ export const DEFAULT_CONFIG: YoloConfig = {
   // Results storage limits (Fix #14)
   maxStoredResults: 500, // Max 500 results in memory
   resultTtlMs: 60 * 60 * 1000, // 1 hour TTL
+  // Verification gate (Keira Metz)
+  enableVerification: true,
   intelligenceConfig: {
     useChainOfThought: true,
     useSelfReflection: true,

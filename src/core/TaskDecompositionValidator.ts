@@ -134,6 +134,16 @@ const CATEGORY_KEYWORDS: Record<TaskCategory, string[]> = {
   planning: ['plan', 'roadmap', 'strategy', 'prioritize', 'planuj', 'strategia', 'priorytet'],
   review: ['review', 'check', 'verify', 'audit', 'przegladnij', 'sprawdz', 'zweryfikuj'],
   fast: ['quick', 'simple', 'straightforward', 'szybko', 'proste', 'latwe'],
+  verification: [
+    'verify',
+    'validate',
+    'check',
+    'gate',
+    'audit',
+    'weryfikuj',
+    'zwaliduj',
+    'sprawdz',
+  ],
   general: ['general', 'misc', 'other', 'ogolne', 'inne'],
 };
 
