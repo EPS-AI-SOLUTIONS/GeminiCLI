@@ -4,31 +4,39 @@
 
 // Base provider
 export * from './base-provider.js';
-
-// Registry
-export * from './registry.js';
-
-// MCP Llama provider (primary)
-export * from './McpLlamaProvider.js';
-
-// Legacy providers - explicit exports to avoid conflicts
+// Simple providers (LLMProvider interface) - for core/Agent.ts and RefinementService
 export {
-  GeminiProvider,
   createGeminiProviders,
   GEMINI_MODELS,
   type GeminiModelAlias,
+  GeminiProvider,
 } from './GeminiProvider.js';
-
+// Enhanced providers (EnhancedProvider base) - for SwarmOrchestrator
 export {
-  LlamaCppProvider,
+  createEnhancedGeminiProvider,
+  EnhancedGeminiProvider,
+  type GeminiConfig,
+  type GeminiTier,
+} from './gemini-provider.js';
+export {
   createLlamaCppProvider,
   LLAMA_CPP_MODELS,
   type LlamaCppConfig,
+  LlamaCppProvider,
   type LlamaCppServerInfo,
 } from './LlamaCppProvider.js';
-
 export {
-  SerenaProvider,
+  createEnhancedLlamaCppProvider,
+  EnhancedLlamaCppProvider,
+} from './llamacpp-provider.js';
+// MCP Llama provider (primary)
+export * from './McpLlamaProvider.js';
+// Registry
+export * from './registry.js';
+
+// Serena provider
+export {
   createSerenaProvider,
+  SerenaProvider,
   type SerenaProviderConfig,
 } from './SerenaProvider.js';

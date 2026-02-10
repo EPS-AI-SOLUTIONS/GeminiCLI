@@ -3,49 +3,35 @@
  * Main orchestrator for the 6-step Witcher Swarm protocol
  */
 
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
-import * as fs from 'fs/promises';
-import * as path from 'path';
-
+import { ConnectionPool } from '../core/pool.js';
+import { EnhancedGeminiProvider, type GeminiTier } from '../providers/gemini-provider.js';
+import { EnhancedLlamaCppProvider } from '../providers/llamacpp-provider.js';
+import type {
+  AgentResult,
+  AgentRole,
+  SwarmModeSettings,
+  SwarmOptions,
+  SwarmPlan,
+  SwarmResult,
+  SwarmTask,
+  SwarmTranscript,
+  TranscriptStep,
+} from '../types/swarm.js';
+import { analyzeComplexity, classifyPrompt, needsResearch } from './agents/classifier.js';
+import { AGENT_SPECS, MODEL_TIERS } from './agents/definitions.js';
 import {
-  AGENT_SPECS,
-  MODEL_TIERS,
-  getAgentPromptPrefix
-} from './agents/definitions.js';
-import {
-  classifyPrompt,
-  analyzeComplexity,
-  needsPlanning,
-  needsResearch
-} from './agents/classifier.js';
-import {
-  STEP_PROMPTS,
-  PROTOCOL_STEPS,
-  parsePlan,
   createSimplePlan,
-  getNextParallelGroup,
-  updateTaskStatus,
-  isPlanComplete,
   createTranscript,
   formatTranscriptMarkdown,
-  type ProtocolStep
+  getNextParallelGroup,
+  isPlanComplete,
+  parsePlan,
+  STEP_PROMPTS,
+  updateTaskStatus,
 } from './protocol/steps.js';
-
-import { GeminiProvider, type GeminiTier } from '../providers/gemini-provider.js';
-import { LlamaCppProvider } from '../providers/llamacpp-provider.js';
-import { ConnectionPool } from '../core/pool.js';
-
-import type {
-  AgentRole,
-  SwarmPlan,
-  SwarmTask,
-  AgentResult,
-  TranscriptStep,
-  SwarmTranscript,
-  SwarmResult,
-  SwarmOptions,
-  SwarmModeSettings
-} from '../types/swarm.js';
 
 /**
  * Default swarm mode settings
@@ -54,7 +40,7 @@ export const DEFAULT_SWARM_SETTINGS: SwarmModeSettings = {
   maxConcurrency: 4,
   safetyBlocking: true,
   retryAttempts: 2,
-  timeoutSeconds: 120
+  timeoutSeconds: 120,
 };
 
 /**
@@ -67,32 +53,34 @@ export type SwarmMode = 'basic' | 'enhanced' | 'full';
  * Coordinates the 6-step protocol execution
  */
 export class SwarmOrchestrator {
-  private geminiProvider: GeminiProvider;
-  private llamaProvider: LlamaCppProvider | null = null;
+  private geminiProvider: EnhancedGeminiProvider;
+  private llamaProvider: EnhancedLlamaCppProvider | null = null;
   private executorPool: ConnectionPool;
   private archivePath: string;
   private settings: SwarmModeSettings;
   private verbose: boolean;
 
-  constructor(options: {
-    geminiConfig?: ConstructorParameters<typeof GeminiProvider>[0];
-    llamaConfig?: ConstructorParameters<typeof LlamaCppProvider>[0];
-    archivePath?: string;
-    settings?: Partial<SwarmModeSettings>;
-    verbose?: boolean;
-  } = {}) {
+  constructor(
+    options: {
+      geminiConfig?: ConstructorParameters<typeof EnhancedGeminiProvider>[0];
+      llamaConfig?: ConstructorParameters<typeof EnhancedLlamaCppProvider>[0];
+      archivePath?: string;
+      settings?: Partial<SwarmModeSettings>;
+      verbose?: boolean;
+    } = {},
+  ) {
     // Initialize providers
-    this.geminiProvider = new GeminiProvider(options.geminiConfig);
+    this.geminiProvider = new EnhancedGeminiProvider(options.geminiConfig);
 
     // LlamaCpp is optional
     if (options.llamaConfig?.modelPath) {
-      this.llamaProvider = new LlamaCppProvider(options.llamaConfig);
+      this.llamaProvider = new EnhancedLlamaCppProvider(options.llamaConfig);
     }
 
     // Executor pool for parallel execution
     this.executorPool = new ConnectionPool({
       maxConcurrent: options.settings?.maxConcurrency ?? DEFAULT_SWARM_SETTINGS.maxConcurrency,
-      maxQueueSize: 50
+      maxQueueSize: 50,
     });
 
     this.archivePath = options.archivePath ?? './.swarm/sessions';
@@ -132,7 +120,7 @@ export class SwarmOrchestrator {
       const parsedResult = planResult.success ? parsePlan(planResult.response || '') : null;
       transcript.steps.plan = {
         result: planResult,
-        parsedPlan: parsedResult ?? undefined
+        parsedPlan: parsedResult ?? undefined,
       };
 
       // Use simple plan if parsing failed
@@ -149,10 +137,7 @@ export class SwarmOrchestrator {
 
       // STEP 4: SYNTHESIZE
       this.log('Step 4: Synthesizing results (Yennefer)...');
-      transcript.steps.synthesize = await this.stepSynthesize(
-        query,
-        transcript.steps.execute
-      );
+      transcript.steps.synthesize = await this.stepSynthesize(query, transcript.steps.execute);
 
       // STEP 5: LOG
       this.log('Step 5: Creating summary (Jaskier)...');
@@ -172,9 +157,8 @@ export class SwarmOrchestrator {
         summary: transcript.steps.log?.response || '',
         duration,
         archiveFile,
-        transcript
+        transcript,
       };
-
     } catch (error) {
       const duration = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -188,7 +172,7 @@ export class SwarmOrchestrator {
         finalAnswer: `Error: ${errorMessage}`,
         summary: '',
         duration,
-        transcript
+        transcript,
       };
     }
   }
@@ -206,11 +190,7 @@ export class SwarmOrchestrator {
     this.log(`Basic mode: ${classification.agent} (${classification.tier})`);
 
     try {
-      const result = await this.invokeAgent(
-        classification.agent,
-        query,
-        undefined
-      );
+      const result = await this.invokeAgent(classification.agent, query, undefined);
 
       const duration = Date.now() - startTime;
 
@@ -224,9 +204,8 @@ export class SwarmOrchestrator {
         finalAnswer: result.response || result.error || '',
         summary: `Executed by ${classification.agent}`,
         duration,
-        transcript
+        transcript,
       };
-
     } catch (error) {
       const duration = Date.now() - startTime;
 
@@ -237,7 +216,7 @@ export class SwarmOrchestrator {
         finalAnswer: `Error: ${error instanceof Error ? error.message : String(error)}`,
         summary: '',
         duration,
-        transcript: createTranscript(sessionId, query, 'basic')
+        transcript: createTranscript(sessionId, query, 'basic'),
       };
     }
   }
@@ -256,14 +235,14 @@ export class SwarmOrchestrator {
         success: true,
         response: result.content,
         duration: Date.now() - startTime,
-        agent: 'regis'
+        agent: 'regis',
       };
     } catch (error) {
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),
         duration: Date.now() - startTime,
-        agent: 'regis'
+        agent: 'regis',
       };
     }
   }
@@ -282,14 +261,14 @@ export class SwarmOrchestrator {
         success: true,
         response: result.content,
         duration: Date.now() - startTime,
-        agent: 'dijkstra'
+        agent: 'dijkstra',
       };
     } catch (error) {
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),
         duration: Date.now() - startTime,
-        agent: 'dijkstra'
+        agent: 'dijkstra',
       };
     }
   }
@@ -309,11 +288,18 @@ export class SwarmOrchestrator {
       this.log(`Executing parallel group: [${group.join(', ')}]`);
 
       // Execute tasks in parallel within group
-      const groupPromises = group.map(taskId => {
-        const task = plan.tasks.find(t => t.id === taskId)!;
-        return this.executorPool.execute(() =>
-          this.executeTask(task, context)
-        );
+      const groupPromises = group.map((taskId) => {
+        const task = plan.tasks.find((t) => t.id === taskId);
+        if (!task)
+          return Promise.resolve({
+            success: false,
+            agent: 'geralt' as AgentRole,
+            model: 'unknown',
+            error: `Task ${taskId} not found`,
+            duration: 0,
+            taskId,
+          } as AgentResult);
+        return this.executorPool.execute(() => this.executeTask(task, context));
       });
 
       const groupResults = await Promise.all(groupPromises);
@@ -321,11 +307,12 @@ export class SwarmOrchestrator {
       // Update results and completed IDs
       for (const result of groupResults) {
         results.push(result);
+        const taskId = result.taskId ?? 0;
         if (result.success) {
-          completedIds.push(result.taskId!);
-          plan = updateTaskStatus(plan, result.taskId!, 'completed');
+          completedIds.push(taskId);
+          plan = updateTaskStatus(plan, taskId, 'completed');
         } else {
-          plan = updateTaskStatus(plan, result.taskId!, 'failed');
+          plan = updateTaskStatus(plan, taskId, 'failed');
         }
       }
     }
@@ -344,7 +331,7 @@ export class SwarmOrchestrator {
       const result = await this.invokeAgent(agentRole, task.task, context);
       return {
         ...result,
-        taskId: task.id
+        taskId: task.id,
       };
     } catch (error) {
       const agentRole = task.agent as import('../types/index.js').AgentRole;
@@ -356,7 +343,7 @@ export class SwarmOrchestrator {
         model,
         error: error instanceof Error ? error.message : String(error),
         duration: Date.now() - startTime,
-        taskId: task.id
+        taskId: task.id,
       };
     }
   }
@@ -367,7 +354,7 @@ export class SwarmOrchestrator {
   private async invokeAgent(
     agent: AgentRole,
     task: string,
-    context?: string
+    context?: string,
   ): Promise<AgentResult> {
     const startTime = Date.now();
     const spec = AGENT_SPECS[agent];
@@ -375,7 +362,7 @@ export class SwarmOrchestrator {
 
     try {
       const prompt = STEP_PROMPTS.execute(agent, task, context);
-      let result;
+      let result: { content: string; model: string; tokens?: number };
 
       if (tier === 'executor' && this.llamaProvider) {
         // Use local llama.cpp for executors
@@ -383,8 +370,7 @@ export class SwarmOrchestrator {
       } else {
         // Use Gemini for coordinators and commander
         const geminiTier: GeminiTier =
-          tier === 'commander' ? 'commander' :
-          tier === 'coordinator' ? 'coordinator' : 'executor';
+          tier === 'commander' ? 'commander' : tier === 'coordinator' ? 'coordinator' : 'executor';
         result = await this.geminiProvider.generateWithTier(prompt, geminiTier);
       }
 
@@ -394,16 +380,15 @@ export class SwarmOrchestrator {
         model: result.model,
         response: result.content,
         duration: Date.now() - startTime,
-        tokens: result.tokens
+        tokens: result.tokens,
       };
-
     } catch (error) {
       return {
         success: false,
         agent,
         model: MODEL_TIERS[tier],
         error: error instanceof Error ? error.message : String(error),
-        duration: Date.now() - startTime
+        duration: Date.now() - startTime,
       };
     }
   }
@@ -411,10 +396,7 @@ export class SwarmOrchestrator {
   /**
    * Step 4: SYNTHESIZE
    */
-  private async stepSynthesize(
-    query: string,
-    results: AgentResult[]
-  ): Promise<TranscriptStep> {
+  private async stepSynthesize(query: string, results: AgentResult[]): Promise<TranscriptStep> {
     const startTime = Date.now();
 
     try {
@@ -425,13 +407,13 @@ export class SwarmOrchestrator {
         success: true,
         response: result.content,
         duration: Date.now() - startTime,
-        agent: 'yennefer'
+        agent: 'yennefer',
       };
     } catch (error) {
       // Fallback: combine results manually
       const combined = results
-        .filter(r => r.success && r.response)
-        .map(r => r.response)
+        .filter((r) => r.success && r.response)
+        .map((r) => r.response)
         .join('\n\n---\n\n');
 
       return {
@@ -439,7 +421,7 @@ export class SwarmOrchestrator {
         response: combined || 'No results to synthesize',
         error: error instanceof Error ? error.message : String(error),
         duration: Date.now() - startTime,
-        agent: 'yennefer'
+        agent: 'yennefer',
       };
     }
   }
@@ -447,10 +429,7 @@ export class SwarmOrchestrator {
   /**
    * Step 5: LOG
    */
-  private async stepLog(
-    query: string,
-    transcript: SwarmTranscript
-  ): Promise<TranscriptStep> {
+  private async stepLog(query: string, transcript: SwarmTranscript): Promise<TranscriptStep> {
     const startTime = Date.now();
 
     try {
@@ -461,14 +440,14 @@ export class SwarmOrchestrator {
         success: true,
         response: result.content,
         duration: Date.now() - startTime,
-        agent: 'jaskier'
+        agent: 'jaskier',
       };
     } catch (error) {
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),
         duration: Date.now() - startTime,
-        agent: 'jaskier'
+        agent: 'jaskier',
       };
     }
   }
@@ -491,7 +470,6 @@ export class SwarmOrchestrator {
 
       this.log(`Archived to ${filepath}`);
       return filepath;
-
     } catch (error) {
       this.log(`Archive failed: ${error instanceof Error ? error.message : String(error)}`);
       return undefined;
@@ -523,7 +501,7 @@ export class SwarmOrchestrator {
  * Create swarm orchestrator instance
  */
 export function createSwarmOrchestrator(
-  options?: ConstructorParameters<typeof SwarmOrchestrator>[0]
+  options?: ConstructorParameters<typeof SwarmOrchestrator>[0],
 ): SwarmOrchestrator {
   return new SwarmOrchestrator(options);
 }

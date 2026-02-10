@@ -3,22 +3,22 @@
  * Enhanced Google Gemini AI provider with pooling, circuit breaker, and rate limiting
  */
 
-import { GoogleGenerativeAI, type GenerativeModel } from '@google/generative-ai';
-import { EnhancedProvider } from './base-provider.js';
-import { ConnectionPool, RateLimiter, ManagedPool } from '../core/pool.js';
-import { CircuitBreaker, withRetry, type RetryOptions } from '../core/retry.js';
-import { GeminiError, NetworkError, RateLimitError } from '../core/errors.js';
-import type {
-  ProviderResult,
-  HealthCheckResult,
-  ProviderOptions,
-  ProviderConfig,
-  PoolConfig,
-  RateLimitConfig,
-  CircuitBreakerConfig
-} from '../types/provider.js';
-import type { CircuitBreakerStatus } from '../core/retry.js';
+import { type GenerativeModel, GoogleGenerativeAI } from '@google/generative-ai';
+import { GeminiError, RateLimitError } from '../core/errors.js';
 import type { PoolStatus } from '../core/pool.js';
+import { ManagedPool } from '../core/pool.js';
+import type { CircuitBreakerStatus } from '../core/retry.js';
+import { CircuitBreaker, type RetryOptions, withRetry } from '../core/retry.js';
+import type {
+  CircuitBreakerConfig,
+  HealthCheckResult,
+  PoolConfig,
+  ProviderConfig,
+  ProviderOptions,
+  ProviderResult,
+  RateLimitConfig,
+} from '../types/provider.js';
+import { EnhancedProvider } from './base-provider.js';
 
 /**
  * Gemini-specific configuration
@@ -40,37 +40,37 @@ export interface GeminiConfig extends ProviderConfig {
  * Default Gemini configuration
  */
 export const DEFAULT_GEMINI_CONFIG: GeminiConfig = {
-  defaultModel: 'gemini-2.0-flash-exp',
+  defaultModel: 'gemini-3-pro-preview',
   timeout: 60000,
   costPerToken: 0.000001,
   models: {
-    commander: 'gemini-2.0-pro-exp',
-    coordinator: 'gemini-2.0-flash-exp',
-    executor: 'gemini-2.0-flash-exp'
+    commander: 'gemini-3-pro-preview',
+    coordinator: 'gemini-3-pro-preview',
+    executor: 'gemini-3-pro-preview',
   },
   pool: {
     maxConcurrent: 5,
     maxQueueSize: 50,
-    acquireTimeout: 30000
+    acquireTimeout: 30000,
   },
   rateLimit: {
     enabled: true,
     tokensPerInterval: 10,
     interval: 1000,
-    maxBurst: 15
+    maxBurst: 15,
   },
   circuitBreaker: {
     failureThreshold: 5,
     successThreshold: 2,
     timeout: 30000,
-    halfOpenMaxCalls: 3
+    halfOpenMaxCalls: 3,
   },
   retry: {
     maxRetries: 3,
     baseDelay: 1000,
     maxDelay: 30000,
-    jitter: true
-  }
+    jitter: true,
+  },
 };
 
 /**
@@ -79,9 +79,10 @@ export const DEFAULT_GEMINI_CONFIG: GeminiConfig = {
 export type GeminiTier = 'commander' | 'coordinator' | 'executor';
 
 /**
- * Enhanced Gemini Provider
+ * Enhanced Gemini Provider with pooling, circuit breaker, and rate limiting.
+ * For SwarmOrchestrator and production workloads.
  */
-export class GeminiProvider extends EnhancedProvider {
+export class EnhancedGeminiProvider extends EnhancedProvider {
   private genAI: GoogleGenerativeAI;
   private models: Map<string, GenerativeModel> = new Map();
   private pool: ManagedPool;
@@ -104,10 +105,7 @@ export class GeminiProvider extends EnhancedProvider {
     this.genAI = new GoogleGenerativeAI(apiKey);
 
     // Initialize pool
-    this.pool = new ManagedPool(
-      mergedConfig.pool,
-      mergedConfig.rateLimit
-    );
+    this.pool = new ManagedPool(mergedConfig.pool, mergedConfig.rateLimit);
 
     // Initialize circuit breaker
     this.circuitBreaker = new CircuitBreaker(mergedConfig.circuitBreaker);
@@ -123,7 +121,7 @@ export class GeminiProvider extends EnhancedProvider {
       this.config.defaultModel,
       this.config.models?.commander,
       this.config.models?.coordinator,
-      this.config.models?.executor
+      this.config.models?.executor,
     ].filter((m): m is string => !!m);
 
     for (const modelName of new Set(modelNames)) {
@@ -139,7 +137,7 @@ export class GeminiProvider extends EnhancedProvider {
   private getModel(name?: string): GenerativeModel {
     this.initializeModels();
 
-    const modelName = name || this.config.defaultModel || 'gemini-2.0-flash-exp';
+    const modelName = name || this.config.defaultModel || 'gemini-3-pro-preview';
     let model = this.models.get(modelName);
 
     if (!model) {
@@ -162,7 +160,7 @@ export class GeminiProvider extends EnhancedProvider {
    * Get model name by tier
    */
   getModelNameByTier(tier: GeminiTier): string {
-    return this.config.models?.[tier] || this.config.defaultModel || 'gemini-2.0-flash-exp';
+    return this.config.models?.[tier] || this.config.defaultModel || 'gemini-3-pro-preview';
   }
 
   /**
@@ -172,9 +170,7 @@ export class GeminiProvider extends EnhancedProvider {
     // Circuit breaker wrapper
     return this.circuitBreaker.execute(async () => {
       // Pool + Rate limit + Retry
-      return this.pool.execute(() =>
-        withRetry(fn, this.config.retry)
-      );
+      return this.pool.execute(() => withRetry(fn, this.config.retry));
     });
   }
 
@@ -183,7 +179,7 @@ export class GeminiProvider extends EnhancedProvider {
    */
   async generate(prompt: string, options: ProviderOptions = {}): Promise<ProviderResult> {
     const startTime = Date.now();
-    const modelName = options.model || this.config.defaultModel || 'gemini-2.0-flash-exp';
+    const modelName = options.model || this.config.defaultModel || 'gemini-3-pro-preview';
 
     try {
       const result = await this.executeWithProtections(async () => {
@@ -199,7 +195,7 @@ export class GeminiProvider extends EnhancedProvider {
 
         const response = await model.generateContent({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig
+          generationConfig,
         });
 
         return response;
@@ -216,12 +212,11 @@ export class GeminiProvider extends EnhancedProvider {
         model: modelName,
         duration_ms: duration,
         tokens,
-        success: true
+        success: true,
       };
 
       this.updateStats(providerResult, true);
       return providerResult;
-
     } catch (error) {
       const duration = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -236,7 +231,7 @@ export class GeminiProvider extends EnhancedProvider {
         model: modelName,
         duration_ms: duration,
         success: false,
-        error: errorMessage
+        error: errorMessage,
       };
 
       this.updateStats(providerResult, false);
@@ -251,7 +246,7 @@ export class GeminiProvider extends EnhancedProvider {
   async generateWithTier(
     prompt: string,
     tier: GeminiTier,
-    options: ProviderOptions = {}
+    options: ProviderOptions = {},
   ): Promise<ProviderResult> {
     const modelName = this.getModelNameByTier(tier);
     return this.generate(prompt, { ...options, model: modelName });
@@ -260,8 +255,11 @@ export class GeminiProvider extends EnhancedProvider {
   /**
    * Stream completion
    */
-  async *streamGenerate(prompt: string, options: ProviderOptions = {}): AsyncGenerator<string, void, unknown> {
-    const modelName = options.model || this.config.defaultModel || 'gemini-2.0-flash-exp';
+  async *streamGenerate(
+    prompt: string,
+    options: ProviderOptions = {},
+  ): AsyncGenerator<string, void, unknown> {
+    const modelName = options.model || this.config.defaultModel || 'gemini-3-pro-preview';
     const startTime = Date.now();
 
     try {
@@ -277,7 +275,7 @@ export class GeminiProvider extends EnhancedProvider {
 
       const result = await model.generateContentStream({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig
+        generationConfig,
       });
 
       let fullContent = '';
@@ -291,25 +289,30 @@ export class GeminiProvider extends EnhancedProvider {
       const duration = Date.now() - startTime;
       const tokens = Math.ceil(fullContent.length / 4);
 
-      this.updateStats({
-        content: fullContent,
-        model: modelName,
-        duration_ms: duration,
-        tokens,
-        success: true
-      }, true);
-
+      this.updateStats(
+        {
+          content: fullContent,
+          model: modelName,
+          duration_ms: duration,
+          tokens,
+          success: true,
+        },
+        true,
+      );
     } catch (error) {
       const duration = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : String(error);
 
-      this.updateStats({
-        content: '',
-        model: modelName,
-        duration_ms: duration,
-        success: false,
-        error: errorMessage
-      }, false);
+      this.updateStats(
+        {
+          content: '',
+          model: modelName,
+          duration_ms: duration,
+          success: false,
+          error: errorMessage,
+        },
+        false,
+      );
 
       throw new GeminiError(errorMessage, { cause: error instanceof Error ? error : undefined });
     }
@@ -330,10 +333,10 @@ export class GeminiProvider extends EnhancedProvider {
       const model = this.getModel();
       const result = await model.generateContent({
         contents: [{ role: 'user', parts: [{ text: 'ping' }] }],
-        generationConfig: { maxOutputTokens: 5 }
+        generationConfig: { maxOutputTokens: 5 },
       });
 
-      const text = result.response.text();
+      result.response.text(); // verify response is valid
       const latency = Date.now() - startTime;
 
       const healthResult: HealthCheckResult = {
@@ -341,19 +344,18 @@ export class GeminiProvider extends EnhancedProvider {
         available: true,
         latency_ms: latency,
         models: Array.from(this.models.keys()),
-        version: 'gemini-2.0',
-        checkedAt: new Date()
+        version: 'gemini-3',
+        checkedAt: new Date(),
       };
 
       this.updateHealthCache(healthResult);
       return healthResult;
-
     } catch (error) {
       const healthResult: HealthCheckResult = {
         healthy: false,
         available: false,
         error: error instanceof Error ? error.message : 'Health check failed',
-        checkedAt: new Date()
+        checkedAt: new Date(),
       };
 
       this.updateHealthCache(healthResult, 5000); // Short TTL for failures
@@ -395,26 +397,26 @@ export class GeminiProvider extends EnhancedProvider {
    * Check model support
    */
   supportsModel(model: string): boolean {
-    const supportedPrefixes = ['gemini-1', 'gemini-2', 'gemini-pro', 'gemini-flash'];
-    return supportedPrefixes.some(prefix => model.startsWith(prefix));
+    const supportedPrefixes = ['gemini-1', 'gemini-2', 'gemini-3', 'gemini-pro', 'gemini-flash'];
+    return supportedPrefixes.some((prefix) => model.startsWith(prefix));
   }
 
   /**
    * Get available models
    */
   getAvailableModels(): string[] {
-    return [
-      'gemini-2.0-flash-exp',
-      'gemini-2.0-pro-exp',
-      'gemini-1.5-flash',
-      'gemini-1.5-pro'
-    ];
+    return ['gemini-3-pro-preview', 'gemini-3-flash-preview'];
   }
 }
 
 /**
- * Create a Gemini provider instance
+ * Create an enhanced Gemini provider instance
  */
-export function createGeminiProvider(config?: GeminiConfig): GeminiProvider {
-  return new GeminiProvider(config);
+export function createEnhancedGeminiProvider(config?: GeminiConfig): EnhancedGeminiProvider {
+  return new EnhancedGeminiProvider(config);
 }
+
+/** @deprecated Use EnhancedGeminiProvider directly */
+export { EnhancedGeminiProvider as GeminiProvider };
+/** @deprecated Use createEnhancedGeminiProvider */
+export const createGeminiProvider = createEnhancedGeminiProvider;
