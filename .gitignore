@@ -66,6 +66,13 @@ bin/llama/
 
 # Generated
 repomix-output.xml
+repomix-output.txt
+
+# ----- NEXT.JS -----
+.next/
+out/
+next-app/.next/
+next-app/out/
 
 # ----- PROJECT-SPECIFIC -----
 

@@ -1,0 +1,433 @@
+/**
+ * ClaudeHydra - Zustand App Store (Next.js SSR-compatible)
+ * @module store/useAppStore
+ *
+ * Centralized state management with SSR hydration guard.
+ * Uses `skipHydration: true` to prevent SSR/client mismatch.
+ * Components must use `useHydrated()` or `useStore()` wrapper.
+ */
+
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import {
+  DEFAULT_GEMINI_MODEL,
+  DEFAULT_SETTINGS,
+  GEMINI_MODELS,
+  LIMITS,
+  STORAGE_KEYS,
+} from '../constants';
+import type { AppState, ChatTab, Message, Session, Settings, View } from '../types';
+import { isValidApiKey, isValidUrl, sanitizeContent, sanitizeTitle } from '../utils/validators';
+
+// Extended AppState with pagination
+interface PaginationState {
+  messagesPerPage: number;
+  currentPage: number;
+  setCurrentPage: (page: number) => void;
+  setMessagesPerPage: (count: number) => void;
+}
+
+export type AppStateWithPagination = AppState & PaginationState;
+
+// =============================================================================
+// STORE IMPLEMENTATION
+// =============================================================================
+
+export const useAppStore = create<AppStateWithPagination>()(
+  persist(
+    (set) => ({
+      // ========================================
+      // UI State
+      // ========================================
+      count: 0,
+      theme: 'dark',
+      provider: 'llama',
+      currentView: 'home' as View,
+
+      // ========================================
+      // Pagination State
+      // ========================================
+      messagesPerPage: 50,
+      currentPage: 0,
+
+      setCurrentPage: (page) => set({ currentPage: Math.max(0, page) }),
+      setMessagesPerPage: (count) =>
+        set({
+          messagesPerPage: Math.max(10, Math.min(count, 200)),
+          currentPage: 0,
+        }),
+
+      setCurrentView: (view: View) => set({ currentView: view }),
+      setProvider: (provider) => set({ provider }),
+
+      increment: () => set((state) => ({ count: Math.min(state.count + 1, 999999) })),
+      decrement: () => set((state) => ({ count: Math.max(state.count - 1, 0) })),
+      reset: () => set({ count: 0 }),
+
+      toggleTheme: () => set((state) => ({ theme: state.theme === 'dark' ? 'light' : 'dark' })),
+
+      // ========================================
+      // Session State
+      // ========================================
+      sessions: [],
+      currentSessionId: null,
+
+      createSession: () => {
+        const id = crypto.randomUUID();
+        const newSession: Session = {
+          id,
+          title: 'New Chat',
+          createdAt: Date.now(),
+        };
+        set((state) => {
+          let sessions = [newSession, ...state.sessions];
+          if (sessions.length > LIMITS.MAX_SESSIONS) {
+            const removedIds = sessions.slice(LIMITS.MAX_SESSIONS).map((s) => s.id);
+            sessions = sessions.slice(0, LIMITS.MAX_SESSIONS);
+            const newHistory = { ...state.chatHistory };
+            removedIds.forEach((removedId) => delete newHistory[removedId]);
+            return { sessions, currentSessionId: id, chatHistory: { ...newHistory, [id]: [] } };
+          }
+          return {
+            sessions,
+            currentSessionId: id,
+            chatHistory: { ...state.chatHistory, [id]: [] },
+          };
+        });
+      },
+
+      deleteSession: (id) =>
+        set((state) => {
+          const newSessions = state.sessions.filter((s) => s.id !== id);
+          const newHistory = { ...state.chatHistory };
+          delete newHistory[id];
+          let newCurrentId = state.currentSessionId;
+          if (state.currentSessionId === id) {
+            newCurrentId = newSessions.length > 0 ? newSessions[0].id : null;
+          }
+          return { sessions: newSessions, chatHistory: newHistory, currentSessionId: newCurrentId };
+        }),
+
+      selectSession: (id) =>
+        set((state) => {
+          const exists = state.sessions.some((s) => s.id === id);
+          if (!exists) return state;
+          return { currentSessionId: id };
+        }),
+
+      updateSessionTitle: (id, title) =>
+        set((state) => {
+          const sanitizedTitle = sanitizeTitle(title, LIMITS.MAX_TITLE_LENGTH);
+          if (!sanitizedTitle) return state;
+          return {
+            sessions: state.sessions.map((s) =>
+              s.id === id ? { ...s, title: sanitizedTitle } : s,
+            ),
+            tabs: state.tabs.map((t) => (t.sessionId === id ? { ...t, title: sanitizedTitle } : t)),
+          };
+        }),
+
+      // ========================================
+      // Tab State
+      // ========================================
+      tabs: [],
+      activeTabId: null,
+
+      openTab: (sessionId: string) =>
+        set((state) => {
+          const existing = state.tabs.find((t) => t.sessionId === sessionId);
+          if (existing) {
+            return { activeTabId: existing.id, currentSessionId: sessionId };
+          }
+          const session = state.sessions.find((s) => s.id === sessionId);
+          const newTab: ChatTab = {
+            id: crypto.randomUUID(),
+            sessionId,
+            title: session?.title || 'New Chat',
+            isPinned: false,
+          };
+          return {
+            tabs: [...state.tabs, newTab],
+            activeTabId: newTab.id,
+            currentSessionId: sessionId,
+          };
+        }),
+
+      closeTab: (tabId: string) =>
+        set((state) => {
+          const tabIndex = state.tabs.findIndex((t) => t.id === tabId);
+          if (tabIndex === -1) return state;
+          const tab = state.tabs[tabIndex];
+          if (tab.isPinned) return state;
+
+          const newTabs = state.tabs.filter((t) => t.id !== tabId);
+          let newActiveTabId = state.activeTabId;
+          let newSessionId = state.currentSessionId;
+          if (state.activeTabId === tabId) {
+            if (newTabs.length > 0) {
+              const nextIdx = Math.min(tabIndex, newTabs.length - 1);
+              newActiveTabId = newTabs[nextIdx].id;
+              newSessionId = newTabs[nextIdx].sessionId;
+            } else {
+              newActiveTabId = null;
+              newSessionId = state.sessions.length > 0 ? state.sessions[0].id : null;
+            }
+          }
+          return { tabs: newTabs, activeTabId: newActiveTabId, currentSessionId: newSessionId };
+        }),
+
+      switchTab: (tabId: string) =>
+        set((state) => {
+          const tab = state.tabs.find((t) => t.id === tabId);
+          if (!tab) return state;
+          return {
+            activeTabId: tabId,
+            currentSessionId: tab.sessionId,
+            currentView: 'chat' as View,
+          };
+        }),
+
+      reorderTabs: (fromIndex: number, toIndex: number) =>
+        set((state) => {
+          if (
+            fromIndex < 0 ||
+            fromIndex >= state.tabs.length ||
+            toIndex < 0 ||
+            toIndex >= state.tabs.length
+          ) {
+            return state;
+          }
+          const newTabs = [...state.tabs];
+          const [moved] = newTabs.splice(fromIndex, 1);
+          newTabs.splice(toIndex, 0, moved);
+          return { tabs: newTabs };
+        }),
+
+      togglePinTab: (tabId: string) =>
+        set((state) => ({
+          tabs: state.tabs.map((t) => (t.id === tabId ? { ...t, isPinned: !t.isPinned } : t)),
+        })),
+
+      // ========================================
+      // Chat State
+      // ========================================
+      chatHistory: {},
+
+      addMessage: (msg) =>
+        set((state) => {
+          if (!state.currentSessionId) return state;
+          const sanitizedMsg: Message = {
+            ...msg,
+            content: sanitizeContent(msg.content, LIMITS.MAX_CONTENT_LENGTH),
+          };
+          const currentMessages = state.chatHistory[state.currentSessionId] || [];
+          let updatedMessages = [...currentMessages, sanitizedMsg];
+          if (updatedMessages.length > LIMITS.MAX_MESSAGES_PER_SESSION) {
+            updatedMessages = updatedMessages.slice(-LIMITS.MAX_MESSAGES_PER_SESSION);
+          }
+          let updatedSessions = state.sessions;
+          let updatedTabs = state.tabs;
+          if (msg.role === 'user' && currentMessages.length === 0) {
+            const title = sanitizeTitle(
+              msg.content.substring(0, 30) + (msg.content.length > 30 ? '...' : ''),
+              LIMITS.MAX_TITLE_LENGTH,
+            );
+            updatedSessions = state.sessions.map((s) =>
+              s.id === state.currentSessionId ? { ...s, title } : s,
+            );
+            updatedTabs = state.tabs.map((t) =>
+              t.sessionId === state.currentSessionId ? { ...t, title } : t,
+            );
+          }
+          return {
+            chatHistory: { ...state.chatHistory, [state.currentSessionId]: updatedMessages },
+            sessions: updatedSessions,
+            tabs: updatedTabs,
+          };
+        }),
+
+      updateLastMessage: (content) =>
+        set((state) => {
+          if (!state.currentSessionId) return state;
+          const messages = state.chatHistory[state.currentSessionId] || [];
+          if (messages.length === 0) return state;
+          const newMessages = [...messages];
+          const lastMsg = newMessages[newMessages.length - 1];
+          const newContent = sanitizeContent(lastMsg.content + content, LIMITS.MAX_CONTENT_LENGTH);
+          newMessages[newMessages.length - 1] = { ...lastMsg, content: newContent };
+          return {
+            chatHistory: { ...state.chatHistory, [state.currentSessionId]: newMessages },
+          };
+        }),
+
+      clearHistory: () =>
+        set((state) => {
+          if (!state.currentSessionId) return state;
+          return {
+            chatHistory: { ...state.chatHistory, [state.currentSessionId]: [] },
+          };
+        }),
+
+      // ========================================
+      // Settings State
+      // ========================================
+      settings: DEFAULT_SETTINGS,
+
+      updateSettings: (newSettings) =>
+        set((state) => {
+          const validated: Partial<Settings> = {};
+
+          if (newSettings.ollamaEndpoint !== undefined) {
+            if (isValidUrl(newSettings.ollamaEndpoint)) {
+              validated.ollamaEndpoint = newSettings.ollamaEndpoint;
+            }
+          }
+          if (newSettings.geminiApiKey !== undefined) {
+            if (isValidApiKey(newSettings.geminiApiKey)) {
+              validated.geminiApiKey = newSettings.geminiApiKey;
+            }
+          }
+          // Sync API key to sessionStorage (never localStorage)
+          if (validated.geminiApiKey !== undefined) {
+            if (typeof window !== 'undefined') {
+              if (validated.geminiApiKey) {
+                sessionStorage.setItem('gemini-api-key', validated.geminiApiKey);
+              } else {
+                sessionStorage.removeItem('gemini-api-key');
+              }
+            }
+          }
+          if (newSettings.systemPrompt !== undefined) {
+            validated.systemPrompt = sanitizeContent(
+              newSettings.systemPrompt,
+              LIMITS.MAX_SYSTEM_PROMPT_LENGTH,
+            );
+          }
+          if (newSettings.selectedModel !== undefined) {
+            const isValid = GEMINI_MODELS.some((m) => m.id === newSettings.selectedModel);
+            if (isValid) {
+              validated.selectedModel = newSettings.selectedModel;
+            }
+          }
+          if (newSettings.useSwarm !== undefined) {
+            validated.useSwarm = Boolean(newSettings.useSwarm);
+          }
+          return { settings: { ...state.settings, ...validated } };
+        }),
+    }),
+    {
+      name: STORAGE_KEYS.APP_STATE,
+      // SSR HYDRATION GUARD: skip automatic hydration to prevent mismatch
+      skipHydration: true,
+      partialize: (state) => ({
+        count: state.count,
+        theme: state.theme,
+        currentView: state.currentView,
+        sessions: state.sessions,
+        currentSessionId: state.currentSessionId,
+        chatHistory: state.chatHistory,
+        tabs: state.tabs,
+        activeTabId: state.activeTabId,
+        settings: {
+          ...state.settings,
+          // SECURITY: Never persist API key to localStorage
+          geminiApiKey: '',
+        },
+      }),
+      merge: (persisted, current) => {
+        const p = persisted as Partial<AppStateWithPagination>;
+        const merged = { ...current, ...p };
+        // Always start from home view on app launch
+        merged.currentView = 'home' as View;
+        // Ensure new settings fields have defaults when migrating
+        if (p?.settings) {
+          merged.settings = { ...DEFAULT_SETTINGS, ...p.settings };
+          const selectedModel = merged.settings.selectedModel;
+          const validModelIds = GEMINI_MODELS.map((m) => m.id);
+          if (selectedModel === 'gemini-3.0-flash') {
+            merged.settings.selectedModel = 'gemini-3-pro-preview';
+          } else if (selectedModel === 'gemini-3.0-pro') {
+            merged.settings.selectedModel = 'gemini-3-pro-preview';
+          } else if (!validModelIds.includes(selectedModel)) {
+            merged.settings.selectedModel = DEFAULT_GEMINI_MODEL;
+          }
+        }
+        // Migration: clean up old [CONTEXT] messages and empty placeholders
+        if (p?.chatHistory) {
+          const cleanedHistory: Record<string, Message[]> = {};
+          for (const [sessionId, messages] of Object.entries(p.chatHistory)) {
+            if (Array.isArray(messages)) {
+              cleanedHistory[sessionId] = messages.filter(
+                (m) => m.content.trim().length > 0 && !m.content.startsWith('[CONTEXT]'),
+              );
+            }
+          }
+          merged.chatHistory = cleanedHistory;
+        }
+        // Reset session titles that start with [CONTEXT]
+        if (merged.sessions && Array.isArray(merged.sessions)) {
+          merged.sessions = merged.sessions.map((s: Session) =>
+            s.title.startsWith('[CONTEXT]') ? { ...s, title: 'New Chat' } : s,
+          );
+        }
+        if (merged.settings?.systemPrompt?.includes('Jaskier')) {
+          merged.settings.systemPrompt = DEFAULT_SETTINGS.systemPrompt;
+        }
+        // Always start fresh with no open tabs on app launch
+        merged.tabs = [];
+        merged.activeTabId = null;
+        // Restore API key from sessionStorage (not persisted in localStorage)
+        const sessionApiKey =
+          typeof window !== 'undefined' ? (sessionStorage.getItem('gemini-api-key') ?? '') : '';
+        if (sessionApiKey && merged.settings) {
+          merged.settings.geminiApiKey = sessionApiKey;
+        }
+        return merged;
+      },
+    },
+  ),
+);
+
+// =============================================================================
+// RE-EXPORTED SELECTORS
+// =============================================================================
+// All selectors are defined in ./selectors.ts and re-exported here
+// for backward compatibility. New code should import from './selectors'
+// or from the barrel '@/store'.
+
+export {
+  selectApiConfigStatus,
+  selectChatHistory,
+  selectCount,
+  selectCurrentMessages,
+  selectCurrentSession,
+  selectCurrentSessionId,
+  selectCurrentView,
+  selectDefaultProvider,
+  selectGeminiApiKey,
+  selectHasMessages,
+  selectIsApiKeySet,
+  selectIsAppReady,
+  selectLastMessage,
+  selectLastMessageBySessionId,
+  selectMessageCount,
+  selectMessageCountBySessionId,
+  selectMessagesBySessionId,
+  selectOllamaEndpoint,
+  selectPaginatedMessages,
+  selectPaginationInfo,
+  selectProvider,
+  selectRuntimeSettings,
+  selectSessionById,
+  selectSessionCount,
+  selectSessionHasMessages,
+  selectSessionMetadata,
+  selectSessions,
+  selectSettings,
+  selectSystemPrompt,
+  selectTheme,
+  selectTotalPages,
+  selectUseSwarm,
+} from './selectors';
+
+export default useAppStore;

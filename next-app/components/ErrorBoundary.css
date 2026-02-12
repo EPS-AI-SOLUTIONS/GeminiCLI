@@ -1,0 +1,292 @@
+/**
+ * ClaudeHydra - ErrorBoundary Styles
+ * @module components/ErrorBoundary.css
+ *
+ * Matrix/Emerald themed error boundary component styles.
+ */
+
+.error-boundary-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--matrix-bg-primary);
+  background-image:
+    radial-gradient(circle at top, rgba(0, 255, 65, 0.08), transparent 50%),
+    linear-gradient(180deg, var(--matrix-bg-primary) 0%, var(--matrix-bg-secondary) 100%);
+  z-index: 9999;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.error-boundary-panel {
+  position: relative;
+  width: 100%;
+  max-width: 600px;
+  background: var(--matrix-panel-bg);
+  backdrop-filter: blur(24px) saturate(200%);
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  border: 1px solid var(--matrix-border);
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    0 0 20px rgba(0, 255, 65, 0.1);
+  z-index: 10000;
+  animation: errorBoundarySlideIn 0.4s ease-out;
+}
+
+@keyframes errorBoundarySlideIn {
+  from { opacity: 0; transform: translateY(-20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.error-boundary-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid color-mix(in srgb, var(--matrix-accent) 30%, transparent);
+}
+
+.error-boundary-icon {
+  color: #ff6b6b;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 8px rgba(255, 107, 107, 0.3));
+  animation: errorBoundaryIconPulse 2s ease-in-out infinite;
+}
+
+@keyframes errorBoundaryIconPulse {
+  0%, 100% { opacity: 1; filter: drop-shadow(0 0 8px rgba(255, 107, 107, 0.3)); }
+  50% { opacity: 0.8; filter: drop-shadow(0 0 12px rgba(255, 107, 107, 0.5)); }
+}
+
+.error-boundary-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--matrix-text);
+  margin: 0;
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+
+.error-boundary-message {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid color-mix(in srgb, #ff6b6b 20%, transparent);
+  border-radius: 8px;
+  border-left: 3px solid #ff6b6b;
+}
+
+.error-boundary-label {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--matrix-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.error-boundary-code {
+  margin: 0;
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid var(--matrix-border);
+  border-radius: 4px;
+  color: #ff6b6b;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.error-boundary-details {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px dashed color-mix(in srgb, var(--matrix-accent) 20%, transparent);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.error-boundary-details:hover {
+  background: rgba(0, 0, 0, 0.3);
+  border-color: color-mix(in srgb, var(--matrix-accent) 30%, transparent);
+}
+
+.error-boundary-summary {
+  list-style: none;
+  color: var(--matrix-text-dim);
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  user-select: none;
+  padding: 0;
+  margin: 0;
+}
+
+.error-boundary-summary:hover { color: var(--matrix-accent); }
+.error-boundary-summary::before { content: "▶ "; display: inline-block; margin-right: 0.5rem; transition: transform 0.2s ease; }
+.error-boundary-details[open] .error-boundary-summary::before { transform: rotate(90deg); }
+
+.error-boundary-stack {
+  margin: 1rem 0 0 0;
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid var(--matrix-border);
+  border-radius: 4px;
+  color: var(--matrix-text-dim);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.error-boundary-actions { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+
+.error-boundary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex: 1;
+  min-width: 140px;
+}
+
+.retry-button {
+  background: color-mix(in srgb, var(--matrix-accent) 80%, transparent);
+  color: var(--matrix-accent);
+  border: 1px solid var(--matrix-accent);
+  box-shadow: 0 0 15px color-mix(in srgb, var(--matrix-accent) 20%, transparent);
+}
+
+.retry-button:hover { background: color-mix(in srgb, var(--matrix-accent) 90%, transparent); box-shadow: 0 0 25px color-mix(in srgb, var(--matrix-accent) 40%, transparent); transform: translateY(-2px); }
+.retry-button:active { transform: translateY(0); }
+
+.reload-button {
+  background: color-mix(in srgb, #ff6b6b 30%, transparent);
+  color: #ff6b6b;
+  border: 1px solid color-mix(in srgb, #ff6b6b 50%, transparent);
+}
+
+.reload-button:hover {
+  background: color-mix(in srgb, #ff6b6b 40%, transparent);
+  border-color: #ff6b6b;
+  transform: translateY(-2px);
+}
+
+.reload-button:active { transform: translateY(0); }
+
+.error-boundary-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.error-boundary-help {
+  padding: 1rem;
+  background: rgba(0, 255, 65, 0.05);
+  border: 1px solid color-mix(in srgb, var(--matrix-accent) 20%, transparent);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: var(--matrix-text-dim);
+  line-height: 1.6;
+}
+
+.error-boundary-help p { margin: 0; }
+
+.error-boundary-help a {
+  color: var(--matrix-accent);
+  text-decoration: underline;
+  transition: color 0.2s ease;
+}
+
+.error-boundary-help a:hover {
+  color: color-mix(in srgb, var(--matrix-accent) 80%, transparent);
+}
+
+.error-boundary-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at center, transparent 0%, color-mix(in srgb, var(--matrix-accent) 10%, transparent) 100%);
+  pointer-events: none;
+  border-radius: 16px;
+  opacity: 0.5;
+  animation: errorBoundaryGlowPulse 3s ease-in-out infinite;
+}
+
+@keyframes errorBoundaryGlowPulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.6; }
+}
+
+[data-theme="light"] .error-boundary-container {
+  background-image:
+    radial-gradient(circle at top, rgba(5, 150, 105, 0.1), transparent 50%),
+    linear-gradient(180deg, var(--matrix-bg-primary) 0%, var(--matrix-bg-secondary) 100%);
+}
+
+[data-theme="light"] .error-boundary-panel {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), 0 0 20px rgba(5, 150, 105, 0.1);
+}
+
+[data-theme="light"] .error-boundary-title { color: var(--matrix-text); }
+
+[data-theme="light"] .error-boundary-code,
+[data-theme="light"] .error-boundary-stack {
+  background: rgba(0, 0, 0, 0.1);
+  border-color: var(--matrix-border);
+}
+
+[data-theme="light"] .error-boundary-details {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: color-mix(in srgb, var(--matrix-accent) 30%, transparent);
+}
+
+[data-theme="light"] .error-boundary-details:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+@media (max-width: 640px) {
+  .error-boundary-panel { padding: 1.5rem; }
+  .error-boundary-title { font-size: 1.25rem; }
+  .error-boundary-actions { flex-direction: column; }
+  .error-boundary-button { width: 100%; min-width: unset; }
+  .error-boundary-icon { width: 24px; height: 24px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .error-boundary-panel,
+  .error-boundary-icon,
+  .error-boundary-glow,
+  .error-boundary-button {
+    animation: none;
+    transition: none;
+  }
+}
